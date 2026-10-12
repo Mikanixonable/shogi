@@ -18,6 +18,11 @@ window.Kakoi = window.Kakoi || {};
     has(id) { return this._byId.has(id); }
     byId(id) { return this._byId.get(id); }
     ofSide(side) { return this._castles.filter(c => c.side === side); }
+    /** 戦型の囲いを、系統の順（families() の並び）→ データ順に並べて返す */
+    ofSideByFamily(side) {
+      const list = this.ofSide(side);
+      return this._families.flatMap(f => list.filter(c => c.family === f.id));
+    }
     first(side) { return this.ofSide(side)[0]; }
     families() { return this._families; }
     familyOf(castle) { return this._familyById.get(castle.family); }

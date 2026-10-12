@@ -5,7 +5,7 @@ window.Kakoi = window.Kakoi || {};
 
   class ToolbarView {
     /**
-     * @param {{ mode:HTMLElement, heat:HTMLInputElement, heatScope:HTMLElement, heatScopeWrap:HTMLElement }} els
+     * @param {{ mode:HTMLElement, heat:HTMLInputElement, skeleton:HTMLInputElement, heatScope:HTMLElement, heatScopeWrap:HTMLElement }} els
      * @param {(patch:object) => void} onChange
      */
     constructor(els, onChange) {
@@ -13,11 +13,13 @@ window.Kakoi = window.Kakoi || {};
       this.mode = new Kakoi.Segmented(els.mode, v => onChange({ mode: v }));
       this.heatScope = new Kakoi.Segmented(els.heatScope, v => onChange({ heatScope: v }));
       els.heat.addEventListener('change', () => onChange({ heat: els.heat.checked }));
+      els.skeleton.addEventListener('change', () => onChange({ skeleton: els.skeleton.checked }));
     }
 
     render(state) {
       this.mode.setValue(state.mode);
       this.els.heat.checked = state.heat;
+      this.els.skeleton.checked = state.skeleton;
       this.els.heatScopeWrap.classList.toggle('disabled', !state.heat);
       this.heatScope.setValue(state.heatScope);
     }
