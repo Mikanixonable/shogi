@@ -56,6 +56,15 @@ window.Kakoi = window.Kakoi || {};
     for (const s of list) if (!SQ.test(String(s))) errors.push(`${label}不正: ${s}`);
   }
 
+  /** 先手の駒（盤上＋持ち駒）が全部で1組と一致するか。持ち駒は "角" のような文字列（1文字1枚）か配列 */
+  function fullSet(list, hand, errors) {
+    const count = {};
+    for (const x of list) count[x.p] = (count[x.p] || 0) + 1;
+    if (hand !== undefined && typeof hand !== 'string' && !isArr(hand)) errors.push('handが文字列でない');
+    else for (const p of hand || []) count[p] = (count[p] || 0) + 1;
+    for (const [p, n] of Object.entries(FULL_SET)) if (count[p] !== n) errors.push(`${p}の枚数 ${count[p] || 0}/${n}`);
+  }
+
   function castleBody(c, ctx, errors, warnings) {
     for (const k of ['id', 'name', 'short', 'reading', 'core', 'support', 'desc'])
       if (!isStr(c[k])) errors.push(`必須項目なし: ${k}`);
@@ -89,14 +98,7 @@ window.Kakoi = window.Kakoi || {};
     ];
     const squares = dupAndNifu(sente, '', errors);
     deadSquares(sente, 'sente', '先手', errors);
-    if (setup) {
-      const count = {};
-      for (const x of sente) count[x.p] = (count[x.p] || 0) + 1;
-      // 持ち駒は "角" のような文字列（1文字1枚）
-      if (c.hand !== undefined && typeof c.hand !== 'string' && !isArr(c.hand)) errors.push('handが文字列でない');
-      else for (const p of c.hand || []) count[p] = (count[p] || 0) + 1;
-      for (const [p, n] of Object.entries(FULL_SET)) if (count[p] !== n) errors.push(`${p}の枚数 ${count[p] || 0}/${n}`);
-    }
+    if (setup) fullSet(sente, c.hand, errors);
 
     if (!isArr(c.attacks)) errors.push('attacksが配列でない');
     else {
@@ -173,6 +175,85 @@ window.Kakoi = window.Kakoi || {};
     return r;
   }
 
+  const PIECE_CHARS = '飛銀角金桂香歩玉';
+
+  /** 戦法の系統1件の検査（id / name / side / piece） */
+  function tacticFamily(f) {
+    const r = result();
+    try {
+      if (!f || typeof f !== 'object') { r.errors.push('系統がオブジェクトでない'); return r; }
+      const miss = ['id', 'name'].filter(k => !isStr(f[k]));
+      if (miss.length) r.errors.push(`必須項目なし: ${miss.join(', ')}`);
+      if (!['ibisha', 'furibisha'].includes(f.side)) r.errors.push(`side不正: ${f.side}`);
+      if (!(isStr(f.piece) && f.piece.length === 1 && PIECE_CHARS.includes(f.piece))) r.errors.push(`piece不正: ${f.piece}`);
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  function tacticBody(t, ctx, errors, warnings) {
+    for (const k of ['id', 'name', 'reading', 'pieces', 'context', 'desc'])
+      if (!isStr(t[k])) errors.push(`必須項目なし: ${k}`);
+    const fam = isArr(ctx.TACTIC_FAMILIES) ? ctx.TACTIC_FAMILIES.find(f => f && f.id === t.family) : undefined;
+    if (!fam) errors.push(`family未登録: ${t.family}`);
+    if (t.aliases !== undefined && !(isArr(t.aliases) && t.aliases.every(isStr))) errors.push('aliasesが文字列の配列でない');
+    if (t.note !== undefined && typeof t.note !== 'string') errors.push('noteが文字列でない');
+    for (const [name, list] of [['pros', t.pros], ['cons', t.cons]]) {
+      if (!isArr(list)) { errors.push(`${name}が配列でない`); continue; }
+      list.forEach((x, i) => { if (!x || !isStr(x.t)) errors.push(`${name}[${i}].tなし`); });
+    }
+
+    const lead = t.lead;
+    let leadOk = false;
+    if (!lead || typeof lead !== 'object') errors.push('leadなし');
+    else {
+      leadOk = true;
+      if (!(isStr(lead.piece) && lead.piece.length === 1 && PIECE_CHARS.includes(lead.piece))) { errors.push(`lead.piece不正: ${lead.piece}`); leadOk = false; }
+      if (!isArr(lead.files) || lead.files.length === 0 || !lead.files.every(n => Number.isInteger(n) && n >= 1 && n <= 9)) { errors.push('lead.filesが1..9の整数の空でない配列でない'); leadOk = false; }
+      if (!(typeof lead.square === 'string' && SQ.test(lead.square))) { errors.push(`lead.square不正: ${lead.square}`); leadOk = false; }
+      if (fam && leadOk && fam.piece !== lead.piece) errors.push(`系統の駒(${fam.piece})とlead.piece(${lead.piece})が違う`);
+      if (leadOk && !lead.files.includes(Number(lead.square[0]))) errors.push(`lead.square(${lead.square})の筋がlead.filesにない`);
+    }
+
+    if (!isArr(t.route) || t.route.length === 0) errors.push('routeが空または配列でない');
+    else {
+      checkSquares(t.route, 'route', errors);
+      if (lead && t.route[t.route.length - 1] !== lead.square) errors.push(`routeの最後(${t.route[t.route.length - 1]})がlead.square(${lead.square})でない`);
+    }
+
+    const sente = pieces(t.pieces, 'pieces', errors, { owner: 'sente', role: 'tactic' });
+    dupAndNifu(sente, '', errors);
+    deadSquares(sente, 'sente', '先手', errors);
+    fullSet(sente, t.hand, errors);
+    if (leadOk) {
+      const on = sente.find(x => x.f === Number(lead.square[0]) && x.r === Number(lead.square[1]));
+      if (!on) errors.push(`lead.square(${lead.square})に駒がない`);
+      else if (on.p !== lead.piece) errors.push(`lead.square(${lead.square})の駒が${on.p}で、lead.piece(${lead.piece})でない`);
+    }
+
+    if (!isArr(t.castles)) errors.push('castlesが配列でない');
+    else for (const id of t.castles) if (!isArr(ctx.CASTLES) || !ctx.CASTLES.some(c => c && c.id === id)) errors.push(`castles未登録: ${id}`);
+
+    if (!isArr(t.sources) || t.sources.length === 0) errors.push('sourcesが空');
+    else {
+      t.sources.forEach((s, i) => {
+        if (!s || !isStr(s.ref)) errors.push(`sources[${i}].refなし`);
+        else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) errors.push(`未登録の出典: ${s.ref}`);
+        if (!s || !isStr(s.for)) errors.push(`sources[${i}].forなし`);
+      });
+      if (t.sources.length < 2) warnings.push(`sourcesが${t.sources.length}件（2件以上が望ましい）`);
+    }
+  }
+
+  /** 戦法1件の検査。ctx = { TACTIC_FAMILIES, SOURCES, CASTLES } */
+  function tactic(t, ctx) {
+    const r = result();
+    try {
+      if (!t || typeof t !== 'object') r.errors.push('戦法がオブジェクトでない');
+      else tacticBody(t, ctx || {}, r.errors, r.warnings);
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
   /** 出典1件の検査（title / publisher / https の url） */
   function source(ref, s) {
     const r = result();
@@ -187,7 +268,7 @@ window.Kakoi = window.Kakoi || {};
   /** 全データの検査。ctx = { CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES } */
   function all(ctx) {
     const results = [], warnings = [];
-    const used = new Set(), seen = new Set();
+    const used = new Set(), seen = new Set(), tseen = new Set();
     for (const c of isArr(ctx.CASTLES) ? ctx.CASTLES : []) {
       const r = castle(c, ctx);
       const id = c && c.id;
@@ -210,6 +291,21 @@ window.Kakoi = window.Kakoi || {};
       for (const x of (s && isArr(s.sources) ? s.sources : [])) if (x && x.ref) used.add(x.ref);
       results.push({ kind: 'setup', id: sid, ...setup(sid, s, ctx) });
     }
+    for (const t of isArr(ctx.TACTICS) ? ctx.TACTICS : []) {
+      const r = tactic(t, ctx);
+      const id = t && t.id;
+      if (tseen.has(id)) r.errors.push(`idが重複: ${id}`);
+      tseen.add(id);
+      for (const s of (t && isArr(t.sources) ? t.sources : [])) if (s && s.ref) used.add(s.ref);
+      results.push({ kind: 'tactic', id, ...r });
+    }
+    const tfamIds = new Set();
+    for (const f of isArr(ctx.TACTIC_FAMILIES) ? ctx.TACTIC_FAMILIES : []) {
+      const r = tacticFamily(f);
+      if (f && tfamIds.has(f.id)) r.errors.push(`idが重複: ${f.id}`);
+      if (f) tfamIds.add(f.id);
+      results.push({ kind: 'tacticFamily', id: f && f.id, ...r });
+    }
     for (const [ref, s] of Object.entries(ctx.SOURCES || {})) {
       results.push({ kind: 'source', id: ref, ...source(ref, s) });
       if (!used.has(ref)) warnings.push(`source:${ref}: どこからも参照されていない`);
@@ -217,5 +313,5 @@ window.Kakoi = window.Kakoi || {};
     return { results, warnings };
   }
 
-  Kakoi.validate = { castle, family, setup, source, all };
+  Kakoi.validate = { castle, family, tacticFamily, tactic, setup, source, all };
 })();

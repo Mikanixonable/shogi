@@ -2,7 +2,7 @@
 
 /* ===== header: 全体の表示設定のみ ===== */
 header { display:flex; align-items:center; gap:14px; margin:14px 20px; padding:8px 12px 8px 22px; border-radius:20px; flex-wrap:wrap; }
-.brand { display:flex; align-items:center; gap:12px; margin-right:auto; }
+.brand { display:flex; align-items:center; gap:12px; }
 .brand .mark { width:26px; height:28px; display:grid; place-items:center; padding-top:4px; font:700 14px var(--mincho); color:var(--core);
                background:linear-gradient(160deg,var(--piece-1),var(--piece-2)); clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
 .brand h1 { margin:0; font:700 19px/1 var(--mincho); letter-spacing:.12em; }
@@ -23,6 +23,13 @@ header { display:flex; align-items:center; gap:14px; margin:14px 20px; padding:8
 .seg.wide button { flex:1; padding:7px 0; font-size:14px; letter-spacing:.08em; }
 .seg.wide button[aria-pressed="true"] { color:var(--accent); }
 
+/* 画面の切り替え（ナビゲーション）: 表示設定より大きく、右の設定群とは余白で分ける */
+.seg.nav { margin:0 auto 0 8px; }
+.seg.nav button { padding:6px 20px; font-weight:600; letter-spacing:.1em; }
+.seg.nav button[aria-pressed="true"] { color:var(--accent); }
+/* 画面切り替えの分だけ幅が要るので、狭い画面ではキャッチコピーを畳んでヘッダーを1行に保つ */
+@media (max-width:1500px) { .brand .sub { display:none; } }
+
 /* ===== switch ===== */
 .switch { display:inline-flex; align-items:center; gap:9px; font-size:13px; color:var(--muted); cursor:pointer; user-select:none; }
 .switch input { appearance:none; width:38px; height:22px; border-radius:999px; background:var(--faint); box-shadow:inset 0 1px 3px rgba(0,0,0,.2); position:relative; margin:0; cursor:pointer; transition:background .25s; }
@@ -33,6 +40,20 @@ header { display:flex; align-items:center; gap:14px; margin:14px 20px; padding:8
 /* ===== app grid ===== */
 .app { display:grid; grid-template-columns:minmax(250px,330px) minmax(0,1fr) minmax(300px,360px); gap:16px; padding:0 20px 20px; min-height:0; }
 .panel { border-radius:24px; min-height:0; }
+
+/* ===== 画面ごとのパネル（view-pane）: 表示中の画面のものだけ、枠なし(contents)で親のグリッドに参加 ===== */
+.view-pane { display:none; }
+body[data-view="castle"] .view-pane[data-view~="castle"],
+body[data-view="tactic"] .view-pane[data-view~="tactic"],
+body[data-view="cluster"] .view-pane[data-view~="cluster"] { display:contents; }
+/* 親のグリッド全体を使う画面（一覧・解説・分類マップ）は箱として全行にまたがる */
+body[data-view="tactic"] .view-pane.pane-fill[data-view~="tactic"],
+body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:flex; flex-direction:column; grid-row:1 / -1; min-height:0; overflow:auto; }
+.placeholder { margin:auto; color:var(--muted); letter-spacing:.1em; }
+/* 中央: 見出し → 盤 → 足元の順を、画面ごとのパネルに分かれていても保つ */
+.stage .stage-h { order:0; }
+.stage .boardarea { order:1; }
+.stage .stage-f { order:2; }
 
 /* ===== rail: 囲いを選ぶ ===== */
 .rail { display:grid; grid-template-rows:auto auto auto minmax(0,1fr); padding:14px; gap:10px; }
