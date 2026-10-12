@@ -1,4 +1,5 @@
-/* 戦法の画面: 盤と筋をそろえた周期表、左の一覧、中央の見出しと再生、右の解説 */
+/* 戦法の画面: 盤と筋をそろえた周期表、左の一覧、中央の見出しと再生、右の解説
+   「墨と余白」: 角丸とガラス面を捨て、罫線と下線で組む */
 
 /* ===== 周期表（盤の外枠 .boardwrap の最初の行。戦法の画面だけ表示） ===== */
 .ptable { display:none; }
@@ -12,60 +13,59 @@ body[data-view="tactic"] .ptable {
   display:grid; grid-column:1 / -1; grid-template-columns:repeat(9, minmax(0,1fr)) 22px; grid-auto-rows:var(--pt-row);
   row-gap:var(--pt-gap); padding-bottom:var(--pt-pad); height:var(--ptable-h);
 }
-.pt-cell, .pt-empty { min-width:0; margin:0 2px; border-radius:8px; display:flex; align-items:center; justify-content:center; text-align:center; }
-.pt-empty { color:var(--muted); opacity:.35; font-size:11px; background:var(--faint); }
-.pt-cell { container-type:inline-size; padding:0; cursor:pointer; border:1px solid var(--glass-line);
-           background:linear-gradient(180deg,var(--glass-2),var(--glass)); box-shadow:inset 0 1px 0 var(--glass-hi);
-           transition:border-color .2s, background .2s, transform .2s var(--ease); }
-.pt-cell:hover { border-color:var(--accent); transform:translateY(-1px); }
-.pt-cell span { font-weight:600; line-height:1.1; letter-spacing:0; padding:0 1px;
+.pt-cell, .pt-empty { min-width:0; margin:0 2px; display:flex; align-items:center; justify-content:center; text-align:center; }
+.pt-empty { color:var(--muted); opacity:.4; font:10px/1 var(--font-n); border:1px solid var(--line); }
+.pt-cell { container-type:inline-size; padding:0; cursor:pointer; border:1px solid var(--line); background:none;
+           transition:border-color .2s, background .2s, color .2s; }
+.pt-cell:hover { border-color:var(--line-2); color:var(--fg); }
+.pt-cell span { font-weight:600; line-height:1.1; letter-spacing:.04em; padding:0 1px;
                 font-size:max(10px, min(13px, calc(94cqw / var(--n)))); }
 .pt-cell[data-rare="true"] { color:var(--muted); font-style:italic; border-style:dashed; }
-.pt-cell[aria-current="true"] { border-color:var(--accent); background:linear-gradient(180deg,var(--accent-soft),var(--glass-2));
-                                box-shadow:inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--accent); color:var(--accent); }
+.pt-cell[aria-current="true"] { border-color:var(--accent); background:var(--accent-soft);
+                                box-shadow:inset 0 0 0 1px var(--accent); color:var(--accent); }
 .pt-tile { align-self:center; justify-self:center; width:22px; height:24px; display:grid; place-items:center; padding-top:3px;
-           font:700 12px var(--mincho); color:var(--core); cursor:default;
-           background:linear-gradient(170deg,var(--piece-1),var(--piece-2)); clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
+           font:700 12px var(--font-d); color:var(--core); cursor:default;
+           background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
+           clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
 
 /* ===== 盤: 主役の駒の経路は、駒が滑り終わってから現れる ===== */
 body[data-view="tactic"] .overlay .rt-line { animation:skIn .4s var(--ease) .55s backwards; }
 body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) .55s backwards; }
 
 /* ===== 左: 戦法の一覧 ===== */
-#tacticRail { padding:14px; gap:10px; }
-.tr-row { display:flex; flex-direction:column; gap:5px; }
-.tr-row h3 { display:flex; align-items:center; gap:8px; margin:0 0 2px; font-size:11px; letter-spacing:.1em; color:var(--muted); font-weight:600; }
+#tacticRail { padding:16px 18px; gap:12px; }
+.tr-row { display:flex; flex-direction:column; gap:4px; }
+.tr-row h3 { display:flex; align-items:center; gap:10px; margin:0 0 4px; font-size:11px; letter-spacing:.18em; color:var(--muted); font-weight:600; }
+.tr-row h3::after { content:""; flex:1; height:1px; background:var(--line); }
 .tr-item { display:flex; align-items:center; justify-content:space-between; gap:8px; text-align:left; cursor:pointer;
-           border:1px solid var(--glass-line); border-radius:12px; padding:4px 12px; font-size:13px;
-           background:linear-gradient(180deg,var(--glass-2),var(--glass)); box-shadow:inset 0 1px 0 var(--glass-hi);
-           transition:border-color .2s, background .2s, box-shadow .25s; }
-.tr-item:hover { border-color:var(--accent); }
-.tr-item .fb { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+           border:1px solid var(--line); padding:4px 12px; font-size:13px; background:none;
+           transition:border-color .2s, background .2s; }
+.tr-item:hover { border-color:var(--line-2); }
+.tr-item .fb { font:500 11px/1 var(--font-n); letter-spacing:.06em; color:var(--muted); white-space:nowrap; }
 .tr-item[data-rare="true"] .nm { color:var(--muted); font-style:italic; }
-.tr-item[aria-current="true"] { border-color:var(--accent); background:linear-gradient(180deg,var(--accent-soft),var(--glass-2));
-                                box-shadow:inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--accent); }
+.tr-item[aria-current="true"] { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
 .tr-item[aria-current="true"] .nm { font-weight:600; }
 
 /* ===== 中央: 見出しと再生 ===== */
-.stage-h h2 .al { margin-left:12px; font:400 12px var(--mincho); letter-spacing:.04em; color:var(--muted); }
+.stage-h h2 .al { margin-left:12px; font:400 12px var(--font-d); letter-spacing:.08em; color:var(--muted); }
 .stage-f .legend i { background:var(--core); }
-.play-btn { flex:none; cursor:pointer; border:1px solid var(--glass-line); border-radius:999px; padding:3px 14px; font-size:12px; letter-spacing:.08em;
-            background:var(--faint); color:var(--fg); transition:border-color .2s, color .2s, background .2s; }
+.play-btn { flex:none; cursor:pointer; border:1px solid var(--line); padding:4px 16px; font-size:12px; letter-spacing:.12em;
+            background:none; color:var(--fg); transition:border-color .2s, color .2s, background .2s; }
 .play-btn:hover { border-color:var(--accent); color:var(--accent); }
 .play-btn[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
 /* ===== 右: 解説 ===== */
-#tacticDetail { padding:16px 20px 18px; gap:14px; overflow:hidden; }
+#tacticDetail { padding:16px 22px 18px; gap:14px; overflow:hidden; }
 #tacticDetail .detail-body { flex:1; }
-.rt-steps { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 4px; font-size:13px; font-variant-numeric:tabular-nums; }
-.rt-step { padding:3px 10px; border-radius:10px; background:var(--faint); border:1px solid var(--glass-line); cursor:default; transition:border-color .2s; }
+.rt-steps { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 4px; font-size:13px; }
+.rt-step { padding:3px 10px; background:none; border:1px solid var(--line); cursor:default; transition:border-color .2s; }
 .rt-step:hover { border-color:var(--accent); }
 .rt-step + .rt-step::before { content:"→"; margin:0 8px 0 -4px; color:var(--muted); }
 .rt-step:not(:first-child) { background:none; border-color:transparent; padding-left:0; }
 .rt-step:not(:first-child):hover { border-color:transparent; color:var(--accent); }
 .tc-castles { display:flex; flex-direction:column; gap:6px; }
 .tc-castle { display:flex; align-items:baseline; justify-content:space-between; gap:10px; text-align:left; cursor:pointer;
-             border:1px solid var(--glass-line); background:var(--faint); border-radius:12px; padding:8px 12px; font-size:13px;
+             border:1px solid var(--line); background:none; padding:8px 12px; font-size:13px;
              transition:border-color .2s, background .2s; }
 .tc-castle span { font-size:11px; color:var(--muted); }
 .tc-castle:hover { border-color:var(--accent); background:var(--accent-soft); }

@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>将棋の囲い図鑑</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='7' fill='%23c8371f'/%3E%3Crect x='9.5' y='9.5' width='45' height='45' rx='3' fill='none' stroke='%23fbf6ea' stroke-width='2.4'/%3E%3Cg stroke='%23fbf6ea' stroke-width='5' stroke-linecap='square'%3E%3Cpath d='M20 20h24M22 32h20M17 45h30M32 20v25'/%3E%3C/g%3E%3Ccircle cx='41' cy='39' r='2.8' fill='%23fbf6ea'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;600&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/board.css">
@@ -12,7 +15,7 @@
 <link rel="stylesheet" href="css/clusters.css">
 </head>
 <body>
-<div class="atmo" aria-hidden="true"><b></b><b></b><b></b></div>
+<div class="atmo" aria-hidden="true"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--wood-1)"/><stop offset="1" style="stop-color:var(--wood-2)"/></linearGradient></defs>
 </svg>
@@ -99,6 +102,7 @@
     </div>
     <div class="view-pane pane-fill" data-view="tactic" id="tacticDetail"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterDetail"></div>
+    <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>
 </div>
 

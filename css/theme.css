@@ -1,66 +1,63 @@
-/* テーマ: 色トークン・背景の空気感・ガラス面・基本設定 */
+/* テーマ: design-refs 01「墨と余白」— 和紙の生成りに墨と朱だけ。
+   面・影・透過を捨て、1pxの罫線と余白とタイポグラフィの緩急で格を出す。 */
 /* ===== tokens ===== */
 :root {
-  --bg-1:#ebe5da; --bg-2:#ddd6ca; --orb-a:rgba(212,150,80,.38); --orb-b:rgba(104,124,166,.30); --orb-c:rgba(196,92,60,.16);
-  --glass:rgba(255,255,255,.38); --glass-2:rgba(255,255,255,.62); --glass-line:rgba(255,255,255,.7); --glass-hi:rgba(255,255,255,.95);
-  --glass-shadow:0 1px 1px rgba(60,40,20,.04), 0 24px 60px -28px rgba(70,45,20,.45);
-  --fg:#27231d; --muted:#7a7266; --faint:rgba(60,45,30,.08);
-  --accent:#c0532c; --accent-2:#a8803f; --accent-soft:rgba(192,83,44,.12);
-  --wood-1:#ebcf98; --wood-2:#d7ad66; --wood-line:rgba(92,60,18,.5);
-  --piece-1:#fdf5df; --piece-2:#ead3a1; --piece-edge-1:#fffaf0; --piece-edge-2:#b48a4c; --ink:#1f1b15; --core:#bd2c1e;
-  --good:#4f8a4a; --bad:#bd3b2a; --heat:38,112,98;
-  --noise:.05;
-  --gote-ink:#22345c;
-  --mincho:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
-  --ease:cubic-bezier(.2,.8,.2,1);
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035); --tint:rgba(27,26,23,.05);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f; --heat:74,107,63;
+  --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
+  --piece-1:#fbf6ea; --piece-2:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --core:#c8371f;
+  --gote-ink:#33507a;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
+  --mincho:var(--font-d);
+  --ease:cubic-bezier(.4,0,.2,1);
+  --washi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-1:#0e1014; --bg-2:#151b24; --orb-a:rgba(196,132,62,.20); --orb-b:rgba(62,84,140,.26); --orb-c:rgba(192,83,44,.12);
-    --glass:rgba(255,255,255,.04); --glass-2:rgba(255,255,255,.075); --glass-line:rgba(255,255,255,.08); --glass-hi:rgba(255,255,255,.16);
-    --glass-shadow:0 1px 1px rgba(0,0,0,.2), 0 30px 70px -30px rgba(0,0,0,.8);
-    --fg:#ece6db; --muted:#9c968a; --faint:rgba(255,255,255,.06);
-    --accent:#e0714a; --accent-2:#cfa76a; --accent-soft:rgba(224,113,74,.14);
-    --wood-1:#c8a265; --wood-2:#a9814a; --wood-line:rgba(40,24,6,.6);
-    --piece-1:#f5e8c8; --piece-2:#d9bd86; --piece-edge-1:#fff6e0; --piece-edge-2:#8f6a33; --core:#c42a1c;
-    --good:#8cc788; --bad:#f08a72; --heat:120,205,185;
-    --noise:.07;
+    --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+    --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04); --tint:rgba(236,230,218,.05);
+    --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+    --good:#9cbf8a; --bad:#e2563b; --heat:156,191,138;
+    --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+    --piece-1:#f3e9d2; --piece-2:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17; --core:#c8371f;
+    --gote-ink:#43506e;
   }
 }
 :root[data-theme="dark"] {
-  --bg-1:#0e1014; --bg-2:#151b24; --orb-a:rgba(196,132,62,.20); --orb-b:rgba(62,84,140,.26); --orb-c:rgba(192,83,44,.12);
-  --glass:rgba(255,255,255,.04); --glass-2:rgba(255,255,255,.075); --glass-line:rgba(255,255,255,.08); --glass-hi:rgba(255,255,255,.16);
-  --glass-shadow:0 1px 1px rgba(0,0,0,.2), 0 30px 70px -30px rgba(0,0,0,.8);
-  --fg:#ece6db; --muted:#9c968a; --faint:rgba(255,255,255,.06);
-  --accent:#e0714a; --accent-2:#cfa76a; --accent-soft:rgba(224,113,74,.14);
-  --wood-1:#c8a265; --wood-2:#a9814a; --wood-line:rgba(40,24,6,.6);
-  --piece-1:#f5e8c8; --piece-2:#d9bd86; --piece-edge-1:#fff6e0; --piece-edge-2:#8f6a33; --core:#c42a1c;
-  --good:#8cc788; --bad:#f08a72; --heat:120,205,185;
-  --noise:.07;
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04); --tint:rgba(236,230,218,.05);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b; --heat:156,191,138;
+  --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+  --piece-1:#f3e9d2; --piece-2:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17; --core:#c8371f;
+  --gote-ink:#43506e;
 }
 
 /* ===== base & atmosphere ===== */
 * { box-sizing:border-box; }
 html, body { height:100%; }
-html { background:var(--bg-2); }
-body { margin:0; font:14px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg);
-       background:linear-gradient(160deg,var(--bg-1),var(--bg-2)) fixed;
+html { background:var(--bg); }
+body { margin:0; font:14px/1.7 var(--font-b); color:var(--fg);
+       background:var(--bg);
        display:grid; grid-template-rows:auto minmax(0,1fr); height:100dvh; overflow:hidden; isolation:isolate; }
 button { font:inherit; color:inherit; }
+
+/* 和紙の繊維 + 巨大な「囲」の透かし */
 .atmo { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
-.atmo b { position:absolute; border-radius:50%; filter:blur(70px); animation:drift 38s ease-in-out infinite alternate; }
-.atmo b:nth-child(1) { width:46vw; height:46vw; left:-10vw; top:-14vw; background:var(--orb-a); }
-.atmo b:nth-child(2) { width:52vw; height:52vw; right:-14vw; bottom:-22vw; background:var(--orb-b); animation-duration:46s; animation-delay:-12s; }
-.atmo b:nth-child(3) { width:30vw; height:30vw; left:38vw; top:30vh; background:var(--orb-c); animation-duration:54s; animation-delay:-30s; }
-.atmo::after { content:""; position:absolute; inset:0; opacity:var(--noise); mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-@keyframes drift { 0% { transform:translate(0,0) scale(1); } 50% { transform:translate(6vw,4vh) scale(1.08); } 100% { transform:translate(-4vw,6vh) scale(.95); } }
+.atmo::before { content:""; position:absolute; inset:0; background:var(--washi); opacity:.7; }
+.atmo::after { content:"囲"; position:absolute; right:-.06em; top:.02em; font:800 min(46vw,640px)/1 var(--font-d);
+               color:var(--fg); opacity:.035; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .atmo::before { opacity:.12; mix-blend-mode:screen; } }
+:root[data-theme="dark"] .atmo::before { opacity:.12; mix-blend-mode:screen; }
 
-.glass { background:linear-gradient(180deg,var(--glass-2),var(--glass)); border:1px solid var(--glass-line);
-         -webkit-backdrop-filter:blur(26px) saturate(150%); backdrop-filter:blur(26px) saturate(150%);
-         box-shadow:inset 0 1px 0 var(--glass-hi), var(--glass-shadow); }
+/* パネルは面を持たない。区切りは罫線だけ（.glass は互換の名残で効果なし） */
+.glass { background:none; border:0; box-shadow:none; }
 
-:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+:focus-visible { outline:1.5px solid var(--accent); outline-offset:2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation:none !important; transition:none !important; }
