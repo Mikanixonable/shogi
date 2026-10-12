@@ -5,6 +5,9 @@ window.Kakoi = window.Kakoi || {};
   const { esc } = Kakoi.html;
   const DOT = 5, FS = 11.5, PAD = { l: 14, t: 30, b: 12, r: 12 };
 
+  /** 文字列の概算幅（全角は1em、半角は0.58em） */
+  const textWidth = s => [...s].reduce((w, ch) => w + (ch.charCodeAt(0) > 255 ? FS : FS * 0.58), 0);
+
   class ClusterTreeView {
     /** @param {HTMLElement} host @param {{ onSelect:(id:string)=>void, onHover:(key:?string, e:?PointerEvent)=>void }} handlers */
     constructor(host, handlers) {
@@ -57,4 +60,5 @@ window.Kakoi = window.Kakoi || {};
   }
 
   Kakoi.ClusterTreeView = ClusterTreeView;
+  Kakoi.clusterTextWidth = textWidth;
 })();

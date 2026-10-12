@@ -1,4 +1,4 @@
-// 分類マップの中央: 見出し・地図/木の切り替え・説明・図とホバーのカード
+// 分類マップの中央: 見出し・説明・木の図とホバーのカード
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -7,52 +7,45 @@ window.Kakoi = window.Kakoi || {};
   class ClusterStageView {
     /**
      * @param {HTMLElement} el
-     * @param {{ onSelect:(id:string)=>void, onChart:(chart:string)=>void, describe:(point:object)=>string }} handlers describe はホバーカードの中身(HTML)
+     * @param {{ onSelect:(id:string)=>void, describe:(point:object)=>string }} handlers describe はホバーカードの中身(HTML)
      */
     constructor(el, handlers) {
       this.el = el;
       this.handlers = handlers;
       this.model = null;
-      this.view = { chart: 'map', selectedId: null, family: null };
-      el.innerHTML = `<div class="stage-h cl-head"><div class="ttl"><h2>分類マップ</h2></div>
-          <div class="seg small" id="clChartSeg" role="group" aria-label="図の種類"><button data-value="map">地図</button><button data-value="tree">木の図</button></div></div>
+      this.view = { selectedId: null, family: null };
+      el.innerHTML = `<div class="stage-h cl-head"><div class="ttl"><h2>分類マップ</h2></div></div>
         <p class="cl-expl" id="clExpl"></p>
-        <div class="cl-body" id="clBody"><div class="cl-chart" id="clMap"></div><div class="cl-chart" id="clTree"></div><div class="cl-tip" id="clTip" hidden></div></div>`;
-      this.seg = new Kakoi.Segmented(el.querySelector('#clChartSeg'), handlers.onChart);
+        <div class="cl-body" id="clBody"><div class="cl-chart" id="clTree"></div><div class="cl-tip" id="clTip" hidden></div></div>`;
       this.expl = el.querySelector('#clExpl');
       this.body = el.querySelector('#clBody');
-      this.hosts = { map: el.querySelector('#clMap'), tree: el.querySelector('#clTree') };
+      this.host = el.querySelector('#clTree');
       this.tip = el.querySelector('#clTip');
       const h = { onSelect: handlers.onSelect, onHover: (key, e) => this._hover(key, e) };
-      this.charts = { map: new Kakoi.ClusterMapView(this.hosts.map, h), tree: new Kakoi.ClusterTreeView(this.hosts.tree, h) };
+      this.chart = new Kakoi.ClusterTreeView(this.host, h);
       // 図の大きさが変わったら描き直す（非表示中は大きさ0なので何もしない）
-      const ro = new ResizeObserver(() => this._draw());
-      for (const host of Object.values(this.hosts)) ro.observe(host);
+      new ResizeObserver(() => this._draw()).observe(this.host);
     }
 
     render(model, view) {
       this.model = model;
       this.view = view;
-      this.seg.setValue(view.chart);
       this._explain();
       this._draw();
     }
 
     _explain() {
-      const { model, view } = this;
+      const { model } = this;
       const notes = [];
       if (model.merged) notes.push('左右反転で同じ形の囲いは1点にまとめて表示');
-      if (view.chart === 'map' && model.compressed) notes.push('距離は見やすさのため圧縮表示');
-      const lead = view.chart === 'map' ? '色は作者の分類（系統）、位置は形の近さの計算結果' : '色は作者の分類（系統）、枝の長さは形の近さの計算結果';
-      this.expl.innerHTML = `${lead}。<span class="ari" title="${ARI_TIP}">一致度（ARI）＝${model.ari.toFixed(2)}</span>`
+      this.expl.innerHTML = `色は作者の分類（系統）、枝の長さは形の近さの計算結果。<span class="ari" title="${ARI_TIP}">一致度（ARI）＝${model.ari.toFixed(2)}</span>`
         + (notes.length ? `<span class="notes">${notes.join('。')}。</span>` : '');
     }
 
     _draw() {
       if (!this.model) return;
       this._hide();
-      for (const [name, host] of Object.entries(this.hosts)) host.hidden = name !== this.view.chart;
-      this.charts[this.view.chart].render(this.model, this.view);
+      this.chart.render(this.model, this.view);
     }
 
     _hover(key, e) {

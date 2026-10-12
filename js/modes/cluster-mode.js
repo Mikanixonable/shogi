@@ -1,4 +1,4 @@
-// 分類マップモード: 形の近さの計算結果（地図・木）を、系統の色つきで見せる。盤は使わない
+// 分類マップモード: 形の近さの計算結果（木の図）を、系統の色つきで見せる。盤は使わない
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -12,7 +12,6 @@ window.Kakoi = window.Kakoi || {};
       // 保存値の検証: 未知の系統は解除
       if (!repo.families().some(f => f.id === store.state.clusterFamily)) store.state.clusterFamily = null;
       this.selectedId = null;   // 囲い図鑑の選択（castleId）は「囲い図鑑で開く」まで変えない
-      this.chart = 'map';
       this.model = null;        // 計算は初めて開いたときに一度だけ
     }
 
@@ -21,7 +20,6 @@ window.Kakoi = window.Kakoi || {};
       this.model = new K.ClusterModel(repo);
       this.stage = new K.ClusterStageView(els.stage, {
         onSelect: id => this.select(id),
-        onChart: chart => { this.chart = chart; this._render(); },
         describe: p => this._tipHtml(p),
       });
       this.rail = new K.ClusterRailView(els.rail, {
@@ -53,7 +51,7 @@ window.Kakoi = window.Kakoi || {};
     _render() {
       const { repo, model } = this;
       const family = this.store.state.clusterFamily;
-      const view = { chart: this.chart, selectedId: this.selectedId, family };
+      const view = { selectedId: this.selectedId, family };
       this.stage.render(model, view);
       this.rail.render(repo.families(), id => repo.ofFamily(id), view);
       this.detail.render({
