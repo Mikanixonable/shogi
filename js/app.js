@@ -18,8 +18,15 @@
     'shogi-castle',
   );
   if (!byId.has(store.state.castleId)) store.state.castleId = K.CASTLES[0].id;
+  // 保存値の検証: 既知の城かつ side が一致するものだけ残す
+  const savedLast = store.state.lastBySide;
+  store.state.lastBySide = Object.fromEntries(
+    Object.entries(savedLast && typeof savedLast === 'object' && !Array.isArray(savedLast) ? savedLast : {})
+      .filter(([side, id]) => byId.has(id) && byId.get(id).side === side),
+  );
 
   const selectCastle = id => {
+    if (!byId.has(id)) return;
     const c = byId.get(id);
     store.set({ castleId: id, attackId: null, lastBySide: { ...store.state.lastBySide, [c.side]: id } });
   };
