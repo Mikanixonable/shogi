@@ -7,7 +7,7 @@
 <link id="fav" rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Kaisei+Opti:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Murecho:wght@300..800&family=Inter+Tight:wght@400..900&family=Noto+Sans+JP:wght@400..900&family=JetBrains+Mono:wght@400;700&family=Zen+Maru+Gothic:wght@500;700;900&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter+Tight:wght@400..900&family=Noto+Sans+JP:wght@400..900&family=JetBrains+Mono:wght@400;700&family=Zen+Maru+Gothic:wght@500;700;900&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Zen+Old+Mincho:wght@400;700;900&family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400..700&family=IBM+Plex+Sans+JP:wght@400;500;700&family=Space+Mono:wght@400;700&family=Kaisei+Tokumin:wght@500;800&family=Noto+Serif+JP:wght@400;600&family=EB+Garamond:ital,wght@1,400;1,500&family=Zen+Antique&family=Murecho:wght@300..700&family=Martian+Mono:wght@300;400&family=DotGothic16&family=Share+Tech+Mono&family=Unbounded:wght@500;700&family=Tsukimi+Rounded:wght@500;700&family=M+PLUS+2:wght@400..800&family=Azeret+Mono:wght@500;600&family=Dela+Gothic+One&family=M+PLUS+1:wght@400..700&family=Doto:wght@400..900&family=Geist+Mono:wght@400..600&family=Yuji+Syuku&display=swap" rel="stylesheet">
 <style>
   /* ============ page chrome ============ */
   * { box-sizing:border-box; }
@@ -92,7 +92,7 @@
   .stage-h .rd { font-size:12px; color:var(--muted); letter-spacing:.1em; margin-top:4px; }
   .navs { display:flex; align-items:center; gap:8px; font:var(--count-font); color:var(--muted); }
   .boardarea { display:grid; place-items:center; padding:var(--board-pad,8px 0 4px); perspective:1000px; }
-  .bwrap { display:grid; grid-template-columns:1fr auto; gap:4px 6px; width:min(100%,400px); }
+  .bwrap { display:grid; grid-template-columns:1fr auto; gap:var(--bgap,4px 6px); width:min(100%,400px); }
   .flb, .rlb { display:grid; font:var(--coord-font); color:var(--muted); text-align:center; }
   .flb { grid-template-columns:repeat(5,1fr); }
   .rlb { grid-template-rows:repeat(4,1fr); align-items:center; }
@@ -103,6 +103,11 @@
   .pcw { position:relative; width:80%; aspect-ratio:40/44; display:grid; place-items:center; filter:var(--pc-drop); transition:transform .3s var(--ease); cursor:pointer; }
   .pcw svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
   .pcw .pb { fill:var(--pc); stroke:var(--pc-stroke); stroke-width:var(--pc-sw,.8); stroke-linejoin:var(--pc-join,miter); }
+  .pcw .pt, .pcw .pg, .pcw .pv { display:var(--pc-rich,none); pointer-events:none; }
+  .pcw .pt { fill:var(--pc-side); stroke:var(--pc-side); stroke-width:var(--pc-sw,.8); stroke-linejoin:round; transform:translateY(2.6px); }
+  .pcw .pg { fill:#000; filter:url(#woodgrain); opacity:var(--pc-grain,.5); }
+  .pcw .pv { fill:none; stroke:url(#bevel); stroke-width:.9; stroke-linejoin:round; }
+  .pcw b { text-shadow:var(--pc-emboss,none); }
   .pcw .ps { fill:url(#sheen); opacity:var(--pc-sheen,.5); pointer-events:none; }
   .pcw b { position:relative; font-family:var(--font-pc); font-weight:var(--pc-w,700); font-size:clamp(14px,3.4vw,24px); line-height:1; padding-top:14%; color:var(--pc-ink); }
   .pcw.core b { color:var(--pc-core); }
@@ -121,7 +126,8 @@
   .jump .bar { position:relative; height:8px; border-radius:var(--r-xs); background:var(--line); overflow:hidden; }
   .jump .bar i { position:absolute; inset:0 auto 0 0; background:var(--accent-grad,var(--accent)); border-radius:inherit; }
   .fonts { display:grid; gap:4px; margin-top:12px; font-size:12px; color:var(--fg2); }
-  .fonts span b { display:inline-block; min-width:5.5em; color:var(--muted); font-weight:400; }
+  .fonts span { display:grid; grid-template-columns:7.5em minmax(0,1fr); gap:8px; }
+  .fonts span b { color:var(--muted); font-weight:400; }
 
   /* detail */
   .d-ttl { font-family:var(--font-d); font-weight:var(--d-w); font-size:24px; line-height:1.2; letter-spacing:var(--d-ls); margin:0; }
@@ -217,135 +223,11 @@
   .t-sumi .ts-row div, .t-sumi .d-ttl { letter-spacing:.12em; }
   .t-sumi .stage-h .rd { writing-mode:horizontal-tb; }
   .t-sumi .vert { writing-mode:vertical-rl; font:500 13px/1.9 "Shippori Mincho B1",serif; letter-spacing:.3em; color:var(--muted); height:13em; justify-self:end; }
-  .t-sumi .seal { display:inline-block; width:46px; height:46px; margin-left:14px; vertical-align:middle; opacity:0; transform:scale(1.6) rotate(-8deg); }
-  .t-sumi.in .seal { animation:stamp .55s cubic-bezier(.2,.9,.3,1.3) .3s forwards; }
+  .seal { display:inline-block; width:46px; height:46px; margin-left:14px; vertical-align:middle; opacity:0; transform:scale(1.6) rotate(-8deg); }
+  .in .seal { animation:stamp .55s cubic-bezier(.2,.9,.3,1.3) .3s forwards; }
   @keyframes stamp { 60% { opacity:1; transform:scale(.94) rotate(-3deg); } 100% { opacity:.92; transform:scale(1) rotate(-3deg); } }
   .t-sumi .intro h2 { font-size:clamp(40px,7vw,84px); }
   .t-sumi .meter i s { height:2px; }
-
-  /* =========================================================
-     02 漆と金箔 — classic × rich
-     ========================================================= */
-  .t-urushi {
-    --bg:#0c0a09; --fg:#f3e9d6; --fg2:#cbbfa9; --muted:#958976; --line:rgba(212,174,98,.22); --tint:rgba(212,174,98,.06);
-    --accent:#d4ae62; --accent-grad:linear-gradient(90deg,#8a6a2c,#f3dc9c 45%,#b38a3e 70%,#f0d48a); --good:#d4ae62; --bad:#d9533f;
-    --surface:linear-gradient(180deg,#1b1613,#110e0c); --radius:14px; --r-sm:8px; --r-xs:2px;
-    --shadow:inset 0 1px 0 rgba(255,230,180,.12), inset 0 0 0 1px rgba(0,0,0,.6), 0 30px 60px -30px #000, 0 2px 0 rgba(0,0,0,.6);
-    --font-d:"Kaisei Opti",serif; --font-b:"Zen Kaku Gothic New",sans-serif; --font-pc:"Kaisei Opti",serif;
-    --d-w:700; --d-ls:.08em; --h-intro:66px;
-    --no-font:600 15px/1 "Cormorant Garamond",serif; --en-font:italic 500 22px/1.2 "Cormorant Garamond",serif;
-    --lbl-font:600 12px/1.4 "Cormorant Garamond",serif; --lbl-ls:.32em; --count-font:600 16px/1 "Cormorant Garamond",serif; --coord-font:400 12px/1.6 "Kaisei Opti",serif;
-    --ease:cubic-bezier(.22,.8,.24,1); --dur:.45s;
-    --seg-bg:rgba(0,0,0,.45); --seg-sh:inset 0 1px 3px rgba(0,0,0,.8), 0 1px 0 rgba(255,230,180,.08); --seg-bd:1px solid rgba(212,174,98,.18);
-    --knob-bg:linear-gradient(180deg,#f3dc9c,#b48a3e); --knob-sh:inset 0 1px 0 rgba(255,255,255,.6), 0 4px 12px -4px rgba(212,174,98,.6); --knob-fg:#1a1208;
-    --sw-off:rgba(0,0,0,.55); --sw-on:#7a1a12; --sw-knob:linear-gradient(180deg,#f3dc9c,#a87f37); --sw-sh:inset 0 1px 3px #000, 0 0 0 1px rgba(212,174,98,.25);
-    --ib-bg:linear-gradient(180deg,#221b17,#120f0d); --ib-bd:1px solid rgba(212,174,98,.3); --ib-sh:inset 0 1px 0 rgba(255,230,180,.12), 0 6px 14px -6px #000; --ic-sw:1.4;
-    --board:linear-gradient(160deg,#e3be78,#c9974f 60%,#b8843f);
-    --board-line:rgba(55,28,6,.6); --board-r:3px;
-    --board-sh:0 0 0 2px #0c0806, 0 0 0 4px #c9a35a, 0 0 0 12px #160f0c, 0 0 0 13px rgba(212,174,98,.4), 0 40px 60px -20px #000;
-    --board-pad:24px 0 18px;
-    --pc:#f4e3bd; --pc-stroke:#7a5a26; --pc-sw:.7; --pc-sheen:.6; --pc-ink:#1a120b; --pc-core:#a3231a; --pc-drop:drop-shadow(0 3px 2px rgba(0,0,0,.55));
-    --tag-bg:rgba(212,174,98,.08); --tag-bd:1px solid rgba(212,174,98,.25); --tag-fg:#e6cf9a;
-    --btn-r:6px; --pri-bg:linear-gradient(135deg,#8a6a2c,#f3dc9c 40%,#b38a3e 65%,#f0d48a); --pri-fg:#1a1208; --pri-sh:inset 0 1px 0 rgba(255,255,255,.5), 0 8px 20px -8px rgba(212,174,98,.55);
-    --sec-bg:linear-gradient(180deg,#a32a1e,#6d140d); --sec-fg:#fbe6d0; --sec-sh:inset 0 1px 0 rgba(255,190,160,.35), inset 0 -2px 0 rgba(0,0,0,.35), 0 8px 18px -8px rgba(163,35,26,.7);
-    --sg-a:#0c0a09; --sg-b:#d4ae62; --sw-shadow:inset 0 1px 0 rgba(255,255,255,.15);
-    --pat-demo:var(--seigaiha);
-    --seigaiha:
-      radial-gradient(circle at 100% 150%, var(--sg-a) 24%, var(--sg-b) 24%, var(--sg-b) 26%, var(--sg-a) 26%, var(--sg-a) 36%, var(--sg-b) 36%, var(--sg-b) 38%, transparent 38%),
-      radial-gradient(circle at 0 150%, var(--sg-a) 24%, var(--sg-b) 24%, var(--sg-b) 26%, var(--sg-a) 26%, var(--sg-a) 36%, var(--sg-b) 36%, var(--sg-b) 38%, transparent 38%),
-      radial-gradient(circle at 50% 100%, var(--sg-b) 10%, var(--sg-a) 10%, var(--sg-a) 23%, var(--sg-b) 23%, var(--sg-b) 25%, var(--sg-a) 25%, var(--sg-a) 43%, var(--sg-b) 43%, var(--sg-b) 45%, var(--sg-a) 45%, var(--sg-a) 63%, var(--sg-b) 63%, var(--sg-b) 65%, transparent 65%),
-      radial-gradient(circle at 100% 50%, var(--sg-b) 5%, var(--sg-a) 5%, var(--sg-a) 15%, var(--sg-b) 15%, var(--sg-b) 17%, var(--sg-a) 17%, var(--sg-a) 29%, var(--sg-b) 29%, var(--sg-b) 31%, var(--sg-a) 31%, var(--sg-a) 44%, var(--sg-b) 44%, var(--sg-b) 46%, transparent 46%),
-      radial-gradient(circle at 0 50%, var(--sg-b) 5%, var(--sg-a) 5%, var(--sg-a) 15%, var(--sg-b) 15%, var(--sg-b) 17%, var(--sg-a) 17%, var(--sg-a) 29%, var(--sg-b) 29%, var(--sg-b) 31%, var(--sg-a) 31%, var(--sg-a) 44%, var(--sg-b) 44%, var(--sg-b) 46%, transparent 46%)
-      var(--sg-a);
-  }
-  .t-urushi.dark { /* 白檀 (light lacquer) variant — the toggle flips to it */
-    --bg:#f2ebdd; --fg:#2a1e14; --fg2:#4d3d2c; --muted:#8e7d66; --line:rgba(156,116,40,.25); --tint:rgba(156,116,40,.06);
-    --accent:#9c7428; --surface:linear-gradient(180deg,#fffaf0,#f6eedd);
-    --shadow:inset 0 1px 0 #fff, 0 0 0 1px rgba(156,116,40,.18), 0 24px 50px -28px rgba(80,50,10,.45);
-    --seg-bg:rgba(156,116,40,.08); --seg-sh:inset 0 1px 2px rgba(80,50,10,.15); --ib-bg:linear-gradient(180deg,#fffaf0,#efe4cc); --ib-sh:0 4px 10px -6px rgba(80,50,10,.4);
-    --sw-off:rgba(156,116,40,.18); --sw-sh:inset 0 1px 2px rgba(80,50,10,.2); --tag-fg:#7a5a20;
-    --board-sh:0 0 0 2px #2a1e14, 0 0 0 4px #c9a35a, 0 0 0 12px #2a1e14, 0 0 0 13px rgba(156,116,40,.5), 0 30px 50px -24px rgba(60,30,0,.5);
-    --sg-a:#f2ebdd; --sg-b:#9c7428; --pc-drop:drop-shadow(0 3px 2px rgba(60,30,0,.35));
-  }
-  .t-urushi .pat { background-size:60px 30px; }
-  .t-urushi .fx { background:var(--seigaiha); background-size:60px 30px; opacity:.07; -webkit-mask:linear-gradient(180deg,#000,transparent 70%); mask:linear-gradient(180deg,#000,transparent 70%); }
-  .t-urushi .fx::after { content:""; position:absolute; inset:0; background:radial-gradient(60% 50% at 80% 0%,rgba(212,174,98,.35),transparent 70%); }
-  .t-urushi .intro h2 { background:var(--accent-grad); -webkit-background-clip:text; background-clip:text; color:transparent; background-size:200% 100%; animation:gild 8s linear infinite; }
-  .t-urushi.dark .intro h2 { background-image:linear-gradient(90deg,#6b4c17,#c99a45 45%,#7a5820 70%,#b8893a); }
-  @keyframes gild { to { background-position:-200% 0; } }
-  .t-urushi .btn.pri::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.75) 50%,transparent 70%); transform:translateX(-120%); }
-  .t-urushi .btn.pri:hover::after { transition:transform .9s var(--ease); transform:translateX(120%); }
-  .t-urushi .btn { letter-spacing:.14em; }
-  .t-urushi .bwrap { gap:22px 24px; }
-  .t-urushi .c-app { border-radius:999px; padding-left:22px; }
-  .t-urushi .switch .tr::after { background:var(--sw-knob); }
-  .t-urushi .card::before { content:""; position:absolute; inset:6px; border:1px solid rgba(212,174,98,.12); border-radius:calc(var(--radius) - 5px); pointer-events:none; }
-  .t-urushi .c-app::before { border-radius:999px; }
-  .t-urushi .ts-row div { color:var(--fg); }
-
-  /* =========================================================
-     03 液体ガラス — modern × rich × motion
-     ========================================================= */
-  @property --ang { syntax:"<angle>"; initial-value:0deg; inherits:false; }
-  .t-glass {
-    --bg:#0b0d1c; --fg:#f2f4ff; --fg2:#c6cbe6; --muted:#9097bd; --line:rgba(255,255,255,.12); --tint:rgba(255,255,255,.05);
-    --accent:#7fd8ff; --accent-grad:linear-gradient(90deg,#39d0ff,#8b6cff 50%,#ff5fa2); --good:#7ef0c4; --bad:#ff8aa8;
-    --surface:linear-gradient(160deg,rgba(255,255,255,.11),rgba(255,255,255,.03)); --radius:24px; --r-sm:14px; --r-xs:999px;
-    --shadow:inset 0 1px 0 rgba(255,255,255,.25), inset 0 -1px 0 rgba(255,255,255,.04), 0 30px 60px -24px rgba(0,0,0,.6);
-    --blur:blur(28px) saturate(180%); --bw:0;
-    --font-d:"Murecho",sans-serif; --font-b:"Murecho",sans-serif; --font-pc:"Murecho",sans-serif;
-    --d-w:700; --d-ls:-.01em; --h-intro:60px; --brand-ls:.02em;
-    --no-font:300 13px/1 "Murecho",sans-serif; --en-font:300 18px/1.2 "Murecho",sans-serif;
-    --lbl-font:500 11px/1.4 "Murecho",sans-serif; --lbl-ls:.16em; --count-font:400 13px/1 "Murecho",sans-serif; --coord-font:400 11px/1.6 "Murecho",sans-serif;
-    --ease:cubic-bezier(.16,1,.3,1); --dur:.55s;
-    --seg-bg:rgba(0,0,0,.25); --seg-sh:inset 0 1px 2px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.08);
-    --knob-bg:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.12)); --knob-sh:inset 0 1px 0 rgba(255,255,255,.7), 0 6px 18px -4px rgba(127,216,255,.45);
-    --sw-off:rgba(0,0,0,.3); --sw-on:linear-gradient(90deg,#39d0ff,#8b6cff); --sw-knob:#fff; --sw-sh:inset 0 1px 2px rgba(0,0,0,.45); --sw-ksh:0 0 12px rgba(127,216,255,.8);
-    --ib-bg:rgba(255,255,255,.08); --ib-hover:rgba(255,255,255,.16); --ib-sh:inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -8px rgba(0,0,0,.6); --ic-sw:1.7;
-    --board:linear-gradient(160deg,rgba(240,200,130,.55),rgba(200,140,70,.35)); --board-line:rgba(255,240,215,.35); --board-r:18px;
-    --board-sh:inset 0 1px 0 rgba(255,255,255,.5), inset 0 0 0 1px rgba(255,255,255,.18), 0 50px 80px -30px rgba(0,0,0,.7), 0 0 80px -20px rgba(255,180,92,.35);
-    --board-pad:22px 0 14px;
-    --pc:rgba(255,255,255,.2); --pc-stroke:rgba(255,255,255,.7); --pc-sw:.8; --pc-join:round; --pc-sheen:.95; --pc-ink:#fff; --pc-core:#a8ecff;
-    --pc-drop:drop-shadow(0 10px 8px rgba(0,0,0,.35)); --pc-hover:translateZ(30px) translateY(-4px);
-    --tag-bg:rgba(255,255,255,.08); --tag-fg:#dfe3ff;
-    --btn-r:999px; --pri-bg:linear-gradient(110deg,#39d0ff,#8b6cff 50%,#ff5fa2); --pri-fg:#fff; --pri-sh:inset 0 1px 0 rgba(255,255,255,.55), 0 10px 30px -8px rgba(139,108,255,.75);
-    --sec-bg:rgba(255,255,255,.1); --sec-sh:inset 0 1px 0 rgba(255,255,255,.3), 0 8px 20px -10px rgba(0,0,0,.5);
-    --pat-demo:radial-gradient(40% 60% at 20% 30%,#39d0ff88,transparent 70%), radial-gradient(40% 60% at 80% 70%,#ff5fa288,transparent 70%), radial-gradient(30% 40% at 60% 20%,#ffb35c77,transparent 70%), #0b0d1c;
-  }
-  .t-glass.dark { /* light "frost" variant */
-    --bg:#e8ebf7; --fg:#171a2e; --fg2:#3b4062; --muted:#6d7396; --line:rgba(30,40,90,.12); --tint:rgba(255,255,255,.45);
-    --surface:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.35));
-    --shadow:inset 0 1px 0 #fff, 0 0 0 1px rgba(255,255,255,.6), 0 30px 60px -28px rgba(40,50,120,.4);
-    --seg-bg:rgba(30,40,90,.06); --seg-sh:inset 0 1px 2px rgba(30,40,90,.12); --knob-bg:linear-gradient(180deg,#fff,rgba(255,255,255,.7)); --knob-sh:0 4px 14px -4px rgba(80,90,200,.35);
-    --sw-off:rgba(30,40,90,.12); --sw-sh:inset 0 1px 2px rgba(30,40,90,.2); --ib-bg:rgba(255,255,255,.6); --ib-hover:#fff; --ib-sh:inset 0 1px 0 #fff, 0 6px 14px -8px rgba(40,50,120,.4);
-    --pc:rgba(255,255,255,.6); --pc-stroke:#fff; --pc-ink:#1d2140; --pc-core:#6a3df0; --tag-bg:rgba(255,255,255,.6); --tag-fg:#3b4062;
-    --board:linear-gradient(160deg,rgba(240,200,130,.75),rgba(215,160,90,.6)); --board-line:rgba(110,70,20,.35);
-    --board-sh:inset 0 1px 0 rgba(255,255,255,.7), 0 40px 70px -30px rgba(40,50,120,.45);
-    --sec-bg:rgba(255,255,255,.6); --sec-sh:inset 0 1px 0 #fff, 0 6px 16px -10px rgba(40,50,120,.4);
-    --pat-demo:radial-gradient(40% 60% at 20% 30%,#39d0ff66,transparent 70%), radial-gradient(40% 60% at 80% 70%,#ff5fa255,transparent 70%), #e8ebf7;
-  }
-  .t-glass .fx b { position:absolute; border-radius:50%; filter:blur(80px); opacity:.75; animation:orb 22s ease-in-out infinite alternate; }
-  .t-glass .fx b:nth-child(1) { width:44vw; height:44vw; left:-8vw; top:-10vw; background:#1fb6ff; }
-  .t-glass .fx b:nth-child(2) { width:40vw; height:40vw; right:-10vw; top:30%; background:#ff4f9a; animation-duration:28s; animation-delay:-8s; }
-  .t-glass .fx b:nth-child(3) { width:30vw; height:30vw; left:30%; bottom:-10vw; background:#ffae45; animation-duration:34s; animation-delay:-16s; opacity:.55; }
-  .t-glass .fx b:nth-child(4) { width:24vw; height:24vw; left:45%; top:10%; background:#7b5cff; animation-duration:26s; animation-delay:-4s; }
-  .t-glass.dark .fx b { opacity:.4; }
-  @keyframes orb { 0% { transform:translate(0,0) scale(1); } 50% { transform:translate(8vw,6vh) scale(1.15); } 100% { transform:translate(-6vw,10vh) scale(.9); } }
-  .t-glass .card::after { content:""; position:absolute; inset:0; border-radius:inherit; padding:1px; pointer-events:none;
-    background:conic-gradient(from var(--ang),rgba(255,255,255,.5),rgba(57,208,255,.5),rgba(255,255,255,.08),rgba(255,95,162,.5),rgba(255,255,255,.5));
-    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; animation:spin 10s linear infinite; }
-  @keyframes spin { to { --ang:360deg; } }
-  .t-glass .intro h2 { background:linear-gradient(100deg,var(--fg) 30%,#a8ecff 55%,#ffb3d1 75%,var(--fg) 95%) 0 0/250% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:gild 9s linear infinite; }
-  .t-glass.dark .intro h2 { background-image:linear-gradient(100deg,var(--fg) 30%,#1c8fd6 55%,#d6337a 75%,var(--fg) 95%); }
-  .t-glass .switch input:checked + .tr { background:var(--sw-on); }
-  .t-glass .board { will-change:transform; }
-  .t-glass .pcw { transform:translateZ(14px); }
-  .t-glass .pcw:hover { transform:var(--pc-hover); }
-  .t-glass .pcw.core::before { content:""; position:absolute; inset:15% 10% 0; border-radius:50%; background:radial-gradient(#7fd8ff 0,transparent 70%); filter:blur(10px); opacity:.6; animation:pulse 3s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity:.2; transform:scale(.85); } }
-  .t-glass .pcw b { text-shadow:0 1px 8px rgba(0,0,0,.25); }
-  .t-glass .btn.pri { background-size:200% 100%; animation:flow 6s ease infinite; }
-  @keyframes flow { 50% { background-position:100% 0; } }
 
   /* =========================================================
      04 盤目グリッド — modern × simple (Swiss)
@@ -457,12 +339,410 @@
   .t-clay .intro .no { display:inline-block; padding:6px 12px; border-radius:999px; background:var(--surface); box-shadow:var(--ib-sh); }
   .t-clay .apply { border:0; box-shadow:inset 3px 3px 8px rgba(166,146,116,.25), inset -3px -3px 8px rgba(255,255,255,.7); }
   .t-clay.dark .apply { box-shadow:inset 3px 3px 8px rgba(0,0,0,.35); }
+
+  /* shared helpers for the newer directions */
+  .board::after { content:""; display:var(--star,none); position:absolute; left:40%; top:25%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:var(--board-line); z-index:1; pointer-events:none; }
+  .side { display:grid; gap:22px; align-content:end; min-width:0; }
+  .caret { display:inline-block; width:.55em; height:1em; background:currentColor; vertical-align:-.12em; animation:blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  /* =========================================================
+     06 棋譜組版 — classic × crisp (editorial)
+     ========================================================= */
+  .t-kifu {
+    --bg:#eceee9; --fg:#10151c; --fg2:#343a43; --muted:#7b818a; --line:#10151c; --line2:rgba(16,21,28,.16); --tint:rgba(31,63,191,.06);
+    --accent:#1f3fbf; --good:#10151c; --bad:#1f3fbf;
+    --surface:transparent; --shadow:none; --radius:0; --r-sm:0; --r-xs:0; --bw:0; --gap:0;
+    --font-d:"Zen Old Mincho",serif; --font-b:"BIZ UDPGothic",sans-serif; --font-pc:"Zen Old Mincho",serif;
+    --d-w:900; --d-ls:.04em; --h-intro:80px; --brand-ls:.12em;
+    --no-font:500 11.5px/1 "IBM Plex Mono",monospace; --en-font:500 13px/1.4 "IBM Plex Mono",monospace;
+    --lbl-font:500 10.5px/1.4 "IBM Plex Mono",monospace; --lbl-ls:.1em; --count-font:500 13px/1 "IBM Plex Mono",monospace; --coord-font:500 10.5px/1.6 "IBM Plex Mono",monospace;
+    --ease:cubic-bezier(.65,0,.35,1); --dur:.22s;
+    --seg-bg:transparent; --seg-pad:0px; --seg-r:0; --seg-bd:1px solid var(--line2);
+    --knob-bg:var(--tint); --knob-sh:inset 0 -2px 0 var(--accent); --knob-fg:var(--accent);
+    --sw-off:transparent; --sw-on:var(--accent); --sw-knob:var(--fg); --sw-r:0; --sw-sh:inset 0 0 0 1px var(--fg); --sw-ksh:none;
+    --ib-bg:transparent; --ib-hover:var(--tint); --ib-r:0; --ib-bd:1px solid var(--line2); --ic-sw:1.3; --ic-cap:butt; --ic-join:miter;
+    --board:#fbfcfa; --board-line:#10151c; --board-r:0; --board-sh:0 0 0 2px #10151c, 0 0 0 5px #fbfcfa, 0 0 0 6px #10151c; --board-pad:18px 0 12px; --star:block;
+    --pc:#fbfcfa; --pc-stroke:#10151c; --pc-sw:.9; --pc-sheen:0; --pc-ink:#10151c; --pc-core:#1f3fbf; --pc-drop:none; --pc-w:900; --pc-hover:translateY(-2px);
+    --stage-h:40px; --tag-bg:transparent; --tag-bd:1px solid var(--line2); --tag-r:0; --tag-fg:var(--fg2);
+    --btn-r:0; --pri-bg:var(--accent); --pri-fg:#fff; --sec-bg:transparent; --sec-bd:1px solid var(--fg); --sec-fg:var(--fg);
+    --mesh:rgba(31,63,191,.075);
+    --hogan:linear-gradient(var(--mesh) 1px,transparent 1px) 0 0/20px 20px, linear-gradient(90deg,var(--mesh) 1px,transparent 1px) 0 0/20px 20px;
+    --pat-demo:var(--hogan), linear-gradient(rgba(31,63,191,.16) 1px,transparent 1px) 0 0/100px 100px, linear-gradient(90deg,rgba(31,63,191,.16) 1px,transparent 1px) 0 0/100px 100px, var(--bg);
+  }
+  .t-kifu.dark {
+    --bg:#0d1117; --fg:#e8eaee; --fg2:#c3c8d0; --muted:#7d8592; --line:#e8eaee; --line2:rgba(232,234,238,.16); --tint:rgba(125,151,255,.09);
+    --accent:#8aa2ff; --bad:#8aa2ff; --good:#e8eaee; --mesh:rgba(125,151,255,.07);
+    --board:#141a22; --board-line:#e8eaee; --board-sh:0 0 0 2px #e8eaee, 0 0 0 5px #141a22, 0 0 0 6px #e8eaee;
+    --pc:#141a22; --pc-stroke:#e8eaee; --pc-ink:#e8eaee; --pri-fg:#0d1117;
+  }
+  .t-kifu { --bgap:12px 14px; }
+  .t-kifu .fx { background:var(--hogan); -webkit-mask:linear-gradient(100deg,transparent 30%,#000); mask:linear-gradient(100deg,transparent 30%,#000); }
+  .t-kifu .layout { border-top:2px solid var(--line); border-left:1px solid var(--line2); }
+  .t-kifu .card { border-right:1px solid var(--line2); border-bottom:1px solid var(--line2); }
+  .t-kifu .card::before { --c:var(--fg); content:""; position:absolute; inset:7px; pointer-events:none; opacity:.5; background-repeat:no-repeat;
+    background-image:linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c)),linear-gradient(var(--c),var(--c));
+    background-size:8px 1px,1px 8px,8px 1px,1px 8px,8px 1px,1px 8px,8px 1px,1px 8px;
+    background-position:0 0,0 0,100% 0,100% 0,0 100%,0 100%,100% 100%,100% 100%; }
+  .t-kifu .lbl span:first-child::before { content:"§"; margin-right:6px; color:var(--accent); }
+  .t-kifu .seg button { padding:7px 14px; }
+  .t-kifu .seg button + button { border-left:1px solid var(--line2); }
+  .t-kifu .pcw.core .pb { stroke:var(--accent); stroke-width:1.5; }
+  .t-kifu .pcw.core::after { content:""; position:absolute; bottom:-6px; left:32%; right:32%; height:2px; background:var(--accent); }
+  .t-kifu .btn { font-weight:700; letter-spacing:.08em; }
+  .t-kifu .btn.pri:hover { background:var(--fg); color:var(--bg); }
+  .t-kifu .btn.sec:hover { background:var(--fg); color:var(--bg); }
+  .t-kifu .intro h2 { font-size:clamp(40px,6.5vw,80px); }
+  .t-kifu .kifu-h { display:flex; justify-content:space-between; font:500 10.5px/1 "IBM Plex Mono",monospace; letter-spacing:.1em; color:var(--muted); margin-bottom:8px; }
+  .t-kifu .kifu { margin:0; padding:0; list-style:none; border-top:2px solid var(--fg); }
+  .t-kifu .kifu li { display:grid; grid-template-columns:2.6em 1fr auto; align-items:baseline; gap:8px; padding:8px 4px; border-bottom:1px solid var(--line2); font:900 17px/1.2 "Zen Old Mincho",serif; }
+  .t-kifu .kifu li span, .t-kifu .kifu li em { font:500 11px/1 "IBM Plex Mono",monospace; color:var(--muted); font-style:normal; }
+  .t-kifu .kifu li.cur { color:var(--accent); background:var(--tint); }
+
+  /* =========================================================
+     07 盤機 — crisp × morphism (hardware)
+     ========================================================= */
+  .t-hw {
+    --bg:#c9cdcc; --fg:#1c1e20; --fg2:#3b3f43; --muted:#646b70; --line:rgba(28,30,32,.13); --tint:rgba(255,255,255,.35);
+    --accent:#f2c200; --accent-grad:linear-gradient(90deg,#e8b800,#ffd84a); --good:#1f9e52; --bad:#d9480f; --led:#2fd06b;
+    --hi:rgba(255,255,255,.75); --lo:rgba(70,78,82,.42);
+    --surface:linear-gradient(180deg,#dfe2e1,#d2d6d5); --radius:12px; --r-sm:7px; --r-xs:2px; --bw:0; --gap:18px;
+    --shadow:inset 0 1px 0 var(--hi), inset 0 -1px 0 rgba(0,0,0,.05), 7px 9px 18px -6px var(--lo), -6px -6px 14px -4px var(--hi);
+    --font-d:"Space Grotesk","IBM Plex Sans JP",sans-serif; --font-b:"IBM Plex Sans JP",sans-serif; --font-pc:"IBM Plex Sans JP",sans-serif;
+    --d-w:700; --d-ls:-.03em; --h-intro:72px; --brand-ls:-.01em;
+    --no-font:700 11px/1 "Space Mono",monospace; --en-font:400 13px/1.4 "Space Mono",monospace;
+    --lbl-font:700 10.5px/1.4 "Space Mono",monospace; --lbl-ls:.08em; --count-font:700 12px/1 "Space Mono",monospace; --coord-font:700 10px/1.6 "Space Mono",monospace;
+    --ease:cubic-bezier(.3,0,.1,1); --dur:.14s;
+    --seg-bg:#b9bebd; --seg-pad:3px; --seg-r:7px; --seg-sh:inset 0 2px 4px var(--lo), inset 0 -1px 0 var(--hi);
+    --knob-bg:linear-gradient(180deg,#f3f4f3,#dcdfde); --knob-sh:0 2px 0 #9aa09f, 0 3px 6px var(--lo), inset 0 1px 0 #fff; --knob-fg:var(--fg);
+    --sw-off:#b4b9b8; --sw-on:#b4b9b8; --sw-knob:repeating-linear-gradient(90deg,#eceeed 0 2px,#c3c8c7 2px 3px); --sw-r:4px; --sw-sh:inset 0 2px 4px var(--lo); --sw-ksh:0 1px 2px rgba(0,0,0,.4);
+    --ib-bg:linear-gradient(180deg,#eef0ef,#d6dad9); --ib-r:8px; --ib-sh:0 3px 0 #9aa09f, 0 5px 8px -2px var(--lo), inset 0 1px 0 #fff; --ic-sw:1.8; --ic-cap:butt; --ic-join:miter;
+    --board:linear-gradient(180deg,#e8dfc8,#ddd2b6); --board-line:rgba(40,40,30,.35); --board-r:4px; --star:block;
+    --board-sh:inset 0 3px 8px rgba(40,40,30,.4), inset 0 -1px 0 rgba(255,255,255,.6), 0 0 0 7px #bfc4c3, 0 0 0 8px var(--hi);
+    --board-pad:18px 0 12px;
+    --pc:#f4f3ee; --pc-stroke:#b9b6aa; --pc-sw:.8; --pc-join:round; --pc-sheen:.5; --pc-ink:#1c1e20; --pc-core:#1c1e20; --pc-w:700;
+    --pc-drop:drop-shadow(0 2px 0 #9b998e) drop-shadow(0 4px 3px rgba(40,40,30,.3)); --pc-hover:translateY(2px);
+    --tag-bg:#bcc1c0; --tag-r:4px; --tag-fg:#2f3336;
+    --btn-r:8px; --pri-bg:linear-gradient(180deg,#ffd43a,#efbd00); --pri-fg:#1c1e20; --pri-sh:0 3px 0 #a88400, 0 6px 10px -3px rgba(160,120,0,.5), inset 0 1px 0 rgba(255,255,255,.6);
+    --sec-bg:linear-gradient(180deg,#eef0ef,#d6dad9); --sec-sh:0 3px 0 #9aa09f, 0 6px 10px -3px var(--lo), inset 0 1px 0 #fff;
+    --grille:radial-gradient(circle,rgba(28,30,32,.4) 1.5px,transparent 1.9px) 0 0/10px 10px;
+    --pat-demo:var(--grille), linear-gradient(180deg,#dfe2e1,#cfd3d2);
+  }
+  .t-hw.dark {
+    --bg:#202326; --fg:#e8eaea; --fg2:#c4c8ca; --muted:#868d92; --line:rgba(232,234,234,.1); --tint:rgba(255,255,255,.04);
+    --hi:rgba(255,255,255,.06); --lo:rgba(0,0,0,.55);
+    --surface:linear-gradient(180deg,#2c3034,#25282b);
+    --seg-bg:#17191b; --knob-bg:linear-gradient(180deg,#3d4246,#303438); --knob-sh:0 2px 0 #0e0f10, 0 3px 6px var(--lo), inset 0 1px 0 rgba(255,255,255,.1);
+    --sw-off:#17191b; --sw-on:#17191b; --sw-knob:repeating-linear-gradient(90deg,#5a5e62 0 2px,#3a3e42 2px 3px);
+    --ib-bg:linear-gradient(180deg,#3a3f43,#2d3135); --ib-sh:0 3px 0 #0e0f10, 0 5px 8px -2px var(--lo), inset 0 1px 0 rgba(255,255,255,.1);
+    --board-sh:inset 0 3px 8px rgba(0,0,0,.5), 0 0 0 7px #17191b, 0 0 0 8px rgba(255,255,255,.06);
+    --tag-bg:#17191b; --tag-fg:#c4c8ca;
+    --sec-bg:linear-gradient(180deg,#3a3f43,#2d3135); --sec-sh:0 3px 0 #0e0f10, 0 6px 10px -3px var(--lo), inset 0 1px 0 rgba(255,255,255,.1);
+    --grille:radial-gradient(circle,rgba(0,0,0,.65) 1.5px,transparent 1.9px) 0 0/10px 10px; --pat-demo:var(--grille), #2a2e31;
+  }
+  .t-hw { --bgap:16px 18px; }
+  .t-hw .intro .no { color:var(--fg); }
+  .t-hw .fx::before { content:""; position:absolute; inset:0; background:repeating-linear-gradient(0deg,rgba(255,255,255,.08) 0 1px,transparent 1px 3px); }
+  .t-hw .pcw.core .pb { fill:var(--accent); stroke:#b89300; }
+  .t-hw .btn { font:700 12px/1 "Space Mono","IBM Plex Sans JP",monospace; letter-spacing:.02em; padding:12px 16px; }
+  .t-hw .btn.pri:active { transform:translateY(3px); box-shadow:0 0 0 #a88400, inset 0 1px 0 rgba(255,255,255,.4); }
+  .t-hw .btn.sec:active, .t-hw .ib:active { transform:translateY(3px); box-shadow:0 0 0 transparent, inset 0 1px 0 var(--hi); }
+  .t-hw .seg button { font:700 11.5px/1 "Space Mono","IBM Plex Sans JP",monospace; padding:8px 12px; }
+  .t-hw .switch { gap:20px; }
+  .t-hw .switch .tr::before { content:""; position:absolute; right:-12px; top:8px; width:6px; height:6px; border-radius:50%; background:#8a908f; box-shadow:inset 0 1px 1px rgba(0,0,0,.4); transition:background .1s, box-shadow .1s; }
+  .t-hw .switch input:checked + .tr::before { background:var(--led); box-shadow:0 0 6px var(--led), 0 0 2px var(--led); }
+  .t-hw .switch .tr::after { background:var(--sw-knob); border-radius:3px; }
+  .t-hw .lbl span:first-child::before { content:""; display:inline-block; width:6px; height:6px; margin-right:8px; border-radius:50%; background:var(--led); box-shadow:0 0 6px var(--led); vertical-align:1px; animation:led 2.4s ease-in-out infinite; }
+  @keyframes led { 50% { opacity:.35; } }
+  .t-hw .lcd { position:relative; overflow:hidden; padding:16px 18px; border-radius:9px; background:linear-gradient(180deg,#22261f,#171a15); color:#ffcf3a; font:700 11.5px/1.4 "Space Mono",monospace;
+               text-shadow:0 0 8px rgba(255,200,40,.55); box-shadow:inset 0 3px 10px rgba(0,0,0,.7), 0 1px 0 var(--hi), 0 0 0 6px #b9bebd, 0 0 0 7px var(--hi); }
+  .t-hw.dark .lcd { box-shadow:inset 0 3px 10px rgba(0,0,0,.7), 0 0 0 6px #17191b, 0 0 0 7px var(--hi); }
+  .t-hw .lcd::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px); pointer-events:none; }
+  .t-hw .lcd-r { display:flex; justify-content:space-between; opacity:.8; }
+  .t-hw .lcd-big { font:700 46px/1.05 "Space Grotesk",sans-serif; letter-spacing:.02em; margin:6px 0; }
+  .t-hw .vu { display:flex; gap:3px; height:18px; align-items:flex-end; margin-top:10px; }
+  .t-hw .vu i { flex:1; height:30%; background:currentColor; opacity:.85; animation:vu 1.3s ease-in-out infinite alternate; }
+  @keyframes vu { to { height:var(--h); } }
+  .t-hw .grille { height:46px; border-radius:8px; background:var(--grille); box-shadow:inset 0 1px 2px var(--lo); }
+
+  /* =========================================================
+     08 活版青磁 — classic × morphism (letterpress emboss)
+     ========================================================= */
+  .t-kappan {
+    --bg:#dfe5e0; --fg:#1d3a33; --fg2:#3c544d; --muted:#76877f; --line:rgba(29,58,51,.14); --tint:rgba(29,58,51,.04);
+    --accent:#b0683a; --accent-grad:linear-gradient(90deg,#8a4a24,#e0a477 45%,#a85f32 70%,#d89466); --good:#2f6b57; --bad:#b0683a;
+    --hi:rgba(255,255,255,.85); --lo:rgba(60,85,78,.28);
+    --surface:var(--bg); --radius:20px; --r-sm:12px; --r-xs:999px; --bw:0; --gap:26px;
+    --shadow:inset 1px 1px 0 var(--hi), 10px 12px 24px -8px var(--lo), -10px -10px 22px -6px var(--hi);
+    --font-d:"Kaisei Tokumin",serif; --font-b:"Noto Serif JP",serif; --font-pc:"Kaisei Tokumin",serif;
+    --d-w:800; --d-ls:.08em; --h-intro:76px; --brand-ls:.14em;
+    --no-font:italic 500 15px/1 "EB Garamond",serif; --en-font:italic 400 21px/1.2 "EB Garamond",serif;
+    --lbl-font:500 12.5px/1.4 "EB Garamond",serif; --lbl-ls:.22em; --count-font:italic 500 16px/1 "EB Garamond",serif; --coord-font:500 12px/1.6 "Kaisei Tokumin",serif;
+    --ease:cubic-bezier(.25,.8,.25,1); --dur:.4s;
+    --seg-bg:var(--bg); --seg-pad:4px; --seg-sh:inset 3px 3px 6px var(--lo), inset -3px -3px 6px var(--hi);
+    --knob-bg:var(--bg); --knob-sh:3px 3px 6px var(--lo), -2px -2px 5px var(--hi); --knob-fg:var(--fg);
+    --sw-off:var(--bg); --sw-on:#2f6b57; --sw-knob:#eef2ee; --sw-sh:inset 2px 2px 5px var(--lo), inset -2px -2px 5px var(--hi); --sw-ksh:1px 1px 3px var(--lo);
+    --ib-bg:var(--bg); --ib-sh:4px 4px 9px var(--lo), -4px -4px 9px var(--hi); --ic-sw:1.25;
+    --board:linear-gradient(170deg,#ead9b4,#dcc596); --board-line:rgba(80,55,20,.38); --board-r:8px;
+    --board-sh:inset 2px 2px 5px rgba(255,255,255,.5), inset -3px -3px 7px rgba(110,80,30,.22), 0 0 0 10px var(--bg), 10px 12px 26px var(--lo), -10px -10px 22px var(--hi);
+    --board-pad:24px 0 16px;
+    --pc:#f6f1e4; --pc-stroke:#f6f1e4; --pc-sw:2.6; --pc-join:round; --pc-sheen:.3; --pc-ink:#1d3a33; --pc-core:#a3552a; --pc-w:800;
+    --pc-drop:drop-shadow(-1px -1px 0 rgba(255,255,255,.9)) drop-shadow(2px 3px 2px rgba(90,70,30,.3));
+    --tag-bg:var(--bg); --tag-fg:var(--fg2);
+    --btn-r:999px; --pri-bg:linear-gradient(135deg,#8a4a24,#e0a477 40%,#a85f32 62%,#d89466); --pri-fg:#fff8f0;
+    --pri-sh:inset 0 1px 0 rgba(255,255,255,.4), 5px 6px 12px var(--lo), -4px -4px 9px var(--hi);
+    --sec-bg:var(--bg); --sec-sh:4px 4px 9px var(--lo), -4px -4px 9px var(--hi);
+    --shippo:radial-gradient(circle,transparent 66%,var(--lo) 67%,var(--lo) 68.5%,var(--hi) 69.5%,var(--hi) 71%,transparent 72%);
+    --pat-demo:var(--shippo) 0 0/48px 48px, var(--shippo) 24px 24px/48px 48px, var(--bg);
+  }
+  .t-kappan.dark {
+    --bg:#1c2422; --fg:#dfe8e3; --fg2:#b5c3bd; --muted:#7c8c86; --line:rgba(223,232,227,.1); --tint:rgba(255,255,255,.03);
+    --hi:rgba(255,255,255,.06); --lo:rgba(0,0,0,.5); --good:#7fbfa6; --sw-knob:#dfe8e3; --sw-on:#3f8a70;
+    --pc-drop:drop-shadow(-1px -1px 0 rgba(255,255,255,.12)) drop-shadow(2px 3px 2px rgba(0,0,0,.5));
+  }
+  .t-kappan { --bgap:20px 22px; }
+  .t-kappan .fx { background:var(--shippo) 0 0/48px 48px, var(--shippo) 24px 24px/48px 48px; opacity:.9; -webkit-mask:radial-gradient(60% 70% at 100% 0,#000,transparent); mask:radial-gradient(60% 70% at 100% 0,#000,transparent); }
+  .t-kappan .intro h2, .t-kappan .stage-h h3, .t-kappan .d-ttl, .t-kappan .brand h1 { text-shadow:1px 1px 0 var(--hi), -1px -1px 0 rgba(0,0,0,.1); }
+  .t-kappan .tag, .t-kappan .chip { box-shadow:inset 2px 2px 3px var(--lo), inset -2px -2px 3px var(--hi); }
+  .t-kappan .btn { letter-spacing:.14em; font-weight:500; padding:12px 22px; }
+  .t-kappan .btn.pri { background-size:220% 100%; transition:background-position .9s var(--ease), transform .2s; }
+  .t-kappan .btn.pri:hover { background-position:100% 0; }
+  .t-kappan .btn.sec:active, .t-kappan .ib:active { transform:none; box-shadow:inset 3px 3px 6px var(--lo), inset -3px -3px 6px var(--hi); }
+  .t-kappan .apply { border:0; box-shadow:inset 3px 3px 7px var(--lo), inset -3px -3px 7px var(--hi); }
+  .t-kappan .sw i { border:0; box-shadow:4px 4px 8px var(--lo), -4px -4px 8px var(--hi); }
+  .t-kappan .emb { width:160px; aspect-ratio:1; border-radius:50%; display:grid; place-items:center; justify-self:end; background:var(--bg);
+                   box-shadow:inset 7px 7px 14px var(--lo), inset -7px -7px 14px var(--hi); }
+  .t-kappan .emb span { font:800 78px/1 "Kaisei Tokumin",serif; background:var(--accent-grad) 0 0/220% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+                        filter:drop-shadow(1px 1px 0 var(--hi)) drop-shadow(-1px -1px 0 rgba(0,0,0,.18)); animation:foil 7s linear infinite; }
+  @keyframes foil { to { background-position:-220% 0; } }
+
+  /* =========================================================
+     09 藍の書院 — cool × classic × crisp × morphism (dark)
+     ========================================================= */
+  .t-ai {
+    --bg:#0f1730; --fg:#eceae2; --fg2:#bcc3d3; --muted:#7f8aa5; --line:rgba(150,170,220,.13); --line2:rgba(150,170,220,.07); --tint:rgba(79,198,191,.06);
+    --accent:#4fc6bf; --accent-grad:linear-gradient(90deg,#2f8f9a,#4fc6bf,#a6efe6); --good:#4fc6bf; --bad:#e58a7a;
+    --hi:rgba(170,190,255,.07); --lo:rgba(0,0,0,.6);
+    --surface:linear-gradient(160deg,#1a2442,#131c36); --radius:14px; --r-sm:8px; --r-xs:1px; --bw:0; --gap:18px;
+    --shadow:inset 0 1px 0 rgba(200,215,255,.1), inset 0 0 0 1px var(--line2), 14px 18px 34px -12px var(--lo), -8px -8px 22px -8px var(--hi);
+    --font-d:"Zen Antique",serif; --font-b:"Murecho",sans-serif; --font-pc:"Zen Antique",serif;
+    --d-w:400; --d-ls:.08em; --h-intro:78px; --brand-ls:.14em;
+    --no-font:400 11px/1 "Martian Mono",monospace; --en-font:300 12px/1.5 "Martian Mono",monospace;
+    --lbl-font:400 10px/1.4 "Martian Mono",monospace; --lbl-ls:.12em; --count-font:400 11.5px/1 "Martian Mono",monospace; --coord-font:400 10px/1.6 "Martian Mono",monospace;
+    --ease:cubic-bezier(.2,.7,.1,1); --dur:.38s;
+    --seg-bg:rgba(0,0,0,.28); --seg-pad:3px; --seg-r:7px; --seg-sh:inset 2px 3px 6px var(--lo), inset 0 -1px 0 var(--hi);
+    --knob-bg:linear-gradient(180deg,#27345a,#1c2746); --knob-sh:inset 0 1px 0 rgba(200,215,255,.2), 0 4px 10px -2px var(--lo); --knob-fg:#fff;
+    --sw-off:rgba(0,0,0,.35); --sw-on:#2a8f8a; --sw-knob:#eceae2; --sw-r:5px; --sw-sh:inset 1px 2px 4px var(--lo);
+    --ib-bg:linear-gradient(180deg,#202b4b,#17203b); --ib-r:9px; --ib-sh:inset 0 1px 0 rgba(200,215,255,.14), 6px 8px 14px -6px var(--lo); --ic-sw:1.35; --ic-cap:square; --ic-join:miter;
+    --board:linear-gradient(165deg,#d6b47a,#bf9455); --board-line:rgba(45,28,8,.55); --board-r:3px; --star:block;
+    --board-sh:0 0 0 1px rgba(255,235,190,.35), 0 0 0 10px #0b1226, 0 0 0 11px var(--line), 0 40px 60px -24px #000;
+    --board-pad:24px 0 16px;
+    --pc:#f1e5c7; --pc-stroke:#8a6a36; --pc-sw:.6; --pc-sheen:.55; --pc-ink:#14110c; --pc-core:#16707b; --pc-drop:drop-shadow(0 4px 3px rgba(0,0,0,.45)); --pc-w:400;
+    --tag-bg:var(--tint); --tag-bd:1px solid rgba(79,198,191,.22); --tag-r:3px; --tag-fg:#a6e3dd;
+    --btn-r:9px; --pri-bg:linear-gradient(180deg,#5fd6cf,#2f9e98); --pri-fg:#06201f; --pri-sh:inset 0 1px 0 rgba(255,255,255,.45), 0 10px 22px -8px rgba(79,198,191,.55);
+    --sec-bg:linear-gradient(180deg,#222d4e,#18213d); --sec-sh:inset 0 1px 0 rgba(200,215,255,.14), 6px 8px 14px -6px var(--lo);
+    --kagome:repeating-linear-gradient(60deg,var(--line) 0 1px,transparent 1px 28px), repeating-linear-gradient(-60deg,var(--line) 0 1px,transparent 1px 28px), repeating-linear-gradient(0deg,var(--line) 0 1px,transparent 1px 24.25px);
+    --pat-demo:var(--kagome), var(--bg);
+  }
+  .t-ai.dark {
+    --bg:#e4e8f1; --fg:#121a33; --fg2:#3a4566; --muted:#6a7593; --line:rgba(18,26,51,.12); --line2:rgba(18,26,51,.07); --tint:rgba(31,140,135,.08);
+    --accent:#1f8c87; --good:#1f8c87; --bad:#c45a48; --hi:rgba(255,255,255,.9); --lo:rgba(60,75,120,.3);
+    --surface:linear-gradient(160deg,#eef1f7,#e2e7f0);
+    --shadow:inset 0 1px 0 #fff, inset 0 0 0 1px var(--line2), 12px 16px 30px -12px var(--lo), -8px -8px 20px -8px var(--hi);
+    --seg-bg:rgba(18,26,51,.06); --knob-bg:linear-gradient(180deg,#fff,#eef1f7); --knob-sh:0 3px 8px -2px var(--lo), inset 0 1px 0 #fff; --knob-fg:#121a33;
+    --sw-off:rgba(18,26,51,.1); --ib-bg:linear-gradient(180deg,#f5f7fb,#e3e7ef); --ib-sh:inset 0 1px 0 #fff, 5px 6px 12px -4px var(--lo), -4px -4px 10px -4px var(--hi);
+    --board-sh:0 0 0 1px rgba(255,235,190,.5), 0 0 0 10px #121a33, 0 30px 50px -22px var(--lo);
+    --tag-fg:#1f6f6b; --tag-bd:1px solid rgba(31,140,135,.25);
+    --pri-bg:linear-gradient(180deg,#2aa39d,#1b7f7a); --pri-fg:#fff; --sec-bg:linear-gradient(180deg,#f5f7fb,#e3e7ef); --sec-sh:inset 0 1px 0 #fff, 5px 6px 12px -4px var(--lo);
+  }
+  .t-ai { --bgap:20px 22px; }
+  .t-ai .fx { background:radial-gradient(50% 45% at 88% 0%,rgba(79,198,191,.2),transparent 70%), var(--kagome); -webkit-mask:linear-gradient(180deg,#000,transparent 65%); mask:linear-gradient(180deg,#000,transparent 65%); }
+  .t-ai .card::before { content:""; position:absolute; left:24px; right:24px; top:0; height:1px; background:linear-gradient(90deg,transparent,var(--accent),transparent); opacity:.6; }
+  .t-ai .seg button.on::after { content:""; position:absolute; left:50%; bottom:1px; width:12px; height:2px; margin-left:-6px; background:var(--accent); border-radius:2px; }
+  .t-ai .btn { font-weight:500; letter-spacing:.06em; }
+  .t-ai .btn.pri:hover { box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 12px 30px -6px rgba(79,198,191,.75); }
+  .t-ai .meta { margin:0; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .t-ai .meta div { padding:12px 14px; border-radius:var(--r-sm); background:rgba(0,0,0,.18); box-shadow:inset 2px 3px 6px var(--lo), inset 0 -1px 0 var(--hi); }
+  .t-ai.dark .meta div { background:rgba(18,26,51,.04); }
+  .t-ai .meta dt { font:400 9.5px/1 "Martian Mono",monospace; letter-spacing:.14em; color:var(--muted); }
+  .t-ai .meta dd { margin:6px 0 0; font:400 22px/1.1 "Zen Antique",serif; letter-spacing:.06em; }
+  .t-ai .meta dd small { font:400 10px "Martian Mono",monospace; color:var(--accent); margin-left:6px; letter-spacing:0; }
+
+  /* =========================================================
+     10 琥珀端末 — cool × crisp × retro (CRT)
+     ========================================================= */
+  .t-crt {
+    --bg:#0b0805; --fg:#ffb547; --fg2:#e8a23e; --muted:#a06e27; --line:rgba(255,181,71,.24); --tint:rgba(255,181,71,.05);
+    --accent:#ffd38a; --good:#ffb547; --bad:#ff7043; --glow:0 0 6px rgba(255,160,40,.55);
+    --surface:radial-gradient(120% 120% at 50% 0%,rgba(255,170,50,.06),rgba(255,170,50,.015)); --radius:10px; --r-sm:4px; --r-xs:0; --bw:1px;
+    --shadow:inset 0 0 40px rgba(255,160,40,.07), inset 0 0 0 1px rgba(0,0,0,.5), 0 0 30px -12px rgba(255,160,40,.35);
+    --font-d:"DotGothic16",monospace; --font-b:"DotGothic16",monospace; --font-pc:"DotGothic16",monospace;
+    --d-w:400; --d-ls:.06em; --h-intro:76px; --brand-ls:.08em;
+    --no-font:400 13px/1 "Share Tech Mono",monospace; --en-font:400 15px/1.3 "Share Tech Mono",monospace;
+    --lbl-font:400 12px/1.4 "Share Tech Mono",monospace; --lbl-ls:.12em; --count-font:400 14px/1 "Share Tech Mono",monospace; --coord-font:400 12px/1.6 "Share Tech Mono",monospace;
+    --ease:steps(4,end); --dur:.16s;
+    --seg-bg:transparent; --seg-bd:1px solid var(--line); --seg-r:0; --seg-pad:2px; --knob-bg:var(--fg); --knob-fg:#0b0805; --knob-sh:0 0 14px rgba(255,181,71,.55);
+    --sw-off:transparent; --sw-on:rgba(255,181,71,.2); --sw-knob:var(--fg); --sw-r:0; --sw-sh:inset 0 0 0 1px var(--fg); --sw-ksh:0 0 8px rgba(255,181,71,.8);
+    --ib-bg:transparent; --ib-hover:rgba(255,181,71,.12); --ib-r:0; --ib-bd:1px solid var(--line); --ic-sw:1.6; --ic-cap:square; --ic-join:miter;
+    --board:rgba(255,170,50,.025); --board-line:rgba(255,181,71,.35); --board-r:0; --board-sh:0 0 0 1px var(--fg), 0 0 26px -4px rgba(255,170,50,.4), inset 0 0 30px rgba(255,170,50,.08);
+    --pc:#0b0805; --pc-stroke:#ffb547; --pc-sw:1; --pc-sheen:0; --pc-ink:#ffb547; --pc-core:#0b0805; --pc-drop:drop-shadow(0 0 4px rgba(255,170,50,.55)); --pc-w:400;
+    --tag-bg:transparent; --tag-bd:1px solid var(--line); --tag-r:0; --tag-fg:var(--fg2);
+    --btn-r:0; --pri-bg:var(--fg); --pri-fg:#0b0805; --pri-sh:0 0 18px rgba(255,181,71,.45); --sec-bg:transparent; --sec-bd:1px solid var(--fg); --sec-fg:var(--fg);
+    --scan:repeating-linear-gradient(0deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px);
+    --pat-demo:var(--scan), radial-gradient(70% 70% at 50% 50%,rgba(255,170,50,.2),transparent), var(--bg);
+    text-shadow:var(--glow);
+  }
+  .t-crt.dark { /* printout on green-bar paper */
+    --bg:#efe9d8; --fg:#2e2414; --fg2:#4a3c24; --muted:#857553; --line:rgba(46,36,20,.25); --tint:rgba(46,36,20,.04); --accent:#9a4a10; --glow:none;
+    --surface:rgba(255,255,255,.4); --shadow:none; --knob-fg:#efe9d8; --knob-sh:none; --sw-ksh:none; --sw-on:rgba(46,36,20,.15);
+    --board:rgba(255,255,255,.5); --board-sh:0 0 0 1px var(--fg); --board-line:rgba(46,36,20,.4);
+    --pc:#f7f3e8; --pc-stroke:#2e2414; --pc-ink:#2e2414; --pc-core:#f7f3e8; --pc-drop:none; --pri-fg:#efe9d8; --pri-sh:none;
+    --scan:repeating-linear-gradient(180deg,rgba(110,150,100,.15) 0 30px,transparent 30px 60px);
+  }
+  .t-crt::after { content:""; position:absolute; inset:0; z-index:3; pointer-events:none;
+                  background:var(--scan), radial-gradient(120% 90% at 50% 40%,transparent 60%,rgba(0,0,0,.6)); animation:flicker 6s steps(1) infinite; }
+  .t-crt.dark::after { display:none; }
+  .t-crt.dark .fx { background:var(--scan); }
+  @keyframes flicker { 0%,100% { opacity:1; } 41% { opacity:.82; } 42% { opacity:1; } 77% { opacity:.9; } 78% { opacity:1; } }
+  .t-crt .fx { background:radial-gradient(60% 50% at 50% 30%,rgba(255,160,40,.1),transparent 70%); }
+  .t-crt .pcw.core .pb { fill:var(--fg); }
+  .t-crt .chip b { color:var(--accent); }
+  .t-crt .stage-f .dot { background:var(--fg); }
+  .t-crt .pcw.core b, .t-crt .btn.pri, .t-crt .seg button.on { text-shadow:none; }
+  .t-crt .btn::before { content:"["; } .t-crt .btn::after { content:"]"; }
+  .t-crt .btn { font-weight:400; }
+  .t-crt .btn.sec:hover, .t-crt .ib:hover { background:rgba(255,181,71,.14); }
+  .t-crt .sq:hover { background:rgba(255,181,71,.1); }
+  .t-crt.dark .sq:hover { background:rgba(46,36,20,.08); }
+  .t-crt .intro h2::after { content:""; display:inline-block; width:.5em; height:.85em; margin-left:.12em; background:currentColor; vertical-align:-.04em; animation:blink 1.1s steps(1) infinite; }
+  .t-crt .term { margin:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--r-sm); background:rgba(0,0,0,.25); font:400 13px/1.7 "Share Tech Mono","DotGothic16",monospace; white-space:pre; overflow:hidden; }
+  .t-crt.dark .term { background:rgba(255,255,255,.45); }
+  .t-crt .term b { font-weight:400; color:var(--accent); }
+  .t-crt .meter i s.f { box-shadow:var(--glow); }
+
+  /* =========================================================
+     11 升目弁当 — strict bento grid × keylined clay
+     ========================================================= */
+  .t-bento {
+    --bg:#e9e6f2; --fg:#1b1830; --fg2:#3d3955; --muted:#736e8c; --line:rgba(27,24,48,.12); --tint:rgba(255,255,255,.55);
+    --accent:#5b3df5; --accent-grad:linear-gradient(90deg,#5b3df5,#8f7bff); --good:#22915a; --bad:#e2483d; --lime:#d4f53c;
+    --hi:rgba(255,255,255,.9); --lo:rgba(80,70,130,.3); --key:#1b1830; --edge:#1b1830;
+    --surface:#f6f4fb; --radius:26px; --r-sm:14px; --r-xs:999px; --bw:0; --gap:14px;
+    --shadow:0 0 0 1.5px var(--key), 10px 14px 26px -12px var(--lo), inset 0 2px 0 var(--hi), inset 0 -5px 10px rgba(80,70,130,.08);
+    --font-d:"Unbounded","Tsukimi Rounded",sans-serif; --font-b:"M PLUS 2",sans-serif; --font-pc:"Tsukimi Rounded",sans-serif;
+    --d-w:700; --d-ls:-.02em; --h-intro:92px; --brand-ls:-.01em;
+    --no-font:600 11px/1 "Azeret Mono",monospace; --en-font:500 13px/1.4 "Azeret Mono",monospace;
+    --lbl-font:600 10.5px/1.4 "Azeret Mono",monospace; --lbl-ls:.06em; --count-font:600 12px/1 "Azeret Mono",monospace; --coord-font:600 10px/1.6 "Azeret Mono",monospace;
+    --ease:cubic-bezier(.34,1.5,.5,1); --dur:.45s;
+    --seg-bg:#dcd8ea; --seg-pad:4px; --seg-sh:inset 0 0 0 1.5px var(--key);
+    --knob-bg:var(--lime); --knob-sh:0 0 0 1.5px var(--key), 0 2px 0 var(--edge); --knob-fg:var(--key);
+    --sw-off:#dcd8ea; --sw-on:var(--accent); --sw-knob:#fff; --sw-sh:inset 0 0 0 1.5px var(--key); --sw-ksh:0 0 0 1.5px var(--key);
+    --ib-bg:#fff; --ib-r:14px; --ib-sh:0 0 0 1.5px var(--key), 0 3px 0 var(--edge), 0 8px 14px -8px var(--lo); --ic-sw:2; --ic-cap:round; --ic-join:round;
+    --board:#ffe7a3; --board-line:rgba(27,24,48,.22); --board-r:20px; --star:block; --bgap:12px 14px;
+    --board-sh:0 0 0 1.5px var(--key), 0 4px 0 var(--edge), inset 0 3px 0 rgba(255,255,255,.65), inset 0 -8px 14px rgba(190,140,30,.2);
+    --board-pad:18px 0 14px;
+    --pc:#f2d79f; --pc-stroke:#f2d79f; --pc-sw:1.6; --pc-join:round; --pc-sheen:.55; --pc-ink:#1b1830; --pc-core:#5b3df5; --pc-w:700;
+    --pc-rich:inline; --pc-side:#b98a48; --pc-grain:.55; --pc-emboss:0 1px 0 rgba(255,255,255,.55), 0 -1px 0 rgba(0,0,0,.25);
+    --pc-drop:drop-shadow(0 2px 0 #1b1830) drop-shadow(0 6px 5px rgba(80,70,130,.3)); --pc-hover:translateY(-5px) rotate(-3deg);
+    --tag-bg:#fff; --tag-bd:1.5px solid var(--key); --tag-fg:var(--fg);
+    --btn-r:999px; --pri-bg:var(--accent); --pri-fg:#fff; --pri-sh:0 0 0 1.5px var(--key), 0 4px 0 var(--edge), 0 12px 20px -10px rgba(91,61,245,.7), inset 0 2px 0 rgba(255,255,255,.35);
+    --sec-bg:var(--lime); --sec-fg:var(--key); --sec-sh:0 0 0 1.5px var(--key), 0 4px 0 var(--edge), inset 0 2px 0 rgba(255,255,255,.5);
+    --t1:#e3dcff; --t2:#d6f5e4; --t3:#fff0d2; --t4:#ffdfe5;
+    --pat-demo:radial-gradient(circle,rgba(91,61,245,.22) 2px,transparent 2.6px) 0 0/22px 22px, radial-gradient(40% 50% at 25% 30%,#d4f53c88,transparent 70%), radial-gradient(45% 55% at 80% 75%,#8f7bff66,transparent 70%), var(--bg);
+  }
+  .t-bento.dark {
+    --bg:#16141f; --fg:#f1eefb; --fg2:#c9c3e0; --muted:#8e88a8; --line:rgba(241,238,251,.1); --tint:rgba(255,255,255,.04);
+    --hi:rgba(255,255,255,.07); --lo:rgba(0,0,0,.6); --key:rgba(241,238,251,.82); --edge:#000;
+    --surface:#211e2e; --seg-bg:#110f19; --sw-off:#110f19; --ib-bg:#2a2639; --tag-bg:#211e2e;
+    --t1:#2a2445; --t2:#1d3328; --t3:#352c1a; --t4:#3a2129;
+  }
+  .t-bento .fx { background:radial-gradient(circle,var(--dot) 1.6px,transparent 2.2px) 0 0/20px 20px, radial-gradient(circle,var(--dot2) 3px,transparent 3.6px) 0 0/100px 100px; }
+  .t-bento { --dot:rgba(91,61,245,.2); --dot2:rgba(91,61,245,.35); }
+  .t-bento.dark { --dot:rgba(160,145,255,.14); --dot2:rgba(212,245,60,.25); }
+  .t-bento .c-type { --surface:var(--t1); } .t-bento .c-detail { --surface:var(--t2); } .t-bento .c-buttons { --surface:var(--t3); } .t-bento .c-icons { --surface:var(--t4); }
+  .t-bento .card { transition:transform .45s var(--ease), box-shadow .3s; }
+  .t-bento .layout > .card:not(.c-app):hover { transform:translateY(-4px); }
+  .t-bento .pcw.core::after { content:""; position:absolute; left:24%; right:24%; bottom:-7px; height:4px; border-radius:4px; background:var(--accent); box-shadow:0 0 0 1.5px var(--key); }
+  .t-bento .chip b, .t-bento .stage-f .dot { color:var(--accent); background-color:var(--accent); }
+  .t-bento .chip b { background:none; }
+  .t-bento .seg button { font-weight:700; }
+  .t-bento .btn { font-weight:800; }
+  .t-bento .btn:active, .t-bento .ib:active { transform:translateY(3px); box-shadow:0 0 0 1.5px var(--key), 0 1px 0 var(--edge); }
+  .t-bento .meter i s { height:10px; box-shadow:inset 0 0 0 1.5px var(--key); background:transparent; }
+  .t-bento .meter i s.f { background:var(--accent); }
+  .t-bento .bigtile { display:grid; grid-template-columns:1fr auto; align-items:end; padding:18px 20px; border-radius:var(--radius); background:var(--lime); color:#1b1830; box-shadow:var(--shadow); }
+  .t-bento .bigtile small { grid-column:1 / -1; font:600 10.5px/1 "Azeret Mono",monospace; letter-spacing:.08em; }
+  .t-bento .bigtile b { font:700 clamp(100px,12vw,156px)/.86 "Unbounded",sans-serif; letter-spacing:-.06em; }
+  .t-bento .bigtile span { font:700 26px/1 "Tsukimi Rounded",sans-serif; padding-bottom:10px; }
+
+  /* =========================================================
+     12 黒ゴム升目 — dot-matrix grid × matte rubber
+     ========================================================= */
+  .t-rubber {
+    --bg:#19191b; --fg:#f2f2f0; --fg2:#c8c8c4; --muted:#85857f; --line:rgba(242,242,240,.09); --tint:rgba(255,255,255,.03);
+    --accent:#e5262a; --good:#f2f2f0; --bad:#e5262a;
+    --hi:rgba(255,255,255,.05); --lo:rgba(0,0,0,.65); --well:#111113;
+    --surface:linear-gradient(145deg,#232325,#1b1b1d); --radius:22px; --r-sm:12px; --r-xs:999px; --bw:0; --gap:10px;
+    --shadow:inset 1px 1px 0 rgba(255,255,255,.05), inset -1px -1px 0 rgba(0,0,0,.4), 10px 12px 22px -8px var(--lo), -6px -6px 16px -8px var(--hi);
+    --font-d:"M PLUS 1",sans-serif; --font-b:"M PLUS 1",sans-serif; --font-pc:"Yuji Syuku",serif;
+    --d-w:800; --d-ls:.01em; --h-intro:96px; --brand-ls:.02em;
+    --no-font:500 11px/1 "Geist Mono",monospace; --en-font:400 13px/1.4 "Geist Mono",monospace;
+    --lbl-font:500 10.5px/1.4 "Geist Mono",monospace; --lbl-ls:.12em; --count-font:500 12px/1 "Geist Mono",monospace; --coord-font:500 10px/1.6 "Geist Mono",monospace;
+    --ease:cubic-bezier(.2,.9,.2,1); --dur:.3s;
+    --seg-bg:var(--well); --seg-pad:4px; --seg-sh:inset 3px 3px 6px var(--lo), inset -2px -2px 5px var(--hi);
+    --knob-bg:linear-gradient(145deg,#2e2e31,#242426); --knob-sh:3px 3px 8px var(--lo), inset 1px 1px 0 rgba(255,255,255,.07); --knob-fg:var(--fg);
+    --sw-off:var(--well); --sw-on:var(--well); --sw-knob:#3a3a3d; --sw-sh:inset 2px 2px 5px var(--lo), inset -1px -1px 3px var(--hi); --sw-ksh:2px 2px 4px var(--lo);
+    --ib-bg:linear-gradient(145deg,#28282a,#1d1d1f); --ib-sh:5px 6px 12px var(--lo), -3px -3px 8px var(--hi), inset 1px 1px 0 rgba(255,255,255,.06); --ic-sw:1.6;
+    --board:linear-gradient(145deg,#2a2a2c,#232325); --board-line:rgba(242,242,240,.14); --board-r:16px; --star:block; --bgap:12px 14px;
+    --board-sh:inset 4px 4px 10px var(--lo), inset -2px -2px 6px var(--hi);
+    --board-pad:16px 0 12px;
+    --pc:#efd59c; --pc-stroke:#efd59c; --pc-sw:1.4; --pc-join:round; --pc-sheen:.6; --pc-ink:#141210; --pc-core:#c4161b; --pc-w:400;
+    --pc-rich:inline; --pc-side:#9c7436; --pc-grain:.6; --pc-emboss:0 1px 0 rgba(255,240,200,.6), 0 -1px 1px rgba(0,0,0,.35), 0 0 1px rgba(0,0,0,.4);
+    --pc-drop:drop-shadow(4px 6px 5px rgba(0,0,0,.7)); --pc-hover:translateY(-3px);
+    --tag-bg:var(--well); --tag-fg:var(--fg2);
+    --btn-r:999px; --pri-bg:linear-gradient(145deg,#f0353a,#d01e22); --pri-fg:#fff; --pri-sh:6px 8px 16px -6px rgba(229,38,42,.55), inset 1px 1px 0 rgba(255,255,255,.25), inset -2px -2px 4px rgba(0,0,0,.25);
+    --sec-bg:linear-gradient(145deg,#28282a,#1d1d1f); --sec-sh:5px 6px 12px var(--lo), -3px -3px 8px var(--hi), inset 1px 1px 0 rgba(255,255,255,.06);
+    --dots:radial-gradient(circle,rgba(242,242,240,.11) 1.3px,transparent 1.8px) 0 0/10px 10px;
+    --pat-demo:var(--dots), radial-gradient(30% 40% at 70% 40%,rgba(229,38,42,.25),transparent 70%), var(--bg);
+    font-synthesis:none;
+  }
+  .t-rubber.dark {
+    --bg:#e4e4e1; --fg:#19191b; --fg2:#3c3c3a; --muted:#7b7b76; --line:rgba(25,25,27,.1); --tint:rgba(255,255,255,.4); --good:#19191b;
+    --hi:rgba(255,255,255,.85); --lo:rgba(120,120,110,.42); --well:#d6d6d2;
+    --surface:linear-gradient(145deg,#eeeeeb,#e0e0dd);
+    --shadow:inset 1px 1px 0 rgba(255,255,255,.8), 10px 12px 22px -8px var(--lo), -8px -8px 18px -8px var(--hi);
+    --knob-bg:linear-gradient(145deg,#f4f4f2,#e6e6e3); --knob-sh:3px 3px 7px var(--lo), -2px -2px 5px var(--hi); --sw-knob:#f4f4f2;
+    --ib-bg:linear-gradient(145deg,#f1f1ee,#e0e0dc); --sec-bg:linear-gradient(145deg,#f1f1ee,#e0e0dc);
+    --board:linear-gradient(145deg,#dcdcd8,#d2d2ce); --board-line:rgba(25,25,27,.16);
+    --pc-drop:drop-shadow(4px 6px 5px rgba(110,110,100,.5));
+    --dots:radial-gradient(circle,rgba(25,25,27,.12) 1.2px,transparent 1.7px) 0 0/8px 8px;
+  }
+  .t-rubber .fx { background:radial-gradient(40% 35% at 88% 6%,rgba(229,38,42,.16),transparent 70%), var(--dots); }
+  .t-rubber .ts-row:first-child div { font-family:"Doto",monospace !important; font-weight:900 !important; }
+  .t-rubber .intro h2 { font-family:"Dela Gothic One",sans-serif; font-weight:400; letter-spacing:.02em; }
+  .t-rubber .pcw.core::before { content:""; position:absolute; left:10%; right:10%; bottom:-10%; height:30%; border-radius:50%; background:radial-gradient(var(--accent),transparent 70%); filter:blur(6px); opacity:.7; animation:led 2.6s ease-in-out infinite; }
+  .t-rubber .chip b, .t-rubber .stage-f .dot { color:var(--accent); background-color:var(--accent); }
+  .t-rubber .chip b { background:none; }
+  .t-rubber .tag, .t-rubber .chip { box-shadow:inset 2px 2px 4px var(--lo), inset -1px -1px 2px var(--hi); }
+  .t-rubber .btn, .t-rubber .seg button { font-family:"Geist Mono","M PLUS 1",monospace; font-weight:500; letter-spacing:.04em; }
+  .t-rubber .btn:active, .t-rubber .ib:active { transform:scale(.97); box-shadow:inset 3px 3px 7px var(--lo), inset -2px -2px 5px var(--hi); }
+  .t-rubber .switch input:checked + .tr::after { background:var(--accent); box-shadow:0 0 10px rgba(229,38,42,.6); }
+  .t-rubber .seg button.on::before { content:""; display:inline-block; width:5px; height:5px; margin-right:7px; border-radius:50%; background:var(--accent); vertical-align:2px; }
+  .t-rubber .meter i s { height:7px; background:var(--well); box-shadow:inset 1px 1px 2px var(--lo); }
+  .t-rubber .meter i s.f { background:var(--fg); box-shadow:none; }
+  .t-rubber .meter:first-child i s.f { background:var(--accent); }
+  .t-rubber .dmx { position:relative; padding:20px 22px 18px; border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+  .t-rubber .dmx b { display:block; font:900 clamp(110px,14vw,176px)/.8 "Doto",monospace; letter-spacing:-.02em; }
+  .t-rubber .dmx span { display:flex; justify-content:space-between; margin-top:12px; font:500 10.5px/1 "Geist Mono",monospace; letter-spacing:.12em; color:var(--muted); }
+  .t-rubber .dmx i { position:absolute; top:20px; right:22px; width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); animation:led 2s ease-in-out infinite; }
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
+    <filter id="woodgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9 .045" numOctaves="3" seed="7"/><feColorMatrix values="0 0 0 0 .42  0 0 0 0 .25  0 0 0 0 .08  0 0 0 1.1 -.35"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+    <linearGradient id="bevel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2=".55" y2="1">
       <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/>
       <stop offset=".75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/>
@@ -485,56 +765,128 @@
 const ICON_NAMES = { prev:'前へ', next:'次へ', flip:'先後反転', heat:'利き', info:'解説', board:'盤面', moon:'テーマ', share:'共有' };
 const ic = (n) => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 
+const SVG = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${body}</svg>`;
+const PENT64 = 'M32 12L44 16.5 47 52H17L20 16.5Z';
 const FAV = {
-  sumi:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="7" fill="#c8371f"/><rect x="9.5" y="9.5" width="45" height="45" rx="3" fill="none" stroke="#fbf6ea" stroke-width="2.4"/><g stroke="#fbf6ea" stroke-width="5" stroke-linecap="square"><path d="M20 20h24M22 32h20M17 45h30M32 20v25"/></g><circle cx="41" cy="39" r="2.8" fill="#fbf6ea"/></svg>`,
-  urushi:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a6a2c"/><stop offset=".45" stop-color="#f3dc9c"/><stop offset="1" stop-color="#b38a3e"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="#100c0a"/><rect x="3" y="3" width="58" height="58" rx="11.5" fill="none" stroke="#a3231a" stroke-width="1.5"/><path d="M32 9L46 14.5 51 55H13L18 14.5Z" fill="none" stroke="url(#g)" stroke-width="3" stroke-linejoin="round"/><g stroke="url(#g)" stroke-width="3.6" stroke-linecap="round"><path d="M24.5 26h15M25.5 36h13M22.5 46.5h19M32 26v20.5"/></g></svg>`,
-  glass:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#39d0ff"/><stop offset=".5" stop-color="#8b6cff"/><stop offset="1" stop-color="#ff5fa2"/></linearGradient><linearGradient id="h" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="M32 5L50 11.5 56 59H8L14 11.5Z" fill="url(#a)" stroke="url(#a)" stroke-width="4" stroke-linejoin="round"/><path d="M32 9L47 14.5 49.5 36H14.5L17 14.5Z" fill="url(#h)" stroke-linejoin="round"/><path d="M8.5 57h47" stroke="#fff" stroke-opacity=".5" stroke-width="1.5"/></svg>`,
-  grid:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#0e0e0e"/><g stroke="#efefea" stroke-width="2.5"><path d="M6 23.3h52M6 40.7h52M23.3 6v52M40.7 6v52"/><rect x="6" y="6" width="52" height="52" fill="none"/></g><rect x="25" y="25" width="14" height="14" fill="#ff4400"/></svg>`,
-  clay:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="20" fill="#8db57a"/><rect x="2" y="2" width="60" height="30" rx="18" fill="#fff" opacity=".18"/><path d="M32 15L44 19.5 47 52H17L20 19.5Z" transform="translate(1.5 3)" fill="#4f7a3d" opacity=".35" stroke="#4f7a3d" stroke-width="6" stroke-linejoin="round"/><path d="M32 15L44 19.5 47 52H17L20 19.5Z" fill="#fff7e8" stroke="#fff7e8" stroke-width="6" stroke-linejoin="round"/><circle cx="32" cy="37" r="6" fill="#e79aa6"/><circle cx="30" cy="35" r="2" fill="#fff" opacity=".7"/></svg>`,
+  sumi:SVG(`<rect x="4" y="4" width="56" height="56" rx="7" fill="#c8371f"/><rect x="9.5" y="9.5" width="45" height="45" rx="3" fill="none" stroke="#fbf6ea" stroke-width="2.4"/><g stroke="#fbf6ea" stroke-width="5" stroke-linecap="square"><path d="M20 20h24M22 32h20M17 45h30M32 20v25"/></g><circle cx="41" cy="39" r="2.8" fill="#fbf6ea"/>`),
+  grid:SVG(`<rect width="64" height="64" fill="#0e0e0e"/><g stroke="#efefea" stroke-width="2.5"><path d="M6 23.3h52M6 40.7h52M23.3 6v52M40.7 6v52"/><rect x="6" y="6" width="52" height="52" fill="none"/></g><rect x="25" y="25" width="14" height="14" fill="#ff4400"/>`),
+  clay:SVG(`<rect width="64" height="64" rx="20" fill="#8db57a"/><rect x="2" y="2" width="60" height="30" rx="18" fill="#fff" opacity=".18"/><path d="M32 15L44 19.5 47 52H17L20 19.5Z" transform="translate(1.5 3)" fill="#4f7a3d" opacity=".35" stroke="#4f7a3d" stroke-width="6" stroke-linejoin="round"/><path d="M32 15L44 19.5 47 52H17L20 19.5Z" fill="#fff7e8" stroke="#fff7e8" stroke-width="6" stroke-linejoin="round"/><circle cx="32" cy="37" r="6" fill="#e79aa6"/><circle cx="30" cy="35" r="2" fill="#fff" opacity=".7"/>`),
+  kifu:SVG(`<rect width="64" height="64" fill="#eceee9"/><rect x="5" y="5" width="54" height="54" fill="none" stroke="#10151c" stroke-width="2.6"/><path d="M5 23h54M5 41h54M23 5v54M41 5v54" stroke="#10151c" stroke-width="1.4"/><rect x="24.5" y="24.5" width="15" height="15" fill="#1f3fbf"/><path d="M28 28.5h8M28.5 32h7M27.5 36h9M32 28.5v7.5" stroke="#eceee9" stroke-width="1.6"/>`),
+  hw:SVG(`<defs><radialGradient id="b" cx=".4" cy=".35"><stop offset="0" stop-color="#ffe066"/><stop offset="1" stop-color="#e0ad00"/></radialGradient></defs><rect width="64" height="64" rx="14" fill="#d8dbda"/><rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2"/><g fill="#5d6368">${[0,1,2].map(y => [0,1,2,3].map(x => `<circle cx="${12 + x*6}" cy="${13 + y*6}" r="1.8"/>`).join('')).join('')}</g><circle cx="43" cy="43" r="13" fill="#a9afae"/><circle cx="43" cy="42" r="10.5" fill="url(#b)"/><rect x="10" y="41" width="16" height="4" rx="2" fill="#5d6368"/><circle cx="13" cy="52" r="2.6" fill="#2fd06b"/>`),
+  kappan:SVG(`<rect width="64" height="64" rx="16" fill="#dfe5e0"/><path d="${PENT64}" transform="translate(1.6 2.2)" fill="#9fb0a8" stroke="#9fb0a8" stroke-width="5" stroke-linejoin="round"/><path d="${PENT64}" transform="translate(-1 -1)" fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round"/><path d="${PENT64}" fill="#f6f1e4" stroke="#f6f1e4" stroke-width="5" stroke-linejoin="round"/><circle cx="32" cy="37" r="6.5" fill="#b0683a"/>`),
+  ai:SVG(`<rect width="64" height="64" rx="14" fill="#121a33"/><path d="M6 24h52M6 40h52M24 6v52M40 6v52" stroke="#a0b4e6" stroke-opacity=".22" stroke-width="1.2"/><path d="${PENT64}" fill="#f1e5c7" stroke="#f1e5c7" stroke-width="2" stroke-linejoin="round"/><circle cx="32" cy="37" r="5" fill="#4fc6bf"/><path d="M14 4h36" stroke="#4fc6bf" stroke-width="2"/>`),
+  crt:SVG(`<defs><filter id="f" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter></defs><rect width="64" height="64" rx="10" fill="#0b0805"/><g fill="none" stroke="#ffb547" stroke-width="3.2"><path d="M32 9L46 14 50 55H14L18 14Z" filter="url(#f)" opacity=".85"/><path d="M32 9L46 14 50 55H14L18 14Z"/></g><rect x="27" y="35" width="10" height="13" fill="#ffb547"/><g stroke="#000" stroke-opacity=".35">${Array.from({ length:21 }, (_, i) => `<path d="M0 ${i*3 + 1}h64"/>`).join('')}</g>`),
+  bento:SVG(`<rect width="64" height="64" rx="18" fill="#e9e6f2"/><g stroke="#1b1830" stroke-width="2"><rect x="6" y="6" width="25" height="25" rx="8" fill="#5b3df5"/><rect x="34" y="6" width="24" height="25" rx="8" fill="#d4f53c"/><rect x="6" y="34" width="52" height="24" rx="8" fill="#ffe7a3"/></g><path d="M18.5 11L24.5 13.2 26 26H11L12.5 13.2Z" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><g fill="#1b1830">${[0,1,2,3,4].map(i => `<circle cx="${14 + i*9}" cy="46" r="2.2"/>`).join('')}</g>`),
+  rubber:SVG(`<defs><linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6dfaa"/><stop offset="1" stop-color="#d9b778"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="#19191b"/><g fill="#f2f2f0" opacity=".14">${Array.from({ length:36 }, (_, i) => `<circle cx="${7 + (i % 6) * 10}" cy="${7 + Math.floor(i / 6) * 10}" r="1.3"/>`).join('')}</g><path d="M32 14L43 18 46 53H18L21 18Z" transform="translate(0 3)" fill="#9c7436" stroke="#9c7436" stroke-width="2.5" stroke-linejoin="round"/><path d="M32 14L43 18 46 53H18L21 18Z" fill="url(#w)" stroke="url(#w)" stroke-width="2.5" stroke-linejoin="round"/><circle cx="32" cy="36" r="5" fill="#c4161b"/><circle cx="50" cy="13" r="4" fill="#e5262a"/>`),
 };
 const favURL = (k) => 'data:image/svg+xml,' + encodeURIComponent(FAV[k]);
 
+const BODY = '玉の守りが堅く、横からの攻めに強い。';
 const THEMES = [
-  { id:'sumi', no:'01', name:'墨と余白', en:'Sumi & Ma — ink, paper, silence',
+  { id:'sumi', no:'01', name:'墨と余白', en:'Sumi & Ma — ink, paper, silence', seal:true, icon:'1.1px / square',
     concept:'和紙の生成りに墨と朱だけ。パネルの面・影・透過をすべて捨て、罫線と余白とタイポグラフィの緩急だけで格を出す。見出しは明朝の大きな字間、本文は端正なゴシックでコントラストを最大化。朱印のファビコンと縦書きの添え書きでクラシックさを担保。',
-    meters:{ 'モダン':2, 'クラシック':5, 'シンプル':5, 'リッチ質感':1, 'モーション':2 },
+    meters:{ 'かっこよさ':3, 'クラシック':5, 'カチッと感':2, 'モーフィズム':1, 'モーション':2 },
     apply:'<b>適用イメージ:</b> .glass を廃止し 1px 罫線のグリッドへ。セグメントは下線スライド、駒は和紙色＋細い墨線。背景の orb は和紙テクスチャに置換。',
     fonts:{ '見出し':'Shippori Mincho B1 800', '本文':'Zen Kaku Gothic New', '欧文/数字':'Cormorant Garamond' },
-    scale:[ ['Display',88,'囲',800], ['H1',32,'将棋の囲い図鑑',800], ['H2',22,'美濃囲い',700], ['Body',14,'玉の守りが堅く、横からの攻めに強い。',400], ['Caption',11,'← → で切り替え',400] ],
+    scale:[ ['Display',88,'囲',800], ['H1',32,'将棋の囲い図鑑',800], ['H2',22,'美濃囲い',700], ['Body',14,BODY,400], ['Caption',11,'← → で切り替え',400] ],
     palette:[ ['生成り','#f5f1e8'], ['墨','#1b1a17'], ['朱','#c8371f'], ['鼠','#8a8478'], ['榧','#e8d3a3'], ['苔','#4a6b3f'] ],
-    pattern:'和紙の繊維ノイズ（feTurbulence）＋背景の巨大な「囲」の透かし', motion:'朱印のスタンプ（初回のみ）・下線のスライド。それ以外は動かさない' },
-  { id:'urushi', no:'02', name:'漆と金箔', en:'Urushi & Gold Leaf',
-    concept:'黒漆の深い艶に金箔と朱漆。カードは二重の金線で縁取った蒔絵の重箱のように。盤は黒漆の額縁に収め、駒は落とし影で厚みを出す。ボタンは金箔のグラデーションに光が走る。暗さで格式、金で華やかさを。',
-    meters:{ 'モダン':2, 'クラシック':5, 'シンプル':2, 'リッチ質感':4, 'モーション':3 },
-    apply:'<b>適用イメージ:</b> ダーク基調を標準に。パネルは漆グラデ＋内側の金線、セグメントの knob は金箔、主要ボタンに光の走るアニメーション。トグルで白檀（ライト）へ。',
-    fonts:{ '見出し':'Kaisei Opti 700', '本文':'Zen Kaku Gothic New', '欧文/数字':'Cormorant Garamond 600' },
-    scale:[ ['Display',64,'美濃',700], ['H1',30,'将棋の囲い図鑑',700], ['H2',20,'美濃囲い',700], ['Body',15,'玉の守りが堅く、横からの攻めに強い。',400], ['Caption',12,'Ⅲ / ⅩⅡ',400] ],
-    palette:[ ['黒漆','#0c0a09'], ['溜塗','#1b1613'], ['金箔','#d4ae62'], ['朱漆','#a3231a'], ['象牙','#f3e9d6'], ['黄楊','#e3be78'] ],
-    pattern:'青海波（金線・7%）を上部だけにマスク。右上から金の光だまり', motion:'見出しの金が流れる・ボタンにハイライトが走る' },
-  { id:'glass', no:'03', name:'液体ガラス', en:'Liquid Glass — depth, refraction, light',
-    concept:'夜の水面のような濃紺に、オーロラの光源が漂う。カードは厚いガラス（blur＋saturate）で縁を虹色の光が回る。盤はマウスに追従して3Dで傾き、駒は宙に浮いて影を落とす。囲いの駒は内側から発光。現行のglass路線を最大まで押し上げた案。',
-    meters:{ 'モダン':5, 'クラシック':1, 'シンプル':2, 'リッチ質感':5, 'モーション':5 },
-    apply:'<b>適用イメージ:</b> 現行の .glass をベースに縁の conic グラデと specular を追加。盤に perspective＋tilt、駒に translateZ。囲いの駒のハイライトは発光パルスに。',
-    fonts:{ '見出し':'Murecho 700', '本文':'Murecho 300–500', '欧文/数字':'Murecho（可変）' },
-    scale:[ ['Display',52,'美濃囲い',700], ['H1',28,'将棋の囲い図鑑',700], ['H2',18,'Mino Castle',600], ['Body',14,'玉の守りが堅く、横からの攻めに強い。',400], ['Caption',12,'03 / 12',400] ],
-    palette:[ ['Abyss','#0b0d1c'], ['Cyan','#39d0ff'], ['Violet','#8b6cff'], ['Pink','#ff5fa2'], ['Amber','#ffb35c'], ['Frost','#f2f4ff'] ],
-    pattern:'ぼかした4つの光球が漂うオーロラ＋ガラス越しの屈折', motion:'盤の3Dチルト・縁の光が回転・発光パルス・グラデが流れる' },
-  { id:'grid', no:'04', name:'盤目グリッド', en:'Swiss Grid — 9×9 as a typographic system',
+    pattern:'和紙の繊維ノイズ（feTurbulence）＋背景の巨大な「囲」の透かし', motion:'朱印のスタンプ（初回のみ）・下線のスライド。それ以外は動かさない',
+    side:() => '<div class="vert">先手の囲いを、盤で見比べる。</div>' },
+  { id:'grid', no:'04', name:'盤目グリッド', en:'Swiss Grid — 9×9 as a typographic system', icon:'2px / miter',
     concept:'将棋盤の升目そのものをレイアウトの方眼にしたスイス・スタイル。角丸ゼロ・影ゼロ・1pxの罫。色は白黒＋信号のオレンジ1色だけで、囲いの駒をオレンジで塗る。玉の位置「28」を巨大な数字で見せる極端なジャンプ率。座標は等幅フォント。',
-    meters:{ 'モダン':5, 'クラシック':1, 'シンプル':5, 'リッチ質感':1, 'モーション':2 },
+    meters:{ 'かっこよさ':4, 'クラシック':1, 'カチッと感':5, 'モーフィズム':1, 'モーション':2 },
     apply:'<b>適用イメージ:</b> 3ペインを罫線で区切る方眼に。カード一覧は番号付きリスト、駒は平面の灰色＋囲いはオレンジ塗り。ホバーで筋・段を十字ハイライト。',
     fonts:{ '見出し':'Inter Tight 800 / Noto Sans JP 900', '本文':'Noto Sans JP', '座標/数字':'JetBrains Mono 700' },
-    scale:[ ['Display',128,'28',900], ['H1',40,'囲い図鑑',800], ['H2',18,'美濃囲い',700], ['Body',13,'玉の守りが堅く、横からの攻めに強い。',400], ['Caption',11,'FILE 2 / RANK 8',700] ],
+    scale:[ ['Display',128,'28',900], ['H1',40,'囲い図鑑',800], ['H2',18,'美濃囲い',700], ['Body',13,BODY,400], ['Caption',11,'FILE 2 / RANK 8',700] ],
     palette:[ ['Paper','#efefea'], ['Ink','#0e0e0e'], ['Signal','#ff4400'], ['Gray','#e6e6e1'], ['Mid','#6b6b6b'], ['White','#ffffff'] ],
-    pattern:'16pxのドットグリッド（方眼紙）', motion:'0.18sのスナップ。ホバーで十字ハイライトと反転' },
-  { id:'clay', no:'05', name:'和菓子クレイ', en:'Wagashi Clay — soft, round, squishy',
+    pattern:'16pxのドットグリッド（方眼紙）', motion:'0.18sのスナップ。ホバーで十字ハイライトと反転',
+    side:(m) => `<div class="side" style="align-content:space-between"><div class="big">28</div><div class="meters">${m}</div></div>` },
+  { id:'clay', no:'05', name:'和菓子クレイ', en:'Wagashi Clay — soft, round, squishy', icon:'2.2px / round',
     concept:'練り切りのようなぷっくりした立体感。外側の柔らかい二方向の影と内側のハイライトで、粘土で成形したようなカードとボタン。抹茶と桜を差し色に、角丸の大きいボタンは押すと凹む。駒は角の丸い五角形で、クリックすると弾む。',
-    meters:{ 'モダン':4, 'クラシック':2, 'シンプル':3, 'リッチ質感':4, 'モーション':4 },
+    meters:{ 'かっこよさ':2, 'クラシック':2, 'カチッと感':2, 'モーフィズム':5, 'モーション':4 },
     apply:'<b>適用イメージ:</b> 初心者向け・親しみやすさ重視。パネルはクレイ影、セグメントは凹んだ溝に浮いた knob。駒の角を丸め、選択時にバウンス。',
     fonts:{ '見出し':'Zen Maru Gothic 900', '本文':'M PLUS Rounded 1c', '欧文/数字':'M PLUS Rounded 1c 800' },
-    scale:[ ['Display',44,'みのがこい',900], ['H1',26,'将棋の囲い図鑑',900], ['H2',19,'美濃囲い',700], ['Body',15,'玉の守りが堅く、横からの攻めに強い。',400], ['Caption',13,'← → で切り替え',700] ],
+    scale:[ ['Display',44,'みのがこい',900], ['H1',26,'将棋の囲い図鑑',900], ['H2',19,'美濃囲い',700], ['Body',15,BODY,400], ['Caption',13,'← → で切り替え',700] ],
     palette:[ ['胡粉','#f4eee5'], ['砂','#eee7dc'], ['抹茶','#6f9a5b'], ['桜','#e79aa6'], ['黄身','#ecc98a'], ['餡','#3b3329'] ],
     pattern:'淡い市松（conic-gradient）＋桜と抹茶のぼかし', motion:'オーバーシュートのばね曲線・押すと凹む・駒がぽよんと弾む' },
+
+  { id:'kifu', no:'06', name:'棋譜組版', en:'KIFU EDITORIAL — set like a printed game record', icon:'1.3px / butt',
+    concept:'将棋年鑑の棋譜欄を組むように、旧字体の風格がある明朝と、等幅の座標・手数を同じ版面に並べる。2pxの天罫とヘアライン、各ブロックの四隅にトンボ。色は青みの白い紙に、墨と群青1色だけ。盤は二重枠に星を打った、印刷物としての盤面。',
+    meters:{ 'かっこよさ':4, 'クラシック':4, 'カチッと感':5, 'モーフィズム':1, 'モーション':2 },
+    apply:'<b>適用イメージ:</b> 右ペインを棋譜のような行組みにし、囲いの駒は「▲２八玉」の表記で並べる。カード一覧は手数のように番号付き。囲いの駒は群青の線と下線で示す。',
+    fonts:{ '見出し/駒':'Zen Old Mincho 900', '本文':'BIZ UDPGothic', '座標/数字':'IBM Plex Mono 500' },
+    scale:[ ['Display',96,'▲２八玉',900], ['H1',34,'将棋の囲い図鑑',900], ['H2',20,'美濃囲い',700], ['Body',13,BODY,400], ['Caption',11,'MOVE 011 · FILE 2',400] ],
+    palette:[ ['青白','#eceee9'], ['墨','#10151c'], ['群青','#1f3fbf'], ['薄群青','#d9def0'], ['錫','#7b818a'], ['白','#fbfcfa'] ],
+    pattern:'群青の5mm方眼＋太線の10mm方眼（製図用紙）とトンボ', motion:'セグメントは天地の罫がスナップ。最新の手だけがハイライト',
+    side:(m) => `<div class="side"><div><div class="kifu-h"><span>▲ 先手 — 四間飛車</span><span>KIFU 05–11</span></div><ol class="kifu">${[
+      ['05','▲６八飛','0:41'],['06','△６二銀','1:02'],['07','▲４八玉','1:10'],['08','△４二玉','1:33'],['09','▲３八玉','1:40'],['10','△３二玉','2:05'],['11','▲２八玉','2:11']
+    ].map(([n, mv, t], i, a) => `<li class="${i === a.length - 1 ? 'cur' : ''}"><span>${n}</span>${mv}<em>${i === a.length - 1 ? '<i class="caret"></i>' : t}</em></li>`).join('')}</ol></div><div class="meters">${m}</div></div>` },
+
+  { id:'hw', no:'07', name:'盤機', en:'BANKI — machined, tactile, switched-on', icon:'1.8px / butt',
+    concept:'アルミ削り出しの筐体のような、精密機器としての将棋盤。打鍵感のあるキーキャップ型ボタンは押すと3px沈み、トグルの横でLEDが点く。囲いの駒は信号の黄色に塗ったキー。見出しはグロテスク体、ラベルは等幅。モーフィズムを柔らかさではなく工業製品の精度として使う。',
+    meters:{ 'かっこよさ':5, 'クラシック':1, 'カチッと感':5, 'モーフィズム':4, 'モーション':3 },
+    apply:'<b>適用イメージ:</b> ヘッダーを操作パネルにし、囲い名と手数はLCD表示に。セグメントは凹んだスロットにキーが収まる形。ダーク版はグラファイト筐体。',
+    fonts:{ '見出し':'Space Grotesk 700', '本文/駒':'IBM Plex Sans JP', 'ラベル':'Space Mono 700' },
+    scale:[ ['Display',84,'CH.03',700], ['H1',30,'囲い図鑑',700], ['H2',18,'美濃囲い',700], ['Body',13,BODY,400], ['Caption',11,'K 2-8 · DEF 82',700] ],
+    palette:[ ['Alu','#c9cdcc'], ['Panel','#dfe2e1'], ['Graphite','#1c1e20'], ['Signal','#f2c200'], ['LED','#2fd06b'], ['Key','#f4f3ee'] ],
+    pattern:'スピーカーグリル（パンチング穴）＋ヘアライン加工の金属', motion:'キーが3px沈む・LED点灯・VUメーター・0.14sで止まる',
+    side:(m) => `<div class="side"><div class="lcd"><div class="lcd-r"><span>CH 03/12</span><span>● LIVE</span></div><div class="lcd-big">MINO</div><div class="lcd-r"><span>K 2-8</span><span>DEF 82</span></div><div class="vu">${[60,90,45,100,70,85,40,95,55,75,65,100].map((h, i) => `<i style="--h:${h}%;animation-delay:${-i * .17}s"></i>`).join('')}</div></div><div class="meters">${m}</div></div>` },
+
+  { id:'kappan', no:'08', name:'活版青磁', en:'Letterpress on celadon cotton', icon:'1.25px / round',
+    concept:'青磁色の厚いコットン紙に、深緑のインキで活版印刷し、要所に銅箔を押したような質感。カードもボタンも紙を裏から押し出した浮き出し（エンボス）で、見出しは凹んだ空押し。看板風の太い明朝と本文の明朝で組む。柔らかい立体感を持ちながら、静かで格調がある。',
+    meters:{ 'かっこよさ':3, 'クラシック':5, 'カチッと感':2, 'モーフィズム':5, 'モーション':2 },
+    apply:'<b>適用イメージ:</b> パネルは同じ紙色の浮き出し、選択中は凹ませて示す。主要ボタンは銅箔で、ホバーで箔の反射が動く。駒は紙から浮き出た形に。',
+    fonts:{ '見出し/駒':'Kaisei Tokumin 800', '本文':'Noto Serif JP', '欧文':'EB Garamond Italic' },
+    scale:[ ['Display',80,'美濃',800], ['H1',32,'将棋の囲い図鑑',800], ['H2',21,'美濃囲い',700], ['Body',14.5,BODY,400], ['Caption',12,'№ iii — of xii',400] ],
+    palette:[ ['青磁','#dfe5e0'], ['深緑','#1d3a33'], ['銅箔','#b0683a'], ['白磁','#f6f1e4'], ['灰青','#76877f'], ['榧','#dcc596'] ],
+    pattern:'七宝つなぎの空押し（凹凸だけの柄）', motion:'銅箔の反射が流れる・押すと紙が凹む',
+    side:(m) => `<div class="side"><div class="emb"><span>囲</span></div><div class="meters">${m}</div></div>` },
+
+  { id:'ai', no:'09', name:'藍の書院', en:'AI NO SHOIN — an indigo study after dark', icon:'1.35px / square',
+    concept:'夜の書院の藍色に、浅葱の細い光。見出しは骨太の古風な明朝、ラベルは細い等幅で、古さと計器のような精度を同居させる。パネルは深い影で浮き、数値は凹んだ枠に収める。榧の盤は藍の額に沈み、星も打つ。かっこよさ・クラシック・カチッと感・モーフィズムをすべて少しずつ。',
+    meters:{ 'かっこよさ':5, 'クラシック':4, 'カチッと感':4, 'モーフィズム':4, 'モーション':3 },
+    apply:'<b>適用イメージ:</b> ダークを標準に、ライト版は白藍。カードの上端に浅葱のヘアライン、セグメントは凹んだ溝に浮いたキーと浅葱の短い下線。囲いの情報は凹んだメタ表示に。',
+    fonts:{ '見出し/駒':'Zen Antique', '本文':'Murecho', 'ラベル/数字':'Martian Mono' },
+    scale:[ ['Display',76,'美濃囲',400], ['H1',30,'将棋の囲い図鑑',400], ['H2',19,'美濃囲い',400], ['Body',14,BODY,400], ['Caption',10.5,'03 / 12 — FURIBISHA',400] ],
+    palette:[ ['藍','#0f1730'], ['紺鉄','#1a2442'], ['浅葱','#4fc6bf'], ['白練','#eceae2'], ['銀鼠','#7f8aa5'], ['榧','#d6b47a'] ],
+    pattern:'籠目（60°の三方向の細線）を上部だけに。右上から浅葱の光', motion:'knob の滑らかな減速・ホバーで浅葱が強く光る',
+    side:(m) => `<div class="side"><dl class="meta"><div><dt>手合</dt><dd>平手</dd></div><div><dt>戦型</dt><dd>四間飛車</dd></div><div><dt>囲い</dt><dd>美濃<small>MINO</small></dd></div><div><dt>手数</dt><dd>11<small>MOVES</small></dd></div></dl><div class="meters">${m}</div></div>` },
+
+  { id:'crt', no:'10', name:'琥珀端末', en:'AMBER TERMINAL — phosphor, scanline, 1983', icon:'1.6px / square',
+    concept:'琥珀色の蛍光体が光る古いブラウン管の端末。ドット文字の日本語フォントで盤も駒も描き、走査線とわずかなちらつき、画面の隅の減光まで再現。ボタンは [ ] で囲んだコマンド。レトロコンピュータという別の古典で、かっこよさとカチッと感を両立させる。ライト版は連続帳票の印字。',
+    meters:{ 'かっこよさ':5, 'クラシック':3, 'カチッと感':5, 'モーフィズム':2, 'モーション':4 },
+    apply:'<b>適用イメージ:</b> 解説パネルを端末ログにし、長所・短所は評価値のバーに。knob は4コマで移動。駒は線画で、囲いの駒だけ反転表示。',
+    fonts:{ '見出し/本文/駒':'DotGothic16', '数字/ログ':'Share Tech Mono' },
+    scale:[ ['Display',72,'玉将',400], ['H1',28,'将棋の囲い図鑑',400], ['H2',18,'美濃囲い',400], ['Body',13,'> ' + BODY,400], ['Caption',11,'[OK] eval=+82',400] ],
+    palette:[ ['Void','#0b0805'], ['Amber','#ffb547'], ['Hot','#ffd38a'], ['Dim','#a06e27'], ['Alert','#ff7043'], ['Paper','#efe9d8'] ],
+    pattern:'走査線＋画面隅の減光（ライト版はグリーンバーの連続帳票）', motion:'カーソル点滅・画面のちらつき・4コマで動くknob',
+    side:(m) => `<div class="side"><pre class="term"><b>&gt;</b> load castle --id mino
+  core pieces ......... 4 <b>ok</b>
+<b>&gt;</b> eval --king 28
+  safety  ████████░░ 82
+  lateral ██████████ 96
+  top     ████░░░░░░ 41
+<b>&gt;</b> <i class="caret"></i></pre><div class="meters">${m}</div></div>` },
+
+  { id:'bento', no:'11', name:'升目弁当', en:'BENTO MASU — a keylined grid of soft tiles', icon:'2px / round',
+    concept:'04の方眼の厳密さと05の柔らかさを受け継ぎ、トレンドの「ベントーグリッド」へ。大きさの違うタイルを方眼に詰め、それぞれをパステルのクレイで膨らませたうえで、1.5pxの濃紺のキーラインで輪郭をカチッと締める。ボタンは下に4pxの縁があり、押すと沈む。玉の位置は巨大な数字タイルに。駒は厚みと木目と面取りのある黄楊駒で、囲いの駒は紫の台に載せる。背景は全面のドット方眼。',
+    meters:{ 'かっこよさ':4, 'クラシック':1, 'カチッと感':4, 'モーフィズム':4, 'モーション':4 },
+    apply:'<b>適用イメージ:</b> 3ペインをタイルの集まりとして組み直し、囲いの情報を「玉の位置」「駒数」「長所」などのタイルに分ける。タイルごとに色を変え、ホバーで弾むように浮かぶ。',
+    fonts:{ '見出し(欧)':'Unbounded 700', '見出し(和)/駒':'Tsukimi Rounded 700', '本文':'M PLUS 2', 'ラベル':'Azeret Mono 600' },
+    scale:[ ['Display',132,'28',700], ['H1',30,'将棋の囲い図鑑',700], ['H2',19,'美濃囲い',700], ['Body',14,BODY,400], ['Caption',11,'TILE 03 · MINO',600] ],
+    palette:[ ['Lilac','#e9e6f2'], ['Ink','#1b1830'], ['Violet','#5b3df5'], ['Lime','#d4f53c'], ['Butter','#ffe7a3'], ['Mint','#d6f5e4'] ],
+    pattern:'紫のドット方眼＋ライムと紫のぼかし', motion:'タイルがばね曲線で浮く・ボタンが4px沈む・駒が少し傾いて持ち上がる',
+    side:(m) => `<div class="side"><div class="bigtile"><small>KING AT — 玉の位置</small><b>28</b><span>２八玉</span></div><div class="meters">${m}</div></div>` },
+
+  { id:'rubber', no:'12', name:'黒ゴム升目', en:'MATTE RUBBER — dot matrix on soft-touch black', icon:'1.6px / round',
+    concept:'04の数字のジャンプ率と05の立体感を受け継ぎ、マットなシリコンゴムのような黒い筐体に。面はつや消しの柔らかい影で盛り上がり、溝は凹む。数字はドットマトリクス、和文見出しは極太のゴシック、ラベルは等幅。色は黒・白・赤の3色だけで、黒いゴムの上に、木目と厚みのある黄楊の盛り上げ駒を置く対比が見どころで、囲いの駒は朱漆の文字と足元の赤い光で示す。背景は全面のドットマトリクス。',
+    meters:{ 'かっこよさ':5, 'クラシック':1, 'カチッと感':4, 'モーフィズム':4, 'モーション':3 },
+    apply:'<b>適用イメージ:</b> ダークを標準にし、ライト版はグレーのゴム。盤は凹んだトレイに。トグルは点灯すると赤く光る。手数や玉の位置はドットマトリクスの大きな数字で示す。',
+    fonts:{ '数字':'Doto 900', 'タイトル':'Dela Gothic One', '見出し/本文':'M PLUS 1', '駒':'Yuji Syuku', 'ラベル':'Geist Mono' },
+    scale:[ ['Display',144,'2-8',900], ['H1',30,'囲い図鑑',800], ['H2',19,'美濃囲い',700], ['Body',13.5,BODY,400], ['Caption',11,'KING · FILE 2 · RANK 8',500] ],
+    palette:[ ['Rubber','#19191b'], ['Panel','#232325'], ['Well','#111113'], ['Bone','#e9e8e4'], ['Signal','#e5262a'], ['Mute','#85857f'] ],
+    pattern:'8pxのドットマトリクス＋赤いインジケーターの光', motion:'赤いLEDの呼吸・押すと面が凹む・knobの素早い減速',
+    side:(m) => `<div class="side"><div class="dmx"><i></i><b>2-8</b><span><span>KING POSITION</span><span>MOVE 11</span></span></div><div class="meters">${m}</div></div>` },
 ];
 
 // 美濃囲いの一部（５～１筋 × 六～九段）
@@ -546,12 +898,13 @@ const BOARD = [
 ];
 const FILES = ['５','４','３','２','１'], RANKS = ['六','七','八','九'];
 const PIECE = '<path d="M20 2.5L32.8 7.2 36.8 41.5H3.2L7.2 7.2Z"/>';
+const BEVEL = '<path d="M20 5.2L30.6 9.1 34 39.2H6L9.4 9.1Z"/>';
 
 function boardHTML() {
   let h = '';
   BOARD.forEach((row, r) => row.forEach((c, f) => {
     const core = c.endsWith('*'), p = c.replace('*', '');
-    h += `<div class="sq" data-f="${f}" data-r="${r}">${p ? `<span class="pcw${core ? ' core' : ''}"><svg viewBox="0 0 40 44" aria-hidden="true"><g class="pb">${PIECE}</g><g class="ps">${PIECE}</g></svg><b>${p}</b></span>` : ''}</div>`;
+    h += `<div class="sq" data-f="${f}" data-r="${r}">${p ? `<span class="pcw${core ? ' core' : ''}"><svg viewBox="0 0 40 44" aria-hidden="true"><g class="pt">${PIECE}</g><g class="pb">${PIECE}</g><g class="pg">${PIECE}</g><g class="pv">${BEVEL}</g><g class="ps">${PIECE}</g></svg><b>${p}</b></span>` : ''}</div>`;
   }));
   return h;
 }
@@ -559,12 +912,11 @@ function boardHTML() {
 function specHTML(t) {
   const max = t.scale[0][1], min = t.scale[3][1], ratio = (max / min).toFixed(1);
   const meters = Object.entries(t.meters).map(([k, v]) => `<div class="meter"><span>${k}</span><i>${[1,2,3,4,5].map(n => `<s class="${n <= v ? 'f' : ''}"></s>`).join('')}</i></div>`).join('');
-  const extra = t.id === 'sumi' ? `<img class="seal" src="${favURL('sumi')}" alt="">` : '';
-  const side = t.id === 'sumi' ? '<div class="vert">先手の囲いを、盤で見比べる。</div>'
-             : t.id === 'grid' ? `<div style="display:grid;align-content:space-between;gap:16px"><div class="big">28</div><div class="meters">${meters}</div></div>` : '';
+  const extra = t.seal ? `<img class="seal" src="${favURL('sumi')}" alt="">` : '';
+  const side = t.side ? t.side(meters) : '';
   return `
   <section class="spec t-${t.id}" id="${t.id}" data-id="${t.id}">
-    <div class="fx" aria-hidden="true">${t.id === 'glass' ? '<b></b><b></b><b></b><b></b>' : ''}</div>
+    <div class="fx" aria-hidden="true"></div>
     <div class="wrap">
       <div class="intro">
         <div>
@@ -628,7 +980,7 @@ function specHTML(t) {
         </div>
 
         <div class="card c-icons">
-          <div class="lbl"><span>Icons</span><span>${{sumi:'1.1px / square',urushi:'1.4px / round',glass:'1.7px / round',grid:'2px / miter',clay:'2.2px / round'}[t.id]}</span></div>
+          <div class="lbl"><span>Icons</span><span>${t.icon}</span></div>
           <div class="icons">${Object.entries(ICON_NAMES).map(([k, v]) => `<div><button class="ib" aria-label="${v}">${ic(k)}</button>${v}</div>`).join('')}</div>
         </div>
 
@@ -692,19 +1044,6 @@ const io = new IntersectionObserver(es => es.forEach(e => {
   links.forEach(a => a.classList.toggle('on', a.dataset.id === id));
 }), { rootMargin:'-45% 0px -45% 0px' });
 document.querySelectorAll('.spec').forEach(s => io.observe(s));
-
-// 03 glass: 3D tilt following the pointer
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-document.querySelectorAll('.t-glass .boardarea').forEach(area => {
-  const board = area.querySelector('.board');
-  board.style.transform = 'rotateX(18deg) rotateZ(-4deg)';
-  if (reduce) return;
-  area.addEventListener('pointermove', e => {
-    const r = area.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
-    board.style.transform = `rotateX(${14 - y * 22}deg) rotateY(${x * 24}deg)`;
-  });
-  area.addEventListener('pointerleave', () => { board.style.transform = 'rotateX(18deg) rotateZ(-4deg)'; });
-});
 
 // 04 grid: file / rank crosshair
 document.querySelectorAll('.t-grid .board').forEach(board => {
