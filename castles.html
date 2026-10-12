@@ -75,24 +75,15 @@
   </aside>
 </div>
 
-<!-- データ -->
-<script src="js/core/notation.js"></script>
-<script src="js/data/sources.js"></script>
-<script src="js/data/setups.js"></script>
-<script src="js/data/castles-ibisha.js"></script>
-<script src="js/data/castles-furibisha.js"></script>
-<!-- ロジック -->
-<script src="js/core/position.js"></script>
-<script src="js/core/attack-map.js"></script>
-<!-- 表示 -->
-<script src="js/ui/store.js"></script>
-<script src="js/ui/segmented.js"></script>
-<script src="js/ui/mini-board.js"></script>
-<script src="js/ui/board-view.js"></script>
-<script src="js/ui/rail-view.js"></script>
-<script src="js/ui/toolbar-view.js"></script>
-<script src="js/ui/stage-view.js"></script>
-<script src="js/ui/detail-view.js"></script>
-<script src="js/app.js"></script>
+<!-- スクリプト一覧（読み込み順は js/manifest.js が決める。file:// でも動くよう動的に追加） -->
+<script src="js/manifest.js"></script>
+<script>
+  for (const src of Kakoi.MANIFEST.order) {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = false; // 追加順どおりに実行させる
+    document.body.appendChild(s);
+  }
+</script>
 </body>
 </html>

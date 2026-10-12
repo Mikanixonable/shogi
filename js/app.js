@@ -7,9 +7,13 @@
   const byId = new Map(K.CASTLES.map(c => [c.id, c]));
   const castlesOf = side => K.CASTLES.filter(c => c.side === side);
 
-  for (const c of K.CASTLES) {
-    const errors = K.validateCastle(c);
-    if (errors.length) console.warn(`[${c.id}]`, errors.join(' / '));
+  // ?debug のときだけデータを検証して console に出す
+  if (new URLSearchParams(location.search).has('debug')) {
+    const report = K.validate.all({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES });
+    for (const r of report.results) {
+      if (r.errors.length || r.warnings.length) console.warn(`[${r.kind}:${r.id}]`, [...r.errors, ...r.warnings].join(' / '));
+    }
+    for (const w of report.warnings) console.warn(w);
   }
 
   const store = new K.Store(
