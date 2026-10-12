@@ -38,11 +38,12 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    render(castle, { attackId, sources }) {
+    render(castle, { attackId, sources, family, subtype }) {
       const pane = (id, parts) => `<div class="pane" data-pane="${id}">${parts.filter(Boolean).join('')}</div>`;
       this.el.innerHTML = [
         pane('overview', [
-          this._tags(castle),
+          this._tags(castle, family, subtype),
+          castle.refFamily ? `<p class="note">文献上の分類：${esc(castle.refFamily)}</p>` : '',
           `<p class="desc">${esc(castle.desc)}</p>`,
           castle.note ? `<p class="note">${esc(castle.note)}</p>` : '',
           this._coreChips(castle),
@@ -67,9 +68,10 @@ window.Kakoi = window.Kakoi || {};
       for (const b of this.el.querySelectorAll('.attack')) b.setAttribute('aria-pressed', b.dataset.id === attackId);
     }
 
-    _tags(c) {
-      const tags = c.tags.filter(t => t !== c.group);
-      return `<div class="tags"><span class="tag group">${esc(c.group)}</span>${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>`;
+    _tags(c, family, subtype) {
+      const head = family.name + (subtype ? ` / ${subtype.name}` : '');
+      const tags = c.tags.filter(t => t !== family.name);
+      return `<div class="tags"><span class="tag group">${esc(head)}</span>${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>`;
     }
 
     _ratings(r) {

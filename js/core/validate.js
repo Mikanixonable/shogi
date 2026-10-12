@@ -57,8 +57,13 @@ window.Kakoi = window.Kakoi || {};
   }
 
   function castleBody(c, ctx, errors, warnings) {
-    for (const k of ['id', 'name', 'short', 'reading', 'group', 'core', 'support', 'desc'])
+    for (const k of ['id', 'name', 'short', 'reading', 'core', 'support', 'desc'])
       if (!isStr(c[k])) errors.push(`必須項目なし: ${k}`);
+    const fam = isArr(ctx.CASTLE_FAMILIES) ? ctx.CASTLE_FAMILIES.find(f => f && f.id === c.family) : undefined;
+    if (!fam) errors.push(`family未登録: ${c.family}`);
+    else if (c.subtype !== undefined && !(isArr(fam.subtypes) && fam.subtypes.some(s => s && s.id === c.subtype)))
+      errors.push(`subtype未登録: ${c.subtype}`);
+    if (c.refFamily !== undefined && !isStr(c.refFamily)) errors.push('refFamilyが空文字または文字列でない');
     if (!['ibisha', 'furibisha'].includes(c.side)) errors.push(`side不正: ${c.side}`);
     const setup = isStr(c.setup) && ctx.SETUPS ? ctx.SETUPS[c.setup] : undefined;
     if (!setup) errors.push(`setup未登録: ${c.setup}`);
@@ -120,7 +125,27 @@ window.Kakoi = window.Kakoi || {};
     }
   }
 
-  /** 囲い1件の検査。ctx = { SETUPS, SOURCES } */
+  /** 系統1件の検査（id / name / shape、subtype の id は重複なし） */
+  function family(f) {
+    const r = result();
+    try {
+      if (!f || typeof f !== 'object') { r.errors.push('系統がオブジェクトでない'); return r; }
+      const miss = ['id', 'name', 'shape'].filter(k => !isStr(f[k]));
+      if (miss.length) r.errors.push(`必須項目なし: ${miss.join(', ')}`);
+      if (!isArr(f.subtypes)) r.errors.push('subtypesが配列でない');
+      else {
+        const ids = new Set();
+        f.subtypes.forEach((s, i) => {
+          if (!s || !isStr(s.id) || !isStr(s.name)) r.errors.push(`subtypes[${i}]のid/nameなし`);
+          else if (ids.has(s.id)) r.errors.push(`subtype idが重複: ${s.id}`);
+          else ids.add(s.id);
+        });
+      }
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  /** 囲い1件の検査。ctx = { SETUPS, SOURCES, CASTLE_FAMILIES } */
   function castle(c, ctx) {
     const r = result();
     try {
@@ -159,7 +184,7 @@ window.Kakoi = window.Kakoi || {};
     return r;
   }
 
-  /** 全データの検査。ctx = { CASTLES, SETUPS, SOURCES } */
+  /** 全データの検査。ctx = { CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES } */
   function all(ctx) {
     const results = [], warnings = [];
     const used = new Set(), seen = new Set();
@@ -174,6 +199,13 @@ window.Kakoi = window.Kakoi || {};
       for (const s of (c && isArr(c.sources) ? c.sources : [])) if (s && s.ref) used.add(s.ref);
       results.push({ kind: 'castle', id, ...r });
     }
+    const famIds = new Set();
+    for (const f of isArr(ctx.CASTLE_FAMILIES) ? ctx.CASTLE_FAMILIES : []) {
+      const r = family(f);
+      if (f && famIds.has(f.id)) r.errors.push(`idが重複: ${f.id}`);
+      if (f) famIds.add(f.id);
+      results.push({ kind: 'family', id: f && f.id, ...r });
+    }
     for (const [sid, s] of Object.entries(ctx.SETUPS || {})) {
       for (const x of (s && isArr(s.sources) ? s.sources : [])) if (x && x.ref) used.add(x.ref);
       results.push({ kind: 'setup', id: sid, ...setup(sid, s, ctx) });
@@ -185,5 +217,5 @@ window.Kakoi = window.Kakoi || {};
     return { results, warnings };
   }
 
-  Kakoi.validate = { castle, setup, source, all };
+  Kakoi.validate = { castle, family, setup, source, all };
 })();

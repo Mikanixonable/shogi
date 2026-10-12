@@ -5,7 +5,7 @@ window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
 Kakoi.CASTLES.push(
   {
-    id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', group: '穴熊', setup: 'ibisha',
+    id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', family: 'anaguma', setup: 'ibisha',
     core: '玉99 香98 桂89 銀88 金79 金78',
     support: '角77 銀26 歩97 歩87 歩76 歩66 歩56 歩47 歩37',
     tags: ['対振り飛車', '持久戦', '堅さ最強クラス'],
@@ -30,7 +30,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa', name: '舟囲い（7九銀型）', short: '舟囲い 7九銀', reading: 'ふながこい', side: 'ibisha', group: '舟囲い', setup: 'ibisha',
+    id: 'funa', name: '舟囲い（7九銀型）', short: '舟囲い 7九銀', reading: 'ふながこい', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha',
     core: '玉78 銀79 金69 金58',
     support: '角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
     tags: ['対振り飛車', '急戦', '基本形'],
@@ -56,7 +56,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa68gin', name: '舟囲い（6八銀型）', short: '舟囲い 6八銀', reading: 'ふながこい ろくはちぎんがた', side: 'ibisha', group: '舟囲い', setup: 'ibisha',
+    id: 'funa68gin', name: '舟囲い（6八銀型）', short: '舟囲い 6八銀', reading: 'ふながこい ろくはちぎんがた', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha',
     core: '玉78 銀68 金69 金58',
     support: '角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
     tags: ['対振り飛車', '急戦'],
@@ -80,7 +80,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'elmo', name: 'エルモ囲い（舟囲い7九金型）', short: 'エルモ囲い', reading: 'えるもがこい', side: 'ibisha', group: '舟囲い', setup: 'ibisha',
+    id: 'elmo', name: 'エルモ囲い（舟囲い7九金型）', short: 'エルモ囲い', reading: 'えるもがこい', side: 'ibisha', family: 'funa', subtype: 'kin79', setup: 'ibisha',
     core: '玉78 銀68 金79 金59',
     support: '角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
     tags: ['対振り飛車', '急戦', 'コンピュータ発'],
@@ -106,7 +106,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', side: 'ibisha', group: '舟囲い', setup: 'ibisha',
+    id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', side: 'ibisha', family: 'funa', subtype: 'kin68', setup: 'ibisha',
     core: '玉78 金68 金58',
     support: '銀57 角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
     tags: ['対振り飛車', '急戦'],
@@ -130,7 +130,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'yagura', name: '矢倉囲い（金矢倉）', short: '金矢倉', reading: 'やぐらがこい', side: 'ibisha', group: '矢倉', setup: 'ibisha',
+    id: 'yagura', name: '矢倉囲い（金矢倉）', short: '金矢倉', reading: 'やぐらがこい', side: 'ibisha', family: 'yagura', subtype: 'kin', setup: 'ibisha',
     core: '玉88 銀77 金78 金67',
     support: '香99 桂89 角68 銀26 歩97 歩87 歩76 歩66 歩56 歩47 歩37',
     tags: ['相居飛車', '持久戦', '将棋の純文学'],
@@ -156,7 +156,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'kani', name: 'カニ囲い', short: 'カニ囲い', reading: 'かにがこい', side: 'ibisha', group: '矢倉', setup: 'ibisha',
+    id: 'kani', name: 'カニ囲い', short: 'カニ囲い', reading: 'かにがこい', side: 'ibisha', family: 'gangi', subtype: 'heiretsu', refFamily: '文献ではどの系統にも属さず、「矢倉の子供」とも呼ばれる', setup: 'ibisha',
     core: '玉69 銀68 金78 金58',
     support: '角88 銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
     tags: ['相居飛車', '急戦矢倉'],
@@ -182,7 +182,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'kabuto', name: '兜囲い（兜矢倉）', short: '兜矢倉', reading: 'かぶとがこい', side: 'ibisha', group: '矢倉', setup: 'ibisha',
+    id: 'kabuto', name: '兜囲い（兜矢倉）', short: '兜矢倉', reading: 'かぶとがこい', side: 'ibisha', family: 'gangi', subtype: 'hidarimae', refFamily: '名前は矢倉系（文献でも矢倉系統）だが、形は雁木型', setup: 'ibisha',
     core: '玉68 銀77 金78 金58',
     support: '銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
     hand: '角',
@@ -208,7 +208,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'gangi', name: '雁木囲い（旧型）', short: '雁木', reading: 'がんぎがこい', side: 'ibisha', group: '雁木', setup: 'ibisha',
+    id: 'gangi', name: '雁木囲い（旧型）', short: '雁木', reading: 'がんぎがこい', side: 'ibisha', family: 'gangi', subtype: 'nimai', setup: 'ibisha',
     core: '玉69 銀67 銀57 金78 金58',
     support: '角88 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩47 歩36',
     tags: ['相居飛車', '江戸時代からある'],
@@ -233,7 +233,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'tsunogin', name: 'ツノ銀雁木', short: 'ツノ銀雁木', reading: 'つのぎんがんぎ', side: 'ibisha', group: '雁木', setup: 'ibisha',
+    id: 'tsunogin', name: 'ツノ銀雁木', short: 'ツノ銀雁木', reading: 'つのぎんがんぎ', side: 'ibisha', family: 'gangi', subtype: 'tsuno', setup: 'ibisha',
     core: '玉69 銀67 銀47 金78 金58',
     support: '角88 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩46 歩37',
     tags: ['相居飛車', '現代雁木', 'ソフト流行'],
@@ -257,7 +257,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', group: '矢倉', setup: 'ibisha',
+    id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（ポナンザ囲いと誤記されることもある）', setup: 'ibisha',
     core: '玉78 銀77 金68 金58',
     support: '銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
     hand: '角',
@@ -283,7 +283,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'hidarimino', name: '左美濃', short: '左美濃', reading: 'ひだりみの', side: 'ibisha', group: '美濃囲い', setup: 'ibisha',
+    id: 'hidarimino', name: '左美濃', short: '左美濃', reading: 'ひだりみの', side: 'ibisha', family: 'mino', subtype: 'hon', refFamily: '文献では左美濃系統（居飛車側の美濃）', setup: 'ibisha',
     core: '玉88 銀78 金69 金58',
     support: '角77 銀26 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩47 歩37',
     tags: ['対振り飛車', '持久戦'],

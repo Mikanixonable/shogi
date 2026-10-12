@@ -4,11 +4,11 @@
   const K = window.Kakoi;
   const $ = id => document.getElementById(id);
 
-  const repo = new K.Repository({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES });
+  const repo = new K.Repository({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES, CASTLE_FAMILIES: K.CASTLE_FAMILIES });
 
   // ?debug のときだけデータを検証して console に出す
   if (new URLSearchParams(location.search).has('debug')) {
-    const report = K.validate.all({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES });
+    const report = K.validate.all({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES, CASTLE_FAMILIES: K.CASTLE_FAMILIES });
     for (const r of report.results) {
       if (r.errors.length || r.warnings.length) console.warn(`[${r.kind}:${r.id}]`, [...r.errors, ...r.warnings].join(' / '));
     }
@@ -16,12 +16,12 @@
   }
 
   const store = new K.Store(
-    { castleId: K.CASTLES[0].id, mode: 'dim', heat: false, heatScope: 'core', attackId: null, lastBySide: {} },
+    { castleId: repo.castles()[0].id, mode: 'dim', heat: false, heatScope: 'core', attackId: null, lastBySide: {} },
     ['castleId', 'mode', 'heat', 'heatScope', 'lastBySide'],
     'shogi-castle',
   );
-  if (!repo.has(store.state.castleId)) store.state.castleId = K.CASTLES[0].id;
-  // 保存値の検証: 既知の城かつ side が一致するものだけ残す
+  if (!repo.has(store.state.castleId)) store.state.castleId = repo.castles()[0].id;
+  // 保存値の検証: 既知の囲いかつ side が一致するものだけ残す
   const savedLast = store.state.lastBySide;
   store.state.lastBySide = Object.fromEntries(
     Object.entries(savedLast && typeof savedLast === 'object' && !Array.isArray(savedLast) ? savedLast : {})
@@ -69,7 +69,10 @@
     if (castleChanged) {
       rail.render(repo.ofSide(castle.side), castle, c => repo.positionOf(c));
       stage.renderCastle(castle, repo.setupOf(castle));
-      detail.render(castle, { attackId: state.attackId, sources: repo.sourcesOf(castle) });
+      detail.render(castle, {
+        attackId: state.attackId, sources: repo.sourcesOf(castle),
+        family: repo.familyOf(castle), subtype: repo.subtypeOf(castle),
+      });
     } else if (changed.has('attackId')) {
       detail.setAttack(state.attackId);
     }

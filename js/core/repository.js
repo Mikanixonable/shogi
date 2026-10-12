@@ -4,11 +4,13 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
 
   class Repository {
-    /** @param {{ CASTLES:object[], SETUPS:object, SOURCES:object }} data */
-    constructor({ CASTLES, SETUPS, SOURCES }) {
+    /** @param {{ CASTLES:object[], SETUPS:object, SOURCES:object, CASTLE_FAMILIES:object[] }} data */
+    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES }) {
       this._castles = CASTLES;
       this._setups = SETUPS;
       this._sources = SOURCES;
+      this._families = CASTLE_FAMILIES;
+      this._familyById = new Map(CASTLE_FAMILIES.map(f => [f.id, f]));
       this._byId = new Map(CASTLES.map(c => [c.id, c]));
     }
 
@@ -17,6 +19,10 @@ window.Kakoi = window.Kakoi || {};
     byId(id) { return this._byId.get(id); }
     ofSide(side) { return this._castles.filter(c => c.side === side); }
     first(side) { return this.ofSide(side)[0]; }
+    families() { return this._families; }
+    familyOf(castle) { return this._familyById.get(castle.family); }
+    subtypeOf(castle) { return this.familyOf(castle)?.subtypes.find(s => s.id === castle.subtype) || null; }
+    ofFamily(familyId) { return this._castles.filter(c => c.family === familyId); }
     setupOf(castle) { return this._setups[castle.setup]; }
 
     /** 囲いと想定配置の出典を、同じ ref はまとめて（for は「・」で連結）解決して返す */
