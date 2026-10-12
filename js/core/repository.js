@@ -4,14 +4,17 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
 
   class Repository {
-    /** @param {{ CASTLES:object[], SETUPS:object, SOURCES:object, CASTLE_FAMILIES:object[] }} data */
-    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES }) {
+    /** @param {{ CASTLES:object[], SETUPS:object, SOURCES:object, CASTLE_FAMILIES:object[], TACTICS?:object[], TACTIC_FAMILIES?:object[] }} data */
+    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS = [], TACTIC_FAMILIES = [] }) {
       this._castles = CASTLES;
       this._setups = SETUPS;
       this._sources = SOURCES;
       this._families = CASTLE_FAMILIES;
       this._familyById = new Map(CASTLE_FAMILIES.map(f => [f.id, f]));
       this._byId = new Map(CASTLES.map(c => [c.id, c]));
+      this._tactics = TACTICS;
+      this._tacticFamilies = TACTIC_FAMILIES;
+      this._tacticById = new Map(TACTICS.map(t => [t.id, t]));
     }
 
     castles() { return this._castles; }
@@ -30,10 +33,10 @@ window.Kakoi = window.Kakoi || {};
     ofFamily(familyId) { return this._castles.filter(c => c.family === familyId); }
     setupOf(castle) { return this._setups[castle.setup]; }
 
-    /** 囲いと想定配置の出典を、同じ ref はまとめて（for は「・」で連結）解決して返す */
-    sourcesOf(castle) {
+    /** 出典の参照を、同じ ref はまとめて（for は「・」で連結）解決して返す */
+    _resolveSources(list) {
       const merged = new Map();
-      for (const s of [...(castle.sources || []), ...(this.setupOf(castle).sources || [])]) {
+      for (const s of list) {
         const src = this._sources[s.ref];
         if (!src) continue;
         const prev = merged.get(s.ref);
@@ -43,6 +46,24 @@ window.Kakoi = window.Kakoi || {};
       return [...merged.values()].map(({ ref, labels, src }) => ({
         ref, for: labels.join('・'), title: src.title, publisher: src.publisher, url: src.url,
       }));
+    }
+
+    /** 囲いと想定配置の出典 */
+    sourcesOf(castle) {
+      return this._resolveSources([...(castle.sources || []), ...(this.setupOf(castle).sources || [])]);
+    }
+
+    // ===== 戦法 =====
+    tactics() { return this._tactics; }
+    tacticById(id) { return this._tacticById.get(id); }
+    hasTactic(id) { return this._tacticById.has(id); }
+    tacticFamilies() { return this._tacticFamilies; }
+    tacticsOf(familyId) { return this._tactics.filter(t => t.family === familyId); }
+    tacticSourcesOf(tactic) { return this._resolveSources(tactic.sources || []); }
+    /** 戦法に合う囲い（存在する id のみ） */
+    castlesOfTactic(tactic) { return (tactic.castles || []).filter(id => this._byId.has(id)).map(id => this._byId.get(id)); }
+    tacticPositionOf(tactic) {
+      return Kakoi.Position.fromPieces(tactic.pieces, { leadSquare: tactic.lead && tactic.lead.square, hand: tactic.hand });
     }
 
     attackOf(castle, attackId) {

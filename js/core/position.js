@@ -25,6 +25,17 @@ window.Kakoi = window.Kakoi || {};
       ];
       return new Position(pieces, castle.hand ? [...castle.hand] : []);
     }
+
+    /**
+     * 先手だけの駒文字列から局面を作る（戦法用）。leadSquare の駒は role 'lead'、他は 'support'
+     * @param {string} str 例: "玉28 飛98"
+     * @param {{ leadSquare?:string, hand?:string }} [opts]
+     */
+    static fromPieces(str, { leadSquare = null, hand = '' } = {}) {
+      const pieces = parsePieces(str, { owner: 'sente' })
+        .map(x => ({ ...x, role: leadSquare && `${x.f}${x.r}` === leadSquare ? 'lead' : 'support' }));
+      return new Position(pieces, hand ? [...hand] : []);
+    }
   }
 
   Kakoi.Position = Position;

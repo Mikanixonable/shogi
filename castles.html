@@ -14,9 +14,14 @@
   <defs><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--wood-1)"/><stop offset="1" style="stop-color:var(--wood-2)"/></linearGradient></defs>
 </svg>
 
-<!-- 全体の表示設定 -->
+<!-- 全体の表示設定（左: 画面の切り替え、右: 表示設定） -->
 <header class="glass">
   <div class="brand"><span class="mark" aria-hidden="true">玉</span><h1>将棋の囲い図鑑</h1><span class="sub">先手の囲いを盤面で見比べる</span></div>
+  <div class="seg nav" id="viewSeg" role="group" aria-label="画面の切り替え">
+    <button data-value="castle">囲い</button>
+    <button data-value="tactic">戦法</button>
+    <button data-value="cluster">分類マップ</button>
+  </div>
   <div class="setting">
     <span class="lbl">駒の表示</span>
     <div class="seg" id="modeSeg">
@@ -35,45 +40,61 @@
   <label class="switch"><input type="checkbox" id="skeleton"> 骨格線</label>
 </header>
 
+<!-- 各パネルは view-pane を画面ごとに持つ。盤（boardarea）だけは囲い・戦法で共有する -->
 <div class="app">
   <!-- 選ぶ -->
-  <nav class="panel glass rail" aria-label="囲いの一覧">
-    <div class="seg wide" id="sideSeg">
-      <button data-value="ibisha">居飛車</button>
-      <button data-value="furibisha">振り飛車</button>
+  <nav class="panel glass rail" aria-label="一覧">
+    <div class="view-pane" data-view="castle">
+      <div class="seg wide" id="sideSeg">
+        <button data-value="ibisha">居飛車</button>
+        <button data-value="furibisha">振り飛車</button>
+      </div>
+      <div class="fchips" id="familyChips" role="group" aria-label="系統で絞り込む"></div>
+      <div class="rail-h"><span class="count" id="railCount"></span><span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動</span></div>
+      <div class="cards" id="cards"></div>
     </div>
-    <div class="fchips" id="familyChips" role="group" aria-label="系統で絞り込む"></div>
-    <div class="rail-h"><span class="count" id="railCount"></span><span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動</span></div>
-    <div class="cards" id="cards"></div>
+    <div class="view-pane pane-fill" data-view="tactic" id="tacticRail"></div>
+    <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
   </nav>
 
   <!-- 見る -->
   <main class="panel glass stage">
-    <div class="stage-h">
-      <div class="ttl" id="ttl"><h2 id="title"></h2><div class="rd"><span id="reading"></span><span class="setup" id="setup"></span></div></div>
-    </div>
-    <div class="boardarea">
-      <div class="boardwrap">
-        <div class="flabels" id="files"></div><div></div>
-        <div class="board" id="board"></div>
-        <div class="rlabels" id="ranks"></div>
+    <div class="view-pane" data-view="castle">
+      <div class="stage-h">
+        <div class="ttl" id="ttl"><h2 id="title"></h2><div class="rd"><span id="reading"></span><span class="setup" id="setup"></span></div></div>
+      </div>
+      <div class="stage-f">
+        <span class="legend" id="legend"></span>
+        <span class="hand" id="hand"></span>
       </div>
     </div>
-    <div class="stage-f">
-      <span class="legend" id="legend"></span>
-      <span class="hand" id="hand"></span>
+    <div class="view-pane" data-view="tactic" id="tacticStage"></div>
+    <div class="view-pane pane-fill" data-view="cluster" id="clusterStage"></div>
+    <!-- 盤: 囲い・戦法で共有（BoardView / OverlayView は1組だけ） -->
+    <div class="view-pane board-pane" data-view="castle tactic">
+      <div class="boardarea">
+        <div class="boardwrap">
+          <div class="flabels" id="files"></div><div></div>
+          <div class="board" id="board"></div>
+          <div class="rlabels" id="ranks"></div>
+        </div>
+      </div>
     </div>
   </main>
 
   <!-- 読む -->
   <aside class="panel glass detail">
-    <div class="seg small wide tabs" id="detailTabs">
-      <button data-value="overview">概要</button>
-      <button data-value="proscons">長所・短所</button>
-      <button data-value="attacks">攻め筋</button>
-      <button data-value="sources">出典</button>
+    <div class="view-pane" data-view="castle">
+      <div class="seg small wide tabs" id="detailTabs">
+        <button data-value="overview">概要</button>
+        <button data-value="proscons">長所・短所</button>
+        <button data-value="attacks">攻め筋</button>
+        <button data-value="sources">出典</button>
+      </div>
+      <div class="detail-body" id="detail"></div>
     </div>
-    <div class="detail-body" id="detail"></div>
+    <div class="view-pane pane-fill" data-view="tactic" id="tacticDetail"></div>
+    <div class="view-pane pane-fill" data-view="cluster" id="clusterDetail"></div>
   </aside>
 </div>
 

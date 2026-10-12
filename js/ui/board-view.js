@@ -61,7 +61,7 @@ window.Kakoi = window.Kakoi || {};
 
     _pieceClass(x, mode) {
       if (x.owner === 'gote') return 'gote';
-      if (x.role === 'core') return 'core';
+      if (x.role === 'core' || x.role === 'lead') return 'core';
       return mode === 'core' ? 'hidden' : mode === 'dim' ? 'off' : '';
     }
 
