@@ -4,641 +4,95 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>将棋の囲い図鑑</title>
-<style>
-  /* ===== tokens ===== */
-  :root {
-    --bg-1:#ebe5da; --bg-2:#ddd6ca; --orb-a:rgba(212,150,80,.38); --orb-b:rgba(104,124,166,.30); --orb-c:rgba(196,92,60,.16);
-    --glass:rgba(255,255,255,.38); --glass-2:rgba(255,255,255,.62); --glass-line:rgba(255,255,255,.7); --glass-hi:rgba(255,255,255,.95);
-    --glass-shadow:0 1px 1px rgba(60,40,20,.04), 0 24px 60px -28px rgba(70,45,20,.45);
-    --fg:#27231d; --muted:#7a7266; --faint:rgba(60,45,30,.08);
-    --accent:#c0532c; --accent-2:#a8803f; --accent-soft:rgba(192,83,44,.12);
-    --wood-1:#ebcf98; --wood-2:#d7ad66; --wood-line:rgba(92,60,18,.5);
-    --piece-1:#fdf5df; --piece-2:#ead3a1; --piece-edge-1:#fffaf0; --piece-edge-2:#b48a4c; --ink:#1f1b15; --core:#bd2c1e;
-    --good:#4f8a4a; --bad:#bd3b2a; --heat:38,112,98;
-    --noise:.05;
-    --mincho:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
-    --ease:cubic-bezier(.2,.8,.2,1);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg-1:#0e1014; --bg-2:#151b24; --orb-a:rgba(196,132,62,.20); --orb-b:rgba(62,84,140,.26); --orb-c:rgba(192,83,44,.12);
-      --glass:rgba(255,255,255,.04); --glass-2:rgba(255,255,255,.075); --glass-line:rgba(255,255,255,.08); --glass-hi:rgba(255,255,255,.16);
-      --glass-shadow:0 1px 1px rgba(0,0,0,.2), 0 30px 70px -30px rgba(0,0,0,.8);
-      --fg:#ece6db; --muted:#9c968a; --faint:rgba(255,255,255,.06);
-      --accent:#e0714a; --accent-2:#cfa76a; --accent-soft:rgba(224,113,74,.14);
-      --wood-1:#c8a265; --wood-2:#a9814a; --wood-line:rgba(40,24,6,.6);
-      --piece-1:#f5e8c8; --piece-2:#d9bd86; --piece-edge-1:#fff6e0; --piece-edge-2:#8f6a33; --core:#c42a1c;
-      --good:#8cc788; --bad:#f08a72; --heat:120,205,185;
-      --noise:.07;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg-1:#0e1014; --bg-2:#151b24; --orb-a:rgba(196,132,62,.20); --orb-b:rgba(62,84,140,.26); --orb-c:rgba(192,83,44,.12);
-    --glass:rgba(255,255,255,.04); --glass-2:rgba(255,255,255,.075); --glass-line:rgba(255,255,255,.08); --glass-hi:rgba(255,255,255,.16);
-    --glass-shadow:0 1px 1px rgba(0,0,0,.2), 0 30px 70px -30px rgba(0,0,0,.8);
-    --fg:#ece6db; --muted:#9c968a; --faint:rgba(255,255,255,.06);
-    --accent:#e0714a; --accent-2:#cfa76a; --accent-soft:rgba(224,113,74,.14);
-    --wood-1:#c8a265; --wood-2:#a9814a; --wood-line:rgba(40,24,6,.6);
-    --piece-1:#f5e8c8; --piece-2:#d9bd86; --piece-edge-1:#fff6e0; --piece-edge-2:#8f6a33; --core:#c42a1c;
-    --good:#8cc788; --bad:#f08a72; --heat:120,205,185;
-    --noise:.07;
-  }
-
-  /* ===== base & atmosphere ===== */
-  * { box-sizing:border-box; }
-  html, body { height:100%; }
-  html { background:var(--bg-2); }
-  body { margin:0; font:14px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg);
-         background:linear-gradient(160deg,var(--bg-1),var(--bg-2)) fixed;
-         display:grid; grid-template-rows:auto minmax(0,1fr); height:100dvh; overflow:hidden; }
-  button { font:inherit; color:inherit; }
-  .atmo { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
-  .atmo b { position:absolute; border-radius:50%; filter:blur(70px); animation:drift 38s ease-in-out infinite alternate; }
-  .atmo b:nth-child(1) { width:46vw; height:46vw; left:-10vw; top:-14vw; background:var(--orb-a); }
-  .atmo b:nth-child(2) { width:52vw; height:52vw; right:-14vw; bottom:-22vw; background:var(--orb-b); animation-duration:46s; animation-delay:-12s; }
-  .atmo b:nth-child(3) { width:30vw; height:30vw; left:38vw; top:30vh; background:var(--orb-c); animation-duration:54s; animation-delay:-30s; }
-  .atmo::after { content:""; position:absolute; inset:0; opacity:var(--noise); mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-  @keyframes drift { 0% { transform:translate(0,0) scale(1); } 50% { transform:translate(6vw,4vh) scale(1.08); } 100% { transform:translate(-4vw,6vh) scale(.95); } }
-
-  .glass { background:linear-gradient(180deg,var(--glass-2),var(--glass)); border:1px solid var(--glass-line);
-           -webkit-backdrop-filter:blur(26px) saturate(150%); backdrop-filter:blur(26px) saturate(150%);
-           box-shadow:inset 0 1px 0 var(--glass-hi), var(--glass-shadow); }
-
-  /* ===== header ===== */
-  header { display:flex; align-items:center; gap:14px; margin:14px 20px; padding:8px 10px 8px 22px; border-radius:20px; flex-wrap:wrap; }
-  .brand { display:flex; align-items:center; gap:12px; margin-right:auto; }
-  .brand .mark { width:26px; height:28px; display:grid; place-items:center; padding-top:4px; font:700 14px var(--mincho); color:var(--core);
-                 background:linear-gradient(160deg,var(--piece-1),var(--piece-2)); clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
-  .brand h1 { margin:0; font:700 19px/1 var(--mincho); letter-spacing:.12em; }
-  .brand span { font-size:12px; color:var(--muted); letter-spacing:.04em; }
-  .seg { position:relative; display:inline-flex; padding:4px; gap:0; border-radius:999px; background:var(--faint); box-shadow:inset 0 1px 2px rgba(0,0,0,.08); }
-  .seg .knob { position:absolute; top:4px; bottom:4px; left:0; width:0; border-radius:999px; background:linear-gradient(180deg,var(--glass-hi),var(--glass-2));
-               box-shadow:inset 0 1px 0 var(--glass-hi), 0 2px 8px -2px rgba(0,0,0,.25); transition:transform .35s var(--ease), width .35s var(--ease); }
-  .seg button { position:relative; z-index:1; border:0; background:none; padding:6px 15px; border-radius:999px; cursor:pointer; font-size:13px; color:var(--muted); transition:color .2s; }
-  .seg button:hover { color:var(--fg); }
-  .seg button[aria-pressed="true"] { color:var(--fg); font-weight:600; }
-  .seg.side button { padding:7px 22px; font-size:14px; letter-spacing:.06em; }
-  .seg.side button[aria-pressed="true"] { color:var(--accent); }
-  .switch { display:inline-flex; align-items:center; gap:9px; font-size:13px; color:var(--muted); cursor:pointer; user-select:none; padding:0 8px; }
-  .switch input { appearance:none; width:38px; height:22px; border-radius:999px; background:var(--faint); box-shadow:inset 0 1px 3px rgba(0,0,0,.2); position:relative; margin:0; cursor:pointer; transition:background .25s; }
-  .switch input::after { content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:linear-gradient(180deg,#fff,#e9e4da); box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .3s var(--ease); }
-  .switch input:checked { background:var(--accent); }
-  .switch input:checked::after { transform:translateX(16px); }
-  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-
-  /* ===== layout ===== */
-  .app { display:grid; grid-template-columns:minmax(250px,330px) minmax(0,1fr) minmax(280px,340px); gap:16px; padding:0 20px 20px; min-height:0; }
-  .panel { border-radius:24px; min-height:0; }
-
-  /* ===== rail ===== */
-  .rail { display:grid; grid-template-rows:auto minmax(0,1fr); padding:14px; gap:10px; }
-  .rail-h { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--muted); padding:2px 4px 0; }
-  .rail-h #railTitle { color:var(--fg); font-weight:600; letter-spacing:.04em; }
-  .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr)); gap:9px; min-height:0; perspective:700px; }
-  .card { --rx:0deg; --ry:0deg; --mx:50%; --my:0%; position:relative; display:grid; grid-template-rows:minmax(0,1fr) auto; gap:5px; padding:7px 7px 6px;
-          border:1px solid var(--glass-line); border-radius:14px; cursor:pointer; min-height:0; overflow:hidden;
-          background:linear-gradient(180deg,var(--glass-2),var(--glass)); box-shadow:inset 0 1px 0 var(--glass-hi);
-          transform:rotateX(var(--rx)) rotateY(var(--ry)); transition:transform .25s var(--ease), border-color .2s, box-shadow .25s, background .25s;
-          animation:cardIn .45s var(--ease) backwards; animation-delay:calc(var(--i) * 25ms); }
-  .card::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .25s;
-                 background:radial-gradient(circle at var(--mx) var(--my), var(--glass-hi), transparent 55%); }
-  .card:hover::after { opacity:.45; }
-  .card:hover { box-shadow:inset 0 1px 0 var(--glass-hi), 0 12px 24px -14px rgba(0,0,0,.45); }
-  .card[aria-pressed="true"] { border-color:var(--accent); background:linear-gradient(180deg,var(--accent-soft),var(--glass-2));
-          box-shadow:inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--accent), 0 14px 30px -16px var(--accent); }
-  @keyframes cardIn { from { opacity:0; transform:translateY(6px) scale(.97); } }
-  .card svg { width:100%; height:100%; display:block; filter:drop-shadow(0 3px 5px rgba(60,35,5,.25)); }
-  .card .nm { font-size:11.5px; line-height:1.25; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted); }
-  .card[aria-pressed="true"] .nm { font-weight:600; color:var(--fg); }
-  .mini-bg { fill:url(#wood); }
-  .mini-ln { stroke:var(--wood-line); stroke-width:.35; }
-  .mini-pc { font:700 8.4px var(--mincho); fill:var(--ink); text-anchor:middle; dominant-baseline:central; }
-  .mini-pc.core { fill:var(--core); }
-  .mini-pc.off { opacity:.28; }
-
-  /* ===== stage ===== */
-  .stage { display:grid; grid-template-rows:auto minmax(0,1fr) auto; padding:18px 22px 14px; gap:10px; }
-  .stage-h { display:flex; align-items:center; gap:12px; }
-  .stage-h .ttl { margin-right:auto; min-width:0; }
-  .stage-h h2 { margin:0; font:700 24px/1.25 var(--mincho); letter-spacing:.06em; }
-  .stage-h .rd { font-size:12px; color:var(--muted); letter-spacing:.1em; }
-  .ttl.swap { animation:swap .45s var(--ease); }
-  @keyframes swap { from { opacity:0; transform:translateY(4px); filter:blur(3px); } }
-  .nav { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex-shrink:0; }
-  .nav button { width:34px; height:34px; border-radius:50%; border:1px solid var(--glass-line); background:linear-gradient(180deg,var(--glass-2),var(--glass));
-                box-shadow:inset 0 1px 0 var(--glass-hi); cursor:pointer; font-size:17px; line-height:1; display:grid; place-items:center; transition:color .2s, transform .2s var(--ease); }
-  .nav button:hover { color:var(--accent); transform:scale(1.06); }
-  .boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
-  .boardwrap { display:grid; grid-template-columns:minmax(0,1fr) 22px; grid-template-rows:22px auto;
-               width:min(100cqw, calc((100cqh - 22px) * 9 / 9.6 + 22px)); }
-  .flabels { display:grid; grid-template-columns:repeat(9,1fr); font-size:11px; color:var(--muted); text-align:center; align-items:end; padding-bottom:4px; }
-  .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:11px var(--mincho); color:var(--muted); align-items:center; justify-items:center; }
-  .board { position:relative; display:grid; grid-template-columns:repeat(9,1fr); aspect-ratio:9/9.6; border-radius:8px; overflow:hidden;
-           background:
-             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .09' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .2 0 0 0 0 .05 0 0 0 .75 -.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0/100% 100%,
-             linear-gradient(135deg,var(--wood-1),var(--wood-2));
-           box-shadow:0 0 0 1px var(--wood-line), inset 0 1px 0 rgba(255,240,210,.5), 0 2px 4px rgba(40,20,0,.2), 0 30px 60px -24px rgba(40,20,0,.65); }
-  .board::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:3;
-                  background:linear-gradient(125deg, rgba(255,250,235,.22) 0%, rgba(255,250,235,0) 38%, rgba(255,250,235,0) 70%, rgba(255,250,235,.08) 100%); }
-  .sq { position:relative; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line); display:flex; align-items:center; justify-content:center; container-type:size; }
-  .sq:nth-child(9n) { border-right:0; }
-  .sq:nth-child(n+73) { border-bottom:0; }
-  .sq .h { position:absolute; inset:0; background:rgba(var(--heat), calc(var(--h) * .16)); animation:fade .3s var(--ease); }
-  .sq .h b { position:absolute; right:3px; top:1px; z-index:2; font-size:max(10px, 24cqh); font-weight:700; color:rgb(var(--heat)); line-height:1.2; text-shadow:0 0 3px rgba(255,245,225,.9); }
-  @keyframes fade { from { opacity:0; } }
-  .sq.flash { box-shadow:inset 0 0 0 3px var(--accent); }
-  .pc { width:84%; height:90%; position:relative; z-index:1; filter:drop-shadow(0 2px 2px rgba(60,35,5,.4)); transition:opacity .3s var(--ease); }
-  .pc.core::before { content:""; position:absolute; left:-12%; right:-12%; bottom:-10%; height:60%; border-radius:50%;
-                     background:radial-gradient(closest-side, rgba(200,50,30,.45), rgba(200,50,30,0)); filter:blur(3px); }
-  .pc i { position:absolute; inset:0; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
-          background:linear-gradient(160deg,var(--piece-edge-1) 0%,var(--piece-edge-2) 100%); font-style:normal; }
-  .pc i::before { content:""; position:absolute; inset:1.5px 1.5px 1px; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
-          background:linear-gradient(115deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%), linear-gradient(170deg,var(--piece-1),var(--piece-2)); }
-  .pc i span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-top:12%; font:700 min(58cqh,60cqw)/1 var(--mincho); color:var(--ink); text-shadow:0 1px 0 rgba(255,255,255,.5); }
-  .pc.core i span { color:var(--core); }
-  .pc.off { opacity:.28; filter:none; }
-  .pc.hidden { opacity:0; }
-  .stage-f { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; color:var(--muted); min-height:20px; }
-  .stage-f .legend { display:flex; align-items:center; gap:7px; }
-  .stage-f .legend i { width:10px; height:10px; border-radius:3px; display:inline-block; }
-  #hand { padding:2px 10px; border-radius:999px; background:var(--faint); }
-  #hand:empty { display:none; }
-
-  /* ===== detail ===== */
-  .detail { padding:22px; overflow:auto; display:flex; flex-direction:column; gap:18px; }
-  .detail > * { animation:swap .45s var(--ease) both; }
-  .detail > :nth-child(2) { animation-delay:40ms; } .detail > :nth-child(3) { animation-delay:80ms; }
-  .detail > :nth-child(4) { animation-delay:120ms; } .detail > :nth-child(5) { animation-delay:160ms; }
-  .tags { display:flex; flex-wrap:wrap; gap:6px; }
-  .tag { font-size:11px; border-radius:999px; padding:2px 11px; background:var(--faint); border:1px solid var(--glass-line); color:var(--muted); letter-spacing:.04em; }
-  .tag:first-child { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 40%, transparent); background:var(--accent-soft); }
-  .desc { margin:0; font-size:13.5px; line-height:1.9; }
-  .note { font-size:11px; color:var(--muted); margin:0; }
-  .note a { color:var(--accent-2); }
-  .sec h3 { margin:0 0 9px; font-size:11px; letter-spacing:.14em; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:8px; }
-  .sec h3::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--glass-line),transparent); }
-  .chips { display:flex; flex-wrap:wrap; gap:6px; }
-  .chip { display:inline-flex; align-items:center; gap:7px; padding:3px 11px 3px 5px; border-radius:10px; background:var(--faint); border:1px solid var(--glass-line); font-size:12px; font-variant-numeric:tabular-nums; cursor:default; transition:border-color .2s, transform .2s var(--ease); }
-  .chip:hover { border-color:var(--accent); transform:translateY(-1px); }
-  .chip b { width:20px; height:22px; display:grid; place-items:center; padding-top:3px; font:700 12px var(--mincho); color:var(--core);
-            background:linear-gradient(170deg,var(--piece-1),var(--piece-2)); clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
-  .pc-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; font-size:13px; line-height:1.6; }
-  .pc-list li { display:grid; grid-template-columns:18px 1fr; gap:6px; }
-  .pc-list li::before { content:"＋"; font-weight:700; color:var(--good); }
-  .pc-list.cons li::before { content:"－"; color:var(--bad); }
-  .detail .src { margin-top:auto; padding-top:10px; border-top:1px solid var(--glass-line); }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation:none !important; transition:none !important; }
-  }
-
-  /* ===== narrow: fall back to scrolling ===== */
-  @media (max-width:980px) {
-    body { height:auto; overflow:auto; display:block; }
-    header { margin:12px 16px; }
-    .app { grid-template-columns:1fr; padding:0 16px 16px; }
-    .cards { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); grid-template-rows:none; grid-auto-rows:110px; }
-    .stage { height:min(118vw, 82vh); }
-    .detail { overflow:visible; }
-  }
-</style>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/board.css">
 </head>
 <body>
 <div class="atmo" aria-hidden="true"><b></b><b></b><b></b></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--wood-1)"/><stop offset="1" style="stop-color:var(--wood-2)"/></linearGradient></defs>
 </svg>
+
+<!-- 全体の表示設定 -->
 <header class="glass">
-  <div class="brand"><span class="mark" aria-hidden="true">玉</span><h1>将棋の囲い図鑑</h1><span>先手の囲いを盤面で見比べる</span></div>
-  <div class="seg side" id="sideSeg">
-    <span class="knob"></span>
-    <button data-side="left">居飛車</button>
-    <button data-side="right">振り飛車</button>
+  <div class="brand"><span class="mark" aria-hidden="true">玉</span><h1>将棋の囲い図鑑</h1><span class="sub">先手の囲いを盤面で見比べる</span></div>
+  <div class="setting">
+    <span class="lbl">駒の表示</span>
+    <div class="seg" id="modeSeg">
+      <button data-value="all">全駒</button>
+      <button data-value="dim">囲いを強調</button>
+      <button data-value="core">囲いのみ</button>
+    </div>
   </div>
-  <div class="seg" id="modeSeg" title="囲い以外の駒の表示">
-    <span class="knob"></span>
-    <button data-mode="all">全駒</button>
-    <button data-mode="dim">囲いを強調</button>
-    <button data-mode="core">囲いのみ</button>
+  <label class="switch"><input type="checkbox" id="heat"> 守りの利き</label>
+  <div class="setting" id="heatScopeWrap">
+    <div class="seg small" id="heatScopeSeg" title="利きを数える駒">
+      <button data-value="core">囲いの駒</button>
+      <button data-value="all">全ての駒</button>
+    </div>
   </div>
-  <label class="switch"><input type="checkbox" id="showHeat"> 利きの数</label>
 </header>
 
 <div class="app">
-  <nav class="panel glass rail">
-    <div class="rail-h"><span id="railTitle"></span><span>← → で切り替え</span></div>
+  <!-- 選ぶ -->
+  <nav class="panel glass rail" aria-label="囲いの一覧">
+    <div class="seg wide" id="sideSeg">
+      <button data-value="ibisha">居飛車</button>
+      <button data-value="furibisha">振り飛車</button>
+    </div>
+    <div class="rail-h"><span class="count" id="railCount"></span><span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動</span></div>
     <div class="cards" id="cards"></div>
   </nav>
 
+  <!-- 見る -->
   <main class="panel glass stage">
     <div class="stage-h">
-      <div class="ttl" id="ttl"><h2 id="title"></h2><div class="rd" id="reading"></div></div>
-      <div class="nav">
-        <button id="prev" aria-label="前の囲い">‹</button>
-        <span id="count"></span>
-        <button id="next" aria-label="次の囲い">›</button>
-      </div>
+      <div class="ttl" id="ttl"><h2 id="title"></h2><div class="rd"><span id="reading"></span><span class="setup" id="setup"></span></div></div>
     </div>
     <div class="boardarea">
       <div class="boardwrap">
-        <div class="flabels" id="flabels"></div><div></div>
+        <div class="flabels" id="files"></div><div></div>
         <div class="board" id="board"></div>
-        <div class="rlabels" id="rlabels"></div>
+        <div class="rlabels" id="ranks"></div>
       </div>
     </div>
     <div class="stage-f">
       <span class="legend" id="legend"></span>
-      <span id="hand"></span>
+      <span class="hand" id="hand"></span>
     </div>
   </main>
 
-  <aside class="panel glass detail" id="detail"></aside>
+  <!-- 読む -->
+  <aside class="panel glass detail">
+    <div class="seg small wide tabs" id="detailTabs">
+      <button data-value="overview">概要</button>
+      <button data-value="proscons">長所・短所</button>
+      <button data-value="attacks">攻め筋</button>
+      <button data-value="sources">出典</button>
+    </div>
+    <div class="detail-body" id="detail"></div>
+  </aside>
 </div>
 
-<script>
-// 駒の表記: 駒1文字 + 筋 + 段（例: "玉78" = 7八玉）。先手のみ。
-const RIGHT = '香19 桂29 飛28 歩17 歩26';
-const LEFT = '香99 桂89 角77 銀67 飛68 歩96 歩87 歩76 歩66 歩56';
-const CASTLES = [
-  {
-    id:'anaguma', name:'居飛車穴熊', reading:'いびしゃあなぐま', group:'穴熊', side:'left',
-    core:'玉99 香98 桂89 銀88 金79 金78',
-    rest:'角77 銀57 歩97 歩87 歩76 歩66 歩56 歩47 歩37 ' + RIGHT,
-    tags:['対振り飛車','持久戦','堅さ最強クラス'],
-    desc:'玉を隅の9九にもぐらせ、香を9八に上げて蓋をし、銀・金で固める。王手がかかりにくく「ゼット（絶対に詰まない形）」になりやすいのが最大の特徴。',
-    pros:['王手がかかりにくく、終盤で一手差の攻め合いに強い','金銀がくっついていて崩れにくい'],
-    cons:['組むのに手数がかかる','端攻め（9筋）と、玉が狭いので一度崩されると逃げ場がない'],
-  },
-  {
-    id:'funa', name:'舟囲い（7九銀型）', reading:'ふながこい', group:'舟囲い', side:'left',
-    core:'玉78 銀79 金69 金58',
-    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
-    tags:['対振り飛車','急戦','基本形'],
-    desc:'玉を7八に移動し、5八金・6九金で守る簡易な囲い。手数が少なく、右銀を2六から棒銀などで繰り出して急戦を仕掛けるときの土台になる。',
-    pros:['3〜4手で完成し、すぐに攻めに移れる','左右に広く、横からの攻めに比較的強い'],
-    cons:['玉頭（7筋・8筋の上部）が薄い','6九の金が狙われると、取り返す駒が玉しかないことがある'],
-  },
-  {
-    id:'funa68gin', name:'舟囲い（6八銀型）', reading:'ふながこい ろくはちぎんがた', group:'舟囲い', side:'left',
-    core:'玉78 銀68 金69 金58',
-    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
-    tags:['対振り飛車','急戦'],
-    desc:'基本形から左銀を7九→6八へ上げた形。6七・5七・7七に利きが増え、中央が厚くなる。',
-    pros:['中央・6筋の守りが強化される','金銀の連結が基本形よりよい'],
-    cons:['7九が空き、玉の下が薄くなる','角の利きを使った端・玉頭攻めには相変わらず注意'],
-  },
-  {
-    id:'elmo', name:'舟囲い（7九金型）＝エルモ囲い', reading:'えるもがこい', group:'舟囲い', side:'left',
-    core:'玉78 銀68 金79 金58',
-    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
-    tags:['対振り飛車','急戦','コンピュータ発'],
-    desc:'将棋ソフト「elmo」が多用して広まった形。舟囲いの6九金を7九へ寄せ、6八銀と組み合わせる。7九金が玉の真下で銀とつながるのが要。',
-    pros:['金銀の連結がよく、6九の弱点が解消される','7九金が8八・8九にも利き、角打ちや左からの攻めに強い'],
-    cons:['5八金が離れ気味になりやすい','上部（玉頭）からの攻めには舟囲い同様に薄い'],
-  },
-  {
-    id:'funa68kin', name:'舟囲い（6八金型）', reading:'ふながこい ろくはちきんがた', group:'舟囲い', side:'left',
-    core:'玉78 金68 金58',
-    rest:'銀57 角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
-    tags:['対振り飛車','急戦'],
-    desc:'左銀を7九から5七へ繰り出して急戦を仕掛けるときの舟囲い。左金を6八に上げ、6八金・5八金を横に並べて中央を守る。',
-    pros:['左銀を攻めに使える','金2枚が横に並び、6七・5七方面に利きが多い'],
-    cons:['7九・6九が空き、玉の下段（底）が薄い','金2枚だけなので堅さは控えめ'],
-  },
-  {
-    id:'yagura', name:'矢倉囲い（金矢倉）', reading:'やぐらがこい', group:'矢倉', side:'left',
-    core:'玉88 銀77 金78 金67 香99 桂89',
-    rest:'角68 銀26 飛28 桂29 香19 歩97 歩87 歩76 歩66 歩56 歩47 歩37 歩25 歩17',
-    tags:['相居飛車','持久戦','将棋の純文学'],
-    desc:'相居飛車の代表的な囲い。8八玉を7七銀・7八金・6七金で包み、上からの攻めに強い。角は6八に引いて使う。',
-    pros:['上部（正面）からの攻めに非常に強い','金銀3枚がまとまり、バランスがよい'],
-    cons:['組むのに手数がかかる','横（飛車）からの攻めや、端攻め（9筋）にはやや弱い'],
-  },
-  {
-    id:'kani', name:'カニ囲い', reading:'かにがこい', group:'矢倉', side:'left',
-    core:'玉69 銀68 金78 金58',
-    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩97 歩87 歩76 歩67 歩57 歩47 歩37 歩25 歩17',
-    tags:['相居飛車','急戦矢倉'],
-    desc:'金・銀・金を8段目に横一列に並べ、その下（6九）に玉を置く。形がカニに似ていることから。急戦矢倉や矢倉の序盤でよく現れる。',
-    pros:['手数が少なく、矢倉への発展もできる','左右どちらにも対応しやすい'],
-    cons:['玉が中央に近く、戦場から近い','玉が横にしか逃げられず、堅さはそこそこ'],
-  },
-  {
-    id:'kabuto', name:'兜囲い（兜矢倉）', reading:'かぶとがこい', group:'矢倉', side:'left',
-    core:'玉68 銀77 金78 金58',
-    rest:'銀26 香99 桂89 飛28 桂29 香19 歩97 歩87 歩76 歩67 歩57 歩47 歩37 歩25 歩17',
-    hand:'角',
-    tags:['相居飛車','急戦'],
-    desc:'7七銀・7八金・5八金で6八玉をかぶせるように守る形。玉の頭上を銀・金がふさぎ、兜をかぶったように見える。角換わりなどで角を持ち駒にしているときに現れやすい。',
-    pros:['手数が少ない','7七銀で玉頭・7筋の受けが利く'],
-    cons:['玉が中央寄りで戦場に近い','6九・7九が空いており下段が薄い'],
-  },
-  {
-    id:'gangi', name:'雁木囲い（旧型）', reading:'がんぎがこい', group:'雁木', side:'left',
-    core:'玉69 銀67 銀57 金78 金58',
-    rest:'角88 香99 桂89 歩96 歩87 歩76 歩66 歩55 歩46 歩37 ' + RIGHT,
-    tags:['相居飛車','江戸時代からある'],
-    desc:'6七銀・5七銀と銀を2枚並べ、その下に7八金・5八金、玉は6九。銀の並びが雪国の「雁木（がんぎ）」に似ていることから。角が8八のまま使えるのも特徴。',
-    pros:['中央が非常に厚く、上部からの攻めに強い','角を初期位置のまま攻めに使える'],
-    cons:['玉が中央にいて、横からの攻めに弱い','4七・5七の銀が上がると玉の周りが薄くなる'],
-  },
-  {
-    id:'tsunogin', name:'ツノ銀雁木', reading:'つのぎんがんぎ', group:'雁木', side:'left',
-    core:'玉69 銀67 銀47 金78 金58',
-    rest:'角88 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩45 歩36 ' + RIGHT,
-    tags:['相居飛車','現代雁木','ソフト流行'],
-    desc:'右銀を5七ではなく4七に置く雁木。銀2枚がツノのように左右に分かれる。2017年頃からソフトの影響で再流行した「新しい雁木」の代表形。',
-    pros:['左右に広く、バランスがよい','4七銀が右側（攻め筋）も守る'],
-    cons:['5七が空き、中央が旧型より薄い','玉の囲いとしては堅くない'],
-  },
-  {
-    id:'bonanza', name:'ボナンザ囲い', reading:'ぼなんざがこい', group:'その他', side:'left',
-    core:'玉78 銀77 金68 金58',
-    rest:'銀47 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
-    hand:'角',
-    tags:['角換わり','コンピュータ発'],
-    desc:'将棋ソフト「Bonanza」が指して有名になった形。7八玉の上に7七銀、横に6八金・5八金。角換わりで現れやすい（角は持ち駒）。',
-    pros:['金銀がまとまり、手数が少ない','角打ちのスキが少ない'],
-    cons:['矢倉ほどの上部の厚みはない','8筋・9筋方面への逃げ道が狭い'],
-  },
-  {
-    id:'hidarimino', name:'左美濃', reading:'ひだりみの', group:'その他', side:'left',
-    core:'玉88 銀78 金69 金58',
-    rest:'角77 銀48 香99 桂89 歩96 歩86 歩76 歩66 歩56 歩46 歩37 ' + RIGHT,
-    tags:['対振り飛車','持久戦'],
-    desc:'振り飛車の美濃囲いを左右反転させた形。8八玉・7八銀・6九金・5八金。天守閣美濃や銀冠へ発展できる。',
-    pros:['横からの攻めに強い','穴熊より手数が少なく、銀冠などに発展できる'],
-    cons:['玉頭（8筋）からの攻めに注意','角筋（7七角）との兼ね合いで形が決まりやすい'],
-  },
-  {
-    id:'mino', name:'美濃囲い（本美濃）', reading:'みのがこい', group:'振り飛車', side:'right',
-    core:'玉28 銀38 金49 金58',
-    rest:LEFT + ' 香19 桂29 歩16 歩27 歩37 歩47',
-    tags:['振り飛車','基本の囲い'],
-    desc:'振り飛車の代表的な囲い。2八玉を3八銀・4九金・5八金で守る。少ない手数で組めて横からの攻めに強く、「振り飛車には美濃」と言われる。',
-    pros:['手数が少なく、堅さとのバランスがよい','横（飛車）からの攻めに強い','高美濃・銀冠へ発展できる'],
-    cons:['上部（玉頭）からの攻めに弱い','端攻め（1筋）と、2七・3七への攻めに注意'],
-  },
-  {
-    id:'katamino', name:'片美濃囲い', reading:'かたみのがこい', group:'振り飛車', side:'right',
-    core:'玉28 銀38 金49',
-    rest:'香99 桂89 角77 銀67 飛68 金78 歩96 歩87 歩76 歩66 歩56 香19 桂29 歩16 歩27 歩37 歩47',
-    tags:['振り飛車','急戦向き'],
-    desc:'美濃囲いから5八金を省いた形。もう一枚の金は左側に残して攻めや中央の守りに使う。手数が少なく、早い戦いになったときによく現れる。',
-    pros:['さらに少ない手数で組める','左金を攻めに使える'],
-    cons:['5八が空いていて中央・横からの攻めに弱い','本美濃より薄い'],
-  },
-  {
-    id:'takamino', name:'高美濃囲い', reading:'たかみのがこい', group:'振り飛車', side:'right',
-    core:'玉28 銀38 金47 金49',
-    rest:LEFT + ' 香19 桂29 歩16 歩27 歩37 歩46',
-    tags:['振り飛車','持久戦'],
-    desc:'本美濃から4六歩・4七金と上部を厚くした形。玉頭や4筋・3筋からの攻めに強くなる。銀冠への途中経過でもある。',
-    pros:['本美濃より上部に強い','金が4七で中央を見張る'],
-    cons:['4七金が浮き、横からの攻めは本美濃よりやや弱い','5八が空く'],
-  },
-  {
-    id:'gincan', name:'銀冠', reading:'ぎんかんむり', group:'振り飛車', side:'right',
-    core:'玉28 銀27 金38 金47',
-    rest:LEFT + ' 香19 桂29 歩16 歩26 歩37 歩46',
-    tags:['振り飛車','持久戦','上部に強い'],
-    desc:'高美濃から3八銀を2七へ上げ、空いた3八に金を寄せた形。玉の頭に銀がかぶさり「冠」のように見える。上部からの攻めに非常に強い。',
-    pros:['玉頭（上部）からの攻めにとても強い','玉が広く、上へ逃げやすい'],
-    cons:['組むのに手数がかかる','下段（1九〜3九）が薄く、横からの攻めに注意'],
-  },
-  {
-    id:'diamond', name:'ダイヤモンド美濃', reading:'だいやもんどみの', group:'振り飛車', side:'right',
-    core:'玉28 銀38 金49 金58 銀47',
-    rest:'香99 桂89 角77 飛68 歩96 歩87 歩76 歩66 歩56 香19 桂29 歩16 歩27 歩37 歩46',
-    tags:['振り飛車','持久戦','金銀4枚'],
-    desc:'本美濃に4七銀を加え、金銀4枚で守る形。駒の並びがダイヤモンド形になる。堅いが、攻めに使える駒が減る。',
-    pros:['金銀4枚でとても堅い','上部・横どちらにも強い'],
-    cons:['攻めの駒が少なくなる','組むのに手数がかかる'],
-  },
-  {
-    id:'furianaguma', name:'振り飛車穴熊', reading:'ふりびしゃあなぐま', group:'振り飛車', side:'right',
-    core:'玉19 香18 桂29 銀28 金39 金38',
-    rest:LEFT + ' 歩16 歩27 歩37 歩47',
-    tags:['振り飛車','持久戦','堅さ最強クラス'],
-    desc:'居飛車穴熊の左右反転形。玉を1九にもぐらせ、1八香で蓋をして2八銀・3九金・3八金で固める。振り飛車の攻めを最後まで通しやすい。',
-    pros:['王手がかかりにくく、終盤の攻め合いに強い','金銀がくっついて崩れにくい'],
-    cons:['組むのに手数がかかる','端攻め（1筋）に弱く、崩れると逃げ場がない'],
-  },
-];
-
-// カード用の短い名前
-const SHORT = {
-  anaguma:'居飛車穴熊', funa:'舟囲い 7九銀', funa68gin:'舟囲い 6八銀', elmo:'エルモ囲い', funa68kin:'舟囲い 6八金',
-  yagura:'金矢倉', kani:'カニ囲い', kabuto:'兜矢倉', gangi:'雁木', tsunogin:'ツノ銀雁木', bonanza:'ボナンザ囲い', hidarimino:'左美濃',
-  mino:'本美濃', katamino:'片美濃', takamino:'高美濃', gincan:'銀冠', diamond:'ダイヤモンド美濃', furianaguma:'振り飛車穴熊',
-};
-const SIDE_LABEL = { left:'居飛車', right:'振り飛車' };
-
-const KANJI_NUM = ['','一','二','三','四','五','六','七','八','九'];
-const ZEN = ['','１','２','３','４','５','６','７','８','９'];
-const MOVES = {
-  玉:[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]],
-  金:[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[0,1]],
-  銀:[[-1,-1],[0,-1],[1,-1],[-1,1],[1,1]],
-  桂:[[-1,-2],[1,-2]],
-};
-
-function parse(str, core) {
-  return str.trim().split(/\s+/).filter(Boolean).map(t => ({ p:t[0], f:+t[1], r:+t[2], core }));
-}
-function piecesOf(c) {
-  const all = [...parse(c.core, true), ...parse(c.rest, false)];
-  // 重複チェック（データの打ち間違い検出）
-  const seen = new Set();
-  for (const x of all) { const k = x.f*10+x.r; if (seen.has(k)) console.warn(c.name, '重複', k); seen.add(k); }
-  return all;
-}
-
-function attackMap(pieces) {
-  const occ = new Set(pieces.map(x => x.f*10+x.r));
-  const n = Array.from({length:10}, () => Array(10).fill(0));
-  for (const x of pieces) {
-    if (!x.core) continue;
-    if (x.p === '香') {
-      for (let r = x.r - 1; r >= 1; r--) { n[x.f][r]++; if (occ.has(x.f*10+r)) break; }
-      continue;
-    }
-    for (const [dx, dy] of MOVES[x.p] || []) {
-      const f = x.f - dx, r = x.r + dy; // dx: 盤の右方向＝筋が減る
-      if (f >= 1 && f <= 9 && r >= 1 && r <= 9) n[f][r]++;
-    }
-  }
-  return n;
-}
-
-const $ = id => document.getElementById(id);
-const store = {
-  get(k) { try { return localStorage.getItem('shogi-castle:' + k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem('shogi-castle:' + k, v); } catch {} },
-};
-const state = { idx:0, mode:'dim', heat:false, shown:null, shownHeat:null };
-const visible = () => CASTLES.map((c, i) => i).filter(i => CASTLES[i].side === CASTLES[state.idx].side);
-
-// 玉側の6筋×4段を切り出したミニ盤
-function miniSVG(c) {
-  const at = new Map(piecesOf(c).map(x => [x.f*10+x.r, x]));
-  const f0 = c.side === 'right' ? 6 : 9, W = 10, H = 11;
-  let s = `<svg viewBox="0 0 60 44" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="60" height="44" rx="1.5"/>`;
-  for (let i = 1; i < 6; i++) s += `<line class="mini-ln" x1="${i*W}" y1="0" x2="${i*W}" y2="44"/>`;
-  for (let j = 1; j < 4; j++) s += `<line class="mini-ln" x1="0" y1="${j*H}" x2="60" y2="${j*H}"/>`;
-  for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) {
-    const x = at.get((f0 - i)*10 + (6 + j));
-    if (x) s += `<text class="mini-pc ${x.core ? 'core' : 'off'}" x="${i*W + W/2}" y="${j*H + H/2 + .5}">${x.p}</text>`;
-  }
-  return s + '</svg>';
-}
-
-function buildLabels() {
-  $('flabels').innerHTML = [9,8,7,6,5,4,3,2,1].map(f => `<div>${ZEN[f]}</div>`).join('');
-  $('rlabels').innerHTML = [1,2,3,4,5,6,7,8,9].map(r => `<div>${KANJI_NUM[r]}</div>`).join('');
-}
-
-function renderCards() {
-  const side = CASTLES[state.idx].side;
-  $('railTitle').textContent = `${SIDE_LABEL[side]}の囲い（${visible().length}）`;
-  $('cards').innerHTML = visible().map((i, n) => {
-    const c = CASTLES[i];
-    return `<button class="card" data-i="${i}" title="${c.name}" style="--i:${n}">${miniSVG(c)}<span class="nm">${SHORT[c.id] || c.name}</span></button>`;
-  }).join('');
-}
-
-const pieceClass = x => x.core ? 'core' : state.mode === 'core' ? 'hidden' : state.mode === 'dim' ? 'off' : '';
-
-function buildBoard(c, animate) {
-  const before = animate ? [...$('board').querySelectorAll('.pc')].map(el => ({ p:el.dataset.p, r:el.getBoundingClientRect() })) : [];
-  const pieces = piecesOf(c);
-  const at = new Map(pieces.map(x => [x.f*10+x.r, x]));
-  const hm = attackMap(pieces);
-  let html = '';
-  for (let r = 1; r <= 9; r++) for (let f = 9; f >= 1; f--) {
-    const x = at.get(f*10+r), h = hm[f][r];
-    html += `<div class="sq" data-sq="${f}${r}">`;
-    if (state.heat && h) html += `<span class="h" style="--h:${Math.min(h,4)}"><b>${h}</b></span>`;
-    if (x) html += `<div class="pc ${pieceClass(x)}" data-p="${x.p}" data-core="${x.core ? 1 : ''}"><i><span>${x.p}</span></i></div>`;
-    html += '</div>';
-  }
-  $('board').innerHTML = html;
-  if (before.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) flip(before);
-}
-
-// 同じ種類の駒を近い順に対応づけ、元の位置から滑らせる
-function flip(before) {
-  const after = [...$('board').querySelectorAll('.pc')].map(el => ({ p:el.dataset.p, r:el.getBoundingClientRect(), el }));
-  const pairs = [];
-  after.forEach((n, ni) => before.forEach((o, oi) => {
-    if (o.p === n.p) pairs.push({ ni, oi, d:Math.hypot(o.r.x - n.r.x, o.r.y - n.r.y) });
-  }));
-  pairs.sort((a, b) => a.d - b.d);
-  const usedN = new Set(), usedO = new Set();
-  for (const { ni, oi, d } of pairs) {
-    if (usedN.has(ni) || usedO.has(oi)) continue;
-    usedN.add(ni); usedO.add(oi);
-    if (d < 1) continue;
-    const n = after[ni], o = before[oi];
-    n.el.animate([{ transform:`translate(${o.r.x - n.r.x}px,${o.r.y - n.r.y}px)` }, { transform:'none' }],
-                 { duration:560, easing:'cubic-bezier(.2,.8,.2,1)', delay:Math.min(d, 400) * .25 });
-  }
-  after.forEach((n, ni) => { if (!usedN.has(ni)) n.el.animate([{ opacity:0, transform:'scale(.7)' }, {}], { duration:380, easing:'ease-out' }); });
-}
-
-function placeKnob(seg) {
-  const b = seg.querySelector('[aria-pressed="true"]'), k = seg.querySelector('.knob');
-  if (!b) return;
-  k.style.width = b.offsetWidth + 'px';
-  k.style.transform = `translateX(${b.offsetLeft}px)`;
-}
-
-function render() {
-  const c = CASTLES[state.idx];
-  const castleChanged = state.shown !== c.id;
-  if (castleChanged || state.shownHeat !== state.heat) buildBoard(c, castleChanged && state.shown);
-  else $('board').querySelectorAll('.pc').forEach(el => { el.className = 'pc ' + pieceClass({ core:!!el.dataset.core }); });
-
-  if (castleChanged) {
-    $('title').textContent = c.name;
-    $('reading').textContent = c.reading;
-    $('hand').textContent = c.hand ? `持ち駒：${c.hand}` : '';
-    const t = $('ttl'); t.classList.remove('swap'); void t.offsetWidth; t.classList.add('swap');
-
-    const chips = parse(c.core, true).map(x => `<span class="chip" data-sq="${x.f}${x.r}"><b>${x.p}</b>${ZEN[x.f]}${KANJI_NUM[x.r]}</span>`).join('');
-    $('detail').innerHTML = `
-      <div class="tags">${[...new Set([c.group, ...c.tags])].map(t => `<span class="tag">${t}</span>`).join('')}</div>
-      <p class="desc">${c.desc}</p>
-      ${c.note ? `<p class="note">${c.note}</p>` : ''}
-      <div class="sec"><h3>囲いの駒</h3><div class="chips">${chips}</div></div>
-      <div class="sec"><h3>長所</h3><ul class="pc-list">${c.pros.map(s => `<li>${s}</li>`).join('')}</ul></div>
-      <div class="sec"><h3>短所</h3><ul class="pc-list cons">${c.cons.map(s => `<li>${s}</li>`).join('')}</ul></div>
-      <p class="note src">居飛車の一部の配置は <a href="https://shogi-joutatsu.com/archives/6540" target="_blank" rel="noopener">将棋上達塾の図</a> を参考にしています。</p>`;
-  }
-  $('legend').innerHTML = state.heat
-    ? `<i style="background:rgba(var(--heat),.55)"></i>数字は囲いの駒（玉・金・銀・桂・香）が利いている数`
-    : `<i style="background:var(--core)"></i>赤字が囲いを構成する駒`;
-  const vis = visible();
-  $('count').textContent = `${vis.indexOf(state.idx) + 1} / ${vis.length}`;
-
-  if (!$('cards').querySelector(`[data-i="${state.idx}"]`)) renderCards();
-  $('cards').querySelectorAll('.card').forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === state.idx));
-  $('sideSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.side === c.side));
-  $('modeSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === state.mode));
-  placeKnob($('sideSeg')); placeKnob($('modeSeg'));
-  $('showHeat').checked = state.heat;
-  state.shown = c.id; state.shownHeat = state.heat;
-  store.set('id', c.id); store.set('mode', state.mode); store.set('heat', state.heat ? '1' : '');
-}
-
-function step(d) {
-  const vis = visible();
-  state.idx = vis[(vis.indexOf(state.idx) + d + vis.length) % vis.length];
-  render();
-}
-
-const flashSq = (el, on) => { const sq = $('board').querySelector(`[data-sq="${el.dataset.sq}"]`); if (sq) sq.classList.toggle('flash', on); };
-$('detail').addEventListener('mouseover', e => { const el = e.target.closest('.chip'); if (el) flashSq(el, true); });
-$('detail').addEventListener('mouseout', e => { const el = e.target.closest('.chip'); if (el) flashSq(el, false); });
-// カードの傾きと光沢
-$('cards').addEventListener('pointermove', e => {
-  const c = e.target.closest('.card'); if (!c || e.pointerType !== 'mouse') return;
-  const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-  c.style.setProperty('--ry', `${(x - .5) * 10}deg`); c.style.setProperty('--rx', `${(.5 - y) * 10}deg`);
-  c.style.setProperty('--mx', `${x * 100}%`); c.style.setProperty('--my', `${y * 100}%`);
-});
-$('cards').addEventListener('pointerout', e => {
-  const c = e.target.closest('.card'); if (!c || c.contains(e.relatedTarget)) return;
-  c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg');
-});
-addEventListener('resize', () => { placeKnob($('sideSeg')); placeKnob($('modeSeg')); });
-$('cards').addEventListener('click', e => { const b = e.target.closest('.card'); if (b) { state.idx = +b.dataset.i; render(); } });
-$('sideSeg').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b || b.dataset.side === CASTLES[state.idx].side) return;
-  const last = CASTLES.findIndex(c => c.id === store.get('last-' + b.dataset.side));
-  store.set('last-' + CASTLES[state.idx].side, CASTLES[state.idx].id);
-  state.idx = last >= 0 ? last : CASTLES.findIndex(c => c.side === b.dataset.side);
-  render();
-});
-$('modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.mode = b.dataset.mode; render(); } });
-$('showHeat').addEventListener('change', e => { state.heat = e.target.checked; render(); });
-$('prev').addEventListener('click', () => step(-1));
-$('next').addEventListener('click', () => step(1));
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
-  else return;
-  e.preventDefault();
-});
-
-{
-  const i = CASTLES.findIndex(c => c.id === store.get('id'));
-  if (i >= 0) state.idx = i;
-  if (['all','dim','core'].includes(store.get('mode'))) state.mode = store.get('mode');
-  state.heat = store.get('heat') === '1';
-}
-buildLabels(); renderCards(); render();
-</script>
+<!-- データ -->
+<script src="js/core/notation.js"></script>
+<script src="js/data/sources.js"></script>
+<script src="js/data/setups.js"></script>
+<script src="js/data/castles-ibisha.js"></script>
+<script src="js/data/castles-furibisha.js"></script>
+<!-- ロジック -->
+<script src="js/core/position.js"></script>
+<script src="js/core/attack-map.js"></script>
+<!-- 表示 -->
+<script src="js/ui/store.js"></script>
+<script src="js/ui/segmented.js"></script>
+<script src="js/ui/mini-board.js"></script>
+<script src="js/ui/board-view.js"></script>
+<script src="js/ui/rail-view.js"></script>
+<script src="js/ui/toolbar-view.js"></script>
+<script src="js/ui/stage-view.js"></script>
+<script src="js/ui/detail-view.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

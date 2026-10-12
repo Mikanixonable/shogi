@@ -1,0 +1,54 @@
+/* 盤と駒: 本盤・マスの重ね表示（利き・ハイライト）・先手後手の駒・ミニ盤 */
+
+.boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
+.boardwrap { display:grid; grid-template-columns:minmax(0,1fr) 22px; grid-template-rows:22px auto;
+             width:min(100cqw, calc((100cqh - 22px) * 9 / 9.6 + 22px)); }
+.flabels { display:grid; grid-template-columns:repeat(9,1fr); font-size:11px; color:var(--muted); text-align:center; align-items:end; padding-bottom:4px; }
+.rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:11px var(--mincho); color:var(--muted); align-items:center; justify-items:center; }
+
+.board { position:relative; display:grid; grid-template-columns:repeat(9,1fr); aspect-ratio:9/9.6; border-radius:8px; overflow:hidden;
+         background:
+           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .09' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .2 0 0 0 0 .05 0 0 0 .75 -.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0/100% 100%,
+           linear-gradient(135deg,var(--wood-1),var(--wood-2));
+         box-shadow:0 0 0 1px var(--wood-line), inset 0 1px 0 rgba(255,240,210,.5), 0 2px 4px rgba(40,20,0,.2), 0 30px 60px -24px rgba(40,20,0,.65); }
+.board::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:3;
+                background:linear-gradient(125deg, rgba(255,250,235,.22) 0%, rgba(255,250,235,0) 38%, rgba(255,250,235,0) 70%, rgba(255,250,235,.08) 100%); }
+
+.sq { position:relative; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line); display:flex; align-items:center; justify-content:center; container-type:size; }
+.sq:nth-child(9n) { border-right:0; }
+.sq:nth-child(n+73) { border-bottom:0; }
+
+/* 利きの数 */
+.sq .h { position:absolute; inset:0; background:rgba(var(--heat), calc(var(--h) * .16)); animation:fade .3s var(--ease); }
+.sq .h b { position:absolute; right:3px; top:1px; z-index:2; font-size:max(10px, 24cqh); font-weight:700; color:rgb(var(--heat)); line-height:1.2; text-shadow:0 0 3px rgba(255,245,225,.9); }
+@keyframes fade { from { opacity:0; } }
+
+/* 解説・攻め筋からのハイライト */
+.sq[data-tone]::before { content:""; position:absolute; inset:2px; border-radius:4px; z-index:2; pointer-events:none; animation:pulse 1.6s var(--ease) infinite; }
+.sq[data-tone="focus"]::before { box-shadow:inset 0 0 0 3px var(--accent); }
+.sq[data-tone="good"]::before  { box-shadow:inset 0 0 0 3px var(--good); background:color-mix(in srgb, var(--good) 18%, transparent); }
+.sq[data-tone="bad"]::before   { box-shadow:inset 0 0 0 3px var(--bad);  background:color-mix(in srgb, var(--bad) 18%, transparent); }
+@keyframes pulse { 50% { opacity:.55; } }
+
+/* 駒 */
+.pc { width:84%; height:90%; position:relative; z-index:1; filter:drop-shadow(0 2px 2px rgba(60,35,5,.4)); transition:opacity .3s var(--ease); }
+.pc.core::before { content:""; position:absolute; left:-12%; right:-12%; bottom:-10%; height:60%; border-radius:50%;
+                   background:radial-gradient(closest-side, rgba(200,50,30,.45), rgba(200,50,30,0)); filter:blur(3px); }
+.pc i { position:absolute; inset:0; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
+        background:linear-gradient(160deg,var(--piece-edge-1) 0%,var(--piece-edge-2) 100%); font-style:normal; }
+.pc i::before { content:""; position:absolute; inset:1.5px 1.5px 1px; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
+        background:linear-gradient(115deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%), linear-gradient(170deg,var(--piece-1),var(--piece-2)); }
+.pc i span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-top:12%; font:700 min(58cqh,60cqw)/1 var(--mincho); color:var(--ink); text-shadow:0 1px 0 rgba(255,255,255,.5); }
+.pc.core i span { color:var(--core); }
+.pc.off { opacity:.28; filter:none; }
+.pc.hidden { opacity:0; }
+.pc.gote { transform:rotate(180deg); filter:drop-shadow(0 -2px 2px rgba(20,25,50,.45)); animation:goteIn .45s var(--ease) backwards; }
+.pc.gote i span { color:var(--gote-ink); }
+@keyframes goteIn { from { opacity:0; transform:rotate(180deg) translateY(30%); } }
+
+/* ミニ盤（左のカード） */
+.mini-bg { fill:url(#wood); }
+.mini-ln { stroke:var(--wood-line); stroke-width:.35; }
+.mini-pc { font:700 8.4px var(--mincho); fill:var(--ink); text-anchor:middle; dominant-baseline:central; }
+.mini-pc.core { fill:var(--core); }
+.mini-pc.off { opacity:.28; }
