@@ -1,0 +1,43 @@
+// 出典: 囲いの配置・解説・周辺の駒の根拠。各データは ref でここを参照する
+window.Kakoi = window.Kakoi || {};
+Kakoi.SOURCES = {
+  // ---- 総合 ----
+  'wj-kakoi': { title: '囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%9B%B2%E3%81%84' },
+  'we-castle': { title: 'Castle (shogi)', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Castle_(shogi)' },
+  'joutatsu-bougin': { title: '棒銀戦法の囲い（矢倉・カニ囲い・兜矢倉・舟囲い）', publisher: '将棋上達塾', url: 'https://shogi-joutatsu.com/archives/6540' },
+
+  // ---- 振り飛車 ----
+  'wj-mino': { title: '美濃囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%BE%8E%E6%BF%83%E5%9B%B2%E3%81%84' },
+  'we-mino': { title: 'Mino castle', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Mino_castle' },
+  'wj-shikenbisha': { title: '四間飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%9B%9B%E9%96%93%E9%A3%9B%E8%BB%8A' },
+  'we-fourth-file-rook': { title: 'Fourth File Rook', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Fourth_File_Rook' },
+  'wj-furibisha-anaguma': { title: '振り飛車穴熊', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%8C%AF%E3%82%8A%E9%A3%9B%E8%BB%8A%E7%A9%B4%E7%86%8A' },
+  'wj-anaguma': { title: '穴熊囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%A9%B4%E7%86%8A%E5%9B%B2%E3%81%84' },
+
+  // ---- 居飛車 ----
+  'wj-ibisha-anaguma': { title: '居飛車穴熊', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B1%85%E9%A3%9B%E8%BB%8A%E7%A9%B4%E7%86%8A' },
+  'wj-funagakoi': { title: '舟囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%88%9F%E5%9B%B2%E3%81%84' },
+  'wj-elmo': { title: 'エルモ囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%A8%E3%83%AB%E3%83%A2%E5%9B%B2%E3%81%84' },
+  'wj-yagura': { title: '矢倉囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%9F%A2%E5%80%89%E5%9B%B2%E3%81%84' },
+  'wj-kani': { title: 'カニ囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%AB%E3%83%8B%E5%9B%B2%E3%81%84' },
+  'wj-gangi': { title: '雁木囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%9B%81%E6%9C%A8%E5%9B%B2%E3%81%84' },
+  'wj-bonanza': { title: 'Bonanza（ボナンザ囲い）', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/Bonanza' },
+  'wj-hidarimino': { title: '左美濃', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B7%A6%E7%BE%8E%E6%BF%83' },
+  'we-fortress': { title: 'Fortress castle', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Fortress_castle' },
+  'sj-ibiana': { title: '居飛車穴熊囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/ibiana/' },
+  'sj-funakakoi': { title: '舟囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/funakakoi/' },
+  'sj-elmo': { title: 'エルモ囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/elmo/' },
+  'sj-yagura': { title: '矢倉囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/yagura/' },
+  'sj-kani': { title: 'カニ囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/kani_kakoi/' },
+  'sj-kabuto': { title: 'カブト囲い（兜矢倉）', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/kabuto_yagura/' },
+  'sj-gangi': { title: '雁木囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/gangi/' },
+  'sj-bonanza': { title: 'ボナンザ囲い', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/i-oth/bonanza.html' },
+  'sj-hidarimino': { title: '左美濃囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/hidari_mino/' },
+  'mynavi-elmo': { title: 'ここがすごいぞ「エルモ囲い」', publisher: 'マイナビニュース（将棋情報局）', url: 'https://news.mynavi.jp/article/20200403-1010036/' },
+  'jsf-kakoi37': { title: '6筋位取り【玉の囲い方 第37回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2018/06/post_397.html' },
+  'jsf-kakoi41': { title: '飯島流引き角戦法【玉の囲い方 第41回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2018/07/41.html' },
+  'jsf-kakoi63': { title: 'エルモ囲いの組み方【玉の囲い方 第63回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/03/kakoi63.html' },
+  'jsf-kakoi77': { title: '土居矢倉の組み方（1）【玉の囲い方 第77回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/07/kakoi_77.html' },
+  'jsf-kakoi87': { title: 'カニ囲い右四間飛車【玉の囲い方 第87回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/08/kakoi_87.html' },
+  'jsf-kuzushi48': { title: '矢倉の崩し方【第48回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2018/08/post_416.html' },
+};
