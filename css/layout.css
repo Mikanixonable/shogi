@@ -58,7 +58,7 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
 .detail { border-left:1px solid var(--line); position:relative; }
 
 /* ===== 画面ごとのパネル（view-pane）: 表示中の画面のものだけ、枠なし(contents)で親のグリッドに参加 ===== */
-.view-pane { display:none; }
+body .view-pane { display:none; }
 body[data-view="castle"] .view-pane[data-view~="castle"],
 body[data-view="tactic"] .view-pane[data-view~="tactic"],
 body[data-view="cluster"] .view-pane[data-view~="cluster"] { display:contents; }
