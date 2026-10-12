@@ -7,7 +7,7 @@ Kakoi.CASTLE_FAMILIES = [
   { id: 'yagura', name: '矢倉型', shape: '逆L字：玉の右上を金銀が囲む', glyph: 'L', subtypes: [
     { id: 'kin', name: '金矢倉' }, { id: 'kata', name: '片矢倉系' },
   ] },
-  { id: 'gangi', name: '雁木型', shape: '逆V字：銀が前へ出る', glyph: 'V', subtypes: [
+  { id: 'gangi', name: '雁木型', shape: '銀が玉の前や横に並んで壁を作る形。前へ出れば逆V字', glyph: 'V', subtypes: [
     { id: 'nimai', name: '二枚銀' }, { id: 'tsuno', name: 'ツノ銀' }, { id: 'heiretsu', name: '並列（カニ囲い）' }, { id: 'hidarimae', name: '左前に銀（兜矢倉）' },
   ] },
   { id: 'anaguma', name: '穴熊型', shape: '玉を隅にもぐらせ、香で蓋をする', glyph: 'corner', subtypes: [] },

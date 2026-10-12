@@ -258,7 +258,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（ポナンザ囲いと誤記されることもある）', setup: 'ibisha',
+    id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（後継ソフト Ponanza 由来の「ポナンザ囲い」の表記もある）', setup: 'ibisha',
     core: '玉78 銀77 金68 金58',
     support: '銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
     hand: '角',
