@@ -14,11 +14,11 @@ window.Kakoi = window.Kakoi || {};
     /** @param {{ title, titleWrap, reading, setup, legend, hand }} els */
     constructor(els) { this.els = els; }
 
-    renderCastle(castle) {
+    renderCastle(castle, setup) {
       const { els } = this;
       els.title.textContent = castle.name;
       els.reading.textContent = castle.reading;
-      els.setup.textContent = `周辺の駒：${Kakoi.SETUPS[castle.setup].label}`;
+      els.setup.textContent = `周辺の駒：${setup.label}`;
       els.hand.textContent = castle.hand ? `持ち駒：${castle.hand}` : '';
       els.titleWrap.classList.remove('swap'); void els.titleWrap.offsetWidth; els.titleWrap.classList.add('swap');
     }

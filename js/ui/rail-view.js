@@ -3,6 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const COLS = 3;
+  const { esc } = Kakoi.html;
 
   class RailView {
     /**
@@ -23,14 +24,14 @@ window.Kakoi = window.Kakoi || {};
       document.addEventListener('keydown', e => this._onKey(e));
     }
 
-    /** @param {object[]} castles 表示する戦型の囲い @param {object} current 選択中の囲い */
-    render(castles, current) {
+    /** @param {object[]} castles 表示する戦型の囲い @param {object} current 選択中の囲い @param {(castle:object)=>object} positionOf 囲いの局面 */
+    render(castles, current, positionOf) {
       this.side.setValue(current.side);
       this._ids = castles.map(c => c.id);
       if (this._renderedSide !== current.side) {
         this._renderedSide = current.side;
         this.els.cards.innerHTML = castles.map((c, n) =>
-          `<button class="card" data-id="${c.id}" title="${c.name}" style="--i:${n}">${Kakoi.miniBoardSVG(Kakoi.Position.fromCastle(c), c.side)}<span class="nm">${c.short}</span></button>`
+          `<button class="card" data-id="${esc(c.id)}" title="${esc(c.name)}" style="--i:${n}">${Kakoi.miniBoardSVG(positionOf(c), c.side)}<span class="nm">${esc(c.short)}</span></button>`
         ).join('');
       }
       for (const b of this.els.cards.querySelectorAll('.card')) b.setAttribute('aria-current', b.dataset.id === current.id);

@@ -3,7 +3,7 @@ window.Kakoi = window.Kakoi || {};
 Kakoi.MANIFEST = (() => {
   const core = ['js/core/notation.js'];
   const data = ['js/data/sources.js', 'js/data/setups.js', 'js/data/castles-ibisha.js', 'js/data/castles-furibisha.js'];
-  const logic = ['js/core/position.js', 'js/core/attack-map.js', 'js/core/validate.js'];
+  const logic = ['js/core/html.js', 'js/core/position.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/validate.js'];
   const ui = [
     'js/ui/store.js', 'js/ui/segmented.js', 'js/ui/mini-board.js', 'js/ui/board-view.js',
     'js/ui/rail-view.js', 'js/ui/toolbar-view.js', 'js/ui/stage-view.js', 'js/ui/detail-view.js',

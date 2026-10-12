@@ -3,6 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { label } = Kakoi.notation;
+  const { esc, sqAttr } = Kakoi.html;
 
   const RATINGS = [
     ['hard', '堅さ'],
@@ -12,8 +13,6 @@ window.Kakoi = window.Kakoi || {};
     ['quick', '組みやすさ'],
   ];
 
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const sqAttr = sq => sq && sq.length ? ` data-sq="${sq.join(' ')}"` : '';
 
   class DetailView {
     /**
@@ -39,7 +38,7 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    render(castle, state) {
+    render(castle, { attackId, sources }) {
       const pane = (id, parts) => `<div class="pane" data-pane="${id}">${parts.filter(Boolean).join('')}</div>`;
       this.el.innerHTML = [
         pane('overview', [
@@ -50,8 +49,8 @@ window.Kakoi = window.Kakoi || {};
           this._ratings(castle.ratings),
         ]),
         pane('proscons', [this._list('長所', castle.pros, 'good', ''), this._list('短所', castle.cons, 'bad', 'cons')]),
-        pane('attacks', [this._attacks(castle, state.attackId)]),
-        pane('sources', [this._sources(castle)]),
+        pane('attacks', [this._attacks(castle, attackId)]),
+        pane('sources', [this._sources(sources)]),
       ].join('');
       this.showTab(this.tab);
     }
@@ -93,15 +92,13 @@ window.Kakoi = window.Kakoi || {};
     _attacks(c, attackId) {
       if (!c.attacks?.length) return '<p class="note">登録された攻め筋はありません。</p>';
       const btns = c.attacks.map(a =>
-        `<button class="attack" data-id="${a.id}" aria-pressed="${a.id === attackId}"><b>${esc(a.name)}</b>${esc(a.t)}</button>`).join('');
+        `<button class="attack" data-id="${esc(a.id)}" aria-pressed="${a.id === attackId}"><b>${esc(a.name)}</b>${esc(a.t)}</button>`).join('');
       return `<div class="sec"><h3>典型的な攻め筋<small>押すと盤に表示</small></h3><div class="attacks">${btns}</div></div>`;
     }
 
-    _sources(c) {
-      const li = [...c.sources, ...Kakoi.SETUPS[c.setup].sources].filter(s => Kakoi.SOURCES[s.ref]).map(s => {
-        const src = Kakoi.SOURCES[s.ref];
-        return `<li><span class="cv">${esc(s.for)}</span><span><a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.title)}</a>（${esc(src.publisher)}）</span></li>`;
-      }).join('');
+    _sources(sources) {
+      const li = sources.map(s =>
+        `<li><span class="cv">${esc(s.for)}</span><span><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>（${esc(s.publisher)}）</span></li>`).join('');
       return `<div class="sec"><h3>出典</h3><ul class="sources">${li}</ul></div>`;
     }
   }

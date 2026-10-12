@@ -16,8 +16,7 @@ window.Kakoi = window.Kakoi || {};
     has(f, r) { return this._at.has(key(f, r)); }
 
     /** 囲いデータから局面を作る。attack を渡すと後手の駒を重ねる */
-    static fromCastle(castle, attack = null) {
-      const setup = Kakoi.SETUPS[castle.setup];
+    static fromCastle(castle, setup, attack = null) {
       const pieces = [
         ...parsePieces(setup.pieces, { owner: 'sente', role: 'setup' }),
         ...parsePieces(castle.support, { owner: 'sente', role: 'support' }),
