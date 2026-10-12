@@ -112,9 +112,7 @@ async function sweepTactic(page) {
 
 /* ---- 巡回: 分類マップ ---- */
 async function sweepCluster(page) {
-  await page.click('#clChartSeg button[data-value="tree"]'); await wait(250);
-  await page.click('#clChartSeg button[data-value="map"]'); await wait(250);
-  const dotCount = await page.$$eval('.cl-svg .pt .dot', els => els.length);
+  const dotCount = await page.$$eval('.cl-svg .pt .dot', els => els.length);   // 木の図の葉（.pt .dot）
   for (let i = 0; i < Math.min(6, dotCount); i++) {   // SVG内の点は座標クリック（g要素にヒットテストが無い）
     const b = await page.locator('.cl-svg .pt .dot').nth(i).boundingBox();
     if (b) { await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); await wait(60); }

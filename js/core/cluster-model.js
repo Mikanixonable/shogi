@@ -1,11 +1,9 @@
-// 分類マップの計算結果: 距離行列・木・MDS・ARIを一度だけ求め、描画に使う形（点・木・近傍）に整える
+// 分類マップの計算結果: 距離行列・木・ARIを一度だけ求め、描画に使う形（点・木・近傍）に整える
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
   const SAME = 1e-9;            // 距離がこれ未満なら同じ形（左右反転の同形）とみなす
-  const COMPRESS_POWER = 0.6;   // 中心からの距離 r を r^0.6 に圧縮する
-  const COMPRESS_RATIO = 1.8;   // 最大半径が中央値のこの倍を超えたら圧縮する
 
   class ClusterModel {
     /** @param {Kakoi.Repository} repo */
@@ -20,7 +18,7 @@ window.Kakoi = window.Kakoi || {};
       this.k = repo.families().length;
       this.groupOf = shape.cut(root, this.k);
       this.ari = shape.adjustedRand(new Map(this.castles.map(c => [c.id, c.family])), this.groupOf);
-      this._buildPoints(shape.mds(m));
+      this._buildPoints();
       this.tree = this._collapse(root);
       this.cutHeight = this._cutHeight(root);
       this.maxHeight = root.height;
@@ -28,14 +26,14 @@ window.Kakoi = window.Kakoi || {};
 
     dist(a, b) { return this._d[this._index.get(a)][this._index.get(b)]; }
 
-    /** 同じ形の囲いを1点にまとめ、必要なら中心からの距離を圧縮した散布図の点を作る */
-    _buildPoints(coords) {
+    /** 同じ形（左右反転の同形を含む）の囲いを1点にまとめた表示用の点を作る */
+    _buildPoints() {
       const points = [];
       this._pointOf = new Map();
       for (const c of this.castles) {
         let p = points.find(q => this.dist(q.ids[0], c.id) < SAME);
         if (!p) {
-          p = { key: c.id, ids: [], castles: [], family: c.family, x: coords.get(c.id).x, y: coords.get(c.id).y };
+          p = { key: c.id, ids: [], castles: [], family: c.family };
           points.push(p);
         }
         p.ids.push(c.id);
@@ -45,25 +43,6 @@ window.Kakoi = window.Kakoi || {};
       for (const p of points) p.label = p.castles.map(c => c.short).join('・');
       this.points = points;
       this.merged = points.some(p => p.ids.length > 1);
-      this.compressed = this._compress(points);
-    }
-
-    /** 外れ値が全体を押しつぶすとき、重心からの距離を単調に圧縮する */
-    _compress(points) {
-      const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
-      const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
-      const rs = points.map(p => Math.hypot(p.x - cx, p.y - cy)).sort((a, b) => a - b);
-      const rmax = rs[rs.length - 1];
-      const median = rs[Math.floor(rs.length / 2)];
-      if (!(rmax > COMPRESS_RATIO * median)) return false;
-      for (const p of points) {
-        const r = Math.hypot(p.x - cx, p.y - cy);
-        if (r === 0) continue;
-        const r2 = rmax * Math.pow(r / rmax, COMPRESS_POWER);
-        p.x = cx + (p.x - cx) * r2 / r;
-        p.y = cy + (p.y - cy) * r2 / r;
-      }
-      return true;
     }
 
     /** 同形の点を1枚の葉にまとめた表示用の木。葉は { point }、内部は { left, right, height } */
