@@ -20,6 +20,7 @@ window.Kakoi = window.Kakoi || {};
       this.detail = new K.TacticDetailView(els.detail, {
         onHover: (squares, tone) => this.board.hover(squares, tone),
         onCastle: id => this._openCastle(id),
+        onToggle: id => this._toggleCastle(id),
       });
       this.player = new K.TacticPlayer({
         onStep: t => this._autoSelect(t.id),
@@ -69,6 +70,13 @@ window.Kakoi = window.Kakoi || {};
       if (next) this.selectTactic(next.id);
     }
 
+    /** 囲いを盤に重ねる／外す */
+    _toggleCastle(id) {
+      if (!this.repo.has(id)) return;
+      const s = this.store.state;
+      this.store.set({ tacticCastleId: s.tacticCastleId === id ? null : id });
+    }
+
     /** 相性のよい囲いへ移る。戦型の違う囲いは、系統の絞り込みが合わなければ解除して選ぶ */
     _openCastle(id) {
       const castle = this.repo.byId(id);
@@ -97,29 +105,47 @@ window.Kakoi = window.Kakoi || {};
       const { repo, board, overlay } = this;
       const tactic = this._current();
       if (!tactic) return;
-      if (changed.has('tacticId') || changed.has('initial')) {
-        if (!this._auto && !changed.has('initial')) this.player.stop();
-        const family = repo.tacticFamilies().find(f => f.id === tactic.family);
-        if (changed.has('initial')) {
-          this.table.render(this.rows, tactic.id);
-          this.rail.render(this.rows, tactic.id);
-          this.stage.setPlaying(false, reducedMotion());
-        } else {
-          this.table.select(tactic.id);
-          this.rail.select(tactic.id);
+      // 戦法が変わったら重ねていた囲いは外す（古い組み合わせを持ち越さない）。
+      // tacticCastleId の変更でもう一度 update が来るので、描き直しはそちらに任せる
+      if (changed.has('tacticId') && !changed.has('initial') && state.tacticCastleId) {
+        this.store.set({ tacticCastleId: null });
+        return;
+      }
+      const castle = state.tacticCastleId && repo.has(state.tacticCastleId) ? repo.byId(state.tacticCastleId) : null;
+      const hard = changed.has('initial') || changed.has('tacticId') || changed.has('tacticCastleId');
+      if (hard || changed.has('heat') || changed.has('heatScope')) {
+        if (changed.has('tacticId') && !this._auto && !changed.has('initial')) this.player.stop();
+        if (hard) {
+          const family = repo.tacticFamilies().find(f => f.id === tactic.family);
+          if (changed.has('initial')) {
+            this.table.render(this.rows, tactic.id);
+            this.rail.render(this.rows, tactic.id);
+            this.stage.setPlaying(false, reducedMotion());
+          } else {
+            this.table.select(tactic.id);
+            this.rail.select(tactic.id);
+          }
+          this.stage.render(tactic, family, castle);
+          this.detail.render(tactic, {
+            family,
+            castles: repo.castlesOfTactic(tactic).map(c => ({ id: c.id, name: c.name, familyName: repo.familyOf(c).name, desc: c.desc })),
+            castleId: castle && castle.id,
+            sources: repo.tacticComboSourcesOf(tactic, castle),
+          });
         }
-        this.stage.render(tactic, family);
-        this.detail.render(tactic, {
-          family,
-          castles: repo.castlesOfTactic(tactic).map(c => ({ id: c.id, name: c.name, familyName: repo.familyOf(c).name })),
-          sources: repo.tacticSourcesOf(tactic),
-        });
+        const position = castle
+          ? K.combinePosition(repo.tacticPositionOf(tactic), repo.positionOf(castle))
+          : repo.tacticPositionOf(tactic);
+        const heat = castle && state.heat
+          ? K.attackMap(position, x => state.heatScope === 'all' || x.role === 'core')
+          : null;
         board.setLasting([], null);
-        board.render(repo.tacticPositionOf(tactic), {
-          mode: state.mode, heat: null, animate: !changed.has('initial'),
+        board.render(position, {
+          mode: state.mode, heat, animate: hard && !changed.has('initial'),
           trace: { square: tactic.lead.square, piece: tactic.lead.piece, path: tactic.route },
         });
-        overlay.skeleton(null);
+        this.stage.setHand(position.hand);
+        overlay.skeleton(castle ? repo.positionOf(castle) : null);
         overlay.route(tactic.route);
       } else if (changed.has('mode')) {
         board.setMode(state.mode);

@@ -62,6 +62,15 @@ window.Kakoi = window.Kakoi || {};
     tacticSourcesOf(tactic) { return this._resolveSources(tactic.sources || []); }
     /** 戦法に合う囲い（存在する id のみ） */
     castlesOfTactic(tactic) { return (tactic.castles || []).filter(id => this._byId.has(id)).map(id => this._byId.get(id)); }
+    /** 戦法と囲い（＋その想定配置）の出典を併記する。castle がなければ戦法だけ */
+    tacticComboSourcesOf(tactic, castle) {
+      const setup = castle && this.setupOf(castle);
+      return this._resolveSources([
+        ...(tactic.sources || []),
+        ...(castle ? castle.sources || [] : []),
+        ...(setup ? setup.sources || [] : []),
+      ]);
+    }
     tacticPositionOf(tactic) {
       return Kakoi.Position.fromPieces(tactic.pieces, { leadSquare: tactic.lead && tactic.lead.square, hand: tactic.hand });
     }
