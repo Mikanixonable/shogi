@@ -55,8 +55,7 @@ body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) var(
 .play-btn[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
 /* ===== 右: 解説 ===== */
-#tacticDetail { padding:16px 22px 18px; gap:14px; overflow:hidden; }
-#tacticDetail .detail-body { flex:1; }
+#tacticDetail { padding:16px 22px 18px; }
 .rt-steps { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 4px; font-size:13px; }
 .rt-step { padding:3px 10px; background:none; border:1px solid var(--line); cursor:default; transition:border-color .2s; }
 .rt-step:hover { border-color:var(--accent); }

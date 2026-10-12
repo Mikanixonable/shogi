@@ -7,7 +7,7 @@ window.Kakoi = window.Kakoi || {};
   class CastleMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: side, chips, count, cards, title, titleWrap, reading, setup, legend, hand, detailBody, detailTabs
+     *   els: side, chips, count, cards, title, titleWrap, reading, setup, legend, hand, detailBody
      */
     constructor({ repo, store, board, overlay, els }) {
       this.repo = repo;
@@ -33,7 +33,7 @@ window.Kakoi = window.Kakoi || {};
         },
       );
       this.stage = new K.StageView({ title: els.title, titleWrap: els.titleWrap, reading: els.reading, setup: els.setup, legend: els.legend, hand: els.hand });
-      this.detail = new K.DetailView({ body: els.detailBody, tabs: els.detailTabs }, {
+      this.detail = new K.DetailView(els.detailBody, {
         onHover: (squares, tone) => this.board.hover(squares, tone),
         onAttack: attackId => this.store.set({ attackId }),
       });
