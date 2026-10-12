@@ -35,7 +35,14 @@ header { display:flex; align-items:center; gap:14px; margin:14px 20px; padding:8
 .panel { border-radius:24px; min-height:0; }
 
 /* ===== rail: 囲いを選ぶ ===== */
-.rail { display:grid; grid-template-rows:auto auto minmax(0,1fr); padding:14px; gap:10px; }
+.rail { display:grid; grid-template-rows:auto auto auto minmax(0,1fr); padding:14px; gap:10px; }
+.fchips { display:flex; flex-wrap:wrap; gap:5px; padding:2px; }
+.fchip { flex:none; display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:11px; line-height:1.4; border-radius:999px; padding:2px 8px; cursor:pointer;
+        background:var(--faint); border:1px solid var(--glass-line); color:var(--muted); letter-spacing:.04em; white-space:nowrap; transition:color .2s, border-color .2s, background .2s; }
+.fchip:hover { color:var(--fg); }
+.fchip .n { font-variant-numeric:tabular-nums; opacity:.7; }
+.fchip svg { width:14px; height:14px; flex:none; }
+.fchip[aria-pressed="true"] { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 40%, transparent); background:var(--accent-soft); font-weight:600; }
 .rail-h { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--muted); padding:0 4px; }
 .rail-h .count { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
 .rail-h kbd { font:inherit; font-size:11px; padding:0 5px; border-radius:4px; border:1px solid var(--glass-line); background:var(--faint); }
@@ -52,7 +59,11 @@ header { display:flex; align-items:center; gap:14px; margin:14px 20px; padding:8
 .card[aria-current="true"] { border-color:var(--accent); background:linear-gradient(180deg,var(--accent-soft),var(--glass-2));
         box-shadow:inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--accent), 0 14px 30px -16px var(--accent); }
 @keyframes cardIn { from { opacity:0; transform:translateY(6px) scale(.97); } }
-.card svg { width:100%; height:100%; display:block; filter:drop-shadow(0 3px 5px rgba(60,35,5,.25)); }
+.card .fg { position:absolute; top:5px; left:6px; z-index:1; color:var(--muted); opacity:.75; line-height:0; pointer-events:none; }
+.card .fg svg { width:13px; height:13px; filter:none; }
+.card[aria-current="true"] .fg { color:var(--accent); opacity:1; }
+.card .rf { position:absolute; top:3px; right:6px; z-index:1; font-size:10px; line-height:1.2; color:var(--muted); cursor:help; }
+.card > svg { width:100%; height:100%; display:block; filter:drop-shadow(0 3px 5px rgba(60,35,5,.25)); }
 .card .nm { font-size:11.5px; line-height:1.25; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted); }
 .card[aria-current="true"] .nm { font-weight:600; color:var(--fg); }
 

@@ -5,7 +5,7 @@ Kakoi.MANIFEST = (() => {
   const data = ['js/data/sources.js', 'js/data/taxonomy.js', 'js/data/setups.js', 'js/data/castles-ibisha.js', 'js/data/castles-furibisha.js'];
   const logic = ['js/core/html.js', 'js/core/position.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/validate.js'];
   const ui = [
-    'js/ui/store.js', 'js/ui/segmented.js', 'js/ui/mini-board.js', 'js/ui/board-view.js',
+    'js/ui/store.js', 'js/ui/segmented.js', 'js/ui/mini-board.js', 'js/ui/family-glyph.js', 'js/ui/board-view.js', 'js/ui/overlay-view.js',
     'js/ui/rail-view.js', 'js/ui/toolbar-view.js', 'js/ui/stage-view.js', 'js/ui/detail-view.js',
   ];
   const app = ['js/app.js'];

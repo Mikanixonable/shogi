@@ -11,6 +11,10 @@ window.Kakoi = window.Kakoi || {};
       this.els = els;
       els.files.innerHTML = [9,8,7,6,5,4,3,2,1].map(f => `<div>${ZEN[f]}</div>`).join('');
       els.ranks.innerHTML = [1,2,3,4,5,6,7,8,9].map(r => `<div>${KAN[r]}</div>`).join('');
+      // マスは専用の入れ物に描く（board 直下には重ね表示の SVG が同居するため）
+      this.squares = document.createElement('div');
+      this.squares.className = 'squares';
+      els.board.prepend(this.squares);
       this._lasting = { squares: [], tone: null };
     }
 
@@ -29,14 +33,14 @@ window.Kakoi = window.Kakoi || {};
         if (x) html += `<div class="pc ${this._pieceClass(x, mode)}" data-p="${x.p}" data-role="${x.role}" data-owner="${x.owner}"><i><span>${x.p}</span></i></div>`;
         html += '</div>';
       }
-      this.els.board.innerHTML = html;
+      this.squares.innerHTML = html;
       this._applyTone(this._lasting.squares, this._lasting.tone);
       if (before) this._flip(before);
     }
 
     /** 盤を作り直さずに、駒の表示モードだけを切り替える */
     setMode(mode) {
-      for (const el of this.els.board.querySelectorAll('.pc')) {
+      for (const el of this.squares.querySelectorAll('.pc')) {
         el.className = 'pc ' + this._pieceClass({ role: el.dataset.role, owner: el.dataset.owner }, mode);
       }
     }
@@ -62,23 +66,23 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _clearTone() {
-      for (const el of this.els.board.querySelectorAll('[data-tone]')) el.removeAttribute('data-tone');
+      for (const el of this.squares.querySelectorAll('[data-tone]')) el.removeAttribute('data-tone');
     }
 
     _applyTone(squares, tone) {
       for (const s of squares) {
-        const el = this.els.board.querySelector(`[data-sq="${s}"]`);
+        const el = this.squares.querySelector(`[data-sq="${s}"]`);
         if (el) el.dataset.tone = tone;
       }
     }
 
     _snapshot() {
-      return [...this.els.board.querySelectorAll('.pc[data-owner="sente"]')].map(el => ({ p: el.dataset.p, r: el.getBoundingClientRect() }));
+      return [...this.squares.querySelectorAll('.pc[data-owner="sente"]')].map(el => ({ p: el.dataset.p, r: el.getBoundingClientRect() }));
     }
 
     // 同じ種類の駒を近い順に対応づけ、元の位置から新しいマスへ滑らせる
     _flip(before) {
-      const after = [...this.els.board.querySelectorAll('.pc[data-owner="sente"]')].map(el => ({ p: el.dataset.p, r: el.getBoundingClientRect(), el }));
+      const after = [...this.squares.querySelectorAll('.pc[data-owner="sente"]')].map(el => ({ p: el.dataset.p, r: el.getBoundingClientRect(), el }));
       const pairs = [];
       after.forEach((n, ni) => before.forEach((o, oi) => {
         if (o.p === n.p) pairs.push({ ni, oi, d: Math.hypot(o.r.x - n.r.x, o.r.y - n.r.y) });

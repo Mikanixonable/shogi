@@ -7,15 +7,22 @@ window.Kakoi = window.Kakoi || {};
 
   class RailView {
     /**
-     * @param {{ side:HTMLElement, count:HTMLElement, cards:HTMLElement }} els
-     * @param {{ onSelect:(id:string)=>void, onSide:(side:string)=>void }} handlers
+     * @param {{ side:HTMLElement, chips:HTMLElement, count:HTMLElement, cards:HTMLElement }} els
+     * @param {{ onSelect:(id:string)=>void, onSide:(side:string)=>void, onFilter:(familyId:?string)=>void }} handlers
      */
     constructor(els, handlers) {
       this.els = els;
       this.handlers = handlers;
       this.side = new Kakoi.Segmented(els.side, handlers.onSide);
       this._ids = [];
-      this._renderedSide = null;
+      this._renderedKey = null;
+      this._chipsKey = null;
+      els.chips.addEventListener('click', e => {
+        const b = e.target.closest('.fchip');
+        if (!b) return;
+        // 選択中のチップをもう一度押すと解除
+        handlers.onFilter(b.getAttribute('aria-pressed') === 'true' ? null : (b.dataset.family || null));
+      });
       els.cards.addEventListener('click', e => {
         const c = e.target.closest('.card');
         if (c) handlers.onSelect(c.dataset.id);
@@ -24,18 +31,36 @@ window.Kakoi = window.Kakoi || {};
       document.addEventListener('keydown', e => this._onKey(e));
     }
 
-    /** @param {object[]} castles 表示する戦型の囲い @param {object} current 選択中の囲い @param {(castle:object)=>object} positionOf 囲いの局面 */
-    render(castles, current, positionOf) {
+    /**
+     * @param {object[]} castles 表示する囲い（絞り込み・系統順の済んだもの）
+     * @param {object} current 選択中の囲い
+     * @param {(castle:object)=>object} positionOf 囲いの局面
+     * @param {{ families:{id:string,name:string,glyph:string,count:number}[], filter:?string, total:number }} info 系統チップの情報（count は戦型内の件数）
+     */
+    render(castles, current, positionOf, info) {
       this.side.setValue(current.side);
       this._ids = castles.map(c => c.id);
-      if (this._renderedSide !== current.side) {
-        this._renderedSide = current.side;
+      const { families, filter, total } = info;
+      const chipsKey = JSON.stringify([current.side, filter, families.map(f => f.id)]);
+      if (this._chipsKey !== chipsKey) {
+        this._chipsKey = chipsKey;
+        this.els.chips.innerHTML =
+          `<button class="fchip" data-family="" aria-pressed="${filter === null}">すべて <span class="n">${total}</span></button>` +
+          families.map(f => `<button class="fchip" data-family="${esc(f.id)}" aria-pressed="${filter === f.id}">${Kakoi.familyGlyph(f.glyph)}${esc(f.name)} <span class="n">${f.count}</span></button>`).join('');
+      }
+      const key = `${current.side}|${filter}`;
+      if (this._renderedKey !== key) {
+        this._renderedKey = key;
+        const glyphOf = new Map(families.map(f => [f.id, f.glyph]));
         this.els.cards.innerHTML = castles.map((c, n) =>
-          `<button class="card" data-id="${esc(c.id)}" title="${esc(c.name)}" style="--i:${n}">${Kakoi.miniBoardSVG(positionOf(c), c.side)}<span class="nm">${esc(c.short)}</span></button>`
+          `<button class="card" data-id="${esc(c.id)}" title="${esc(c.name)}" style="--i:${n}"><span class="fg">${Kakoi.familyGlyph(glyphOf.get(c.family))}</span>` +
+          (c.refFamily ? `<span class="rf" title="${esc(c.refFamily)}">※</span>` : '') +
+          `${Kakoi.miniBoardSVG(positionOf(c), c.side)}<span class="nm">${esc(c.short)}</span></button>`
         ).join('');
       }
       for (const b of this.els.cards.querySelectorAll('.card')) b.setAttribute('aria-current', b.dataset.id === current.id);
-      this.els.count.textContent = `${this._ids.indexOf(current.id) + 1} / ${this._ids.length}`;
+      const fam = families.find(f => f.id === filter);
+      this.els.count.textContent = `${this._ids.indexOf(current.id) + 1} / ${this._ids.length}${fam ? `・${fam.name}` : ''}`;
       this._current = current.id;
     }
 
