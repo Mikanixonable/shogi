@@ -28,9 +28,9 @@ body[data-view="tactic"] .ptable {
            background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
            clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
 
-/* ===== 盤: 主役の駒の経路は、駒が滑り終わってから現れる ===== */
-body[data-view="tactic"] .overlay .rt-line { animation:skIn .4s var(--ease) .55s backwards; }
-body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) .55s backwards; }
+/* ===== 盤: 主役の駒の経路は、駒が滑り終わってから現れる（--rt-d は盤側が経路の長さに合わせて決める） ===== */
+body[data-view="tactic"] .overlay .rt-line { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
+body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
 
 /* ===== 左: 戦法の一覧 ===== */
 #tacticRail { padding:16px 18px; gap:12px; }

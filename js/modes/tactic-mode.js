@@ -115,7 +115,10 @@ window.Kakoi = window.Kakoi || {};
           sources: repo.tacticSourcesOf(tactic),
         });
         board.setLasting([], null);
-        board.render(repo.tacticPositionOf(tactic), { mode: state.mode, heat: null, animate: !changed.has('initial') });
+        board.render(repo.tacticPositionOf(tactic), {
+          mode: state.mode, heat: null, animate: !changed.has('initial'),
+          trace: { square: tactic.lead.square, piece: tactic.lead.piece, path: tactic.route },
+        });
         overlay.skeleton(null);
         overlay.route(tactic.route);
       } else if (changed.has('mode')) {
