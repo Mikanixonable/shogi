@@ -29,7 +29,10 @@
 .sq[data-tone="bad"]::before   { box-shadow:inset 0 0 0 3px var(--bad);  background:color-mix(in srgb, var(--bad) 18%, transparent); }
 @keyframes pulse { 50% { opacity:.55; } }
 
-/* 駒: 墨の輪郭線（i）に和紙色の駒面（i::before）を重ね、字は墨書き。飾りはなし */
+/* 立体駒レイヤ（既定）: マス DOM と重ね表示 SVG の間に挟む盤全面の canvas。盤は表示専用なので操作は通さない */
+.pieces3d { position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+
+/* 駒: 墨の輪郭線（i）に和紙色の駒面（i::before）を重ね、字は墨書き。飾りはなし（?flat / WebGL 非対応時の DOM レイヤ用） */
 .pc { width:84%; height:90%; position:relative; z-index:1; filter:drop-shadow(0 1px 0 rgba(60,40,10,.25)); transition:opacity .3s var(--ease); }
 .pc i { position:absolute; inset:0; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
         background:var(--piece-edge); font-style:normal; }
