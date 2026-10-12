@@ -6,107 +6,182 @@
 <title>将棋の囲い図鑑</title>
 <style>
   :root {
-    --bg:#f6f6f4; --panel:#fff; --fg:#1d1d1b; --muted:#6b6b66; --line:#d8d8d2; --accent:#2f6fed;
-    --wood:#e9c98b; --wood-line:#7a5a2a; --piece:#f7e7c0; --piece-edge:#8a6a35; --ink:#1d1d1b;
-    --core:#c0392b; --dim:.28; --heat:47,111,237;
+    --bg:#f2f1ed; --surface:#ffffff; --surface-2:#f6f5f1; --fg:#1c1b19; --muted:#77736b; --line:#e5e2db;
+    --accent:#4263eb; --accent-soft:rgba(66,99,235,.1);
+    --wood-1:#ecd09a; --wood-2:#ddb672; --wood-line:rgba(96,66,22,.55);
+    --piece-1:#fbf1d8; --piece-2:#ecd7a6; --ink:#1d1b17; --core:#c92a2a;
+    --good:#2b8a3e; --bad:#c92a2a; --heat:66,99,235;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 30px -14px rgba(0,0,0,.18);
+    --mincho:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg:#161617; --panel:#202022; --fg:#ececea; --muted:#9a9a94; --line:#3a3a3d; --accent:#6c9bff;
-      --wood:#b8955a; --wood-line:#4a3416; --piece:#efdcb0; --piece-edge:#6b4d1f; --ink:#1d1d1b;
-      --core:#e05a4a; --heat:108,155,255;
+    :root:not([data-theme="light"]) {
+      --bg:#111113; --surface:#1a1a1e; --surface-2:#222227; --fg:#ecebe7; --muted:#9b978f; --line:#2c2c33;
+      --accent:#7d93ff; --accent-soft:rgba(125,147,255,.14);
+      --wood-1:#c9a467; --wood-2:#b48c4f; --wood-line:rgba(50,32,8,.6);
+      --piece-1:#f3e6c4; --piece-2:#dcc28c; --core:#d63333; --good:#69db7c; --bad:#ff8787; --heat:125,147,255;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
     }
   }
+  :root[data-theme="dark"] {
+    --bg:#111113; --surface:#1a1a1e; --surface-2:#222227; --fg:#ecebe7; --muted:#9b978f; --line:#2c2c33;
+    --accent:#7d93ff; --accent-soft:rgba(125,147,255,.14);
+    --wood-1:#c9a467; --wood-2:#b48c4f; --wood-line:rgba(50,32,8,.6);
+    --piece-1:#f3e6c4; --piece-2:#dcc28c; --core:#d63333; --good:#69db7c; --bad:#ff8787; --heat:125,147,255;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
   * { box-sizing:border-box; }
-  body { margin:0; font:14px/1.6 system-ui,-apple-system,"Hiragino Sans",sans-serif; background:var(--bg); color:var(--fg); }
-  main { display:grid; grid-template-columns:240px minmax(0,1fr) 300px; gap:16px; padding:16px; max-width:1300px; margin:0 auto; }
-  aside, .stage, .detail { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
-  h1 { font-size:16px; margin:0 0 4px; }
-  h2 { font-size:12px; margin:16px 0 6px; color:var(--muted); font-weight:600; }
-  .note { font-size:11px; color:var(--muted); margin:0 0 6px; }
-  .list button { display:block; width:100%; text-align:left; font:inherit; border:1px solid transparent; background:none; color:var(--fg); border-radius:6px; padding:4px 8px; cursor:pointer; }
-  .list button:hover { border-color:var(--line); }
-  .list button[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
-  .list button small { color:var(--muted); margin-left:4px; }
-  .chk { display:flex; align-items:center; gap:6px; margin:4px 0; color:var(--muted); font-size:12px; cursor:pointer; }
-  .chk input { margin:0; accent-color:var(--accent); }
+  html, body { height:100%; }
+  body { margin:0; font:14px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; background:var(--bg); color:var(--fg);
+         display:grid; grid-template-rows:auto minmax(0,1fr); height:100dvh; overflow:hidden; }
+  button { font:inherit; color:inherit; }
 
-  .stage { display:flex; flex-direction:column; align-items:center; gap:10px; }
-  .stage h3 { margin:0; font-size:18px; align-self:flex-start; }
-  .stage .sub { margin:-8px 0 0; color:var(--muted); font-size:12px; align-self:flex-start; }
+  /* ---------- header ---------- */
+  header { display:flex; align-items:center; gap:16px; padding:12px 20px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:baseline; gap:10px; margin-right:auto; }
+  .brand h1 { margin:0; font:700 20px/1 var(--mincho); letter-spacing:.06em; }
+  .brand span { font-size:12px; color:var(--muted); }
+  .seg { display:inline-flex; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px; }
+  .seg button { border:0; background:none; padding:5px 14px; border-radius:999px; cursor:pointer; font-size:13px; color:var(--muted); transition:background .15s, color .15s; }
+  .seg button:hover { color:var(--fg); }
+  .seg button[aria-pressed="true"] { background:var(--surface); color:var(--fg); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg.side button { padding:6px 20px; font-size:14px; }
+  .switch { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer; user-select:none; }
+  .switch input { appearance:none; width:34px; height:20px; border-radius:999px; background:var(--line); position:relative; margin:0; cursor:pointer; transition:background .15s; }
+  .switch input::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transition:transform .15s; }
+  .switch input:checked { background:var(--accent); }
+  .switch input:checked::after { transform:translateX(14px); }
 
-  /* board */
-  .boardwrap { display:grid; grid-template-columns:auto 22px; grid-template-rows:22px auto; width:min(100%, 520px); }
-  .flabels { display:grid; grid-template-columns:repeat(9,1fr); font-size:12px; color:var(--muted); text-align:center; }
-  .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font-size:12px; color:var(--muted); align-items:center; justify-items:center; }
-  .board { display:grid; grid-template-columns:repeat(9,1fr); aspect-ratio:9/9.8; background:var(--wood); border:2px solid var(--wood-line); }
-  .sq { position:relative; border:0.5px solid var(--wood-line); display:flex; align-items:center; justify-content:center; container-type:size; }
-  .sq.heat::before { content:attr(data-n); position:absolute; inset:0; background:rgba(var(--heat), calc(var(--h) * .2)); font-size:10px; color:rgb(var(--heat)); padding:1px 3px; text-align:right; }
-  .sq.flash { outline:2px solid var(--accent); outline-offset:-2px; }
-  .pc { width:82%; height:88%; background:var(--piece); clip-path:polygon(50% 0, 88% 16%, 100% 100%, 0 100%, 12% 16%); display:flex; align-items:center; justify-content:center; padding-top:10%; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700; font-size:min(60cqh, 62cqw); color:var(--ink); position:relative; z-index:1; filter:drop-shadow(0 0 0.5px var(--piece-edge)); transition:opacity .2s; }
-  .pc.core { color:var(--core); }
-  .pc.king { color:var(--ink); }
-  .pc.king.core { color:var(--core); }
-  .pc.off { opacity:var(--dim); }
+  /* ---------- layout ---------- */
+  .app { display:grid; grid-template-columns:minmax(250px,330px) minmax(0,1fr) minmax(280px,340px); gap:16px; padding:0 20px 20px; min-height:0; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); min-height:0; }
+
+  /* ---------- rail (castle cards) ---------- */
+  .rail { display:grid; grid-template-rows:auto minmax(0,1fr); padding:14px; gap:10px; }
+  .rail-h { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--muted); padding:0 2px; }
+  .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr)); gap:8px; min-height:0; }
+  .card { display:grid; grid-template-rows:minmax(0,1fr) auto; gap:4px; padding:6px 6px 5px; border:1px solid transparent; border-radius:12px; background:var(--surface-2); cursor:pointer; min-height:0; transition:border-color .15s, background .15s, transform .15s; }
+  .card:hover { border-color:var(--line); transform:translateY(-1px); }
+  .card[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); }
+  .card svg { width:100%; height:100%; display:block; }
+  .card .nm { font-size:11.5px; line-height:1.25; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card[aria-pressed="true"] .nm { font-weight:600; }
+  .mini-bg { fill:url(#wood); }
+  .mini-ln { stroke:var(--wood-line); stroke-width:.35; }
+  .mini-pc { font:700 8.4px var(--mincho); fill:var(--ink); text-anchor:middle; dominant-baseline:central; }
+  .mini-pc.core { fill:var(--core); }
+  .mini-pc.off { opacity:.3; }
+
+  /* ---------- stage ---------- */
+  .stage { display:grid; grid-template-rows:auto minmax(0,1fr) auto; padding:16px 20px 14px; gap:8px; }
+  .stage-h { display:flex; align-items:center; gap:12px; }
+  .stage-h .ttl { margin-right:auto; min-width:0; }
+  .stage-h h2 { margin:0; font:700 22px/1.25 var(--mincho); letter-spacing:.03em; }
+  .stage-h .rd { font-size:12px; color:var(--muted); }
+  .nav { display:flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .nav button { width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:var(--surface); cursor:pointer; font-size:16px; line-height:1; display:grid; place-items:center; }
+  .nav button:hover { border-color:var(--accent); color:var(--accent); }
+  .boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
+  .boardwrap { display:grid; grid-template-columns:minmax(0,1fr) 22px; grid-template-rows:22px auto;
+               width:min(100cqw, calc((100cqh - 22px) * 9 / 9.6 + 22px)); }
+  .flabels { display:grid; grid-template-columns:repeat(9,1fr); font-size:11px; color:var(--muted); text-align:center; align-items:end; padding-bottom:3px; }
+  .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font-size:11px; color:var(--muted); align-items:center; justify-items:center; }
+  .board { display:grid; grid-template-columns:repeat(9,1fr); aspect-ratio:9/9.6; border-radius:6px; overflow:hidden;
+           background:linear-gradient(135deg,var(--wood-1),var(--wood-2)); box-shadow:0 0 0 1px var(--wood-line), 0 12px 28px -12px rgba(80,50,10,.45); }
+  .sq { position:relative; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line); display:flex; align-items:center; justify-content:center; container-type:size; }
+  .sq:nth-child(9n) { border-right:0; }
+  .sq:nth-child(n+73) { border-bottom:0; }
+  .sq .h { position:absolute; inset:0; background:rgba(var(--heat), calc(var(--h) * .17)); }
+  .sq .h b { position:absolute; right:3px; top:1px; font-size:max(10px, 24cqh); font-weight:700; color:rgb(var(--heat)); line-height:1.2; z-index:2; text-shadow:0 0 3px var(--surface); }
+  .sq.flash { box-shadow:inset 0 0 0 3px var(--accent); }
+  .pc { width:84%; height:90%; position:relative; z-index:1; filter:drop-shadow(0 1.5px 1.5px rgba(60,35,5,.35)); transition:opacity .2s, transform .2s; }
+  .pc i { position:absolute; inset:0; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); background:linear-gradient(170deg,var(--piece-1),var(--piece-2));
+          display:flex; align-items:center; justify-content:center; padding-top:12%; font:700 min(58cqh,60cqw)/1 var(--mincho); font-style:normal; color:var(--ink); }
+  .pc.core i { color:var(--core); }
+  .pc.off { opacity:.3; filter:none; }
   .pc.hidden { visibility:hidden; }
-  .legend { font-size:12px; color:var(--muted); align-self:flex-start; }
-  .legend b { color:var(--core); }
-  .hand { font-size:12px; color:var(--muted); align-self:flex-end; }
+  .stage-f { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; color:var(--muted); min-height:20px; }
+  .stage-f .legend { display:flex; align-items:center; gap:6px; }
+  .stage-f .legend i { width:10px; height:10px; border-radius:3px; display:inline-block; }
 
-  .detail p { margin:0 0 8px; }
-  .detail ul { margin:0 0 8px; padding-left:18px; }
-  .tag { display:inline-block; font-size:11px; border:1px solid var(--line); border-radius:999px; padding:0 8px; margin:0 4px 4px 0; color:var(--muted); }
-  .pos { font-family:ui-monospace,Menlo,monospace; font-size:12px; display:grid; grid-template-columns:auto 1fr; gap:2px 10px; }
-  .pos span:nth-child(odd) { color:var(--muted); }
-  .pos span[data-sq] { cursor:default; }
+  /* ---------- detail ---------- */
+  .detail { padding:20px; overflow:auto; display:flex; flex-direction:column; gap:16px; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .tag { font-size:11px; border-radius:999px; padding:2px 10px; background:var(--surface-2); border:1px solid var(--line); color:var(--muted); }
+  .desc { margin:0; font-size:13.5px; line-height:1.8; }
+  .note { font-size:11px; color:var(--muted); margin:0; }
+  .note a { color:var(--accent); }
+  .sec h3 { margin:0 0 8px; font-size:11px; letter-spacing:.08em; color:var(--muted); font-weight:600; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 4px; border-radius:8px; background:var(--surface-2); border:1px solid var(--line); font-size:12px; font-variant-numeric:tabular-nums; cursor:default; transition:border-color .15s; }
+  .chip:hover { border-color:var(--accent); }
+  .chip b { width:20px; height:22px; display:grid; place-items:center; padding-top:3px; font:700 12px var(--mincho); color:var(--core);
+            background:linear-gradient(170deg,var(--piece-1),var(--piece-2)); clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
+  .pc-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:13px; line-height:1.55; }
+  .pc-list li { display:grid; grid-template-columns:18px 1fr; gap:6px; }
+  .pc-list li::before { content:"＋"; font-weight:700; color:var(--good); }
+  .pc-list.cons li::before { content:"－"; color:var(--bad); }
+  .detail .src { margin-top:auto; padding-top:8px; border-top:1px solid var(--line); }
 
-  /* gallery */
-  .gallery { grid-column:1 / -1; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
-  .thumbs { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; }
-  .thumb { border:1px solid var(--line); border-radius:8px; padding:8px; cursor:pointer; background:none; font:inherit; color:var(--fg); text-align:center; }
-  .thumb:hover, .thumb[aria-pressed="true"] { border-color:var(--accent); }
-  .thumb .mini { display:grid; grid-template-columns:repeat(6,1fr); background:var(--wood); border:1px solid var(--wood-line); aspect-ratio:6/4.4; margin-bottom:6px; }
-  .thumb .mini div { border:0.5px solid var(--wood-line); display:flex; align-items:center; justify-content:center; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700; font-size:13px; color:var(--ink); }
-  .thumb .mini div.core { color:var(--core); }
-  .thumb .mini div.off { opacity:.3; }
-  .thumb span { font-size:12px; }
-
-  @media (max-width:1000px) { main { grid-template-columns:200px minmax(0,1fr); } .detail { grid-column:1 / -1; } }
-  @media (max-width:640px) { main { grid-template-columns:1fr; padding:16px; } }
+  /* ---------- narrow: fall back to scrolling ---------- */
+  @media (max-width:980px) {
+    body { height:auto; overflow:auto; display:block; }
+    header { padding:12px 16px; }
+    .app { grid-template-columns:1fr; padding:0 16px 16px; }
+    .cards { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); grid-template-rows:none; grid-auto-rows:110px; }
+    .stage { height:min(118vw, 82vh); }
+    .detail { overflow:visible; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <aside>
-    <h1>将棋の囲い図鑑</h1>
-    <p class="note">居飛車・振り飛車（どちらも先手）の代表的な囲い。赤字が囲いを構成する駒。</p>
-    <div class="list" id="list"></div>
-    <h2>表示</h2>
-    <label class="chk"><input type="checkbox" id="onlyCore"> 囲いの駒だけ表示</label>
-    <label class="chk"><input type="checkbox" id="showHeat"> 囲いの駒の利きの数</label>
-    <label class="chk"><input type="checkbox" id="dimOthers" checked> 囲い以外の駒を薄く</label>
-    <p class="note" style="margin-top:10px">← → キーで切り替え</p>
-  </aside>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--wood-1)"/><stop offset="1" style="stop-color:var(--wood-2)"/></linearGradient></defs>
+</svg>
+<header>
+  <div class="brand"><h1>将棋の囲い図鑑</h1><span>先手の囲いを盤面で見比べる</span></div>
+  <div class="seg side" id="sideSeg">
+    <button data-side="left">居飛車</button>
+    <button data-side="right">振り飛車</button>
+  </div>
+  <div class="seg" id="modeSeg" title="囲い以外の駒の表示">
+    <button data-mode="all">全駒</button>
+    <button data-mode="dim">囲いを強調</button>
+    <button data-mode="core">囲いのみ</button>
+  </div>
+  <label class="switch"><input type="checkbox" id="showHeat"> 利きの数</label>
+</header>
 
-  <section class="stage">
-    <h3 id="title"></h3>
-    <p class="sub" id="reading"></p>
-    <div class="boardwrap">
-      <div class="flabels" id="flabels"></div><div></div>
-      <div class="board" id="board"></div>
-      <div class="rlabels" id="rlabels"></div>
+<div class="app">
+  <nav class="panel rail">
+    <div class="rail-h"><span id="railTitle"></span><span>← → で切り替え</span></div>
+    <div class="cards" id="cards"></div>
+  </nav>
+
+  <main class="panel stage">
+    <div class="stage-h">
+      <div class="ttl"><h2 id="title"></h2><div class="rd" id="reading"></div></div>
+      <div class="nav">
+        <button id="prev" aria-label="前の囲い">‹</button>
+        <span id="count"></span>
+        <button id="next" aria-label="次の囲い">›</button>
+      </div>
     </div>
-    <div class="hand" id="hand"></div>
-    <div class="legend">利きの数は玉・金・銀・桂・香（赤字の駒）の利きを数えたもの。</div>
-  </section>
+    <div class="boardarea">
+      <div class="boardwrap">
+        <div class="flabels" id="flabels"></div><div></div>
+        <div class="board" id="board"></div>
+        <div class="rlabels" id="rlabels"></div>
+      </div>
+    </div>
+    <div class="stage-f">
+      <span class="legend" id="legend"></span>
+      <span id="hand"></span>
+    </div>
+  </main>
 
-  <section class="detail" id="detail"></section>
-
-  <section class="gallery">
-    <h2 style="margin-top:0">一覧（玉側の6筋・六〜九段）</h2>
-    <div class="thumbs" id="thumbs"></div>
-  </section>
-</main>
+  <aside class="panel detail" id="detail"></aside>
+</div>
 
 <script>
 // 駒の表記: 駒1文字 + 筋 + 段（例: "玉78" = 7八玉）。先手のみ。
@@ -123,18 +198,18 @@ const CASTLES = [
     cons:['組むのに手数がかかる','端攻め（9筋）と、玉が狭いので一度崩されると逃げ場がない'],
   },
   {
-    id:'funa', name:'舟囲い（基本形）', reading:'ふながこい', group:'舟囲い', side:'left',
+    id:'funa', name:'舟囲い（7九銀型）', reading:'ふながこい', group:'舟囲い', side:'left',
     core:'玉78 銀79 金69 金58',
-    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
-    tags:['対振り飛車','急戦','6九金型'],
-    desc:'玉を7八に移動し、5八金・6九金で守る簡易な囲い。手数が少なく、右銀を4八から4六・5七などへ繰り出して急戦を仕掛けるときの土台になる。',
+    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
+    tags:['対振り飛車','急戦','基本形'],
+    desc:'玉を7八に移動し、5八金・6九金で守る簡易な囲い。手数が少なく、右銀を2六から棒銀などで繰り出して急戦を仕掛けるときの土台になる。',
     pros:['3〜4手で完成し、すぐに攻めに移れる','左右に広く、横からの攻めに比較的強い'],
     cons:['玉頭（7筋・8筋の上部）が薄い','6九の金が狙われると、取り返す駒が玉しかないことがある'],
   },
   {
     id:'funa68gin', name:'舟囲い（6八銀型）', reading:'ふながこい ろくはちぎんがた', group:'舟囲い', side:'left',
     core:'玉78 銀68 金69 金58',
-    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
     tags:['対振り飛車','急戦'],
     desc:'基本形から左銀を7九→6八へ上げた形。6七・5七・7七に利きが増え、中央が厚くなる。',
     pros:['中央・6筋の守りが強化される','金銀の連結が基本形よりよい'],
@@ -143,7 +218,7 @@ const CASTLES = [
   {
     id:'elmo', name:'舟囲い（7九金型）＝エルモ囲い', reading:'えるもがこい', group:'舟囲い', side:'left',
     core:'玉78 銀68 金79 金58',
-    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
     tags:['対振り飛車','急戦','コンピュータ発'],
     desc:'将棋ソフト「elmo」が多用して広まった形。舟囲いの6九金を7九へ寄せ、6八銀と組み合わせる。7九金が玉の真下で銀とつながるのが要。',
     pros:['金銀の連結がよく、6九の弱点が解消される','7九金が8八・8九にも利き、角打ちや左からの攻めに強い'],
@@ -151,38 +226,38 @@ const CASTLES = [
   },
   {
     id:'funa68kin', name:'舟囲い（6八金型）', reading:'ふながこい ろくはちきんがた', group:'舟囲い', side:'left',
-    core:'玉78 銀79 金68 金58',
-    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    core:'玉78 金68 金58',
+    rest:'銀57 角88 銀26 香99 桂89 飛28 桂29 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩36 歩25 歩17',
     tags:['対振り飛車','急戦'],
-    note:'※「6八金型」は定まった呼称が見つからなかったため、6九金を6八へ上げた舟囲いとして掲載。',
-    desc:'左金を6九から6八へ上げた舟囲い。6八金が6七・7七・5七を守り、上部への備えが増す。',
-    pros:['6七・7七への利きが増えて玉頭が少し厚い','金2枚が横に並び連結がよい'],
-    cons:['6九・7九が空き、玉の下段（底）が薄い','桂・飛車の打ち込みに注意'],
+    desc:'左銀を7九から5七へ繰り出して急戦を仕掛けるときの舟囲い。左金を6八に上げ、6八金・5八金を横に並べて中央を守る。',
+    pros:['左銀を攻めに使える','金2枚が横に並び、6七・5七方面に利きが多い'],
+    cons:['7九・6九が空き、玉の下段（底）が薄い','金2枚だけなので堅さは控えめ'],
   },
   {
     id:'yagura', name:'矢倉囲い（金矢倉）', reading:'やぐらがこい', group:'矢倉', side:'left',
     core:'玉88 銀77 金78 金67 香99 桂89',
-    rest:'角79 銀37 歩96 歩86 歩76 歩66 歩56 歩47 歩36 香19 桂29 飛28 歩17 歩25',
+    rest:'角68 銀26 飛28 桂29 香19 歩97 歩87 歩76 歩66 歩56 歩47 歩37 歩25 歩17',
     tags:['相居飛車','持久戦','将棋の純文学'],
-    desc:'相居飛車の代表的な囲い。8八玉を7七銀・7八金・6七金で包み、上からの攻めに強い。角は7九から4六方面へ活用する。',
+    desc:'相居飛車の代表的な囲い。8八玉を7七銀・7八金・6七金で包み、上からの攻めに強い。角は6八に引いて使う。',
     pros:['上部（正面）からの攻めに非常に強い','金銀3枚がまとまり、バランスがよい'],
     cons:['組むのに手数がかかる','横（飛車）からの攻めや、端攻め（9筋）にはやや弱い'],
   },
   {
     id:'kani', name:'カニ囲い', reading:'かにがこい', group:'矢倉', side:'left',
     core:'玉69 銀68 金78 金58',
-    rest:'角88 銀37 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36 ' + RIGHT,
+    rest:'角88 銀26 香99 桂89 飛28 桂29 香19 歩97 歩87 歩76 歩67 歩57 歩47 歩37 歩25 歩17',
     tags:['相居飛車','急戦矢倉'],
     desc:'金・銀・金を8段目に横一列に並べ、その下（6九）に玉を置く。形がカニに似ていることから。急戦矢倉や矢倉の序盤でよく現れる。',
     pros:['手数が少なく、矢倉への発展もできる','左右どちらにも対応しやすい'],
     cons:['玉が中央に近く、戦場から近い','玉が横にしか逃げられず、堅さはそこそこ'],
   },
   {
-    id:'kabuto', name:'兜囲い', reading:'かぶとがこい', group:'矢倉', side:'left',
+    id:'kabuto', name:'兜囲い（兜矢倉）', reading:'かぶとがこい', group:'矢倉', side:'left',
     core:'玉68 銀77 金78 金58',
-    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩37 ' + RIGHT,
+    rest:'銀26 香99 桂89 飛28 桂29 香19 歩97 歩87 歩76 歩67 歩57 歩47 歩37 歩25 歩17',
+    hand:'角',
     tags:['相居飛車','急戦'],
-    desc:'7七銀・7八金・5八金で6八玉をかぶせるように守る形。玉の頭上を銀・金がふさぎ、兜をかぶったように見える。',
+    desc:'7七銀・7八金・5八金で6八玉をかぶせるように守る形。玉の頭上を銀・金がふさぎ、兜をかぶったように見える。角換わりなどで角を持ち駒にしているときに現れやすい。',
     pros:['手数が少ない','7七銀で玉頭・7筋の受けが利く'],
     cons:['玉が中央寄りで戦場に近い','6九・7九が空いており下段が薄い'],
   },
@@ -279,6 +354,14 @@ const CASTLES = [
   },
 ];
 
+// カード用の短い名前
+const SHORT = {
+  anaguma:'居飛車穴熊', funa:'舟囲い 7九銀', funa68gin:'舟囲い 6八銀', elmo:'エルモ囲い', funa68kin:'舟囲い 6八金',
+  yagura:'金矢倉', kani:'カニ囲い', kabuto:'兜矢倉', gangi:'雁木', tsunogin:'ツノ銀雁木', bonanza:'ボナンザ囲い', hidarimino:'左美濃',
+  mino:'本美濃', katamino:'片美濃', takamino:'高美濃', gincan:'銀冠', diamond:'ダイヤモンド美濃', furianaguma:'振り飛車穴熊',
+};
+const SIDE_LABEL = { left:'居飛車', right:'振り飛車' };
+
 const KANJI_NUM = ['','一','二','三','四','五','六','七','八','九'];
 const ZEN = ['','１','２','３','４','５','６','７','８','９'];
 const MOVES = {
@@ -287,7 +370,6 @@ const MOVES = {
   銀:[[-1,-1],[0,-1],[1,-1],[-1,1],[1,1]],
   桂:[[-1,-2],[1,-2]],
 };
-const NAMES = { 玉:'玉', 飛:'飛', 角:'角', 金:'金', 銀:'銀', 桂:'桂', 香:'香', 歩:'歩' };
 
 function parse(str, core) {
   return str.trim().split(/\s+/).filter(Boolean).map(t => ({ p:t[0], f:+t[1], r:+t[2], core }));
@@ -299,11 +381,9 @@ function piecesOf(c) {
   for (const x of all) { const k = x.f*10+x.r; if (seen.has(k)) console.warn(c.name, '重複', k); seen.add(k); }
   return all;
 }
-// 筋f・段r → 盤の列（左が9筋）・行
-const col = f => 9 - f, row = r => r - 1;
 
 function attackMap(pieces) {
-  const occ = new Map(pieces.map(x => [x.f*10+x.r, x]));
+  const occ = new Set(pieces.map(x => x.f*10+x.r));
   const n = Array.from({length:10}, () => Array(10).fill(0));
   for (const x of pieces) {
     if (!x.core) continue;
@@ -320,95 +400,123 @@ function attackMap(pieces) {
 }
 
 const $ = id => document.getElementById(id);
-const state = { idx:0 };
+const store = {
+  get(k) { try { return localStorage.getItem('shogi-castle:' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('shogi-castle:' + k, v); } catch {} },
+};
+const state = { idx:0, mode:'dim', heat:false };
+const visible = () => CASTLES.map((c, i) => i).filter(i => CASTLES[i].side === CASTLES[state.idx].side);
+
+// 玉側の6筋×4段を切り出したミニ盤
+function miniSVG(c) {
+  const at = new Map(piecesOf(c).map(x => [x.f*10+x.r, x]));
+  const f0 = c.side === 'right' ? 6 : 9, W = 10, H = 11;
+  let s = `<svg viewBox="0 0 60 44" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="60" height="44" rx="1.5"/>`;
+  for (let i = 1; i < 6; i++) s += `<line class="mini-ln" x1="${i*W}" y1="0" x2="${i*W}" y2="44"/>`;
+  for (let j = 1; j < 4; j++) s += `<line class="mini-ln" x1="0" y1="${j*H}" x2="60" y2="${j*H}"/>`;
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) {
+    const x = at.get((f0 - i)*10 + (6 + j));
+    if (x) s += `<text class="mini-pc ${x.core ? 'core' : 'off'}" x="${i*W + W/2}" y="${j*H + H/2 + .5}">${x.p}</text>`;
+  }
+  return s + '</svg>';
+}
 
 function buildLabels() {
   $('flabels').innerHTML = [9,8,7,6,5,4,3,2,1].map(f => `<div>${ZEN[f]}</div>`).join('');
   $('rlabels').innerHTML = [1,2,3,4,5,6,7,8,9].map(r => `<div>${KANJI_NUM[r]}</div>`).join('');
 }
 
+function renderCards() {
+  const side = CASTLES[state.idx].side;
+  $('railTitle').textContent = `${SIDE_LABEL[side]}の囲い（${visible().length}）`;
+  $('cards').innerHTML = visible().map(i => {
+    const c = CASTLES[i];
+    return `<button class="card" data-i="${i}" title="${c.name}">${miniSVG(c)}<span class="nm">${SHORT[c.id] || c.name}</span></button>`;
+  }).join('');
+}
+
 function render() {
   const c = CASTLES[state.idx];
   const pieces = piecesOf(c);
-  const onlyCore = $('onlyCore').checked, heat = $('showHeat').checked, dim = $('dimOthers').checked;
   const at = new Map(pieces.map(x => [x.f*10+x.r, x]));
   const hm = attackMap(pieces);
 
   let html = '';
   for (let r = 1; r <= 9; r++) for (let f = 9; f >= 1; f--) {
-    const x = at.get(f*10+r);
-    const h = hm[f][r];
-    const heatCls = heat && h ? ' heat' : '';
-    html += `<div class="sq${heatCls}" data-sq="${f}${r}" ${heat && h ? `data-n="${h}" style="--h:${Math.min(h,4)}"` : ''}>`;
+    const x = at.get(f*10+r), h = hm[f][r];
+    html += `<div class="sq" data-sq="${f}${r}">`;
+    if (state.heat && h) html += `<span class="h" style="--h:${Math.min(h,4)}"><b>${h}</b></span>`;
     if (x) {
-      const cls = ['pc', x.core ? 'core' : '', x.p === '玉' ? 'king' : '', !x.core && onlyCore ? 'hidden' : '', !x.core && dim && !onlyCore ? 'off' : ''].join(' ');
-      html += `<div class="${cls}">${NAMES[x.p]}</div>`;
+      const cls = x.core ? 'core' : state.mode === 'core' ? 'hidden' : state.mode === 'dim' ? 'off' : '';
+      html += `<div class="pc ${cls}"><i>${x.p}</i></div>`;
     }
     html += '</div>';
   }
   $('board').innerHTML = html;
   $('title').textContent = c.name;
   $('reading').textContent = c.reading;
-  $('hand').textContent = c.hand ? `先手の持ち駒：${c.hand}` : '';
+  $('hand').textContent = c.hand ? `持ち駒：${c.hand}` : '';
+  $('legend').innerHTML = state.heat
+    ? `<i style="background:rgba(var(--heat),.5)"></i>数字は囲いの駒（玉・金・銀・桂・香）が利いている数`
+    : `<i style="background:var(--core)"></i>赤字が囲いを構成する駒`;
+  const vis = visible();
+  $('count').textContent = `${vis.indexOf(state.idx) + 1} / ${vis.length}`;
 
-  const coreList = parse(c.core, true).map(x => `<span>${NAMES[x.p]}</span><span data-sq="${x.f}${x.r}">${ZEN[x.f]}${KANJI_NUM[x.r]}</span>`).join('');
+  const chips = parse(c.core, true).map(x => `<span class="chip" data-sq="${x.f}${x.r}"><b>${x.p}</b>${ZEN[x.f]}${KANJI_NUM[x.r]}</span>`).join('');
   $('detail').innerHTML = `
-    <div>${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
-    <p>${c.desc}</p>
+    <div class="tags">${[...new Set([c.group, ...c.tags])].map(t => `<span class="tag">${t}</span>`).join('')}</div>
+    <p class="desc">${c.desc}</p>
     ${c.note ? `<p class="note">${c.note}</p>` : ''}
-    <h2>囲いの駒</h2>
-    <div class="pos">${coreList}</div>
-    <h2>長所</h2><ul>${c.pros.map(s => `<li>${s}</li>`).join('')}</ul>
-    <h2>短所</h2><ul>${c.cons.map(s => `<li>${s}</li>`).join('')}</ul>`;
+    <div class="sec"><h3>囲いの駒</h3><div class="chips">${chips}</div></div>
+    <div class="sec"><h3>長所</h3><ul class="pc-list">${c.pros.map(s => `<li>${s}</li>`).join('')}</ul></div>
+    <div class="sec"><h3>短所</h3><ul class="pc-list cons">${c.cons.map(s => `<li>${s}</li>`).join('')}</ul></div>
+    <p class="note src">居飛車の一部の配置は <a href="https://shogi-joutatsu.com/archives/6540" target="_blank" rel="noopener">将棋上達塾の図</a> を参考にしています。</p>`;
   $('detail').querySelectorAll('[data-sq]').forEach(el => {
     const sq = $('board').querySelector(`[data-sq="${el.dataset.sq}"]`);
     el.addEventListener('mouseenter', () => sq.classList.add('flash'));
     el.addEventListener('mouseleave', () => sq.classList.remove('flash'));
   });
 
-  document.querySelectorAll('#list button, .thumb').forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === state.idx));
-  try { localStorage.setItem('shogi-castle', c.id); } catch {}
+  if (!$('cards').querySelector(`[data-i="${state.idx}"]`)) renderCards();
+  $('cards').querySelectorAll('.card').forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === state.idx));
+  $('sideSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.side === c.side));
+  $('modeSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === state.mode));
+  $('showHeat').checked = state.heat;
+  store.set('id', c.id); store.set('mode', state.mode); store.set('heat', state.heat ? '1' : '');
 }
 
-function buildList() {
-  let html = '', last = '';
-  CASTLES.forEach((c, i) => {
-    if (c.group !== last) { html += `<h2>${c.group}</h2>`; last = c.group; }
-    html += `<button data-i="${i}">${c.name}</button>`;
-  });
-  $('list').innerHTML = html;
-  $('list').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.idx = +b.dataset.i; render(); } });
+function step(d) {
+  const vis = visible();
+  state.idx = vis[(vis.indexOf(state.idx) + d + vis.length) % vis.length];
+  render();
 }
 
-function buildThumbs() {
-  $('thumbs').innerHTML = CASTLES.map((c, i) => {
-    const at = new Map(piecesOf(c).map(x => [x.f*10+x.r, x]));
-    let cells = '';
-    const f0 = c.side === 'right' ? 6 : 9;
-    for (let r = 6; r <= 9; r++) for (let f = f0; f >= f0 - 5; f--) {
-      const x = at.get(f*10+r);
-      cells += `<div class="${x ? (x.core ? 'core' : 'off') : ''}">${x ? NAMES[x.p] : ''}</div>`;
-    }
-    return `<button class="thumb" data-i="${i}"><div class="mini">${cells}</div><span>${c.name}</span></button>`;
-  }).join('');
-  $('thumbs').addEventListener('click', e => {
-    const b = e.target.closest('.thumb'); if (!b) return;
-    state.idx = +b.dataset.i; render();
-    window.scrollTo({ top:0, behavior:'smooth' });
-  });
-}
-
-['onlyCore','showHeat','dimOthers'].forEach(id => $(id).addEventListener('change', render));
+$('cards').addEventListener('click', e => { const b = e.target.closest('.card'); if (b) { state.idx = +b.dataset.i; render(); } });
+$('sideSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.dataset.side === CASTLES[state.idx].side) return;
+  const last = CASTLES.findIndex(c => c.id === store.get('last-' + b.dataset.side));
+  store.set('last-' + CASTLES[state.idx].side, CASTLES[state.idx].id);
+  state.idx = last >= 0 ? last : CASTLES.findIndex(c => c.side === b.dataset.side);
+  render();
+});
+$('modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.mode = b.dataset.mode; render(); } });
+$('showHeat').addEventListener('change', e => { state.heat = e.target.checked; render(); });
+$('prev').addEventListener('click', () => step(-1));
+$('next').addEventListener('click', () => step(1));
 document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') state.idx = (state.idx + 1) % CASTLES.length;
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') state.idx = (state.idx - 1 + CASTLES.length) % CASTLES.length;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
   else return;
-  e.preventDefault(); render();
+  e.preventDefault();
 });
 
-buildLabels(); buildList(); buildThumbs();
-try { const saved = localStorage.getItem('shogi-castle'); const i = CASTLES.findIndex(c => c.id === saved); if (i >= 0) state.idx = i; } catch {}
-render();
+{
+  const i = CASTLES.findIndex(c => c.id === store.get('id'));
+  if (i >= 0) state.idx = i;
+  if (['all','dim','core'].includes(store.get('mode'))) state.mode = store.get('mode');
+  state.heat = store.get('heat') === '1';
+}
+buildLabels(); renderCards(); render();
 </script>
 </body>
 </html>
