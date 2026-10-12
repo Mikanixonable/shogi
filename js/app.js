@@ -56,7 +56,7 @@
         detailBody: $('detail'), detailTabs: $('detailTabs'),
       },
     }),
-    tactic: new K.TacticMode({ ...common, els: { rail: $('tacticRail'), stage: $('tacticStage'), detail: $('tacticDetail') } }),
+    tactic: new K.TacticMode({ ...common, els: { rail: $('tacticRail'), ptable: $('ptable'), stage: $('tacticStage'), detail: $('tacticDetail') } }),
     cluster: new K.ClusterMode({ ...common, els: { rail: $('clusterRail'), stage: $('clusterStage'), detail: $('clusterDetail') } }),
   };
 
