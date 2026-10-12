@@ -70,11 +70,12 @@ window.Kakoi = window.Kakoi || {};
       if (next) this.selectTactic(next.id);
     }
 
-    /** 囲いを盤に重ねる／外す */
+    /** 囲いを盤に重ねる／外す。重ねるときは骨格線も自動で点ける（スイッチの見た目と実表示を合わせる） */
     _toggleCastle(id) {
       if (!this.repo.has(id)) return;
       const s = this.store.state;
-      this.store.set({ tacticCastleId: s.tacticCastleId === id ? null : id });
+      const on = s.tacticCastleId === id ? null : id;
+      this.store.set(on ? { tacticCastleId: on, skeleton: true } : { tacticCastleId: null });
     }
 
     /** 相性のよい囲いへ移る。戦型の違う囲いは、系統の絞り込みが合わなければ解除して選ぶ */
@@ -145,10 +146,13 @@ window.Kakoi = window.Kakoi || {};
           trace: { square: tactic.lead.square, piece: tactic.lead.piece, path: tactic.route },
         });
         this.stage.setHand(position.hand);
-        overlay.skeleton(castle ? repo.positionOf(castle) : null);
+        overlay.skeleton(castle && state.skeleton ? repo.positionOf(castle) : null);
         overlay.route(tactic.route);
       } else if (changed.has('mode')) {
         board.setMode(state.mode);
+      } else if (changed.has('skeleton')) {
+        // 重ね中の骨格線はツールバーのスイッチに従う
+        overlay.skeleton(castle && state.skeleton ? repo.positionOf(castle) : null);
       }
     }
   }

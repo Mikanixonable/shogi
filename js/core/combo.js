@@ -44,7 +44,7 @@ window.Kakoi = window.Kakoi || {};
       // 移し替え元: 盤上で一番近い同種の駒（主役・適用済みは除く）。なければ持ち駒から補う
       let donor = null, dist = Infinity;
       for (const x of pieces) {
-        if (x.p !== t.p || x.role === 'lead' || done.has(x)) continue;
+        if (x.p !== t.p || x.owner !== 'sente' || x.role === 'lead' || done.has(x)) continue;
         const d = Math.hypot(x.f - t.f, x.r - t.r);
         if (d < dist) { donor = x; dist = d; }
       }

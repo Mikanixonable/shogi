@@ -27,7 +27,6 @@ window.Kakoi = window.Kakoi || {};
         const c = e.target.closest('.card');
         if (c) handlers.onSelect(c.dataset.id);
       });
-      this._bindTilt(els.cards);
       document.addEventListener('keydown', e => this._onKey(e));
     }
 
@@ -52,8 +51,8 @@ window.Kakoi = window.Kakoi || {};
       if (this._renderedKey !== key) {
         this._renderedKey = key;
         const glyphOf = new Map(families.map(f => [f.id, f.glyph]));
-        this.els.cards.innerHTML = castles.map((c, n) =>
-          `<button class="card" data-id="${esc(c.id)}" title="${esc(c.name)}" style="--i:${n}"><span class="fg">${Kakoi.familyGlyph(glyphOf.get(c.family))}</span>` +
+        this.els.cards.innerHTML = castles.map(c =>
+          `<button class="card" data-id="${esc(c.id)}" title="${esc(c.name)}"><span class="fg">${Kakoi.familyGlyph(glyphOf.get(c.family))}</span>` +
           (c.refFamily ? `<span class="rf" title="${esc(c.refFamily)}">※</span>` : '') +
           `${Kakoi.miniBoardSVG(positionOf(c), c.side)}<span class="nm">${esc(c.short)}</span></button>`
         ).join('');
@@ -79,20 +78,6 @@ window.Kakoi = window.Kakoi || {};
       this.els.cards.querySelector(`[data-id="${this._ids[j]}"]`)?.focus({ preventScroll: true });
     }
 
-    _bindTilt(container) {
-      container.addEventListener('pointermove', e => {
-        const c = e.target.closest('.card');
-        if (!c || e.pointerType !== 'mouse') return;
-        const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-        c.style.setProperty('--ry', `${(x - .5) * 10}deg`); c.style.setProperty('--rx', `${(.5 - y) * 10}deg`);
-        c.style.setProperty('--mx', `${x * 100}%`); c.style.setProperty('--my', `${y * 100}%`);
-      });
-      container.addEventListener('pointerout', e => {
-        const c = e.target.closest('.card');
-        if (!c || c.contains(e.relatedTarget)) return;
-        c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg');
-      });
-    }
   }
 
   Kakoi.RailView = RailView;

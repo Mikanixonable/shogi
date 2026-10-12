@@ -27,7 +27,7 @@ window.Kakoi = window.Kakoi || {};
         onSelect: id => this.select(id),
       });
       this.detail = new K.ClusterDetailView(els.detail, {
-        onOpen: id => this.store.set({ view: 'castle', castleId: id }),
+        onOpen: id => this._openCastle(id),
         onSelect: id => this.select(id),
       });
     }
@@ -46,6 +46,18 @@ window.Kakoi = window.Kakoi || {};
     select(id) {
       this.selectedId = this.selectedId === id ? null : id;
       this._render();
+    }
+
+    /** 「囲い図鑑で開く」。前の画面の攻め筋・系統の絞り込みが残ると別囲いに誤適用されるので補正する */
+    _openCastle(id) {
+      const castle = this.repo.byId(id);
+      if (!castle) return;
+      const s = this.store.state;
+      this.store.set({
+        view: 'castle', castleId: id, attackId: null,
+        familyFilter: s.familyFilter === castle.family ? s.familyFilter : null,
+        lastBySide: { ...s.lastBySide, [castle.side]: id },
+      });
     }
 
     _render() {

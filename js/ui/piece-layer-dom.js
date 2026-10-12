@@ -40,6 +40,8 @@ window.Kakoi = window.Kakoi || {};
         sq.appendChild(el);
       }
       this._settleGote(before);
+      // アニメなしの描き直しでは後手の入場（goteIn）も抑える（立体版は即表示なので挙動を揃える）
+      if (!animate) for (const el of this.squares.querySelectorAll('.pc.gote')) el.classList.add('no-enter');
       if (animate) this._flip(before, trace);
       else this.board.style.removeProperty('--rt-d');
     }
