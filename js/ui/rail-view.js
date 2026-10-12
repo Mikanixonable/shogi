@@ -66,6 +66,7 @@ window.Kakoi = window.Kakoi || {};
 
     // ←→ は前後、↑↓ は一段上下（カードの並びと同じ向き）
     _onKey(e) {
+      if (document.body.dataset.view !== 'castle') return;
       if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea/i.test(e.target.tagName)) return;
       const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLS, ArrowDown: COLS }[e.key];
       if (!step) return;
