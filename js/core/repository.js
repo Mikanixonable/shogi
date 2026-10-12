@@ -26,7 +26,6 @@ window.Kakoi = window.Kakoi || {};
       const list = this.ofSide(side);
       return this._families.flatMap(f => list.filter(c => c.family === f.id));
     }
-    first(side) { return this.ofSide(side)[0]; }
     families() { return this._families; }
     familyOf(castle) { return this._familyById.get(castle.family); }
     subtypeOf(castle) { return this.familyOf(castle)?.subtypes.find(s => s.id === castle.subtype) || null; }
@@ -59,7 +58,6 @@ window.Kakoi = window.Kakoi || {};
     hasTactic(id) { return this._tacticById.has(id); }
     tacticFamilies() { return this._tacticFamilies; }
     tacticsOf(familyId) { return this._tactics.filter(t => t.family === familyId); }
-    tacticSourcesOf(tactic) { return this._resolveSources(tactic.sources || []); }
     /** 戦法に合う囲い（存在する id のみ） */
     castlesOfTactic(tactic) { return (tactic.castles || []).filter(id => this._byId.has(id)).map(id => this._byId.get(id)); }
     /** 戦法と囲い（＋その想定配置）の出典を併記する。castle がなければ戦法だけ */

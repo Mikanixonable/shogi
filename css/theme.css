@@ -3,27 +3,26 @@
 /* ===== tokens ===== */
 :root {
   --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
-  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035); --tint:rgba(27,26,23,.05);
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
   --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
   --good:#4a6b3f; --bad:#c8371f; --heat:74,107,63;
   --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
-  --piece-1:#fbf6ea; --piece-2:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --core:#c8371f;
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --core:#c8371f;
   --gote-ink:#33507a;
   --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
   --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
   --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
-  --mincho:var(--font-d);
   --ease:cubic-bezier(.4,0,.2,1);
   --washi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 /* 明暗は OS ではなく画面右上の切替ボタンが決める（既定はライト）。属性だけを見る */
 :root[data-theme="dark"] {
   --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
-  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04); --tint:rgba(236,230,218,.05);
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
   --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
   --good:#9cbf8a; --bad:#e2563b; --heat:156,191,138;
   --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
-  --piece-1:#f3e9d2; --piece-2:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17; --core:#c8371f;
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17; --core:#c8371f;
   --gote-ink:#43506e;
 }
 

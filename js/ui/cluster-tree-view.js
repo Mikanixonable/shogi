@@ -27,7 +27,7 @@ window.Kakoi = window.Kakoi || {};
       const w = this.host.clientWidth, h = this.host.clientHeight;
       if (!w || !h) return;
       const leaves = model.leaves();
-      const labelW = Math.max(...leaves.map(p => Kakoi.clusterTextWidth(p.label))) + DOT + 12;
+      const labelW = Math.max(...leaves.map(p => textWidth(p.label))) + DOT + 12;
       const x0 = PAD.l, x1 = Math.max(x0 + 60, w - PAD.r - labelW);
       const rowH = (h - PAD.t - PAD.b) / leaves.length;
       const hx = ht => x0 + (1 - ht / model.maxHeight) * (x1 - x0);   // 根が左、葉（高さ0）が右
@@ -60,5 +60,4 @@ window.Kakoi = window.Kakoi || {};
   }
 
   Kakoi.ClusterTreeView = ClusterTreeView;
-  Kakoi.clusterTextWidth = textWidth;
 })();

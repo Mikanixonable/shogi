@@ -162,6 +162,19 @@ window.Kakoi = window.Kakoi || {};
 
       for (const ni of m.appear) {
         const n = after[ni];
+        // 主役は筋道をたどる専用の動き。既に同じマスにいても使い回さず経路再生に回す
+        // （再利用に流すと _route が走らず --rt-d も残ってしまう）
+        if (n.skip === 'lead') {
+          // 経路再生用に新しい駒を作るので、同じマスに居残っている同名の駒はここで消す
+          const si = before.findIndex((o, i) => !claimed.has(i) && o.p === n.p && o.owner === n.owner && o.sq === n.sq);
+          if (si >= 0) { claimed.add(si); this._remove(before[si].ref); }
+          const pc = this._make(n);
+          next[ni] = pc;
+          this._place(pc);
+          pc.op = this._targetOp(pc); this._applyOp(pc);
+          if (animate) this._route(pc, trace.path);
+          continue;
+        }
         // 同じマスに同じ駒が居続けるもの（後手の駒など）は入場せずそのまま使い回す
         const si = before.findIndex((o, i) => !claimed.has(i) && o.p === n.p && o.owner === n.owner && o.sq === n.sq);
         if (si >= 0) {
@@ -179,10 +192,7 @@ window.Kakoi = window.Kakoi || {};
         const pc = this._make(n);
         next[ni] = pc;
         this._place(pc);
-        if (n.skip === 'lead') {           // 主役: 筋道をたどる
-          pc.op = this._targetOp(pc); this._applyOp(pc);
-          if (animate) this._route(pc, trace.path);
-        } else if (animate) {
+        if (animate) {
           const t = this._targetOp(pc); pc.target = t;
           if (n.owner === 'gote') {        // 後手の駒: 回りながら沈み込む（DOM の goteIn 相当）
             pc.op = 0; this._applyOp(pc);
@@ -236,6 +246,7 @@ window.Kakoi = window.Kakoi || {};
       if (this._raf) cancelAnimationFrame(this._raf);
       for (const pc of [...this.cur]) this._remove(pc);
       this.cur = [];
+      this.geoBody.dispose(); this.geoFace.dispose(); this.geoShadow.dispose();
       for (const tex of this._tex.values()) tex.dispose();
       if (this._shadowT) this._shadowT.dispose();
       this.renderer.dispose();

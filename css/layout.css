@@ -65,7 +65,6 @@ body[data-view="cluster"] .view-pane[data-view~="cluster"] { display:contents; }
 /* 親のグリッド全体を使う画面（一覧・解説・分類マップ）は箱として全行にまたがる */
 body[data-view="tactic"] .view-pane.pane-fill[data-view~="tactic"],
 body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:flex; flex-direction:column; grid-row:1 / -1; min-height:0; overflow:auto; }
-.placeholder { margin:auto; color:var(--muted); letter-spacing:.1em; }
 /* 中央: 見出し → 盤 → 足元の順を、画面ごとのパネルに分かれていても保つ */
 .stage .stage-h { order:0; }
 .stage .boardarea { order:1; }
