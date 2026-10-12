@@ -185,7 +185,7 @@ async function main() {
     // ---- スクリーンショット ----
     for (const scheme of ['light', 'dark']) {
       const page = await browser.newPage();
-      await page.emulateMedia({ colorScheme: scheme });
+      await page.addInitScript(s => { try { localStorage.setItem('shogi-theme', s); } catch (e) {} document.documentElement.dataset.theme = s; }, scheme);
       watch(page, errs);
       for (const w of WIDTHS) {
         await page.setViewportSize({ width: w, height: w === 390 ? 844 : 900 });
