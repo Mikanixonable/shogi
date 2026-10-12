@@ -1,4 +1,4 @@
-// 戦法モードの右の解説: 概要・組み方・相性のよい囲い・出典の4タブ
+// 戦法モードの右の解説: タグ・説明・長所短所・主役の駒の動き・相性のよい囲い・出典を一続きに
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -7,26 +7,20 @@ window.Kakoi = window.Kakoi || {};
 
   class TacticDetailView {
     /**
-     * @param {HTMLElement} el `#tacticDetail`
+     * @param {HTMLElement} el `#tacticDetail`（.detail-body）
      * @param {{ onHover:(squares:string[], tone:?string)=>void, onCastle:(id:string)=>void }} handlers
      */
     constructor(el, handlers) {
-      el.innerHTML =
-        '<div class="seg small wide tabs">' +
-        ['overview:概要', 'route:組み方', 'castles:相性のよい囲い', 'sources:出典'].map(s => `<button data-value="${s.split(':')[0]}">${s.split(':')[1]}</button>`).join('') +
-        '</div><div class="detail-body"></div>';
-      this.body = el.querySelector('.detail-body');
-      this.tab = 'overview';
-      this.tabs = new Kakoi.Segmented(el.querySelector('.tabs'), v => this.showTab(v));
-      this.body.addEventListener('mouseover', e => {
+      this.body = el;
+      el.addEventListener('mouseover', e => {
         const t = e.target.closest('[data-sq]');
         if (t) handlers.onHover(t.dataset.sq.split(' '), 'focus');
       });
-      this.body.addEventListener('mouseout', e => {
+      el.addEventListener('mouseout', e => {
         const t = e.target.closest('[data-sq]');
         if (t && !t.contains(e.relatedTarget)) handlers.onHover([], null);
       });
-      this.body.addEventListener('click', e => {
+      el.addEventListener('click', e => {
         const b = e.target.closest('.tc-castle');
         if (b) handlers.onCastle(b.dataset.id);
       });
@@ -37,31 +31,22 @@ window.Kakoi = window.Kakoi || {};
      * @param {{ family:object, castles:{id:string,name:string,familyName:string}[], sources:object[] }} info
      */
     render(tactic, { family, castles, sources }) {
-      const pane = (id, parts) => `<div class="pane" data-pane="${id}">${parts.filter(Boolean).join('')}</div>`;
       this.body.innerHTML = [
-        pane('overview', [
-          this._tags(tactic, family),
-          `<p class="desc">${esc(tactic.desc)}</p>`,
-          tactic.note ? `<p class="note">${esc(tactic.note)}</p>` : '',
-          this._list('長所', tactic.pros, ''),
-          this._list('短所', tactic.cons, 'cons'),
-        ]),
-        pane('route', [this._route(tactic)]),
-        pane('castles', [this._castles(castles)]),
-        pane('sources', [this._sources(sources)]),
-      ].join('');
-      this.showTab(this.tab);
+        this._tags(tactic, family),
+        `<p class="desc">${esc(tactic.desc)}</p>`,
+        tactic.note ? `<p class="note">${esc(tactic.note)}</p>` : '',
+        this._list('長所', tactic.pros, ''),
+        this._list('短所', tactic.cons, 'cons'),
+        this._route(tactic),
+        this._castles(castles),
+        this._sources(sources),
+      ].filter(Boolean).join('');
     }
 
-    showTab(id) {
-      this.tab = id;
-      this.tabs.setValue(id);
-      for (const p of this.body.querySelectorAll('.pane')) p.classList.toggle('active', p.dataset.pane === id);
-    }
-
+    // #ハッシュタグ表記（装飾のみ・クリック不可）
     _tags(t, family) {
       const tags = [t.context, ...(t.aliases || []).map(a => `別名：${a}`)].filter(Boolean);
-      return `<div class="tags"><span class="tag group">${esc(family.name)}</span>${tags.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div>`;
+      return `<div class="tags"><span class="tag group">#${esc(family.name)}</span>${tags.map(x => `<span class="tag">#${esc(x)}</span>`).join('')}</div>`;
     }
 
     _list(title, items, cls) {

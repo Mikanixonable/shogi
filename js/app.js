@@ -54,7 +54,7 @@
       els: {
         side: $('sideSeg'), chips: $('familyChips'), count: $('railCount'), cards: $('cards'),
         title: $('title'), titleWrap: $('ttl'), reading: $('reading'), setup: $('setup'), legend: $('legend'), hand: $('hand'),
-        detailBody: $('detail'), detailTabs: $('detailTabs'),
+        detailBody: $('detail'),
       },
     }),
     tactic: new K.TacticMode({ ...common, els: { rail: $('tacticRail'), ptable: $('ptable'), stage: $('tacticStage'), detail: $('tacticDetail') } }),
