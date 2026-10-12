@@ -49,6 +49,7 @@ Kakoi.CASTLES.push(
     ],
     sources: [
       { ref: 'joutatsu-bougin', for: '配置' },
+      { ref: 'wj-kakoi', for: '解説' },
       { ref: 'wj-funagakoi', for: '配置・解説' },
       { ref: 'sj-funakakoi', for: '配置' },
       { ref: 'we-castle', for: '配置' },
