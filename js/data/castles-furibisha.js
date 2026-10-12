@@ -5,7 +5,7 @@ window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
 Kakoi.CASTLES.push(
   {
-    id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', group: '美濃囲い', setup: 'furibisha',
+    id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', family: 'mino', subtype: 'hon', setup: 'furibisha',
     core: '玉28 銀38 金49 金58',
     support: '銀67 香19 桂29 歩16 歩27 歩37 歩47',
     tags: ['対居飛車', '基本の囲い'],
@@ -31,7 +31,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'katamino', name: '片美濃囲い', short: '片美濃', reading: 'かたみのがこい', side: 'furibisha', group: '美濃囲い', setup: 'furibisha',
+    id: 'katamino', name: '片美濃囲い', short: '片美濃', reading: 'かたみのがこい', side: 'furibisha', family: 'mino', subtype: 'kata', setup: 'furibisha',
     core: '玉28 銀38 金49',
     support: '銀67 金69 香19 桂29 歩16 歩27 歩37 歩47',
     tags: ['対居飛車', '急戦向き'],
@@ -55,7 +55,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'takamino', name: '高美濃囲い', short: '高美濃', reading: 'たかみのがこい', side: 'furibisha', group: '美濃囲い', setup: 'furibisha',
+    id: 'takamino', name: '高美濃囲い', short: '高美濃', reading: 'たかみのがこい', side: 'furibisha', family: 'mino', subtype: 'taka', setup: 'furibisha',
     core: '玉28 銀38 金47 金49',
     support: '銀67 香19 桂29 歩16 歩27 歩37 歩46',
     tags: ['対居飛車', '持久戦'],
@@ -77,7 +77,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'gincan', name: '銀冠', short: '銀冠', reading: 'ぎんかんむり', side: 'furibisha', group: '美濃囲い', setup: 'furibisha',
+    id: 'gincan', name: '銀冠', short: '銀冠', reading: 'ぎんかんむり', side: 'furibisha', family: 'mino', subtype: 'gincan', setup: 'furibisha',
     core: '玉28 銀27 金38 金47',
     support: '銀67 香19 桂29 歩16 歩26 歩37 歩46',
     tags: ['対居飛車', '持久戦', '上部に強い'],
@@ -100,7 +100,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'diamond', name: 'ダイヤモンド美濃', short: 'ダイヤモンド美濃', reading: 'だいやもんどみの', side: 'furibisha', group: '美濃囲い', setup: 'furibisha',
+    id: 'diamond', name: 'ダイヤモンド美濃', short: 'ダイヤモンド美濃', reading: 'だいやもんどみの', side: 'furibisha', family: 'mino', subtype: 'ginmino', setup: 'furibisha',
     core: '玉28 銀38 金49 金58 銀47',
     support: '香19 桂29 歩16 歩27 歩36 歩46',
     tags: ['対居飛車', '持久戦', '金銀4枚'],
@@ -123,7 +123,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', group: '穴熊', setup: 'furibisha',
+    id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha',
     core: '玉19 香18 桂29 銀28 金39 金38',
     support: '銀67 歩17 歩27 歩37 歩47',
     tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
