@@ -26,14 +26,15 @@
   const store = new K.Store(
     {
       view: 'castle', castleId: repo.castles()[0].id, mode: 'dim', heat: false, skeleton: false, heatScope: 'core', attackId: null,
-      lastBySide: {}, familyFilter: null, tacticId: repo.tactics()[0]?.id ?? null, clusterFamily: null,
+      lastBySide: {}, familyFilter: null, tacticId: repo.tactics()[0]?.id ?? null, tacticCastleId: null, clusterFamily: null,
     },
-    ['view', 'castleId', 'mode', 'heat', 'skeleton', 'heatScope', 'lastBySide', 'familyFilter', 'tacticId', 'clusterFamily'],
+    ['view', 'castleId', 'mode', 'heat', 'skeleton', 'heatScope', 'lastBySide', 'familyFilter', 'tacticId', 'tacticCastleId', 'clusterFamily'],
     'shogi-castle',
   );
   // 保存値の検証（囲い固有のものは CastleMode が行う）
   if (!VIEWS.includes(store.state.view)) store.state.view = 'castle';
   if (!repo.hasTactic(store.state.tacticId)) store.state.tacticId = repo.tactics()[0]?.id ?? null;
+  if (!repo.has(store.state.tacticCastleId)) store.state.tacticCastleId = null;
 
   // 共有の部品: 盤と重ね表示は囲い・戦法で1組を使い回す
   const board = new K.BoardView({ board: $('board'), files: $('files'), ranks: $('ranks') });

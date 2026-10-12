@@ -63,10 +63,20 @@ body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) var(
 .rt-step:not(:first-child) { background:none; border-color:transparent; padding-left:0; }
 .rt-step:not(:first-child):hover { border-color:transparent; color:var(--accent); }
 .tc-castles { display:flex; flex-direction:column; gap:6px; }
+.tc-row { display:flex; align-items:stretch; gap:6px; }
+.tc-row .tc-castle { flex:1; min-width:0; }
 .tc-castle { display:flex; align-items:baseline; justify-content:space-between; gap:10px; text-align:left; cursor:pointer;
              border:1px solid var(--line); background:none; padding:8px 12px; font-size:13px;
              transition:border-color .2s, background .2s; }
 .tc-castle span { font-size:11px; color:var(--muted); }
 .tc-castle:hover { border-color:var(--accent); background:var(--accent-soft); }
+.tc-castle[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); }
+.tc-castle[aria-pressed="true"] b { color:var(--accent); }
+.tc-go { flex:none; border:1px solid transparent; background:none; padding:0 9px; color:var(--muted);
+         font-size:13px; cursor:pointer; transition:color .2s, border-color .2s, background .2s; }
+.tc-go:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+.tc-desc { margin-top:8px; }
 /* 文脈が長くても見出しを1行に保つ（盤の高さを奪わない） */
 #tacticStage .stage-h .rd { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* 「戦法 × 囲い」の併記の×を薄く */
+#tacticStage h2 .x { color:var(--muted); font-weight:400; padding:0 .2em; }
