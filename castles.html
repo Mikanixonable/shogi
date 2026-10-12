@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>将棋の囲い図鑑</title>
+<style>
+  :root {
+    --bg:#f6f6f4; --panel:#fff; --fg:#1d1d1b; --muted:#6b6b66; --line:#d8d8d2; --accent:#2f6fed;
+    --wood:#e9c98b; --wood-line:#7a5a2a; --piece:#f7e7c0; --piece-edge:#8a6a35; --ink:#1d1d1b;
+    --core:#c0392b; --dim:.28; --heat:47,111,237;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#161617; --panel:#202022; --fg:#ececea; --muted:#9a9a94; --line:#3a3a3d; --accent:#6c9bff;
+      --wood:#b8955a; --wood-line:#4a3416; --piece:#efdcb0; --piece-edge:#6b4d1f; --ink:#1d1d1b;
+      --core:#e05a4a; --heat:108,155,255;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 system-ui,-apple-system,"Hiragino Sans",sans-serif; background:var(--bg); color:var(--fg); }
+  main { display:grid; grid-template-columns:240px minmax(0,1fr) 300px; gap:16px; padding:16px; max-width:1300px; margin:0 auto; }
+  aside, .stage, .detail { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  h1 { font-size:16px; margin:0 0 4px; }
+  h2 { font-size:12px; margin:16px 0 6px; color:var(--muted); font-weight:600; }
+  .note { font-size:11px; color:var(--muted); margin:0 0 6px; }
+  .list button { display:block; width:100%; text-align:left; font:inherit; border:1px solid transparent; background:none; color:var(--fg); border-radius:6px; padding:4px 8px; cursor:pointer; }
+  .list button:hover { border-color:var(--line); }
+  .list button[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .list button small { color:var(--muted); margin-left:4px; }
+  .chk { display:flex; align-items:center; gap:6px; margin:4px 0; color:var(--muted); font-size:12px; cursor:pointer; }
+  .chk input { margin:0; accent-color:var(--accent); }
+
+  .stage { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .stage h3 { margin:0; font-size:18px; align-self:flex-start; }
+  .stage .sub { margin:-8px 0 0; color:var(--muted); font-size:12px; align-self:flex-start; }
+
+  /* board */
+  .boardwrap { display:grid; grid-template-columns:auto 22px; grid-template-rows:22px auto; width:min(100%, 520px); }
+  .flabels { display:grid; grid-template-columns:repeat(9,1fr); font-size:12px; color:var(--muted); text-align:center; }
+  .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font-size:12px; color:var(--muted); align-items:center; justify-items:center; }
+  .board { display:grid; grid-template-columns:repeat(9,1fr); aspect-ratio:9/9.8; background:var(--wood); border:2px solid var(--wood-line); }
+  .sq { position:relative; border:0.5px solid var(--wood-line); display:flex; align-items:center; justify-content:center; container-type:size; }
+  .sq.heat::before { content:attr(data-n); position:absolute; inset:0; background:rgba(var(--heat), calc(var(--h) * .2)); font-size:10px; color:rgb(var(--heat)); padding:1px 3px; text-align:right; }
+  .sq.flash { outline:2px solid var(--accent); outline-offset:-2px; }
+  .pc { width:82%; height:88%; background:var(--piece); clip-path:polygon(50% 0, 88% 16%, 100% 100%, 0 100%, 12% 16%); display:flex; align-items:center; justify-content:center; padding-top:10%; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700; font-size:min(60cqh, 62cqw); color:var(--ink); position:relative; z-index:1; filter:drop-shadow(0 0 0.5px var(--piece-edge)); transition:opacity .2s; }
+  .pc.core { color:var(--core); }
+  .pc.king { color:var(--ink); }
+  .pc.king.core { color:var(--core); }
+  .pc.off { opacity:var(--dim); }
+  .pc.hidden { visibility:hidden; }
+  .legend { font-size:12px; color:var(--muted); align-self:flex-start; }
+  .legend b { color:var(--core); }
+  .hand { font-size:12px; color:var(--muted); align-self:flex-end; }
+
+  .detail p { margin:0 0 8px; }
+  .detail ul { margin:0 0 8px; padding-left:18px; }
+  .tag { display:inline-block; font-size:11px; border:1px solid var(--line); border-radius:999px; padding:0 8px; margin:0 4px 4px 0; color:var(--muted); }
+  .pos { font-family:ui-monospace,Menlo,monospace; font-size:12px; display:grid; grid-template-columns:auto 1fr; gap:2px 10px; }
+  .pos span:nth-child(odd) { color:var(--muted); }
+  .pos span[data-sq] { cursor:default; }
+
+  /* gallery */
+  .gallery { grid-column:1 / -1; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .thumbs { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; }
+  .thumb { border:1px solid var(--line); border-radius:8px; padding:8px; cursor:pointer; background:none; font:inherit; color:var(--fg); text-align:center; }
+  .thumb:hover, .thumb[aria-pressed="true"] { border-color:var(--accent); }
+  .thumb .mini { display:grid; grid-template-columns:repeat(6,1fr); background:var(--wood); border:1px solid var(--wood-line); aspect-ratio:6/4.4; margin-bottom:6px; }
+  .thumb .mini div { border:0.5px solid var(--wood-line); display:flex; align-items:center; justify-content:center; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700; font-size:13px; color:var(--ink); }
+  .thumb .mini div.core { color:var(--core); }
+  .thumb .mini div.off { opacity:.3; }
+  .thumb span { font-size:12px; }
+
+  @media (max-width:1000px) { main { grid-template-columns:200px minmax(0,1fr); } .detail { grid-column:1 / -1; } }
+  @media (max-width:640px) { main { grid-template-columns:1fr; padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+  <aside>
+    <h1>将棋の囲い図鑑</h1>
+    <p class="note">居飛車・振り飛車（どちらも先手）の代表的な囲い。赤字が囲いを構成する駒。</p>
+    <div class="list" id="list"></div>
+    <h2>表示</h2>
+    <label class="chk"><input type="checkbox" id="onlyCore"> 囲いの駒だけ表示</label>
+    <label class="chk"><input type="checkbox" id="showHeat"> 囲いの駒の利きの数</label>
+    <label class="chk"><input type="checkbox" id="dimOthers" checked> 囲い以外の駒を薄く</label>
+    <p class="note" style="margin-top:10px">← → キーで切り替え</p>
+  </aside>
+
+  <section class="stage">
+    <h3 id="title"></h3>
+    <p class="sub" id="reading"></p>
+    <div class="boardwrap">
+      <div class="flabels" id="flabels"></div><div></div>
+      <div class="board" id="board"></div>
+      <div class="rlabels" id="rlabels"></div>
+    </div>
+    <div class="hand" id="hand"></div>
+    <div class="legend">利きの数は玉・金・銀・桂・香（赤字の駒）の利きを数えたもの。</div>
+  </section>
+
+  <section class="detail" id="detail"></section>
+
+  <section class="gallery">
+    <h2 style="margin-top:0">一覧（玉側の6筋・六〜九段）</h2>
+    <div class="thumbs" id="thumbs"></div>
+  </section>
+</main>
+
+<script>
+// 駒の表記: 駒1文字 + 筋 + 段（例: "玉78" = 7八玉）。先手のみ。
+const RIGHT = '香19 桂29 飛28 歩17 歩26';
+const LEFT = '香99 桂89 角77 銀67 飛68 歩96 歩87 歩76 歩66 歩56';
+const CASTLES = [
+  {
+    id:'anaguma', name:'居飛車穴熊', reading:'いびしゃあなぐま', group:'穴熊', side:'left',
+    core:'玉99 香98 桂89 銀88 金79 金78',
+    rest:'角77 銀57 歩97 歩87 歩76 歩66 歩56 歩47 歩37 ' + RIGHT,
+    tags:['対振り飛車','持久戦','堅さ最強クラス'],
+    desc:'玉を隅の9九にもぐらせ、香を9八に上げて蓋をし、銀・金で固める。王手がかかりにくく「ゼット（絶対に詰まない形）」になりやすいのが最大の特徴。',
+    pros:['王手がかかりにくく、終盤で一手差の攻め合いに強い','金銀がくっついていて崩れにくい'],
+    cons:['組むのに手数がかかる','端攻め（9筋）と、玉が狭いので一度崩されると逃げ場がない'],
+  },
+  {
+    id:'funa', name:'舟囲い（基本形）', reading:'ふながこい', group:'舟囲い', side:'left',
+    core:'玉78 銀79 金69 金58',
+    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    tags:['対振り飛車','急戦','6九金型'],
+    desc:'玉を7八に移動し、5八金・6九金で守る簡易な囲い。手数が少なく、右銀を4八から4六・5七などへ繰り出して急戦を仕掛けるときの土台になる。',
+    pros:['3〜4手で完成し、すぐに攻めに移れる','左右に広く、横からの攻めに比較的強い'],
+    cons:['玉頭（7筋・8筋の上部）が薄い','6九の金が狙われると、取り返す駒が玉しかないことがある'],
+  },
+  {
+    id:'funa68gin', name:'舟囲い（6八銀型）', reading:'ふながこい ろくはちぎんがた', group:'舟囲い', side:'left',
+    core:'玉78 銀68 金69 金58',
+    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    tags:['対振り飛車','急戦'],
+    desc:'基本形から左銀を7九→6八へ上げた形。6七・5七・7七に利きが増え、中央が厚くなる。',
+    pros:['中央・6筋の守りが強化される','金銀の連結が基本形よりよい'],
+    cons:['7九が空き、玉の下が薄くなる','角の利きを使った端・玉頭攻めには相変わらず注意'],
+  },
+  {
+    id:'elmo', name:'舟囲い（7九金型）＝エルモ囲い', reading:'えるもがこい', group:'舟囲い', side:'left',
+    core:'玉78 銀68 金79 金58',
+    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    tags:['対振り飛車','急戦','コンピュータ発'],
+    desc:'将棋ソフト「elmo」が多用して広まった形。舟囲いの6九金を7九へ寄せ、6八銀と組み合わせる。7九金が玉の真下で銀とつながるのが要。',
+    pros:['金銀の連結がよく、6九の弱点が解消される','7九金が8八・8九にも利き、角打ちや左からの攻めに強い'],
+    cons:['5八金が離れ気味になりやすい','上部（玉頭）からの攻めには舟囲い同様に薄い'],
+  },
+  {
+    id:'funa68kin', name:'舟囲い（6八金型）', reading:'ふながこい ろくはちきんがた', group:'舟囲い', side:'left',
+    core:'玉78 銀79 金68 金58',
+    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    tags:['対振り飛車','急戦'],
+    note:'※「6八金型」は定まった呼称が見つからなかったため、6九金を6八へ上げた舟囲いとして掲載。',
+    desc:'左金を6九から6八へ上げた舟囲い。6八金が6七・7七・5七を守り、上部への備えが増す。',
+    pros:['6七・7七への利きが増えて玉頭が少し厚い','金2枚が横に並び連結がよい'],
+    cons:['6九・7九が空き、玉の下段（底）が薄い','桂・飛車の打ち込みに注意'],
+  },
+  {
+    id:'yagura', name:'矢倉囲い（金矢倉）', reading:'やぐらがこい', group:'矢倉', side:'left',
+    core:'玉88 銀77 金78 金67 香99 桂89',
+    rest:'角79 銀37 歩96 歩86 歩76 歩66 歩56 歩47 歩36 香19 桂29 飛28 歩17 歩25',
+    tags:['相居飛車','持久戦','将棋の純文学'],
+    desc:'相居飛車の代表的な囲い。8八玉を7七銀・7八金・6七金で包み、上からの攻めに強い。角は7九から4六方面へ活用する。',
+    pros:['上部（正面）からの攻めに非常に強い','金銀3枚がまとまり、バランスがよい'],
+    cons:['組むのに手数がかかる','横（飛車）からの攻めや、端攻め（9筋）にはやや弱い'],
+  },
+  {
+    id:'kani', name:'カニ囲い', reading:'かにがこい', group:'矢倉', side:'left',
+    core:'玉69 銀68 金78 金58',
+    rest:'角88 銀37 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36 ' + RIGHT,
+    tags:['相居飛車','急戦矢倉'],
+    desc:'金・銀・金を8段目に横一列に並べ、その下（6九）に玉を置く。形がカニに似ていることから。急戦矢倉や矢倉の序盤でよく現れる。',
+    pros:['手数が少なく、矢倉への発展もできる','左右どちらにも対応しやすい'],
+    cons:['玉が中央に近く、戦場から近い','玉が横にしか逃げられず、堅さはそこそこ'],
+  },
+  {
+    id:'kabuto', name:'兜囲い', reading:'かぶとがこい', group:'矢倉', side:'left',
+    core:'玉68 銀77 金78 金58',
+    rest:'角88 銀48 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩37 ' + RIGHT,
+    tags:['相居飛車','急戦'],
+    desc:'7七銀・7八金・5八金で6八玉をかぶせるように守る形。玉の頭上を銀・金がふさぎ、兜をかぶったように見える。',
+    pros:['手数が少ない','7七銀で玉頭・7筋の受けが利く'],
+    cons:['玉が中央寄りで戦場に近い','6九・7九が空いており下段が薄い'],
+  },
+  {
+    id:'gangi', name:'雁木囲い（旧型）', reading:'がんぎがこい', group:'雁木', side:'left',
+    core:'玉69 銀67 銀57 金78 金58',
+    rest:'角88 香99 桂89 歩96 歩87 歩76 歩66 歩55 歩46 歩37 ' + RIGHT,
+    tags:['相居飛車','江戸時代からある'],
+    desc:'6七銀・5七銀と銀を2枚並べ、その下に7八金・5八金、玉は6九。銀の並びが雪国の「雁木（がんぎ）」に似ていることから。角が8八のまま使えるのも特徴。',
+    pros:['中央が非常に厚く、上部からの攻めに強い','角を初期位置のまま攻めに使える'],
+    cons:['玉が中央にいて、横からの攻めに弱い','4七・5七の銀が上がると玉の周りが薄くなる'],
+  },
+  {
+    id:'tsunogin', name:'ツノ銀雁木', reading:'つのぎんがんぎ', group:'雁木', side:'left',
+    core:'玉69 銀67 銀47 金78 金58',
+    rest:'角88 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩45 歩36 ' + RIGHT,
+    tags:['相居飛車','現代雁木','ソフト流行'],
+    desc:'右銀を5七ではなく4七に置く雁木。銀2枚がツノのように左右に分かれる。2017年頃からソフトの影響で再流行した「新しい雁木」の代表形。',
+    pros:['左右に広く、バランスがよい','4七銀が右側（攻め筋）も守る'],
+    cons:['5七が空き、中央が旧型より薄い','玉の囲いとしては堅くない'],
+  },
+  {
+    id:'bonanza', name:'ボナンザ囲い', reading:'ぼなんざがこい', group:'その他', side:'left',
+    core:'玉78 銀77 金68 金58',
+    rest:'銀47 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩46 歩37 ' + RIGHT,
+    hand:'角',
+    tags:['角換わり','コンピュータ発'],
+    desc:'将棋ソフト「Bonanza」が指して有名になった形。7八玉の上に7七銀、横に6八金・5八金。角換わりで現れやすい（角は持ち駒）。',
+    pros:['金銀がまとまり、手数が少ない','角打ちのスキが少ない'],
+    cons:['矢倉ほどの上部の厚みはない','8筋・9筋方面への逃げ道が狭い'],
+  },
+  {
+    id:'hidarimino', name:'左美濃', reading:'ひだりみの', group:'その他', side:'left',
+    core:'玉88 銀78 金69 金58',
+    rest:'角77 銀48 香99 桂89 歩96 歩86 歩76 歩66 歩56 歩46 歩37 ' + RIGHT,
+    tags:['対振り飛車','持久戦'],
+    desc:'振り飛車の美濃囲いを左右反転させた形。8八玉・7八銀・6九金・5八金。天守閣美濃や銀冠へ発展できる。',
+    pros:['横からの攻めに強い','穴熊より手数が少なく、銀冠などに発展できる'],
+    cons:['玉頭（8筋）からの攻めに注意','角筋（7七角）との兼ね合いで形が決まりやすい'],
+  },
+  {
+    id:'mino', name:'美濃囲い（本美濃）', reading:'みのがこい', group:'振り飛車', side:'right',
+    core:'玉28 銀38 金49 金58',
+    rest:LEFT + ' 香19 桂29 歩16 歩27 歩37 歩47',
+    tags:['振り飛車','基本の囲い'],
+    desc:'振り飛車の代表的な囲い。2八玉を3八銀・4九金・5八金で守る。少ない手数で組めて横からの攻めに強く、「振り飛車には美濃」と言われる。',
+    pros:['手数が少なく、堅さとのバランスがよい','横（飛車）からの攻めに強い','高美濃・銀冠へ発展できる'],
+    cons:['上部（玉頭）からの攻めに弱い','端攻め（1筋）と、2七・3七への攻めに注意'],
+  },
+  {
+    id:'katamino', name:'片美濃囲い', reading:'かたみのがこい', group:'振り飛車', side:'right',
+    core:'玉28 銀38 金49',
+    rest:'香99 桂89 角77 銀67 飛68 金78 歩96 歩87 歩76 歩66 歩56 香19 桂29 歩16 歩27 歩37 歩47',
+    tags:['振り飛車','急戦向き'],
+    desc:'美濃囲いから5八金を省いた形。もう一枚の金は左側に残して攻めや中央の守りに使う。手数が少なく、早い戦いになったときによく現れる。',
+    pros:['さらに少ない手数で組める','左金を攻めに使える'],
+    cons:['5八が空いていて中央・横からの攻めに弱い','本美濃より薄い'],
+  },
+  {
+    id:'takamino', name:'高美濃囲い', reading:'たかみのがこい', group:'振り飛車', side:'right',
+    core:'玉28 銀38 金47 金49',
+    rest:LEFT + ' 香19 桂29 歩16 歩27 歩37 歩46',
+    tags:['振り飛車','持久戦'],
+    desc:'本美濃から4六歩・4七金と上部を厚くした形。玉頭や4筋・3筋からの攻めに強くなる。銀冠への途中経過でもある。',
+    pros:['本美濃より上部に強い','金が4七で中央を見張る'],
+    cons:['4七金が浮き、横からの攻めは本美濃よりやや弱い','5八が空く'],
+  },
+  {
+    id:'gincan', name:'銀冠', reading:'ぎんかんむり', group:'振り飛車', side:'right',
+    core:'玉28 銀27 金38 金47',
+    rest:LEFT + ' 香19 桂29 歩16 歩26 歩37 歩46',
+    tags:['振り飛車','持久戦','上部に強い'],
+    desc:'高美濃から3八銀を2七へ上げ、空いた3八に金を寄せた形。玉の頭に銀がかぶさり「冠」のように見える。上部からの攻めに非常に強い。',
+    pros:['玉頭（上部）からの攻めにとても強い','玉が広く、上へ逃げやすい'],
+    cons:['組むのに手数がかかる','下段（1九〜3九）が薄く、横からの攻めに注意'],
+  },
+  {
+    id:'diamond', name:'ダイヤモンド美濃', reading:'だいやもんどみの', group:'振り飛車', side:'right',
+    core:'玉28 銀38 金49 金58 銀47',
+    rest:'香99 桂89 角77 飛68 歩96 歩87 歩76 歩66 歩56 香19 桂29 歩16 歩27 歩37 歩46',
+    tags:['振り飛車','持久戦','金銀4枚'],
+    desc:'本美濃に4七銀を加え、金銀4枚で守る形。駒の並びがダイヤモンド形になる。堅いが、攻めに使える駒が減る。',
+    pros:['金銀4枚でとても堅い','上部・横どちらにも強い'],
+    cons:['攻めの駒が少なくなる','組むのに手数がかかる'],
+  },
+  {
+    id:'furianaguma', name:'振り飛車穴熊', reading:'ふりびしゃあなぐま', group:'振り飛車', side:'right',
+    core:'玉19 香18 桂29 銀28 金39 金38',
+    rest:LEFT + ' 歩16 歩27 歩37 歩47',
+    tags:['振り飛車','持久戦','堅さ最強クラス'],
+    desc:'居飛車穴熊の左右反転形。玉を1九にもぐらせ、1八香で蓋をして2八銀・3九金・3八金で固める。振り飛車の攻めを最後まで通しやすい。',
+    pros:['王手がかかりにくく、終盤の攻め合いに強い','金銀がくっついて崩れにくい'],
+    cons:['組むのに手数がかかる','端攻め（1筋）に弱く、崩れると逃げ場がない'],
+  },
+];
+
+const KANJI_NUM = ['','一','二','三','四','五','六','七','八','九'];
+const ZEN = ['','１','２','３','４','５','６','７','８','９'];
+const MOVES = {
+  玉:[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]],
+  金:[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[0,1]],
+  銀:[[-1,-1],[0,-1],[1,-1],[-1,1],[1,1]],
+  桂:[[-1,-2],[1,-2]],
+};
+const NAMES = { 玉:'玉', 飛:'飛', 角:'角', 金:'金', 銀:'銀', 桂:'桂', 香:'香', 歩:'歩' };
+
+function parse(str, core) {
+  return str.trim().split(/\s+/).filter(Boolean).map(t => ({ p:t[0], f:+t[1], r:+t[2], core }));
+}
+function piecesOf(c) {
+  const all = [...parse(c.core, true), ...parse(c.rest, false)];
+  // 重複チェック（データの打ち間違い検出）
+  const seen = new Set();
+  for (const x of all) { const k = x.f*10+x.r; if (seen.has(k)) console.warn(c.name, '重複', k); seen.add(k); }
+  return all;
+}
+// 筋f・段r → 盤の列（左が9筋）・行
+const col = f => 9 - f, row = r => r - 1;
+
+function attackMap(pieces) {
+  const occ = new Map(pieces.map(x => [x.f*10+x.r, x]));
+  const n = Array.from({length:10}, () => Array(10).fill(0));
+  for (const x of pieces) {
+    if (!x.core) continue;
+    if (x.p === '香') {
+      for (let r = x.r - 1; r >= 1; r--) { n[x.f][r]++; if (occ.has(x.f*10+r)) break; }
+      continue;
+    }
+    for (const [dx, dy] of MOVES[x.p] || []) {
+      const f = x.f - dx, r = x.r + dy; // dx: 盤の右方向＝筋が減る
+      if (f >= 1 && f <= 9 && r >= 1 && r <= 9) n[f][r]++;
+    }
+  }
+  return n;
+}
+
+const $ = id => document.getElementById(id);
+const state = { idx:0 };
+
+function buildLabels() {
+  $('flabels').innerHTML = [9,8,7,6,5,4,3,2,1].map(f => `<div>${ZEN[f]}</div>`).join('');
+  $('rlabels').innerHTML = [1,2,3,4,5,6,7,8,9].map(r => `<div>${KANJI_NUM[r]}</div>`).join('');
+}
+
+function render() {
+  const c = CASTLES[state.idx];
+  const pieces = piecesOf(c);
+  const onlyCore = $('onlyCore').checked, heat = $('showHeat').checked, dim = $('dimOthers').checked;
+  const at = new Map(pieces.map(x => [x.f*10+x.r, x]));
+  const hm = attackMap(pieces);
+
+  let html = '';
+  for (let r = 1; r <= 9; r++) for (let f = 9; f >= 1; f--) {
+    const x = at.get(f*10+r);
+    const h = hm[f][r];
+    const heatCls = heat && h ? ' heat' : '';
+    html += `<div class="sq${heatCls}" data-sq="${f}${r}" ${heat && h ? `data-n="${h}" style="--h:${Math.min(h,4)}"` : ''}>`;
+    if (x) {
+      const cls = ['pc', x.core ? 'core' : '', x.p === '玉' ? 'king' : '', !x.core && onlyCore ? 'hidden' : '', !x.core && dim && !onlyCore ? 'off' : ''].join(' ');
+      html += `<div class="${cls}">${NAMES[x.p]}</div>`;
+    }
+    html += '</div>';
+  }
+  $('board').innerHTML = html;
+  $('title').textContent = c.name;
+  $('reading').textContent = c.reading;
+  $('hand').textContent = c.hand ? `先手の持ち駒：${c.hand}` : '';
+
+  const coreList = parse(c.core, true).map(x => `<span>${NAMES[x.p]}</span><span data-sq="${x.f}${x.r}">${ZEN[x.f]}${KANJI_NUM[x.r]}</span>`).join('');
+  $('detail').innerHTML = `
+    <div>${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+    <p>${c.desc}</p>
+    ${c.note ? `<p class="note">${c.note}</p>` : ''}
+    <h2>囲いの駒</h2>
+    <div class="pos">${coreList}</div>
+    <h2>長所</h2><ul>${c.pros.map(s => `<li>${s}</li>`).join('')}</ul>
+    <h2>短所</h2><ul>${c.cons.map(s => `<li>${s}</li>`).join('')}</ul>`;
+  $('detail').querySelectorAll('[data-sq]').forEach(el => {
+    const sq = $('board').querySelector(`[data-sq="${el.dataset.sq}"]`);
+    el.addEventListener('mouseenter', () => sq.classList.add('flash'));
+    el.addEventListener('mouseleave', () => sq.classList.remove('flash'));
+  });
+
+  document.querySelectorAll('#list button, .thumb').forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === state.idx));
+  try { localStorage.setItem('shogi-castle', c.id); } catch {}
+}
+
+function buildList() {
+  let html = '', last = '';
+  CASTLES.forEach((c, i) => {
+    if (c.group !== last) { html += `<h2>${c.group}</h2>`; last = c.group; }
+    html += `<button data-i="${i}">${c.name}</button>`;
+  });
+  $('list').innerHTML = html;
+  $('list').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.idx = +b.dataset.i; render(); } });
+}
+
+function buildThumbs() {
+  $('thumbs').innerHTML = CASTLES.map((c, i) => {
+    const at = new Map(piecesOf(c).map(x => [x.f*10+x.r, x]));
+    let cells = '';
+    const f0 = c.side === 'right' ? 6 : 9;
+    for (let r = 6; r <= 9; r++) for (let f = f0; f >= f0 - 5; f--) {
+      const x = at.get(f*10+r);
+      cells += `<div class="${x ? (x.core ? 'core' : 'off') : ''}">${x ? NAMES[x.p] : ''}</div>`;
+    }
+    return `<button class="thumb" data-i="${i}"><div class="mini">${cells}</div><span>${c.name}</span></button>`;
+  }).join('');
+  $('thumbs').addEventListener('click', e => {
+    const b = e.target.closest('.thumb'); if (!b) return;
+    state.idx = +b.dataset.i; render();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+}
+
+['onlyCore','showHeat','dimOthers'].forEach(id => $(id).addEventListener('change', render));
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') state.idx = (state.idx + 1) % CASTLES.length;
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') state.idx = (state.idx - 1 + CASTLES.length) % CASTLES.length;
+  else return;
+  e.preventDefault(); render();
+});
+
+buildLabels(); buildList(); buildThumbs();
+try { const saved = localStorage.getItem('shogi-castle'); const i = CASTLES.findIndex(c => c.id === saved); if (i >= 0) state.idx = i; } catch {}
+render();
+</script>
+</body>
+</html>
