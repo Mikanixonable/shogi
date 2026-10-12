@@ -16,17 +16,7 @@
   --ease:cubic-bezier(.4,0,.2,1);
   --washi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
-    --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04); --tint:rgba(236,230,218,.05);
-    --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
-    --good:#9cbf8a; --bad:#e2563b; --heat:156,191,138;
-    --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
-    --piece-1:#f3e9d2; --piece-2:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17; --core:#c8371f;
-    --gote-ink:#43506e;
-  }
-}
+/* 明暗は OS ではなく画面右上の切替ボタンが決める（既定はライト）。属性だけを見る */
 :root[data-theme="dark"] {
   --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
   --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04); --tint:rgba(236,230,218,.05);
@@ -51,7 +41,6 @@ button { font:inherit; color:inherit; }
 .atmo::before { content:""; position:absolute; inset:0; background:var(--washi); opacity:.7; }
 .atmo::after { content:"囲"; position:absolute; right:-.06em; top:.02em; font:800 min(46vw,640px)/1 var(--font-d);
                color:var(--fg); opacity:.035; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .atmo::before { opacity:.12; mix-blend-mode:screen; } }
 :root[data-theme="dark"] .atmo::before { opacity:.12; mix-blend-mode:screen; }
 
 /* パネルは面を持たない。区切りは罫線だけ（.glass は互換の名残で効果なし） */
