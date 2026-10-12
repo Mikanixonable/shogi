@@ -47,8 +47,9 @@
   /* ===== base & atmosphere ===== */
   * { box-sizing:border-box; }
   html, body { height:100%; }
+  html { background:var(--bg-2); }
   body { margin:0; font:14px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; color:var(--fg);
-         background:linear-gradient(160deg,var(--bg-1),var(--bg-2)); background-attachment:fixed;
+         background:linear-gradient(160deg,var(--bg-1),var(--bg-2)) fixed;
          display:grid; grid-template-rows:auto minmax(0,1fr); height:100dvh; overflow:hidden; }
   button { font:inherit; color:inherit; }
   .atmo { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
