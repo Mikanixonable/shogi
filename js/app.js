@@ -4,8 +4,7 @@
   const K = window.Kakoi;
   const $ = id => document.getElementById(id);
 
-  const byId = new Map(K.CASTLES.map(c => [c.id, c]));
-  const castlesOf = side => K.CASTLES.filter(c => c.side === side);
+  const repo = new K.Repository({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES });
 
   // ?debug のときだけデータを検証して console に出す
   if (new URLSearchParams(location.search).has('debug')) {
@@ -21,17 +20,17 @@
     ['castleId', 'mode', 'heat', 'heatScope', 'lastBySide'],
     'shogi-castle',
   );
-  if (!byId.has(store.state.castleId)) store.state.castleId = K.CASTLES[0].id;
+  if (!repo.has(store.state.castleId)) store.state.castleId = K.CASTLES[0].id;
   // 保存値の検証: 既知の城かつ side が一致するものだけ残す
   const savedLast = store.state.lastBySide;
   store.state.lastBySide = Object.fromEntries(
     Object.entries(savedLast && typeof savedLast === 'object' && !Array.isArray(savedLast) ? savedLast : {})
-      .filter(([side, id]) => byId.has(id) && byId.get(id).side === side),
+      .filter(([side, id]) => repo.has(id) && repo.byId(id).side === side),
   );
 
   const selectCastle = id => {
-    if (!byId.has(id)) return;
-    const c = byId.get(id);
+    if (!repo.has(id)) return;
+    const c = repo.byId(id);
     store.set({ castleId: id, attackId: null, lastBySide: { ...store.state.lastBySide, [c.side]: id } });
   };
 
@@ -43,7 +42,7 @@
     { side: $('sideSeg'), count: $('railCount'), cards: $('cards') },
     {
       onSelect: selectCastle,
-      onSide: side => selectCastle(store.state.lastBySide[side] || castlesOf(side)[0].id),
+      onSide: side => selectCastle(store.state.lastBySide[side] || repo.first(side).id),
     },
   );
   const board = new K.BoardView({ board: $('board'), files: $('files'), ranks: $('ranks') });
@@ -54,12 +53,12 @@
   });
 
   function update(state, changed) {
-    const castle = byId.get(state.castleId);
-    const attack = castle.attacks?.find(a => a.id === state.attackId) || null;
+    const castle = repo.byId(state.castleId);
+    const attack = repo.attackOf(castle, state.attackId);
     const castleChanged = changed.has('castleId');
 
     if (castleChanged || ['heat', 'heatScope', 'attackId'].some(k => changed.has(k))) {
-      const position = K.Position.fromCastle(castle, attack);
+      const position = repo.positionOf(castle, state.attackId);
       const heat = state.heat ? K.attackMap(position, x => state.heatScope === 'all' || x.role === 'core') : null;
       board.render(position, { mode: state.mode, heat, animate: castleChanged && !changed.has('initial') });
       board.setLasting(attack ? attack.target : [], 'bad');
@@ -68,9 +67,9 @@
     }
 
     if (castleChanged) {
-      rail.render(castlesOf(castle.side), castle);
-      stage.renderCastle(castle);
-      detail.render(castle, state);
+      rail.render(repo.ofSide(castle.side), castle, c => repo.positionOf(c));
+      stage.renderCastle(castle, repo.setupOf(castle));
+      detail.render(castle, { attackId: state.attackId, sources: repo.sourcesOf(castle) });
     } else if (changed.has('attackId')) {
       detail.setAttack(state.attackId);
     }
