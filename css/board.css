@@ -42,6 +42,8 @@
 .pc.gote { transform:rotate(180deg); animation:goteIn .45s var(--ease) backwards; }
 .pc.gote i span { color:var(--gote-ink); }
 @keyframes goteIn { from { opacity:0; transform:rotate(180deg) translateY(30%); } }
+/* 再描画で居続けた駒・消えゆく駒の複製は、入場アニメを鳴らさない */
+.pc.no-enter { animation:none; }
 
 /* ミニ盤（左のカード） */
 .mini-bg { fill:url(#wood); }
