@@ -74,6 +74,16 @@ window.Kakoi = window.Kakoi || {};
     else if (c.subtype !== undefined && !(isArr(fam.subtypes) && fam.subtypes.some(s => s && s.id === c.subtype)))
       errors.push(`subtype未登録: ${c.subtype}`);
     if (c.refFamily !== undefined && !isStr(c.refFamily)) errors.push('refFamilyが空文字または文字列でない');
+    // 追加の任意フィールド（§6-3）: aliases / note / kingWing / strategies
+    if (c.aliases !== undefined && !(isArr(c.aliases) && c.aliases.every(isStr))) errors.push('aliasesが文字列の配列でない');
+    if (c.note !== undefined) {
+      if (typeof c.note !== 'string') errors.push('noteが文字列でない');
+      else if (c.note.includes('【要確認】')) warnings.push(`要確認: ${c.note}`); // エラーではなく警告で残す（§6-1）
+    }
+    // kingWing:'rook' は「玉飛接近だが意図的な構え」（右玉）の印（§6-3）
+    if (c.kingWing !== undefined && !['rook', 'left', 'right', 'center'].includes(c.kingWing)) errors.push(`kingWing不正: ${c.kingWing}`);
+    if (c.strategies !== undefined && !(isArr(c.strategies) && c.strategies.length > 0 && c.strategies.every(s => s === 'ibisha' || s === 'furibisha')))
+      errors.push('strategiesがibisha/furibishaの空でない配列でない');
     if (!['ibisha', 'furibisha'].includes(c.side)) errors.push(`side不正: ${c.side}`);
     const setup = isStr(c.setup) && ctx.SETUPS ? ctx.SETUPS[c.setup] : undefined;
     if (!setup) errors.push(`setup未登録: ${c.setup}`);
@@ -213,7 +223,12 @@ window.Kakoi = window.Kakoi || {};
     const fam = isArr(ctx.TACTIC_FAMILIES) ? ctx.TACTIC_FAMILIES.find(f => f && f.id === t.family) : undefined;
     if (!fam) errors.push(`family未登録: ${t.family}`);
     if (t.aliases !== undefined && !(isArr(t.aliases) && t.aliases.every(isStr))) errors.push('aliasesが文字列の配列でない');
-    if (t.note !== undefined && typeof t.note !== 'string') errors.push('noteが文字列でない');
+    if (t.note !== undefined) {
+      if (typeof t.note !== 'string') errors.push('noteが文字列でない');
+      else if (t.note.includes('【要確認】')) warnings.push(`要確認: ${t.note}`); // エラーではなく警告で残す（§6-1）
+    }
+    // senkei: 戦型判定用のタグ（角換わり・相掛かりなど。§1-4 / §6-2）
+    if (t.senkei !== undefined && !(isArr(t.senkei) && t.senkei.every(isStr))) errors.push('senkeiが文字列の配列でない');
     for (const [name, list] of [['pros', t.pros], ['cons', t.cons]]) {
       if (!isArr(list)) { errors.push(`${name}が配列でない`); continue; }
       list.forEach((x, i) => { if (!x || !isStr(x.t)) errors.push(`${name}[${i}].tなし`); });
@@ -227,7 +242,7 @@ window.Kakoi = window.Kakoi || {};
       if (!(isStr(lead.piece) && lead.piece.length === 1 && PIECE_CHARS.includes(lead.piece))) { errors.push(`lead.piece不正: ${lead.piece}`); leadOk = false; }
       if (!isArr(lead.files) || lead.files.length === 0 || !lead.files.every(n => Number.isInteger(n) && n >= 1 && n <= 9)) { errors.push('lead.filesが1..9の整数の空でない配列でない'); leadOk = false; }
       if (!(typeof lead.square === 'string' && SQ.test(lead.square))) { errors.push(`lead.square不正: ${lead.square}`); leadOk = false; }
-      if (fam && leadOk && fam.piece !== lead.piece) errors.push(`系統の駒(${fam.piece})とlead.piece(${lead.piece})が違う`);
+      if (fam && leadOk && !fam.mixed && fam.piece !== lead.piece) errors.push(`系統の駒(${fam.piece})とlead.piece(${lead.piece})が違う`);
       if (leadOk && !lead.files.includes(Number(lead.square[0]))) errors.push(`lead.square(${lead.square})の筋がlead.filesにない`);
     }
 
@@ -235,6 +250,38 @@ window.Kakoi = window.Kakoi || {};
     else {
       checkSquares(t.route, 'route', errors);
       if (lead && t.route[t.route.length - 1] !== lead.square) errors.push(`routeの最後(${t.route[t.route.length - 1]})がlead.square(${lead.square})でない`);
+    }
+
+    // againstTactic: 相手の戦法idごとの相性（§3-1）。{戦法id: 評価} のオブジェクトか {tactic, level, why?} の配列
+    const tacticIds = new Set((isArr(ctx.TACTICS) ? ctx.TACTICS : []).map(x => x && x.id));
+    if (t.againstTactic !== undefined) {
+      const okLevel = v => ['good', 'ok', 'ng'].includes(v);
+      if (isArr(t.againstTactic)) {
+        t.againstTactic.forEach((a, i) => {
+          if (!a || typeof a !== 'object' || isArr(a)) { errors.push(`againstTactic[${i}]がオブジェクトでない`); return; }
+          if (!isStr(a.tactic)) errors.push(`againstTactic[${i}].tacticなし`);
+          else if (!tacticIds.has(a.tactic)) errors.push(`againstTactic[${i}].tactic未登録: ${a.tactic}`);
+          if (!okLevel(a.level)) errors.push(`againstTactic[${i}].level不正: ${a.level}`);
+        });
+      } else if (t.againstTactic && typeof t.againstTactic === 'object') {
+        for (const [k, v] of Object.entries(t.againstTactic)) {
+          if (!tacticIds.has(k)) errors.push(`againstTacticのキー未登録: ${k}`);
+          if (!okLevel(v)) errors.push(`againstTactic.${k}の値不正: ${v}`);
+        }
+      } else errors.push('againstTacticがオブジェクトでも配列でもない');
+    }
+
+    // variantOf: 派生戦法は親と同じ「主役の最終マス」（lead.square）を持つ（§4-3 / §6-2）
+    if (t.variantOf !== undefined) {
+      if (!isStr(t.variantOf)) errors.push('variantOfが文字列でない');
+      else if (!tacticIds.has(t.variantOf)) errors.push(`variantOfの親が未登録: ${t.variantOf}`);
+      else if (t.variantOf === t.id) errors.push('variantOfが自分自身を指している');
+      else if (leadOk) {
+        const parent = (ctx.TACTICS || []).find(x => x && x.id === t.variantOf);
+        const pSq = parent && parent.lead && parent.lead.square;
+        if (pSq && pSq !== t.lead.square)
+          errors.push(`variantOf(${t.variantOf})と主役の最終マスが違う: ${t.lead.square} vs ${pSq}`);
+      }
     }
 
     const sente = pieces(t.pieces, 'pieces', errors, { owner: 'sente', role: 'tactic' });

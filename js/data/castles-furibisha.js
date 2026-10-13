@@ -155,4 +155,102 @@ Kakoi.CASTLES.push(
       { ref: 'we-castle', for: '配置' },
     ],
   },
+  {
+    id: 'ginkananaguma', name: '銀冠穴熊', short: '銀冠穴熊', reading: 'ぎんかんあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha',
+    core: '玉19 香18 桂29 銀27 金38 金47',
+    shell: '歩17 歩26 歩37 歩46',
+    filler: '銀67',
+    tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
+    desc: '振り飛車穴熊の前面を銀冠型（銀27・金38・金47）にした形。玉頭に銀がかぶさるため上部からの攻めに強く、穴熊の堅さと銀冠の上部耐性を併せ持つ。',
+    ratings: { hard: 5, wide: 4, top: 5, side: 5, quick: 1 },
+    pros: [
+      { t: '上部・横ともに最強クラスの堅さ', sq: ['27', '38', '47', '19'] },
+      { t: '王手がかかりにくい穴熊構造', sq: ['19', '18', '29'] },
+    ],
+    cons: [
+      { t: '金銀をすべて囲いに使うので手数がかかり、攻め駒も少ない' },
+      { t: '端攻め（1筋）が残る弱点', sq: ['17', '18', '19'] },
+    ],
+    attacks: [
+      { id: 'hashi', name: '端攻め', t: '△1五歩から端を突き捨て、香・桂を足して1筋を破る。', gote: '歩15 香11 桂33', target: ['17', '18', '19'] },
+    ],
+    sources: [
+      { ref: 'wj-furibisha-anaguma', for: '配置・解説' },
+      { ref: 'wj-anaguma', for: '解説' },
+    ],
+  },
+  {
+    id: 'kimuramino', name: '木村美濃', short: '木村美濃', reading: 'きむらみの', side: 'furibisha', family: 'mino', subtype: 'kata', setup: 'furibisha',
+    core: '玉28 金38 銀47',
+    shell: '歩16 歩27 歩37 歩46',
+    filler: '金49 銀67 香19 桂29',
+    tags: ['対居飛車', '中飛車', '急戦向き'],
+    desc: '玉28・金38・銀47の3枚で組む簡易な美濃。木村義雄十四世名人が中飛車で好んで用いたことに由来する。左金を使わないため、5筋に飛車のいる中飛車の陣形と両立しやすい。',
+    ratings: { hard: 2, wide: 3, top: 3, side: 3, quick: 4 },
+    pros: [
+      { t: '少ない手数で組め、中飛車の陣形と両立する', sq: ['28', '38', '47'] },
+      { t: '左金を攻めや中央の守りに回せる', sq: ['49', '59'] },
+    ],
+    cons: [
+      { t: '金1枚なので本美濃より薄い', sq: ['38', '48'] },
+      { t: '端攻め（1筋）と玉頭への注意は他の美濃と同じ', sq: ['16', '27'] },
+    ],
+    attacks: [
+      { id: 'gyokuto', name: '玉頭攻め', t: '△2五歩・△3五銀などで2六・3六へ押さえにくる。', gote: '歩25 銀35', target: ['26', '27', '36'] },
+    ],
+    sources: [
+      { ref: 'wj-kimuramino', for: '配置・解説' },
+      { ref: 'sj-kimuramino', for: '配置・解説' },
+      { ref: 'wj-nakabisha', for: '組み合わせ' },
+    ],
+  },
+  {
+    id: 'kinmusou', name: '金無双', short: '金無双', reading: 'きんむそう', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', strategies: ['furibisha'],
+    core: '玉38 銀28 金48 金58',
+    shell: '歩16 歩27 歩37 歩47',
+    filler: '銀67 香19 桂29',
+    tags: ['相振り飛車', '持久戦'],
+    desc: '相振り飛車の代表的な囲い。金48・金58と金2枚を横に並べ（「金無双」）、玉38・銀28で固める。横からの攻めに強く、上部への備えもある。',
+    ratings: { hard: 4, wide: 3, top: 3, side: 4, quick: 2 },
+    pros: [
+      { t: '金2枚が横に並び、飛車など横からの攻めに強い', sq: ['48', '58', '59'] },
+      { t: '相振り飛車で互いの玉が近い筋同士でも対応しやすい' },
+    ],
+    cons: [
+      { t: '玉頭（3筋・2筋の上部）はやや薄い', sq: ['37', '27', '26'] },
+      { t: '金を2枚とも守りに使うので攻めの駒が減る' },
+    ],
+    attacks: [
+      { id: 'gyokuto', name: '玉頭攻め', t: '△3五歩・△2五歩のように玉の真上の3筋・2筋を突いてくる。', gote: '歩35 歩25', target: ['36', '37', '26', '27'] },
+    ],
+    sources: [
+      { ref: 'wj-kinmusou', for: '配置・解説' },
+      { ref: 'sj-kinmusou', for: '配置・解説' },
+    ],
+  },
+  {
+    id: 'migiyagura', name: '右矢倉', short: '右矢倉', reading: 'みぎやぐら', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', strategies: ['furibisha'],
+    core: '玉28 銀37 金38 金47',
+    shell: '歩17 歩27 歩36 歩46',
+    filler: '銀67 香19 桂29',
+    tags: ['相振り飛車', '持久戦'],
+    desc: '金矢倉を左右反転して右辺に組む形で、主に相振り飛車で使われる。玉28を銀37・金38・金47で囲い、上部への厚みは矢倉譲り。',
+    ratings: { hard: 4, wide: 2, top: 5, side: 3, quick: 2 },
+    pros: [
+      { t: '上部からの攻めに強い（矢倉と同じ構造）', sq: ['37', '47', '36', '46'] },
+      { t: '金銀3枚がまとまりバランスがよい', sq: ['37', '38', '47'] },
+    ],
+    cons: [
+      { t: '組むのに手数がかかる' },
+      { t: '端攻め（1筋）に注意', sq: ['17', '18'] },
+    ],
+    attacks: [
+      { id: 'hashi', name: '端攻め', t: '△1五歩から端を突き、香・桂・角で1筋の玉のこびんを狙う。', gote: '歩15 香11 桂33', target: ['17', '18', '27'] },
+    ],
+    sources: [
+      { ref: 'wj-migiyagura', for: '配置・解説' },
+      { ref: 'sj-migiyagura', for: '配置・解説' },
+      { ref: 'wj-yagura', for: '解説' },
+    ],
+  },
 );

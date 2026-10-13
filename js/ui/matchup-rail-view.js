@@ -4,21 +4,16 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
-  const { esc } = K.html;
+  const { esc, plain } = K.html;
 
   const MARK = { best: '◎', ok: '', ng: '×' };          // 行につける印（○は標準なので付けない）
   const OPTION_MARK = { best: '◎', ok: '○', ng: '×' };  // select の選択肢の印（色で伝えられないので記号を常に添える）
   const LEVEL_RANK = { ng: 0, ok: 1, best: 2 };
   const SIDES = [['ibisha', '居飛車'], ['furibisha', '振り飛車']];
 
-  // 未選択の層は戦略テンプレートの既定値で読み替える（compat.js / matchup.js と同じ規則）
-  const effTacticId = st => (st && st.tacticId)
-    || (st && K.STRATEGIES[st.strategy] ? K.STRATEGIES[st.strategy].defaultTactic : null);
-  const effCastleId = (st, opp) => {
-    if (st && st.castleId) return st.castleId;
-    const dc = st && K.STRATEGIES[st.strategy] ? K.STRATEGIES[st.strategy].defaultCastle : null;
-    return typeof dc === 'string' ? dc : dc ? ((opp && opp.strategy === 'furibisha') ? dc.vsFuribisha : dc.vsIbisha) : null;
-  };
+  // 未選択の層は戦略テンプレートの既定値で読み替える（既定値の解決は Kakoi.constraints が唯一の権威）
+  const effTacticId = st => K.constraints.tacticIdOf(st);
+  const effCastleId = (st, opp) => K.constraints.castleIdOf(st, opp);
 
   class MatchupRailView {
     /**
@@ -164,7 +159,7 @@ window.Kakoi = window.Kakoi || {};
         if (implied) el.dataset.implied = 'true'; else delete el.dataset.implied;
         const sq = (j.reasons || []).flatMap(x => x.squares || []);
         if (sq.length) el.dataset.sq = [...new Set(sq)].join(' '); else el.removeAttribute('data-sq');
-        if (j.reasons && j.reasons.length) el.title = j.reasons.map(x => x.text).join('／');
+        if (j.reasons && j.reasons.length) el.title = j.reasons.map(x => plain(x.text)).join('／');
         else el.removeAttribute('title');
         r.mark.textContent = MARK[j.level];
         r.mark.hidden = !MARK[j.level];

@@ -3,7 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { label } = Kakoi.notation;
-  const { esc } = Kakoi.html;
+  const { esc, rich, plain, makeCiter, sourcesBlock, bindCites } = Kakoi.html;
 
   class TacticDetailView {
     /**
@@ -28,6 +28,7 @@ window.Kakoi = window.Kakoi || {};
         const b = e.target.closest('.tc-castle');
         if (b) handlers.onMatchup(b.dataset.id);
       });
+      bindCites(el); // 本文の [n] ホバーで出典リストの行を強調
     }
 
     /**
@@ -36,15 +37,16 @@ window.Kakoi = window.Kakoi || {};
      *   castles:{id:string,name:string,familyName:string,level:string,why:?string}[], sources:object[] }} info
      */
     render(tactic, { family, castles, sources }) {
+      const citer = makeCiter(); // このパネル内で出現順の番号を振る
       this.body.innerHTML = [
         this._tags(tactic, family),
-        `<p class="desc">${esc(tactic.desc)}</p>`,
-        tactic.note ? `<p class="note">${esc(tactic.note)}</p>` : '',
-        this._list('長所', tactic.pros, ''),
-        this._list('短所', tactic.cons, 'cons'),
+        `<p class="desc">${rich(tactic.desc, citer)}</p>`,
+        tactic.note ? `<p class="note">${rich(tactic.note, citer)}</p>` : '',
+        this._list('長所', tactic.pros, '', citer),
+        this._list('短所', tactic.cons, 'cons', citer),
         this._route(tactic),
         this._castles(castles),
-        this._sources(sources),
+        this._sources(sources, citer),
       ].filter(Boolean).join('');
     }
 
@@ -54,9 +56,9 @@ window.Kakoi = window.Kakoi || {};
       return `<div class="tags"><span class="tag group">#${esc(family.name)}</span>${tags.map(x => `<span class="tag">#${esc(x)}</span>`).join('')}</div>`;
     }
 
-    _list(title, items, cls) {
+    _list(title, items, cls, citer) {
       if (!items || !items.length) return '';
-      return `<div class="sec"><h3>${title}</h3><ul class="pc-list ${cls}">${items.map(it => `<li>${esc(it.t)}</li>`).join('')}</ul></div>`;
+      return `<div class="sec"><h3>${title}</h3><ul class="pc-list ${cls}">${items.map(it => `<li>${rich(it.t, citer)}</li>`).join('')}</ul></div>`;
     }
 
     // 経路を「▲３九銀 → ３八 → …」の手順にし、各マスに乗せると盤で光る
@@ -78,17 +80,15 @@ window.Kakoi = window.Kakoi || {};
       if (!castles.length) return '<p class="note">データ上の対応する囲いはありません</p>';
       const rows = castles.map(c =>
         `<div class="tc-row"><button class="tc-castle" data-act="matchup" data-id="${esc(c.id)}" data-compat="${esc(c.level || 'ok')}"` +
-          `${c.why ? ` title="${esc(c.why)}"` : ''}>` +
+          `${c.why ? ` title="${esc(plain(c.why))}"` : ''}>` +
           `<b>${esc(c.name)}</b><span>${esc(c.familyName)}</span></button>` +
           `<button class="tc-go" data-id="${esc(c.id)}" title="${esc(c.name)}を囲いの画面で見る" aria-label="${esc(c.name)}を囲いの画面で見る">→</button></div>`
       ).join('');
       return `<div class="sec"><h3>相性のよい囲い<small>押すと対局図で開く。「→」は囲いの画面へ</small></h3><div class="tc-castles">${rows}</div></div>`;
     }
 
-    _sources(sources) {
-      const li = sources.map(s =>
-        `<li><span class="cv">${esc(s.for)}</span><span><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>（${esc(s.publisher)}）</span></li>`).join('');
-      return `<div class="sec"><h3>出典</h3><ul class="sources">${li}</ul></div>`;
+    _sources(sources, citer) {
+      return `<div class="sec"><h3>出典</h3>${sourcesBlock(sources, citer)}</div>`;
     }
   }
 

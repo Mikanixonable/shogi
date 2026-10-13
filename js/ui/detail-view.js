@@ -3,7 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { label } = Kakoi.notation;
-  const { esc, sqAttr } = Kakoi.html;
+  const { esc, sqAttr, rich, makeCiter, sourcesBlock, bindCites } = Kakoi.html;
 
   // 特徴の目安の軸。正五角形の頂点に、上から時計回りで割り当てる
   const RATINGS = [
@@ -55,22 +55,24 @@ window.Kakoi = window.Kakoi || {};
         const b = e.target.closest('.attack');
         if (b) handlers.onAttack(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.id);
       });
+      bindCites(el); // 本文の [n] ホバーで出典リストの行を強調
     }
 
     render(castle, { attackId, sources, family, subtype }) {
       this._id = castle.id;
+      const citer = makeCiter(); // このパネル内で出現順の番号を振る
       this.el.innerHTML = [
         `<button class="mu-open" data-act="matchup">対局図で開く</button>`,
         this._ratings(castle.ratings),
         this._tags(castle, family, subtype),
         castle.refFamily ? `<p class="note">文献上の分類：${esc(castle.refFamily)}</p>` : '',
-        `<p class="desc">${esc(castle.desc)}</p>`,
-        castle.note ? `<p class="note">${esc(castle.note)}</p>` : '',
+        `<p class="desc">${rich(castle.desc, citer)}</p>`,
+        castle.note ? `<p class="note">${rich(castle.note, citer)}</p>` : '',
         this._coreChips(castle),
-        this._list('長所', castle.pros, 'good', ''),
-        this._list('短所', castle.cons, 'bad', 'cons'),
-        this._attacks(castle, attackId),
-        this._sources(sources),
+        this._list('長所', castle.pros, 'good', '', citer),
+        this._list('短所', castle.cons, 'bad', 'cons', citer),
+        this._attacks(castle, attackId, citer),
+        this._sources(sources, citer),
       ].filter(Boolean).join('');
     }
 
@@ -113,22 +115,20 @@ window.Kakoi = window.Kakoi || {};
       return `<div class="sec"><h3>囲いの駒</h3><div class="chips">${chips}</div></div>`;
     }
 
-    _list(title, items, tone, cls) {
-      const li = items.map(it => `<li${sqAttr(it.sq)} data-tone="${tone}">${esc(it.t)}</li>`).join('');
+    _list(title, items, tone, cls, citer) {
+      const li = items.map(it => `<li${sqAttr(it.sq)} data-tone="${tone}">${rich(it.t, citer)}</li>`).join('');
       return `<div class="sec"><h3>${title}<small>点線の項目は盤上に表示</small></h3><ul class="pc-list ${cls}">${li}</ul></div>`;
     }
 
-    _attacks(c, attackId) {
+    _attacks(c, attackId, citer) {
       if (!c.attacks?.length) return '<p class="note">登録された攻め筋はありません。</p>';
       const btns = c.attacks.map(a =>
-        `<button class="attack" data-id="${esc(a.id)}" aria-pressed="${a.id === attackId}"><b>${esc(a.name)}</b>${esc(a.t)}</button>`).join('');
+        `<button class="attack" data-id="${esc(a.id)}" aria-pressed="${a.id === attackId}"><b>${esc(a.name)}</b>${rich(a.t, citer)}</button>`).join('');
       return `<div class="sec"><h3>典型的な攻め筋<small>押すと盤に表示</small></h3><div class="attacks">${btns}</div></div>`;
     }
 
-    _sources(sources) {
-      const li = sources.map(s =>
-        `<li><span class="cv">${esc(s.for)}</span><span><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>（${esc(s.publisher)}）</span></li>`).join('');
-      return `<div class="sec"><h3>出典</h3><ul class="sources">${li}</ul></div>`;
+    _sources(sources, citer) {
+      return `<div class="sec"><h3>出典</h3>${sourcesBlock(sources, citer)}</div>`;
     }
   }
 

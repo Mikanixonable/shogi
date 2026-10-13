@@ -113,7 +113,7 @@ async function sweepTactic(page) {
 /* ---- 巡回: 対局図 ---- */
 async function sweepMatchup(page) {
   const r = {};
-  // 左の一覧: 戦法12＋囲い18の行と、各行・戦略ボタンに付く相性の印（◎○×）
+  // 左の一覧: 戦法＋囲いの全件と、各行・戦略ボタンに付く相性の印（◎○×）。件数は data から導出する
   r.items = await page.$$eval('#matchupRail .mu-item', els => els.length);
   r.best = await page.$$eval('#matchupRail [data-compat="best"]', els => els.length);
   // 盤: 立体駒（canvas）は DOM から枚数を数えられないので、?flat（DOM駒 .pc）のときだけ数える
@@ -198,17 +198,25 @@ async function main() {
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
       watch(page, errs);
       await page.goto(base, { waitUntil: 'networkidle' });
+      // 期待件数はデータから導出する（追加のたびに書き換えない）
+      const expect = await page.evaluate(() => ({
+        castles: Kakoi.CASTLES.length,
+        // 描かれるセル数（variantOf と同じ列の後続は1マスに束ねられる）と行の全戦法数
+        cells: new Set(Kakoi.TACTICS.filter(t => !t.variantOf).map(t => t.family + '/' + Math.max(...t.lead.files))).size,
+        tactics: Kakoi.TACTICS.length,
+        fams: Kakoi.CASTLE_FAMILIES.length,
+      }));
       const cards = await sweepCastle(page);
-      ok(cards === 18, '囲いカード 18枚', `${cards}`);
+      ok(cards === expect.castles, `囲いカード ${expect.castles}枚`, `${cards}`);
 
       await setView(page, 'tactic'); await wait(300);
       const t = await sweepTactic(page);
-      ok(t.n === 12, '戦法セル 12個', `${t.n}`);
+      ok(t.n === expect.cells, `戦法セル ${expect.cells}個`, `${t.n}`);
       ok(t.aligned, `周期表の列=盤の筋 (${t.id}: ${t.file}筋)`, `ずれ ${t.dx}px`);
 
       await setView(page, 'matchup'); await wait(400);
       const m = await sweepMatchup(page);
-      ok(m.items >= 30, '対局図の一覧（戦法12＋囲い18）', `${m.items}行`);
+      ok(m.items >= expect.tactics + expect.castles, `対局図の一覧（戦法${expect.tactics}＋囲い${expect.castles}）`, `${m.items}行`);
       ok(m.best >= 5, '対局図の◎印', `${m.best}個`);
       ok(m.d3 || m.pieces >= 39, '対局図の盤に両軍の駒', m.d3 ? '立体駒（canvas）' : `${m.pieces}枚`);
       ok(m.threats >= 1, '対局図に脅威の帯', `${m.threats}本`);
@@ -221,7 +229,7 @@ async function main() {
 
       await setView(page, 'cluster'); await wait(400);
       const c = await sweepCluster(page);
-      ok(c.dots > 0 && c.fams === 5, '分類マップの点と系統', `dots=${c.dots} fams=${c.fams}`);
+      ok(c.dots > 0 && c.fams === expect.fams, '分類マップの点と系統', `dots=${c.dots} fams=${c.fams}`);
 
       // ---- 各幅でのスクロール検査（全画面） ----
       for (const w of WIDTHS.filter(w => w >= NO_SCROLL_MIN)) {
