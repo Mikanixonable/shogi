@@ -20,7 +20,7 @@ window.Kakoi = window.Kakoi || {};
       this.detail = new K.TacticDetailView(els.detail, {
         onHover: (squares, tone) => this.board.hover(squares, tone),
         onCastle: id => this._openCastle(id),
-        onToggle: id => this._toggleCastle(id),
+        onMatchup: id => this._openMatchup(id),
       });
       this.player = new K.TacticPlayer({
         onStep: t => this._autoSelect(t.id),
@@ -70,11 +70,19 @@ window.Kakoi = window.Kakoi || {};
       if (next) this.selectTactic(next.id);
     }
 
-    /** 囲いを盤に重ねる／外す。骨格線の ON/OFF はスイッチの値をそのまま使う（重ねる囲いを替えても引き継ぐ） */
-    _toggleCastle(id) {
-      if (!this.repo.has(id)) return;
+    /** 「対局図で開く」: この戦法と選んだ囲いを自分側にセットして対局図へ移る（計画書 §6 の導線） */
+    _openMatchup(castleId) {
+      if (!this.repo.has(castleId)) return;
+      const tactic = this._current();
+      const fam = this.repo.tacticFamilies().find(f => f.id === tactic.family);
       const s = this.store.state;
-      this.store.set({ tacticCastleId: s.tacticCastleId === id ? null : id });
+      this.store.set({
+        view: 'matchup',
+        matchup: {
+          ...s.matchup,
+          me: { strategy: fam ? fam.side : 'ibisha', tacticId: tactic.id, castleId, pick: ['tactic', 'castle'] },
+        },
+      });
     }
 
     /** 相性のよい囲いへ移る。戦型の違う囲いは、系統の絞り込みが合わなければ解除して選ぶ */
@@ -105,39 +113,30 @@ window.Kakoi = window.Kakoi || {};
       const { repo, board, overlay } = this;
       const tactic = this._current();
       if (!tactic) return;
-      // 戦法が変わったら重ねていた囲いは外す（古い組み合わせを持ち越さない）。
-      // tacticCastleId の変更でもう一度 update が来るので、描き直しはそちらに任せる
-      if (changed.has('tacticId') && !changed.has('initial') && state.tacticCastleId) {
-        this.store.set({ tacticCastleId: null });
-        return;
-      }
-      const castle = state.tacticCastleId && repo.has(state.tacticCastleId) ? repo.byId(state.tacticCastleId) : null;
-      const hard = changed.has('initial') || changed.has('tacticId') || changed.has('tacticCastleId');
+      const hard = changed.has('initial') || changed.has('tacticId');
       if (hard || changed.has('heat') || changed.has('heatScope')) {
         if (changed.has('tacticId') && !this._auto && !changed.has('initial')) this.player.stop();
-        if (hard) {
-          const family = repo.tacticFamilies().find(f => f.id === tactic.family);
-          if (changed.has('initial')) {
-            this.table.render(this.rows, tactic.id);
-            this.rail.render(this.rows, tactic.id);
-            this.stage.setPlaying(false, reducedMotion());
-          } else {
-            this.table.select(tactic.id);
-            this.rail.select(tactic.id);
-          }
-          this.stage.render(tactic, family, castle);
-          this.detail.render(tactic, {
-            family,
-            castles: repo.castlesOfTactic(tactic).map(c => ({ id: c.id, name: c.name, familyName: repo.familyOf(c).name, desc: c.desc })),
-            castleId: castle && castle.id,
-            sources: repo.tacticComboSourcesOf(tactic, castle),
-          });
+        const family = repo.tacticFamilies().find(f => f.id === tactic.family);
+        if (changed.has('initial')) {
+          this.table.render(this.rows, tactic.id);
+          this.rail.render(this.rows, tactic.id);
+          this.stage.setPlaying(false, reducedMotion());
+        } else {
+          this.table.select(tactic.id);
+          this.rail.select(tactic.id);
         }
-        const position = castle
-          ? K.combinePosition(repo.tacticPositionOf(tactic), repo.positionOf(castle))
-          : repo.tacticPositionOf(tactic);
-        const heat = castle && state.heat
-          ? K.attackMap(position, x => state.heatScope === 'all' || x.role === 'core')
+        this.stage.render(tactic, family);
+        this.detail.render(tactic, {
+          family,
+          castles: repo.pairingsOf(tactic).filter(p => p.level !== 'ng')
+            .map(p => ({ id: p.castle.id, name: p.castle.name, familyName: repo.familyOf(p.castle).name, level: p.level, why: p.why })),
+          sources: repo.tacticComboSourcesOf(tactic, null),
+        });
+        const position = repo.tacticPositionOf(tactic);
+        // 「囲いの駒」に相当するのは戦法では必須の駒＋主役。利きはその駒だけ、または全ての駒で数える
+        const ess = new Set(K.notation.parsePieces(tactic.essential || '').map(x => `${x.f}${x.r}`));
+        const heat = state.heat
+          ? K.attackMap(position, x => state.heatScope === 'all' || x.role === 'lead' || ess.has(`${x.f}${x.r}`))
           : null;
         board.setLasting([], null);
         board.render(position, {
@@ -145,13 +144,10 @@ window.Kakoi = window.Kakoi || {};
           trace: { square: tactic.lead.square, piece: tactic.lead.piece, path: tactic.route },
         });
         this.stage.setHand(position.hand);
-        overlay.skeleton(castle && state.skeleton ? repo.positionOf(castle) : null);
+        overlay.skeleton(null);
         overlay.route(tactic.route);
       } else if (changed.has('mode')) {
         board.setMode(state.mode);
-      } else if (changed.has('skeleton')) {
-        // 重ね中の骨格線はツールバーのスイッチに従う
-        overlay.skeleton(castle && state.skeleton ? repo.positionOf(castle) : null);
       }
     }
   }

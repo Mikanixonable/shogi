@@ -64,8 +64,29 @@
 .overlay .sk-g { animation:skIn .4s var(--ease) .45s backwards; }
 @keyframes skIn { from { opacity:0; } }
 .overlay .rt-line { fill:none; stroke:var(--rt,var(--accent)); stroke-width:2.5px; stroke-dasharray:7 5; stroke-linecap:round; stroke-linejoin:round; opacity:.95; }
+.overlay .rt-line.rt-good { stroke:var(--good); }
+.overlay .rt-line.rt-bad  { stroke:var(--bad); }
+.overlay .rt-line.rt-ink  { stroke:var(--fg); }
 .overlay .rt-head { fill:var(--rt,var(--accent)); }
+.overlay .rt-hg { fill:var(--good); }
+.overlay .rt-hb { fill:var(--bad); }
+.overlay .rt-hi { fill:var(--fg); }
 .overlay .rt-g { animation:skIn .3s var(--ease) backwards; }
+
+/* 脅威の帯（対局図: 相手の飛車の筋・主役の経路の終点の筋に薄い朱）。
+   .squares より前の兄弟なので、帯はマス・駒・ヒートの下、盤面の木目の上に収まる */
+.ov-threats { position:absolute; inset:0; z-index:0; pointer-events:none; }
+.ov-threat { position:absolute; top:1px; bottom:1px; width:calc(100% / 9); border-radius:4px;
+             background:color-mix(in srgb, var(--bad) 12%, transparent);
+             animation:skIn .35s var(--ease) backwards; }
+
+/* 接触の印（対局図: 両軍の駒がぶつかったマスの ◆。中立は墨、両立しない重なりは朱） */
+.ov-contacts { position:absolute; inset:0; z-index:3; pointer-events:none; }
+.ov-contact { position:absolute; width:3.2%; aspect-ratio:1; transform:translate(-50%,-50%) rotate(45deg);
+              background:var(--ink); opacity:.75; border-radius:1px;
+              box-shadow:0 0 0 2px color-mix(in srgb, var(--piece-1) 85%, transparent);
+              animation:skIn .3s var(--ease) backwards; }
+.ov-contact[data-kind="ng"] { background:var(--bad); opacity:.9; }
 
 /* 狭い画面: 高さで収める必要がない（ページ全体がスクロールする）ので、盤は幅いっぱいに。
    高さ方向の container 指定を外して boardarea が内容の高さを取れるようにする（cqw は残る） */

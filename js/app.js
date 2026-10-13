@@ -3,7 +3,7 @@
   'use strict';
   const K = window.Kakoi;
   const $ = id => document.getElementById(id);
-  const VIEWS = ['castle', 'tactic', 'cluster'];
+  const VIEWS = ['castle', 'tactic', 'matchup', 'cluster'];
   const debug = new URLSearchParams(location.search).has('debug');
 
   const DATA = {
@@ -23,18 +23,45 @@
 
   const repo = new K.Repository(DATA);
 
+  // 対局図の既定状態（計画書 §4-1）: 自分と相手の3層＋表示切替
+  const MATCHUP_DEFAULT = {
+    me: { strategy: 'ibisha', tacticId: 'bougin', castleId: 'funa', pick: [] },
+    opp: { strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino', pick: [] },
+    show: { opp: true, threat: true },
+  };
+
   const store = new K.Store(
     {
       view: 'castle', castleId: repo.castles()[0].id, mode: 'dim', heat: false, skeleton: false, heatScope: 'core', attackId: null,
-      lastBySide: {}, familyFilter: null, tacticId: repo.tactics()[0]?.id ?? null, tacticCastleId: null, clusterFamily: null,
+      lastBySide: {}, familyFilter: null, tacticId: repo.tactics()[0]?.id ?? null, clusterFamily: null,
+      matchup: MATCHUP_DEFAULT,
     },
-    ['view', 'castleId', 'mode', 'heat', 'skeleton', 'heatScope', 'lastBySide', 'familyFilter', 'tacticId', 'tacticCastleId', 'clusterFamily'],
+    ['view', 'castleId', 'mode', 'heat', 'skeleton', 'heatScope', 'lastBySide', 'familyFilter', 'tacticId', 'clusterFamily', 'matchup'],
     'shogi-castle',
   );
   // 保存値の検証（囲い固有のものは CastleMode が行う）
   if (!VIEWS.includes(store.state.view)) store.state.view = 'castle';
   if (!repo.hasTactic(store.state.tacticId)) store.state.tacticId = repo.tactics()[0]?.id ?? null;
-  if (!repo.has(store.state.tacticCastleId)) store.state.tacticCastleId = null;
+  // matchup: 未知の戦略キー・戦法id・囲いid・pick は既定値へ戻す
+  {
+    const LAYERS = ['strategy', 'tactic', 'castle'];
+    const normSide = (s, fb) => {
+      s = s && typeof s === 'object' && !Array.isArray(s) ? s : {};
+      return {
+        strategy: K.STRATEGIES[s.strategy] ? s.strategy : fb.strategy,
+        tacticId: repo.hasTactic(s.tacticId) ? s.tacticId : fb.tacticId,
+        castleId: repo.has(s.castleId) ? s.castleId : fb.castleId,
+        pick: Array.isArray(s.pick) ? s.pick.filter(l => LAYERS.includes(l)) : [],
+      };
+    };
+    const mu = store.state.matchup && typeof store.state.matchup === 'object' ? store.state.matchup : {};
+    const sh = mu.show && typeof mu.show === 'object' ? mu.show : {};
+    store.state.matchup = {
+      me: normSide(mu.me, MATCHUP_DEFAULT.me),
+      opp: normSide(mu.opp, MATCHUP_DEFAULT.opp),
+      show: { opp: sh.opp !== false, threat: sh.threat !== false },
+    };
+  }
 
   // 共有の部品: 盤と重ね表示は囲い・戦法で1組を使い回す
   const board = new K.BoardView({ board: $('board'), files: $('files'), ranks: $('ranks') });
@@ -60,6 +87,7 @@
       },
     }),
     tactic: new K.TacticMode({ ...common, els: { rail: $('tacticRail'), ptable: $('ptable'), stage: $('tacticStage'), detail: $('tacticDetail') } }),
+    matchup: new K.MatchupMode({ ...common, els: { rail: $('matchupRail'), detail: $('matchupDetail'), stage: $('matchupStage') } }),
     cluster: new K.ClusterMode({ ...common, els: { rail: $('clusterRail'), stage: $('clusterStage'), detail: $('clusterDetail') } }),
   };
 

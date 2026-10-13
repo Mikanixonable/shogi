@@ -8,6 +8,11 @@ window.Kakoi = window.Kakoi || {};
   // 滑らせるペアのコスト上限（マス単位）。これを超える組み合わせは「消滅＋出現」にする
   const MAX_COST = 4.6;
 
+  // 後手の駒は (f,r)→(10−f,10−r) で回転して置く（compose.mirror と同じ変換）。
+  // コスト計算にも同じ回転をかけると、後手の「前」（段が増える向き）が
+  // moveCost の前提する先手の「前」（段が減る向き）と一致する
+  const mir = s => `${10 - +s[0]}${10 - +s[1]}`;
+
   /**
    * 駒を from → to へ滑らせる不自然さ（マス単位）。null は滑らせない（消滅＋出現にする）
    * 筋 f=1..9（右→左）、段 r=1..9（上→下）。先手の前進は r が減る向き。
@@ -48,7 +53,9 @@ window.Kakoi = window.Kakoi || {};
   /**
    * before → after の駒の対応づけ。
    * 要素は { p:string, sq:string, owner:'sente'|'gote', skip?:any }。先に自由な付随データを持たせてよい。
-   * after の skip が truthy の駒は対応づけから外す（筋道をたどる主役・後手の駒など）。
+   * 対応づけは owner が一致する駒同士だけ（先手と後手をまたいで滑らせない）。
+   * 後手どうしのペアは、マスを回転させてからコストを計る（後手の前進を「前」として扱うため）。
+   * after の skip が truthy の駒は対応づけから外す（筋道をたどる主役の駒など）。
    * @returns {{ pairs:Array<{o:number,n:number,cost:number}>, gone:number[], appear:number[] }}
    *   pairs:  before[o] の駒を after[n] のマスへ滑らせる
    *   gone:   消えた駒（before の添字）。同じマスに同じ駒が残っているものは含まない
@@ -57,8 +64,8 @@ window.Kakoi = window.Kakoi || {};
   function pair(before, after) {
     const cand = [];
     after.forEach((n, ni) => before.forEach((o, oi) => {
-      if (n.skip || o.owner !== 'sente' || n.owner !== 'sente' || o.p !== n.p) return;
-      const cost = moveCost(o.p, o.sq, n.sq);
+      if (n.skip || o.owner !== n.owner || o.p !== n.p) return;
+      const cost = o.owner === 'gote' ? moveCost(o.p, mir(o.sq), mir(n.sq)) : moveCost(o.p, o.sq, n.sq);
       if (cost != null) cand.push({ ni, oi, cost });
     }));
     cand.sort((a, b) => a.cost - b.cost);
@@ -68,7 +75,7 @@ window.Kakoi = window.Kakoi || {};
       usedN.add(ni); usedO.add(oi);
       pairs.push({ o: oi, n: ni, cost });
     }
-    // 同じマスに同じ駒が残っているものは消えた扱いにしない（後手の駒は対応づけの対象外なのでここで救う）
+    // 同じマスに同じ駒が残っているものは消えた扱いにしない（skip で対応づけから外れた駒はここで救う）
     const still = new Set(after.map(n => `${n.owner}:${n.p}:${n.sq}`));
     const gone = [], appear = [];
     before.forEach((o, oi) => {

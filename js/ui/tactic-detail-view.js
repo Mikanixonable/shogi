@@ -9,8 +9,8 @@ window.Kakoi = window.Kakoi || {};
     /**
      * @param {HTMLElement} el `#tacticDetail`（.detail-body）
      * @param {{ onHover:(squares:string[], tone:?string)=>void,
-     *   onCastle:(id:string)=>void, onToggle:(id:string)=>void }} handlers
-     *   onToggle: 囲いを盤に重ねる／外す。onCastle: 「→」で囲いの画面へ移る
+     *   onCastle:(id:string)=>void, onMatchup:(id:string)=>void }} handlers
+     *   onMatchup: その囲いとの組み合わせを対局図で開く。onCastle: 「→」で囲いの画面へ移る
      */
     constructor(el, handlers) {
       this.body = el;
@@ -26,17 +26,16 @@ window.Kakoi = window.Kakoi || {};
         const go = e.target.closest('.tc-go');
         if (go) { handlers.onCastle(go.dataset.id); return; }
         const b = e.target.closest('.tc-castle');
-        if (b) handlers.onToggle(b.dataset.id);
+        if (b) handlers.onMatchup(b.dataset.id);
       });
     }
 
     /**
      * @param {object} tactic
-     * @param {{ family:object, castleId:?string,
-     *   castles:{id:string,name:string,familyName:string,desc:string}[], sources:object[] }} info
-     *   castleId: 盤に重ねている囲い（出典は戦法＋囲いの併記が渡される）
+     * @param {{ family:object,
+     *   castles:{id:string,name:string,familyName:string,level:string,why:?string}[], sources:object[] }} info
      */
-    render(tactic, { family, castles, castleId, sources }) {
+    render(tactic, { family, castles, sources }) {
       this.body.innerHTML = [
         this._tags(tactic, family),
         `<p class="desc">${esc(tactic.desc)}</p>`,
@@ -44,7 +43,7 @@ window.Kakoi = window.Kakoi || {};
         this._list('長所', tactic.pros, ''),
         this._list('短所', tactic.cons, 'cons'),
         this._route(tactic),
-        this._castles(castles, castleId),
+        this._castles(castles),
         this._sources(sources),
       ].filter(Boolean).join('');
     }
@@ -74,18 +73,16 @@ window.Kakoi = window.Kakoi || {};
         (/推定/.test(t.note || '') ? '<p class="note">経路の途中のマスは推定です。</p>' : '');
     }
 
-    // 囲い名を押すと盤に重なり（もう一度押すと解除）、横の「→」で囲いの画面へ移る
-    _castles(castles, castleId) {
+    // 囲い名を押すとその組み合わせを対局図で開く。横の「→」で囲いの画面へ移る
+    _castles(castles) {
       if (!castles.length) return '<p class="note">データ上の対応する囲いはありません</p>';
-      const rows = castles.map(c => {
-        const on = c.id === castleId;
-        return `<div class="tc-row"><button class="tc-castle" data-id="${esc(c.id)}" aria-pressed="${on}">` +
+      const rows = castles.map(c =>
+        `<div class="tc-row"><button class="tc-castle" data-act="matchup" data-id="${esc(c.id)}" data-compat="${esc(c.level || 'ok')}"` +
+          `${c.why ? ` title="${esc(c.why)}"` : ''}>` +
           `<b>${esc(c.name)}</b><span>${esc(c.familyName)}</span></button>` +
-          `<button class="tc-go" data-id="${esc(c.id)}" title="${esc(c.name)}を囲いの画面で見る" aria-label="${esc(c.name)}を囲いの画面で見る">→</button></div>`;
-      }).join('');
-      const sel = castles.find(c => c.id === castleId);
-      const note = sel ? `<p class="desc tc-desc"><b>${esc(sel.name)}</b>：${esc(sel.desc)}</p>` : '';
-      return `<div class="sec"><h3>相性のよい囲い<small>押すと盤に重ねる。「→」は囲いの画面へ</small></h3><div class="tc-castles">${rows}</div>${note}</div>`;
+          `<button class="tc-go" data-id="${esc(c.id)}" title="${esc(c.name)}を囲いの画面で見る" aria-label="${esc(c.name)}を囲いの画面で見る">→</button></div>`
+      ).join('');
+      return `<div class="sec"><h3>相性のよい囲い<small>押すと対局図で開く。「→」は囲いの画面へ</small></h3><div class="tc-castles">${rows}</div></div>`;
     }
 
     _sources(sources) {
