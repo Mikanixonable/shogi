@@ -1,4 +1,4 @@
-// スクリプト一覧: 読み込み順の唯一の定義（castles.html と tools/validate-castles.js が共有する）
+// スクリプト一覧: 読み込み順の唯一の定義（index.html と tools/validate-castles.js が共有する）
 window.Kakoi = window.Kakoi || {};
 Kakoi.MANIFEST = (() => {
   const core = ['js/core/notation.js'];

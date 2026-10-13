@@ -158,6 +158,49 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   ok(jt.level !== 'ng', `strategy-defaults:${sid} 既定囲い×既定戦法(${S.defaultTactic})`, brief(jt));
 }
 
+// ---------- 3.5 leave: 囲い切替で残る駒の退去（計画外の残留駒バグ修正） ----------
+{
+  // 本美濃（既定の土台）→片美濃: 5八の金は図の定義上いないので去る。行き先は filler の金69
+  const r = K.compose.position({ strategy: 'furibisha', castleId: 'katamino' });
+  const a58 = r.position.at(5, 8), a69 = r.position.at(6, 9);
+  ok(!a58 || a58.p !== '金', 'compose:leave 本美濃→片美濃で5八に金が残らない',
+    `5八=${a58 ? a58.p : '空'} ${a58 ? a58.role : ''}`);
+  ok(a69 && a69.p === '金', 'compose:leave 退いた金は6九へ戻る',
+    `6九=${a69 ? a69.p : '空'}`);
+  // 残った土台の駒は core role を引きずらない（本美濃の core が残らない）
+  ok(!r.position.pieces.some(x => x.role === 'core' && x.f === 5 && x.r === 8),
+    'compose:leave 土台の core role を引きずらない', jstr(r.position.pieces.filter(x => x.role === 'core').map(x => `${x.p}${x.f}${x.r}`)));
+}
+{
+  // 戦法の図（金58を含む）を土台にしても同じく去る
+  const r = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'katamino' });
+  const a58 = r.position.at(5, 8), a69 = r.position.at(6, 9);
+  ok(!a58 || a58.p !== '金', 'compose:leave 四間飛車+片美濃でも5八に金が残らない',
+    `5八=${a58 ? a58.p : '空'}`);
+  ok(a69 && a69.p === '金', 'compose:leave 四間飛車+片美濃でも金は6九へ', `6九=${a69 ? a69.p : '空'}`);
+}
+{
+  // 中飛車の飛58は戦法の主役（ロック）なので leave されない
+  const r = K.compose.position({ strategy: 'furibisha', tacticId: 'nakabisha', castleId: 'katamino' });
+  const a58 = r.position.at(5, 8);
+  ok(a58 && a58.p === '飛', 'compose:leave 中飛車の飛58（主役）は去らない', `5八=${a58 ? a58.p : '空'}`);
+}
+{
+  // 高美濃・銀冠・木村美濃も5八に金がいない（同じ美濃系の定義条件）
+  for (const cid of ['takamino', 'gincan', 'kimuramino']) {
+    const rr = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: cid });
+    const a = rr.position.at(5, 8);
+    ok(!a || a.p !== '金', `compose:leave ${cid} でも5八に金が残らない`, `5八=${a ? a.p : '空'}`);
+  }
+}
+{
+  // 兜囲い: 盤上の角は持ち駒へ（hand:'角' と整合）
+  const r = K.compose.position({ strategy: 'ibisha', castleId: 'kabuto' });
+  const a88 = r.position.at(8, 8);
+  ok(!a88 || a88.p !== '角', 'compose:leave 兜の8八に角が残らない', `8八=${a88 ? a88.p : '空'}`);
+  ok((r.position.hand || []).includes('角'), 'compose:leave 兜の角は持ち駒へ', jstr(r.position.hand));
+}
+
 // ---------- 4. resolve の決定性 ----------
 {
   const side = { strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino', pick: ['strategy', 'castle', 'tactic'] };

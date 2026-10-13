@@ -2,6 +2,9 @@
 // core: 囲いを構成する駒 / shell+filler: 補助の駒（setup と合わせて先手の全駒になる）
 //   shell: 囲いの形として意味がある歩（城壁の前線）。戦法と合成するときもそのまま置く
 //   filler: 比較用に揃えた駒（初期位置の香・桂、比較用の銀67、盤外扱いの金）。合成のときは置かない
+// leave: 「この囲いではその駒がいない」の宣言（例: 片美濃の金58）。「金58」= マス指定
+//        （合成のとき残った駒を filler の同種の空きマス → 初期位置 → 持ち駒 へ退かす）、
+//        「角」= 盤上全体（持ち駒へ）
 // flex: 戦法に貸し出せる core の駒と行き先（崩し形になる）
 // pros・cons の sq は盤上で示すマス、attacks の gote は後手の駒、target は狙われるマス
 window.Kakoi = window.Kakoi || {};
@@ -38,6 +41,7 @@ Kakoi.CASTLES.push(
     id: 'katamino', name: '片美濃囲い', short: '片美濃', reading: 'かたみのがこい', side: 'furibisha', family: 'mino', subtype: 'kata', setup: 'furibisha',
     core: '玉28 銀38 金49',
     shell: '歩16 歩27 歩37 歩47',
+    leave: '金58',
     filler: '銀67 金69 香19 桂29',
     tags: ['対居飛車', '急戦向き'],
     desc: '本美濃から左金（5八）を除いた形[[wj-mino|we-mino]]。左金は最後に動かす駒なので、本美濃に組む途中でもこの形になる[[wj-mino]]。左金を攻めや中央の守りに使いたいときや、中飛車で5八に飛車がいるときに現れる[[wj-mino]]。',
@@ -63,6 +67,7 @@ Kakoi.CASTLES.push(
     id: 'takamino', name: '高美濃囲い', short: '高美濃', reading: 'たかみのがこい', side: 'furibisha', family: 'mino', subtype: 'taka', setup: 'furibisha',
     core: '玉28 銀38 金47 金49',
     shell: '歩16 歩27 歩37 歩46',
+    leave: '金58',
     filler: '銀67 香19 桂29',
     tags: ['対居飛車', '持久戦'],
     desc: '本美濃から4六歩と突き、左金を4七へ上げた形[[wj-mino|we-mino]]。上部への守りが厚くなり、玉頭や4筋・3筋からの攻めに強くなる[[wj-mino]]。銀冠へ組み替える途中の形でもある[[wj-mino]]。',
@@ -86,6 +91,7 @@ Kakoi.CASTLES.push(
     id: 'gincan', name: '銀冠', short: '銀冠', reading: 'ぎんかんむり', side: 'furibisha', family: 'mino', subtype: 'gincan', setup: 'furibisha',
     core: '玉28 銀27 金38 金47',
     shell: '歩16 歩26 歩37 歩46',
+    leave: '金58',
     filler: '銀67 香19 桂29',
     tags: ['対居飛車', '持久戦', '上部に強い'],
     desc: '高美濃から2六歩と突き、3八銀を2七へ上げて、空いた3八に金を寄せた形[[wj-mino|we-mino]]。玉の頭に銀がかぶさり「冠」のように見える[[wj-mino]]。3七桂と跳ねる形もある[[wj-mino]]。',
@@ -183,6 +189,7 @@ Kakoi.CASTLES.push(
     id: 'kimuramino', name: '木村美濃', short: '木村美濃', reading: 'きむらみの', side: 'furibisha', family: 'mino', subtype: 'kata', setup: 'furibisha',
     core: '玉28 金38 銀47',
     shell: '歩16 歩27 歩37 歩46',
+    leave: '金58',
     filler: '金49 銀67 香19 桂29',
     tags: ['対居飛車', '中飛車', '急戦向き'],
     desc: '玉28・金38・銀47の3枚で組む簡易な美濃[[wj-kimuramino|sj-kimuramino]]。木村義雄十四世名人が中飛車で好んで用いたことに由来する[[wj-kimuramino|wj-nakabisha]]。左金を使わないため、5筋に飛車のいる中飛車の陣形と両立しやすい[[wj-kimuramino|wj-nakabisha]]。',

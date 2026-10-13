@@ -4,6 +4,8 @@
 // ルールの要点:
 //   - 戦法の essential ∪ 主役（lead）のマスはロック。動かさない・追い出さない・donor にしない
 //   - castle.core → castle.shell の順に置く。filler は比較専用で合成では置かない
+//   - castle.leave は「この囲いではその駒がいない」の宣言（例: 片美濃の金58、兜の角）。
+//     「金58」= そのマス指定（filler → 初期位置 → 持ち駒 へ退かす）、「角」= 盤上全体（持ち駒へ）
 //   - donor は pieceMatch.moveCost で「その駒の動きで実際に行ける」ものに限る
 //     （歩・香は同じ筋の前からだけ → 二歩や横滑りを防ぐ。計画書 §8-C の対策）
 //   - core の目標マスがロック駒に塞がれているときは castle.flex の to へ逃がす（崩し形）
@@ -17,6 +19,11 @@ window.Kakoi = window.Kakoi || {};
   const findCastle = id => (Kakoi.CASTLES || []).find(c => c.id === id) || null;
   const sq = (f, r) => `${f}${r}`;
   const mirrorSq = s => `${10 - +s[0]}${10 - +s[1]}`;
+  // leave で退いた駒の戻し先（初期配置。歩は同じ筋の7段目）
+  const INIT_SQ = {
+    玉: ['59'], 飛: ['28'], 角: ['88'], 金: ['49', '69'],
+    銀: ['39', '79'], 桂: ['29', '89'], 香: ['19', '99'],
+  };
   // その駒の動きで実際に行けるか（アニメーションの規則と共有。null なら行けない）
   const canSlide = (p, from, to) => Kakoi.pieceMatch.moveCost(p, from, to);
 
@@ -54,7 +61,8 @@ window.Kakoi = window.Kakoi || {};
       const tc = templateCastleOf(strategy, oppStrategy);
       base = tc ? Kakoi.Position.fromCastle(tc, Kakoi.SETUPS[tc.setup]) : new Kakoi.Position([], []);
     }
-    const pieces = base.pieces.map(x => ({ ...x }));
+    // 土台が既定囲いの局面のとき、前の囲いの core role を引きずらないよう support に均す
+    const pieces = base.pieces.map(x => ({ ...x, role: x.role === 'core' ? 'support' : x.role }));
     const hand = [...(base.hand || [])];
     const baseSq = new Map(pieces.map(x => [x, sq(x.f, x.r)]));  // moved の基準
 
@@ -217,9 +225,32 @@ window.Kakoi = window.Kakoi || {};
         if (on) displace(on);
         assigned.add(sourcePlace(t.p, t.f, t.r, 'support'));
       }
+
+      // 6. castle.leave: 「この囲いではその駒がいない」の宣言。ロック（戦法の必須・主役）と
+      //    確定済みの駒は去らない。「金58」はマス指定（filler の同種の空きマス → 初期位置
+      //    → 持ち駒 へ退かす）、「角」は駒種指定（盤上に置かないので持ち駒へ）
+      const leaveToks = (castle.leave || '').trim().split(/\s+/).filter(Boolean);
+      const leaveAny = new Set(leaveToks.filter(t => t.length === 1));
+      for (const t of parsePieces(leaveToks.filter(t => t.length !== 1).join(' '))) {
+        const on = at(t.f, t.r);
+        if (!on || on.p !== t.p || on.owner !== 'sente') continue;      // 空き・別種（飛58 など）は無関係
+        if (on.role === 'lead' || locked.has(on) || assigned.has(on)) continue;
+        const home = parsePieces(castle.filler || '')
+          .filter(x => x.p === t.p).map(x => sq(x.f, x.r))
+          .concat(INIT_SQ[t.p] || (t.p === '歩' ? [`${t.f}7`] : []))
+          .map(parseSquare)
+          .find(({ f, r }) => !at(f, r));
+        if (home) { on.f = home.f; on.r = home.r; on.role = 'support'; }
+        else displace(on);
+      }
+      for (const x of [...pieces]) {
+        if (x.owner !== 'sente' || !leaveAny.has(x.p)) continue;
+        if (x.role === 'lead' || locked.has(x) || assigned.has(x)) continue;
+        displace(x);
+      }
     }
 
-    // 6. 検証: 二歩（同じ筋に先手の歩が2枚）
+    // 7. 検証: 二歩（同じ筋に先手の歩が2枚）
     const pawnFiles = new Map();
     for (const x of pieces) {
       if (x.owner !== 'sente' || x.p !== '歩') continue;
@@ -233,7 +264,7 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    // 7. moved: 土台からマスが変わった駒 ＋ 持ち駒へ移した駒 ＋ 持ち駒から出した駒
+    // 8. moved: 土台からマスが変わった駒 ＋ 持ち駒へ移した駒 ＋ 持ち駒から出した駒
     let moved = displaced;
     for (const x of pieces) {
       if (x.owner !== 'sente') continue;

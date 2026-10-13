@@ -1,6 +1,6 @@
 # 実装計画：将棋としての正確化・駒の立体感・戦法×囲いの一体化
 
-将棋の囲い図鑑（`shogi/castles.html`）を「改善・修正・リッチ化・高度化・正確化」する計画。
+将棋の囲い図鑑（`shogi/index.html`）を「改善・修正・リッチ化・高度化・正確化」する計画。
 調査は `js/ui/board-view.js`・`js/modes/*.js`・`js/data/*.js` の精読と、将棋の定説との照合に基づく。
 
 要件の一覧：
@@ -199,7 +199,7 @@ cost = dist + (歩・香で Δ筋≠0 ? 大) + (歩・香で後退 ? 中) + (桂
 - `#detailTabs`（概要／長所・短所／攻め筋／出典）を撤去し、`detail-body` に **概要→特徴ペンタグラム→囲いの駒→長所→短所→攻め筋→出典** の順で全セクションを縦に並べる（`.sec h3` の見出し＋罫線スタイルは既存）。
 - `DetailView` の `pane`/`showTab` 機構を削除、`render` は単一 HTML を出力。`setAttack` の選択状態更新は残す。
 - 戦法の解説（`tactic-detail-view.js` の 概要／組み方／相性のよい囲い／出典）も同様に一続きにする（同じ見せ方で統一）。
-- `castles.html` から `#detailTabs` の seg を除去、`castle-mode.js` の `detailTabs` 参照を除去。
+- `index.html` から `#detailTabs` の seg を除去、`castle-mode.js` の `detailTabs` 参照を除去。
 
 ---
 
@@ -209,7 +209,7 @@ cost = dist + (歩・香で Δ筋≠0 ? 大) + (歩・香で後退 ? 中) + (桂
 |---|---|---|
 | **0. 正確性** | §1 のデータ修正 | `js/data/*` のみ |
 | **1. アニメーション** | §2 コスト式マッチング・route 軌跡・フェードアウト | `board-view.js`・`tactic-mode.js`・`board.css` |
-| **2. 解説パネル** | §6 ペンタグラム・ハッシュタグ・タブ廃止 | `detail-view.js`・`tactic-detail-view.js`・`castles.html`・`layout.css` |
+| **2. 解説パネル** | §6 ペンタグラム・ハッシュタグ・タブ廃止 | `detail-view.js`・`tactic-detail-view.js`・`index.html`・`layout.css` |
 | **3. 地図削除** | §4 map-view 除去＋tree 残し | `cluster-*.js`・`manifest.js`・`ui-check.js` |
 | **4. 一体化** | §3 組み合わせ合成 | 新規 `combo.js`・tactic 各ビュー・`app.js` |
 | **5. 立体駒** | §5 Three.js 駒レイヤ | 新規 `piece-layer-3d.js`・vendor・`board-view.js` |
