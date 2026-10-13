@@ -121,19 +121,15 @@
                max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dk-tile .fb { font:500 10px/1 var(--font-n); color:var(--muted); letter-spacing:.03em; }
 .dk-marks { display:flex; align-items:center; gap:3px; min-height:10px; }
-/* 派生チップは親タイルと同じ筋のセルの中に縦に積む（列=筋の規則はタイルと同じ）。
-   3枚以上の列は .dk-vfold で畳む（縦に長くなりすぎる列の収納）。畳み状態は
-   data-open で持ち、面の作り直し（who×tab の切替）まで保持する */
-.dk-vars { display:flex; flex-direction:column; gap:2px; }
-.dk-vlist { display:flex; flex-direction:column; gap:2px; }
-.dk-vars[data-open="false"] .dk-vlist { display:none; }
-.dk-vfold { display:flex; align-items:center; justify-content:center; gap:3px; padding:5px 2px;
-            border:1px dashed var(--line); background:none; color:var(--muted); cursor:pointer;
-            font:500 10px/1.4 var(--font-n); letter-spacing:.06em; }
-.dk-vfold:hover { color:var(--fg); border-color:var(--line-2); }
-.dk-vfold .caret { font-size:8px; transition:transform .15s; }
-.dk-vars[data-open="true"] .dk-vfold .caret { transform:rotate(90deg); }
-/* チップはセル幅いっぱい。名は折り返して全文を見せ、印は角に重ねる */
+/* 派生チップはタイルと同じ規則で筋の列に積むグリッドアイテム（親の列の下の行）。
+   「派生を表示」スイッチで一括して開閉し、縦に長くなりすぎる列を収納する。
+   開閉状態は view の data-vars で持ち、面の作り直し（who×tab の切替）まで保持する */
+.dk-vshow { flex:none; margin-bottom:2px; font-size:11.5px; }
+.dk-vshow input { width:28px; height:17px; }
+.dk-vshow input::after { top:2px; left:2px; width:13px; height:13px; }
+.dk-vshow input:checked::after { transform:translateX(11px); }
+.dk-tactics[data-vars="off"] .dk-var { display:none; }
+/* チップは列幅いっぱい。名は折り返して全文を見せ、印は角に重ねる */
 .dk-var { position:relative; display:flex; align-items:center; justify-content:center;
           width:100%; min-width:0; min-height:32px; padding:8px 4px; cursor:pointer;
           border:1px solid var(--line); background:none; font:inherit; line-height:1.2;

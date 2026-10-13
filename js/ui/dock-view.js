@@ -40,6 +40,13 @@ window.Kakoi = window.Kakoi || {};
       this.root = el.firstElementChild;
       this.sep = this.root.querySelector('.dk-sep');
       this.tacticRows = K.tacticNav.tacticRows(K.TACTIC_FAMILIES, K.TACTICS);
+      // ドックの居飛車の系統は 飛車→銀→角（・桂・歩）の順に並べる（周期表の行順とは別）
+      const ibishaRank = { '飛': 0, '銀': 1, '角': 2 };
+      this.tacticRows = [
+        ...this.tacticRows.filter(r => r.family.side !== 'ibisha'),
+        ...this.tacticRows.filter(r => r.family.side === 'ibisha')
+          .sort((a, b) => (ibishaRank[a.family.piece] ?? 9) - (ibishaRank[b.family.piece] ?? 9)),
+      ];
 
       // 囲いの局面は1回だけ組み立てる（F3: 切り出しは囲いごとに最大化するので共通倍率は持たない）
       this._pos = new Map();
@@ -234,14 +241,10 @@ window.Kakoi = window.Kakoi || {};
           if (parentId && t.dataset.id === parentId) t.dataset.vsel = 'true';
           else delete t.dataset.vsel;
         }
-        if (parentId) {
-          const chip = pane.cur.items.find(i => i.id === selVar);
-          const box = chip && chip.el.closest('.dk-vars');
-          if (box && box.dataset.open === 'false') {
-            box.dataset.open = 'true';
-            const tg = box.querySelector('.dk-vfold');
-            if (tg) tg.setAttribute('aria-expanded', 'true');
-          }
+        if (parentId && pane.cur.el.dataset.vars === 'off') {
+          pane.cur.el.dataset.vars = 'on';
+          const sw = pane.cur.el.querySelector('.dk-vshow input');
+          if (sw) sw.checked = true;
         }
       }
       // 採用中の戦略に合わない項目だけの行・系統はまるごと隠す。
