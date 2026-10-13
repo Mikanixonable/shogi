@@ -1,7 +1,8 @@
 // 既定値の解決（唯一の権威。計画書 §1-2 / S6）: 戦略テンプレートの
 // defaultTactic / defaultCastle（{vsIbisha,vsFuribisha} 振り分けを含む）と、
 // sideState（{strategy, tacticId?, castleId?}）から実効 id を返す窓口。
-// compat.js / matchup.js / compose.js / constraints.js が共有する。
+// compat.js / matchup.js / compose.js / constraints.js が共有する。戦略そのものは
+// 制約にせず、戦法（無ければ囲い）から constraints.sides() が導く。
 // ここはデータと lookup にだけ依存し、compat/constraints を参照しない
 // （compat ↔ constraints の相互参照を一方向にするために分離した。計画書 S6）
 window.Kakoi = window.Kakoi || {};
@@ -24,7 +25,7 @@ window.Kakoi = window.Kakoi || {};
   function defaultIdOf(kind, strategy, oppStrategy) {
     if (kind === 'tactic') return defaultTacticId(strategy);
     if (kind === 'castle') return defaultCastleId(strategy, oppStrategy);
-    return null; // strategy 層の既定値は無い（欠けた戦略は constraints.sides() が制約から推論する）
+    return null;
   }
   // 従来の sideState（{strategy, tacticId?, castleId?}）から実効 id を返す薄い窓口
   const tacticIdOf = st => (st && st.tacticId) || defaultTacticId(st && st.strategy);

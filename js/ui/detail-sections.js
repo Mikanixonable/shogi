@@ -1,4 +1,4 @@
-// 右ドックのセクション部品（計画書 §5 / U5）: 囲い・戦法・対局図の詳細の描画を
+// 右ドックのセクション部品（計画書 §5 / U5）: 囲い・戦法の詳細の描画を
 // 「HTML文字列を返す関数」に分解したもの。
 // 選択中の制約の種類ごとの組み立ては board-detail-view.js（Kakoi.BoardDetailView）が行う。
 // 決め事:
@@ -7,7 +7,7 @@
 //   - マス連動: 部品は data-sq / data-tone を出すだけ。盤へのホバー委譲はビュー側が貼る
 //   - クリック: 部品は data-act / クラスを出すだけ。委譲ハンドラもビュー側
 //     （.attack＝攻め筋の選択、[data-act="castle"]＝その囲いを制約にする、
-//       [data-act="set"]＝任意の層を制約にする、[data-act="add-opp"]＝相手を加える）
+//       [data-act="set"]＝任意の層を制約にする）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -169,8 +169,8 @@ window.Kakoi = window.Kakoi || {};
   /**
    * 相性のよい囲い（pairings の ◎/○。押すとその囲いを制約にする）。
    * @param {Array<{id:string, name:string, familyName:string, level:string,
-   *   why?:string, current?:boolean, cascade?:string}>} rows
-   *   current: いまの実効囲い（pressed で示す）。cascade: 選ぶと連動する層の予告文（例「→戦法も変わる」）
+   *   why?:string, current?:boolean}>} rows
+   *   current: いまの実効囲い（pressed で示す）
    */
   function pairingCastles(rows) {
     if (!rows.length) return '<p class="note">データ上の対応する囲いはありません</p>';
@@ -178,7 +178,7 @@ window.Kakoi = window.Kakoi || {};
       `<div class="tc-row"><button class="tc-castle" data-act="castle" data-id="${esc(c.id)}" data-compat="${esc(c.level || 'ok')}"` +
         `${c.current ? ' aria-pressed="true"' : ''}` +
         `${c.why ? ` title="${esc(plain(c.why))}"` : ''}>` +
-        `<b>${esc(c.name)}</b><span>${esc(c.familyName)}${c.current ? '・選択中' : ''}${c.cascade ? `・${esc(c.cascade)}` : ''}</span></button>` +
+        `<b>${esc(c.name)}</b><span>${esc(c.familyName)}${c.current ? '・選択中' : ''}</span></button>` +
         `<button class="tc-go" data-act="castle" data-id="${esc(c.id)}" title="${esc(c.name)}を制約にして選択" ` +
         `aria-label="${esc(c.name)}を制約にして選択">→</button></div>`
     ).join('');
@@ -212,13 +212,6 @@ window.Kakoi = window.Kakoi || {};
     return sec('対戦相性', threat && threat.label ? esc(threat.label) : '',
       `<p class="mu-fit">${fit.toFixed(2)}<small>戦型の重み × 囲いの強み</small></p>` +
       (chips ? `<div class="tags">${chips}</div>` : ''));
-  }
-
-  // 導出ラベル（戦型）: constraints.labels() の {id,label} を #タグで並べる
-  function senkei(labels) {
-    if (!labels || !labels.length) return '';
-    return sec('戦型', '選択から導出したラベル',
-      `<div class="tags">${labels.map(l => `<span class="tag">#${esc(l.label)}</span>`).join('')}</div>`);
   }
 
   /**
@@ -284,21 +277,22 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 直近の連動の履歴（constraints.apply の changed。§5「共通の末尾」）
-   * @param {Array<{who:string, kind:string, from:string, to:string|null, why:string, dropped?:boolean}>} changed
-   * @param {(kind:string, id:string)=>string} nameOf id → 表示名
+   * 両立しない選択: 理由（マスのある理由は乗せると盤で光る）と、直す候補。
+   * 自動では差し替えない。候補を押すとその層をその候補に差し替える（[data-act="set"]）
+   * @param {Array<{text:string, squares?:string[]}>} reasons compat.judge の ng の理由
+   * @param {Array<{id:string, name:string}>} suggestions constraints.suggest の候補
+   * @param {'tactic'|'castle'} kind 差し替える層
    */
-  function history(changed, nameOf) {
-    if (!changed || !changed.length) return '';
-    const WHO = w => (w === 'opp' ? '相手' : '自分');
-    const LAYER = K.lookup.LAYER_JA;
-    const li = changed.slice(-8).map(c => {
-      const text = c.dropped
-        ? `${WHO(c.who)}の${LAYER[c.kind] || c.kind}「${nameOf(c.kind, c.from)}」を外しました（${plain(c.why || '')}）`
-        : `${WHO(c.who)}の${LAYER[c.kind] || c.kind}を「${nameOf(c.kind, c.from)}」から「${nameOf(c.kind, c.to)}」へ変更しました`;
-      return `<li data-level="${c.dropped ? 'ng' : 'ok'}"><span class="mk">${c.dropped ? '×' : '＋'}</span><span>${esc(text)}</span></li>`;
-    }).join('');
-    return sec('直近の連動', '選び直しで連動して変わった層', `<ul class="mu-reasons">${li}</ul>`);
+  function conflict(reasons, suggestions, kind, citer) {
+    const li = reasons.map(r =>
+      `<li data-level="ng" data-tone="bad"${sqAttr(r.squares)}><span class="mk">✕</span><span>${rich(r.text, citer)}</span></li>`).join('');
+    const chips = suggestions.map(c =>
+      `<button class="vchip" data-act="set" data-kind="${kind}" data-id="${esc(c.id)}" aria-pressed="false">${esc(c.name)}</button>`).join('');
+    return sec('いまの組み合わせでは両立しません', '自動では差し替えません',
+      `<ul class="mu-reasons">${li}</ul>` +
+      (chips
+        ? `<p class="note">代わりの候補（押すと差し替え）</p><div class="vchips">${chips}</div>`
+        : '<p class="note">差し替えで直せる候補はありません。もう一方の層を外すか選び直してください。</p>'));
   }
 
   // 出典: [[ref]] を引いた本文の番号と同じ並びで出す（cited が先・未引用は後ろに連番）
@@ -310,7 +304,7 @@ window.Kakoi = window.Kakoi || {};
     RATINGS, RADAR, sec,
     penta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
-    pairingCastles, variants, fitness, senkei, distanceNote,
-    vsSection, vsRows, reasons, contacts, history, sources,
+    pairingCastles, variants, fitness, distanceNote,
+    vsSection, vsRows, reasons, conflict, contacts, sources,
   };
 })();

@@ -1,4 +1,4 @@
-// 盤の重ね表示: 囲いの骨格線・筋道（手順）の矢印は SVG で、
+// 盤の重ね表示: 筋道（手順）の矢印は SVG で、
 // 脅威の帯（筋まるごとの薄い朱色）と接触の印（◆）は HTML 層で盤に重ねる
 window.Kakoi = window.Kakoi || {};
 (() => {
@@ -28,8 +28,7 @@ window.Kakoi = window.Kakoi || {};
         `<marker id="rtHeadBad" ${MARKER_BODY}><path class="rt-head rt-hb" ${HEAD_D}/></marker>` +
         `<marker id="rtHeadInk" ${MARKER_BODY}><path class="rt-head rt-hi" ${HEAD_D}/></marker>` +
         '</defs>' +
-        '<g class="sk-g"></g><g class="rt-g"></g>';
-      this.skeletonLayer = this.svg.querySelector('.sk-g');
+        '<g class="rt-g"></g>';
       this.routeLayer = this.svg.querySelector('.rt-g');
 
       // 脅威の帯はマスの下（盤面の木目の上、駒とグリッド線・ヒートの下）に置く。
@@ -46,29 +45,6 @@ window.Kakoi = window.Kakoi || {};
       this.contactLayer.setAttribute('aria-hidden', 'true');
       boardEl.appendChild(this.svg);
       boardEl.appendChild(this.contactLayer);
-    }
-
-    /** 囲いの駒（role=core）のうち隣り合うもの同士を線で結ぶ。null で消す */
-    skeleton(position) {
-      const layer = this.skeletonLayer;
-      layer.replaceChildren();
-      if (!position) return;
-      const core = position.pieces.filter(x => x.role === 'core');
-      const at = x => ({ x: 9 - x.f + .5, y: x.r - .5 });
-      let html = '';
-      core.forEach((a, i) => core.slice(i + 1).forEach(b => {
-        if (Math.max(Math.abs(a.f - b.f), Math.abs(a.r - b.r)) !== 1) return;
-        const p = at(a), q = at(b);
-        html += `<line class="sk sk-line" x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}"/>`;
-      }));
-      for (const x of core) {
-        const c = at(x);
-        html += x.p === '玉'
-          ? `<circle class="sk sk-ring" cx="${c.x}" cy="${c.y}" r=".3"/>`
-          : `<circle class="sk sk-dot" cx="${c.x}" cy="${c.y}" r=".11"/>`;
-      }
-      layer.innerHTML = html;
-      layer.style.animation = 'none'; layer.getBoundingClientRect(); layer.style.animation = ''; // フェードインをやり直す
     }
 
     /**
@@ -140,7 +116,7 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    clear() { this.skeleton(null); this.routes(null); this.threat(null); this.contacts(null); }
+    clear() { this.routes(null); this.threat(null); this.contacts(null); }
   }
 
   Kakoi.OverlayView = OverlayView;

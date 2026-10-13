@@ -39,13 +39,6 @@ window.Kakoi = window.Kakoi || {};
       return out;
     }
 
-    /** 保存済みの永続キーをすべて捨てる（リセットして再読み込みする前に呼ぶ） */
-    clearPersisted() {
-      for (const k of this._persist) {
-        try { localStorage.removeItem(`${this._ns}:${k}`); } catch { /* 無視 */ }
-      }
-    }
-
     /** @param {Set<string>|null} keys 変わったキー。null なら全部（初期の補完用） */
     _save(keys) {
       for (const k of this._persist) {

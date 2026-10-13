@@ -1,6 +1,6 @@
-// 左ドックの面の中身（計画書 S6 の tactic-grid / castle-grid）:
+// 左ドックの一覧の中身（計画書 S6 の tactic-grid / castle-grid）:
 // 戦法タイルと囲いカードの「構築」だけを持つ純粋な描画部品。状態の書き換え
-// （バッジ・戦略に合わない項目の非表示）は dock-badges.js / dock-view.js、面の器は dock-pane.js
+// （バッジ・戦略に合わない項目の非表示）は dock-badges.js / dock-view.js
 //   - 戦法タイル: 行=主役の駒の系統、列=筋。タイルは正確に lead.files の筋に
 //     プロットし（自分は 9→1・相手は盤の絶対座標。列はどちらも絶対座標なので
 //     筋番号ヘッダは両面とも 9…1）、上に筋の番号を出す。
@@ -22,7 +22,7 @@ window.Kakoi = window.Kakoi || {};
   /** view の中の .dk-item を走査用に薄くまとめる */
   const items = view => [...view.querySelectorAll('.dk-item')].map(el => ({
     el, kind: el.dataset.kind, id: el.dataset.id,
-    csc: el.querySelector('.dk-csc'), vs: el.querySelector('.dk-vs'),
+    ng: el.querySelector('.dk-ng'), vs: el.querySelector('.dk-vs'),
   }));
 
   function tile(who, t, flip) {
@@ -34,7 +34,7 @@ window.Kakoi = window.Kakoi || {};
     if (K.tacticNav.isRare(t)) b.dataset.rare = 'true';
     b.innerHTML = `<span class="nm">${esc(t.short || t.name)}</span>` +
       `<span class="fb">${esc(fileBadge(t, flip))}</span>` +
-      `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-csc"></span></span>`;
+      `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-ng"></span></span>`;
     return b;
   }
 
@@ -47,11 +47,11 @@ window.Kakoi = window.Kakoi || {};
     b.dataset.parent = v.variantOf;
     if (K.tacticNav.isRare(v)) b.dataset.rare = 'true';
     b.innerHTML = `<span class="nm">${esc(v.short || v.name)}</span>` +
-      `<i class="dk-vs"></i><span class="dk-csc"></span>`;
+      `<i class="dk-vs"></i><span class="dk-ng"></span>`;
     return b;
   }
 
-  // view の器。分類は戦略（居飛車／振り飛車）だけ: 採用中の戦略に合わない
+  // view の器。分類は戦略（居飛車／振り飛車）だけ: 絞り込んだ戦略に合わない
   // 行・系統・項目は dock-view が hidden にする（「もう一方」の領域は持たない）
   function viewShell(cls) {
     const view = document.createElement('div');
@@ -181,7 +181,7 @@ window.Kakoi = window.Kakoi || {};
           K.miniBoardSVG(pos, c.side, { flip }) +
           `</span></span>` +
           `<span class="nm">${esc(c.short || c.name)}</span>` +
-          `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-csc"></span></span>`;
+          `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-ng"></span></span>`;
         cards.appendChild(b);
       }
       sec.appendChild(cards);

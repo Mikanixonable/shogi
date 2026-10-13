@@ -1,7 +1,7 @@
-/* 統合画面（board）: 制約バー・制約チップ・暫定の左ドック（選ぶ面）。
+/* 統合画面（board）: 制約バー・制約チップ・右ドックの先頭部品。
    「墨と余白」: 罫線と記号で示す。色だけに頼らない（破線・◎・△・要約の文字を併記） */
 
-/* ===== 制約バー: 見出しと盤の間。チップ1つ=制約1つ ===== */
+/* ===== 制約バー: 見出しと盤の間。チップ1つ=スロット1つ ===== */
 /* 1行固定（帯の高さを変えない。F1）: はみ出した分は横スクロールし、右端をフェードさせる。
    構造: .cbar-x（流れるチップ。横スクロール）＋ .cbar-lab（導出ラベル。右端に固定で褪せない） */
 .cbar { display:flex; flex-wrap:nowrap; align-items:center; gap:5px; padding:1px 0 3px; height:26px; min-height:0; overflow:hidden; }
@@ -19,6 +19,10 @@
 .cchip .cchip-b:hover { color:var(--accent); }
 .cchip-side { font-style:normal; font-size:10.5px; color:var(--muted); }
 .cchip[data-who="opp"] .cchip-side { color:var(--gote-ink); }
+/* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
+.cchip-ng { font-style:normal; font-size:11px; font-weight:700; color:var(--bad); }
+.cchip-ng:empty { display:none; }
+.cchip[data-ng="true"] { border-style:dashed; border-color:var(--bad); }
 .cchip-nm { font-weight:600; white-space:nowrap; }
 .cchip-x { display:grid; place-items:center; width:20px; margin-left:2px; border:0; border-left:1px solid var(--line);
            background:none; color:var(--muted); cursor:pointer; font-size:12px; }
@@ -30,16 +34,9 @@
 .cchip[data-implied="true"] { border-style:dashed; border-color:var(--line); opacity:.72; }
 .cchip[data-implied="true"] .cchip-nm { font-weight:400; }
 .cchip[data-implied="true"] .cchip-nm::after { content:"既定"; margin-left:5px; font-size:9px; color:var(--muted); letter-spacing:.06em; }
-/* ホバー予告: 変更される予定のチップを点滅させる（constraint-bar.js の flash()） */
-.cchip[data-flash="true"] { animation:cchipBlink .55s var(--ease) infinite alternate; }
-@keyframes cchipBlink { from { border-color:var(--line-2); } to { border-color:var(--bad); box-shadow:inset 0 0 0 1px var(--bad); } }
-/* 明示→既定へ移行したチップを一度だけ点滅させる（constraint-bar の markImplied、U5） */
-.cchip[data-implied-in="true"] { animation:cchipBlink .55s var(--ease) 2 alternate; }
 /* 導出ラベル（戦型など）: .cbar-lab に入る消せない灰色チップ。紙色で固定、褪せない */
 .cchip.cchip-label { border-color:var(--line); color:var(--muted); cursor:default; padding:3px 10px; background:var(--bg); }
 .cchip.cchip-label .cchip-nm { font-weight:400; white-space:nowrap; }
-
-/* 戦略セグのボタンの2軸バッジ印は css/dock.css の .dk-strategy 規則が担う */
 
 /* ===== 右ドック（board-detail-view。U5）: 選択中の制約の説明 ===== */
 /* 先頭: 側の表示名（小）＋項目名（大）。既定値で補った層は破線の「既定」を添える */
@@ -55,9 +52,8 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 .vchip:hover { border-color:var(--accent); color:var(--accent); }
 .vchip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
-/* ===== 中央: 帯の下の凡例行（再生ボタンの調整） ===== */
-#boardPane .stage-f .legend i { background:var(--bad); }
-#playBtn[hidden], #clearAll[hidden] { display:none; }
+/* ===== 中央: 凡例行の再生ボタン ===== */
+#playBtn[hidden] { display:none; }
 
 /* ===== narrow ===== */
 @media (max-width:979px) {

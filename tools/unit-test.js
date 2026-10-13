@@ -171,12 +171,6 @@ ok(c2fail.length === 0, `compose:ngでない${c2}組の二歩・主役ずれ0件
   ok(j.level === 'ok' && has(j, 'PAIRING') && has(j, 'SQUARE'),
     'expect:ikkenbisha×furianaguma 注記つきok（一間飛車穴熊）', brief(j));
 }
-{
-  // L8: 戦略層の判定にも同じ規則 — 中飛車×美濃の○上書きが戦略の判定にも効く
-  const j = K.compat.judge({ tacticId: 'nakabisha', castleId: 'mino' }, 'strategy', 'furibisha');
-  ok(j.level !== 'ng', 'expect:nakabisha×mino 戦略層も○上書きが効く（L8）', brief(j));
-}
-
 // 戦略テンプレートの既定値どうしは必ず両立する（§4-2 / validate の保証を単体でも固定）
 for (const sid of Object.keys(K.STRATEGIES)) {
   const S = K.STRATEGIES[sid];
@@ -312,31 +306,49 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   }
 }
 
-// ---------- 4. apply（自動差し替え）の決定性 ----------
+// ---------- 4. setSlot（固定スロット）: 選んだものを他の層が勝手に差し替えない ----------
 {
-  // 旧 compat.resolve と同じ場面: 四間飛車＋本美濃の状態で穴熊を選ぶ
-  const list = [
-    { who: 'me', kind: 'strategy', id: 'furibisha' },
-    { who: 'me', kind: 'castle', id: 'mino' },
-    { who: 'me', kind: 'tactic', id: 'shikenbisha' },
-  ];
-  const r1 = K.constraints.apply(list, { type: 'set', who: 'me', kind: 'castle', id: 'anaguma' });
-  const r2 = K.constraints.apply(list, { type: 'set', who: 'me', kind: 'castle', id: 'anaguma' });
-  ok(r1.changed.length >= 1, 'apply:anaguma選択で差し替えが起きる', jstr(r1.changed));
-  ok(r1.changed.some(e => e.kind === 'tactic' && e.from === 'shikenbisha'),
-    'apply:changed が戦法の差し替えを説明する', jstr(r1.changed));
-  ok(jstr(r1.list) === jstr(r2.list) && jstr(r1.changed) === jstr(r2.changed),
-    'apply:2回実行で同一結果', `${jstr(r1.list)} != ${jstr(r2.list)}`);
-  ok(r1.list[r1.list.length - 1].kind === 'castle' && r1.list[r1.list.length - 1].id === 'anaguma',
-    'apply:リスト末尾はいま選んだ制約', jstr(r1.list));
-  // 差し替え後の状態では、差し替わった層が ng でないこと
-  const S = K.constraints.sides(r1.list);
-  for (const e of r1.changed) {
-    const st = S[e.who];
-    const j = K.compat.judge(st, e.kind, st[K.constraints.FIELD[e.kind]]);
-    ok(j.level !== 'ng', `apply:差し替え後の ${e.kind}(${st[K.constraints.FIELD[e.kind]]}) は両立`, brief(j));
-  }
-  console.log(`  apply 結果: ${jstr(r1.list)}\n  changed: ${jstr(r1.changed)}`);
+  const CS = K.constraints;
+  const put = (sl, who, kind, id) => CS.setSlot(sl, who, kind, id);
+  const base = put(put(CS.emptySlots(), 'me', 'tactic', 'shikenbisha'), 'me', 'castle', 'mino');
+  // 振り飛車の戦法に居飛車穴熊: 戦法は差し替わらず、両立しない選択としてそのまま残る
+  const r = put(base, 'me', 'castle', 'anaguma');
+  ok(r.me.tactic === 'shikenbisha' && r.me.castle === 'anaguma',
+    'setSlot:両立しない選択でも他の層は差し替わらない', jstr(r));
+  ok(base.me.castle === 'mino' && r !== base, 'setSlot:入力を書き換えず新しい slots を返す', jstr(base));
+  ok(put(base, 'me', 'castle', 'mino') === base, 'setSlot:同じ値は入力の参照を返す');
+  ok(put(base, 'me', 'castle', 'no-such') === base && put(base, 'me', 'castle', 'constructor') === base
+    && put(base, 'me', 'strategy', 'furibisha') === base,
+  'setSlot:存在しない id・層（constructor・strategy）は無視する');
+  ok(put(base, 'me', 'castle', null).me.castle === null && put(base, 'me', 'castle', null).me.tactic === 'shikenbisha',
+    'setSlot:null でそのスロットだけ外す');
+  const both = put(base, 'opp', 'castle', 'funa');
+  const cleared = CS.clearSide(both, 'me');
+  ok(cleared.me.tactic === null && cleared.me.castle === null && cleared.opp.castle === 'funa'
+    && CS.clearSide(cleared, 'me') === cleared, 'clearSide:その側だけ外し、空なら参照を返す', jstr(cleared));
+  ok(jstr(CS.normalizeSlots({ me: { tactic: 'bougin', castle: 'zzz' }, opp: { tactic: 5 } }))
+    === jstr({ me: { tactic: 'bougin', castle: null }, opp: { tactic: null, castle: null } }),
+  'normalizeSlots:不正な id・型は未選択に戻す');
+  ok(jstr(CS.normalizeSlots(null)) === jstr(CS.emptySlots()), 'normalizeSlots:null は空のスロット');
+
+  // 両立しない選択は conflicts が理由つきで返し、suggest が直す候補を返す
+  const S = CS.sides(r, false);
+  const cf = CS.conflicts(r, S, false);
+  ok(cf.me.castle && cf.me.castle.some(x => x.code === 'SIDE') && cf.opp.castle === undefined,
+    'conflicts:居飛車穴熊×四間飛車は SIDE の理由つきで ng', jstr(cf));
+  const sg = CS.suggest(r, false, 'me', 'castle');
+  ok(sg.length > 0 && sg.length <= 6 && sg.includes('mino') && !sg.includes('anaguma'),
+    'suggest:両立する囲いを返す（現在の選択は含まない）', jstr(sg));
+  ok(sg.every(id => CS.evaluate(r, false, 'me', 'castle', id).j.level !== 'ng'),
+    'suggest:候補はすべて ng でない');
+  ok(sg.indexOf('mino') <= sg.indexOf('katamino') || !sg.includes('katamino'),
+    'suggest:相性表の◎（美濃）は先に並ぶ', jstr(sg));
+  const none = CS.conflicts(base, CS.sides(base, false), false);
+  ok(!none.me.tactic && !none.me.castle, 'conflicts:両立する組み合わせは空', jstr(none));
+  // 表示していない相手は評価しない
+  const hid = CS.conflicts(put(r, 'opp', 'castle', 'anaguma'), CS.sides(put(r, 'opp', 'castle', 'anaguma'), false), false);
+  ok(Object.keys(hid.opp).length === 0, 'conflicts:表示していない相手は対象外', jstr(hid));
+  console.log(`  setSlot 結果: ${jstr(r)}\n  conflicts: ${jstr(cf.me.castle)}\n  suggest: ${jstr(sg)}`);
 }
 
 // ---------- 5. matchup スポットチェック（§1-2 の距離モデル） ----------
@@ -353,111 +365,94 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   ok(th.kind === 'aifuri' && th.distance <= 2, 'matchup:相振り飛車 distance<=2', jstr(th));
 }
 
-// ---------- 6. constraints: sides / apply / preview / lateOf / labels（計画書 §1 / §3-2） ----------
-if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constraints.preview) {
+// ---------- 6. constraints: sides / conflicts / evaluate / labels（計画書 §1 / §3-2） ----------
+if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.constraints.conflicts) {
   ok(false, 'constraints: Kakoi.constraints が未定義', 'js/core/constraints.js を確認');
 } else {
   const CS = K.constraints, FIELD = CS.FIELD, KINDS = CS.KINDS;
-  // 「ng を残さない」の判定は tactic/castle 層で行う。どの層で評価しても盤上の衝突と
-  // SIDE は同じ ng になる（戦略層も同じ規則。L8）
-  const judgeAll = (S, who) => {
-    const st = S[who], opp = who === 'me' ? S.opp : S.me;
-    const bad = [];
-    for (const k of ['tactic', 'castle']) {
-      const j = K.compat.judge(st, k, st[FIELD[k]], opp);
-      if (j.level === 'ng') bad.push(`${who}.${k}=${st[FIELD[k]]} ${brief(j)}`);
-    }
-    return bad;
-  };
+  // slots の簡易生成: mk(自分の戦法, 自分の囲い, 相手の戦法, 相手の囲い)
+  const mk = (mt = null, mc = null, ot = null, oc = null) =>
+    ({ me: { tactic: mt, castle: mc }, opp: { tactic: ot, castle: oc } });
 
-  // sides: 暗黙の補完と rank / pick / opp:null
+  // sides: 戦略の導出と暗黙の補完
   {
-    const s = CS.sides([{ who: 'me', kind: 'castle', id: 'funa' }]);
+    const s = CS.sides(mk(null, 'funa'));
     ok(s.me.castleId === 'funa' && s.me.strategy === 'ibisha' && s.me.tacticId === 'ibisha-base',
-      'constraints:sides 囲いだけ→既定値で補完', jstr(s.me));
-    ok(s.me.implied.strategy === true && s.me.implied.tactic === true && !s.me.implied.castle,
-      'constraints:sides implied フラグ（strategy/tactic が暗黙）', jstr(s.me.implied));
-    ok(s.me.rank.castle === 0 && s.me.rank.strategy === -1 && s.me.rank.tactic === -1,
-      'constraints:sides rank（無い層は-1）', jstr(s.me.rank));
-    ok(s.opp === null, 'constraints:sides 相手の制約が無いとき opp=null', jstr(s.opp));
+      'constraints:sides 囲いだけ→戦略は囲いの側・戦法は既定値で補完', jstr(s.me));
+    ok(s.me.implied.tactic === true && !s.me.implied.castle && !s.me.implied.strategy,
+      'constraints:sides implied フラグ（戦法だけが暗黙。戦略は層ではない）', jstr(s.me.implied));
+    ok(s.opp && s.opp.strategy === 'ibisha' && s.opp.implied.tactic && s.opp.implied.castle,
+      'constraints:sides 相手側も常に実効値を持つ（既定値で補う）', jstr(s.opp));
   }
   {
-    // 戦法だけ指定 → 戦略は系統の side から推論（振り飛車の戦法なら furibisha）
-    const s = CS.sides([{ who: 'opp', kind: 'tactic', id: 'shikenbisha' }]);
-    ok(s.opp && s.opp.strategy === 'furibisha' && s.opp.implied.strategy === true,
-      'constraints:sides 戦略を戦法の系統から推論', jstr(s.opp));
-    ok(s.opp.castleId === 'mino', 'constraints:sides 既定囲い（furibisha vs 未指定→vsIbisha）', jstr(s.opp));
+    // 戦法だけ指定 → 戦略は戦法の系統の side（振り飛車の戦法なら furibisha）
+    const s = CS.sides(mk(null, null, 'shikenbisha'));
+    ok(s.opp.strategy === 'furibisha' && !s.opp.implied.tactic && s.opp.implied.castle,
+      'constraints:sides 戦略を戦法の系統から導出', jstr(s.opp));
+    ok(s.opp.castleId === 'mino', 'constraints:sides 既定囲い（furibisha の既定は mino）', jstr(s.opp));
+    // 戦法があれば囲いより戦法が戦略を決める（囲いは明示のまま残る）
+    const t = CS.sides(mk('bougin', 'mino'));
+    ok(t.me.strategy === 'ibisha' && t.me.castleId === 'mino' && !t.me.implied.castle,
+      'constraints:sides 戦略は戦法が決め、明示した囲いは差し替えない', jstr(t.me));
+    // 囲いだけなら囲いの側から導く（美濃→振り飛車の既定戦法）
+    const u = CS.sides(mk(null, 'mino'));
+    ok(u.me.strategy === 'furibisha' && u.me.tacticId === 'shikenbisha',
+      'constraints:sides 囲いだけ（美濃）→ 戦略 furibisha・既定戦法で補完', jstr(u.me));
   }
   {
-    // 既定囲いの vsIbisha/vsFuribisha 振り分け: 相手が振り飛車なら vsFuribisha
-    const s = CS.sides([{ who: 'me', kind: 'strategy', id: 'ibisha' }, { who: 'opp', kind: 'strategy', id: 'furibisha' }]);
+    // 既定囲いの vsIbisha/vsFuribisha 振り分け: 相手が振り飛車なら vsFuribisha。相手を表示しないときは vsIbisha
+    const s = CS.sides(mk('ibisha-base', null, 'shikenbisha'));
     ok(s.me.castleId === 'funa', 'constraints:sides ibisha の既定囲いは対振り用 funa', jstr(s.me));
-    const s2 = CS.sides([{ who: 'me', kind: 'strategy', id: 'ibisha' }, { who: 'opp', kind: 'strategy', id: 'ibisha' }]);
+    const s2 = CS.sides(mk('ibisha-base', null, 'ibisha-base'));
     ok(s2.me.castleId === 'yagura', 'constraints:sides ibisha の既定囲いは相居飛車用 yagura', jstr(s2.me));
+    const s3 = CS.sides(mk('ibisha-base', null, 'shikenbisha'), false);
+    ok(s3.me.castleId === 'yagura', 'constraints:sides 相手を表示しないなら相手の戦略で振り分けない', jstr(s3.me));
   }
   {
-    // 同じ (who,kind) の重複は末尾を採用し、rank は末尾の位置
-    const s = CS.sides([
-      { who: 'me', kind: 'castle', id: 'funa' },
-      { who: 'me', kind: 'tactic', id: 'bougin' },
-      { who: 'me', kind: 'castle', id: 'yagura' },
-    ]);
-    ok(s.me.castleId === 'yagura' && s.me.rank.castle === 1 && s.me.rank.tactic === 0,
-      'constraints:sides 重複 (who,kind) は末尾優先（rank は正規化後の位置）', jstr(s.me));
+    // 戦略の導出は決定的で、入力の slots を書き換えない
+    const sl = mk('koshikakegin', null, 'mukaibisha', 'mino');
+    const before = jstr(sl);
+    ok(jstr(CS.sides(sl)) === jstr(CS.sides(sl)) && jstr(sl) === before,
+      'constraints:sides は決定的で入力を変更しない', before);
   }
 
-  // apply: set は末尾へ・同 (who,kind) は置き換え、remove は取り除いて連鎖解決（L7）
+  // 選択の文字列表現と握り直し
+  ok(jstr(CS.parseSel('opp.tactic')) === jstr({ who: 'opp', kind: 'tactic' }) && CS.parseSel('me.strategy') === null,
+    'constraints:parseSel は tactic/castle だけ受ける');
+  ok(CS.normalizeSelected('opp.castle', false) === 'me.castle' && CS.normalizeSelected('opp.castle', true) === 'opp.castle'
+    && CS.normalizeSelected(null, false, 'tactic') === 'me.tactic' && CS.normalizeSelected('zzz', true) === 'me.castle',
+  'constraints:normalizeSelected は相手が非表示なら自分側へ・不正は fallback の層へ');
+
+  // labels（§1-4）: 戦型ラベルの代表例
   {
-    const r = CS.apply([{ who: 'me', kind: 'castle', id: 'funa' }],
-      { type: 'set', who: 'me', kind: 'castle', id: 'yagura' });
-    ok(r.list.length === 1 && r.list[0].id === 'yagura' && r.changed.length === 0,
-      'constraints:apply 同 (who,kind) の置き換え', jstr(r));
-    const r2 = CS.apply(r.list, { type: 'remove', who: 'me', kind: 'castle' });
-    ok(r2.list.length === 0 && r2.changed.length === 0, 'constraints:apply remove は取り除く', jstr(r2));
-    const r3 = CS.apply([
-      { who: 'me', kind: 'castle', id: 'funa' }, { who: 'opp', kind: 'strategy', id: 'ibisha' }],
-      { type: 'set', who: 'me', kind: 'tactic', id: 'bougin' });
-    ok(r3.list[r3.list.length - 1].kind === 'tactic' && r3.list[r3.list.length - 1].id === 'bougin',
-      'constraints:apply set は末尾へ', jstr(r3.list));
-    // 同じ値を選び直すと末尾へ移る（優先度の更新。L11）
-    const r4 = CS.apply([
-      { who: 'me', kind: 'castle', id: 'funa' }, { who: 'me', kind: 'tactic', id: 'bougin' }],
-      { type: 'set', who: 'me', kind: 'castle', id: 'funa' });
-    ok(r4.list.length === 2 && r4.list[1].kind === 'castle' && r4.list[1].id === 'funa',
-      'constraints:apply 同じ値の再選択は末尾へ（L11）', jstr(r4.list));
-    const r5 = CS.apply(r4.list, { type: 'set', who: 'me', kind: 'castle', id: 'funa' });
-    ok(r5.list === r4.list, 'constraints:apply 末尾の値の再選択は無操作', jstr(r5.list));
-  }
-  {
-    // 連鎖: furibisha 明示の側に居飛車の戦法を入れる → 古い制約が差し替わる
-    const r = CS.apply([
-      { who: 'me', kind: 'strategy', id: 'furibisha' }, { who: 'me', kind: 'castle', id: 'mino' }],
-      { type: 'set', who: 'me', kind: 'tactic', id: 'bougin' });
-    ok(r.changed.length >= 1, 'constraints:apply 連鎖が起きる', jstr(r.changed));
-    const bad = judgeAll(CS.sides(r.list), 'me');
-    ok(bad.length === 0, 'constraints:apply 連鎖後に ng を残さない', bad.join(' / '));
-    // 相手側の制約は変わらない（連鎖は同じ側の中だけ）
-    const r2 = CS.apply([
-      { who: 'opp', kind: 'strategy', id: 'furibisha' }, { who: 'opp', kind: 'castle', id: 'mino' }],
-      { type: 'set', who: 'me', kind: 'tactic', id: 'bougin' });
-    ok(r2.changed.every(c => c.who === 'me'), 'constraints:apply 連鎖は同じ側だけ', jstr(r2.changed));
-    // L7: remove のあとも連鎖解決する。残った制約に ng を残さない
-    const rm = CS.apply(r.list, { type: 'remove', who: 'me', kind: 'tactic' });
-    ok(judgeAll(CS.sides(rm.list), 'me').length === 0,
-      'constraints:apply remove 後も ng を残さない（L7）', jstr(rm.list));
-    // L6: 'constructor' や '__proto__' を有効な id として通さない
-    const badCtor = CS.apply(r.list, { type: 'set', who: 'me', kind: 'strategy', id: 'constructor' });
-    ok(jstr(badCtor.list) === jstr(r.list), 'constraints:apply strategy:constructor は無効（L6）', jstr(badCtor.list));
-    const badProto = CS.apply(r.list, { type: 'set', who: 'me', kind: 'strategy', id: '__proto__' });
-    ok(jstr(badProto.list) === jstr(r.list), 'constraints:apply strategy:__proto__ は無効（L6）', jstr(badProto.list));
-    // L12: 連鎖の差し替えは「戦略の既定値」を最初に試す
-    const sw = CS.apply([
-      { who: 'me', kind: 'tactic', id: 'bougin' }, { who: 'me', kind: 'castle', id: 'yagura' }],
-      { type: 'set', who: 'me', kind: 'strategy', id: 'furibisha' });
-    ok(sw.changed.some(c => c.kind === 'tactic' && c.to === 'shikenbisha'),
-      'constraints:L12 差し替えは戦略既定値を優先（tactic→shikenbisha）', jstr(sw.changed));
-    ok(sw.changed.some(c => c.kind === 'castle' && c.to === 'mino'),
-      'constraints:L12 差し替えは戦略既定値を優先（castle→mino）', jstr(sw.changed));
+    const L = (a, b) => { const S = CS.sides(a); return CS.labels(S.me, S.opp); };
+    ok(CS.labels(CS.sides(mk('ibisha-base')).me, null).length === 0, 'constraints:labels 相手を表示しないなら空');
+    const taikou = L(mk('ibisha-base', null, 'shikenbisha'));
+    ok(taikou.some(x => x.label === '対抗形'), 'constraints:labels 対抗形', jstr(taikou));
+    const aifuri = L(mk('shikenbisha', null, 'sankenbisha'));
+    ok(aifuri.some(x => x.id === 'aifuri' && x.label === '相振り飛車'), 'constraints:labels 相振り飛車', jstr(aifuri));
+    // 角換わり: 両者居飛車＋両戦法の持ち駒に角（腰掛け銀）。決定木は排他的で
+    // senkei 系のラベルは1つだけ出る（腰掛け銀どうしなら角換わりだけ。L9 / §2-1）
+    const kakugawari = L(mk('koshikakegin', null, 'koshikakegin'));
+    ok(kakugawari.length === 2 && kakugawari[1].id === 'kakugawari',
+      'constraints:labels 角換わりは排他（戦型ラベルは1つ）', jstr(kakugawari));
+    // 横歩取り: 両者の戦法が yokofudori タグを持つ（相掛かりタグより先に判定される）
+    const yoko = L(mk('hineribisha', null, 'shigofu-hayajikake'));
+    ok(yoko.length === 2 && yoko[1].id === 'yokofudori',
+      'constraints:labels 横歩取り（yokofudori タグ両者）', jstr(yoko));
+    // 矢倉系が両者なら相矢倉、片方だけなら矢倉
+    const aiyagura = L(mk(null, 'yagura', null, 'ginyagura'));
+    ok(aiyagura.length === 2 && aiyagura[1].id === 'aiyagura',
+      'constraints:labels 相矢倉（両者矢倉系）', jstr(aiyagura));
+    const yagura = L(mk(null, 'yagura', null, 'funa'));
+    ok(yagura.length === 2 && yagura[1].id === 'yagura',
+      'constraints:labels 矢倉（片方だけ）', jstr(yagura));
+    // 雁木: カニ・兜は refFamily があるので雁木と判定しない。本物の雁木では出る
+    const gangiNg = L(mk(null, 'kani', null, 'kabuto'));
+    ok(gangiNg.length === 1, 'constraints:labels カニ・兜は雁木と出ない', jstr(gangiNg));
+    const gangi = L(mk(null, 'gangi', null, 'kani'));
+    ok(gangi.length === 2 && gangi[1].id === 'gangi',
+      'constraints:labels 雁木（片方が本物の雁木）', jstr(gangi));
   }
 
   // compose.merge: 両軍の歩の接触（L10）
@@ -478,58 +473,19 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
       'compose:merge 両方塞がる歩は元の位置のまま ng（L10）', jstr(m2.contacts));
   }
 
-  // lateOf（§1-3.5）: リスト末尾の制約の側、空なら 'opp'
-  ok(CS.lateOf([]) === 'opp', 'constraints:lateOf 空は opp');
-  ok(CS.lateOf([{ who: 'me', kind: 'castle', id: 'funa' }]) === 'me', 'constraints:lateOf 末尾の側');
-  ok(CS.lateOf([{ who: 'me', kind: 'castle', id: 'funa' }, { who: 'opp', kind: 'strategy', id: 'ibisha' }]) === 'opp',
-    'constraints:lateOf 末尾が opp');
-
-  // labels（§1-4）: 戦型ラベルの代表例
+  // deriveBoard: 相手の表示 OFF なら後手・脅威・ラベルを出さない。ON なら両側を合成する
   {
-    const l = CS.labels(CS.sides([{ who: 'me', kind: 'strategy', id: 'ibisha' }]).me, null);
-    ok(l.length === 0, 'constraints:labels 相手なしなら空', jstr(l));
-    const taikou = CS.labels(CS.sides([
-      { who: 'me', kind: 'strategy', id: 'ibisha' }, { who: 'opp', kind: 'strategy', id: 'furibisha' }]).me,
-      CS.sides([{ who: 'opp', kind: 'strategy', id: 'furibisha' }]).opp);
-    ok(taikou.some(x => x.label === '対抗形'), 'constraints:labels 対抗形', jstr(taikou));
-    const aifuri = CS.labels(
-      CS.sides([{ who: 'me', kind: 'strategy', id: 'furibisha' }]).me,
-      CS.sides([{ who: 'opp', kind: 'strategy', id: 'furibisha' }]).opp);
-    ok(aifuri.some(x => x.id === 'aifuri' && x.label === '相振り飛車'), 'constraints:labels 相振り飛車', jstr(aifuri));
-    // 角換わり: 両者居飛車＋両戦法の持ち駒に角（腰掛け銀）。決定木は排他的で
-    // senkei 系のラベルは1つだけ出る（腰掛け銀どうしなら角換わりだけ。L9 / §2-1）
-    const kakugawari = CS.labels(
-      CS.sides([{ who: 'me', kind: 'tactic', id: 'koshikakegin' }]).me,
-      CS.sides([{ who: 'opp', kind: 'tactic', id: 'koshikakegin' }]).opp);
-    ok(kakugawari.length === 2 && kakugawari[1].id === 'kakugawari',
-      'constraints:labels 角換わりは排他（戦型ラベルは1つ）', jstr(kakugawari));
-    // 横歩取り: 両者の戦法が yokofudori タグを持つ（相掛かりタグより先に判定される）
-    const yoko = CS.labels(
-      CS.sides([{ who: 'me', kind: 'tactic', id: 'hineribisha' }]).me,
-      CS.sides([{ who: 'opp', kind: 'tactic', id: 'shigofu-hayajikake' }]).opp);
-    ok(yoko.length === 2 && yoko[1].id === 'yokofudori',
-      'constraints:labels 横歩取り（yokofudori タグ両者）', jstr(yoko));
-    // 矢倉系が両者なら相矢倉、片方だけなら矢倉
-    const aiyagura = CS.labels(
-      CS.sides([{ who: 'me', kind: 'castle', id: 'yagura' }]).me,
-      CS.sides([{ who: 'opp', kind: 'castle', id: 'ginyagura' }]).opp);
-    ok(aiyagura.length === 2 && aiyagura[1].id === 'aiyagura',
-      'constraints:labels 相矢倉（両者矢倉系）', jstr(aiyagura));
-    const yagura = CS.labels(
-      CS.sides([{ who: 'me', kind: 'castle', id: 'yagura' }]).me,
-      CS.sides([{ who: 'opp', kind: 'castle', id: 'funa' }]).opp);
-    ok(yagura.length === 2 && yagura[1].id === 'yagura',
-      'constraints:labels 矢倉（片方だけ）', jstr(yagura));
-    // 雁木: カニ・兜は refFamily があるので雁木と判定しない。本物の雁木では出る
-    const gangiNg = CS.labels(
-      CS.sides([{ who: 'me', kind: 'castle', id: 'kani' }]).me,
-      CS.sides([{ who: 'opp', kind: 'castle', id: 'kabuto' }]).opp);
-    ok(gangiNg.length === 1, 'constraints:labels カニ・兜は雁木と出ない', jstr(gangiNg));
-    const gangi = CS.labels(
-      CS.sides([{ who: 'me', kind: 'castle', id: 'gangi' }]).me,
-      CS.sides([{ who: 'opp', kind: 'castle', id: 'kani' }]).opp);
-    ok(gangi.length === 2 && gangi[1].id === 'gangi',
-      'constraints:labels 雁木（片方が本物の雁木）', jstr(gangi));
+    const sl = mk('ibisha-base', 'yagura', 'shikenbisha', 'mino');
+    const off = K.deriveBoard(sl, {}, false), on = K.deriveBoard(sl, {}, true);
+    ok(off.oppPos === null && off.threat === null && off.labels.length === 0
+      && !off.merged.position.pieces.some(x => x.owner === 'gote'),
+    'deriveBoard:相手 OFF は後手の駒・脅威・ラベルなし', jstr(off.labels));
+    ok(on.oppPos && on.threat && on.labels.length > 0 && on.merged.position.pieces.some(x => x.owner === 'gote'),
+      'deriveBoard:相手 ON は両側を合成', '');
+    ok(jstr(off.S.opp) === jstr(CS.sides(sl, false).opp), 'deriveBoard:S は相手 OFF でも opp を持つ', '');
+    // 再生の差し替えは表示だけ（スロットは変えない）
+    const pl = K.deriveBoard(sl, { tactic: 'bougin', who: 'me' }, false);
+    ok(pl.S.me.tacticId === 'bougin' && sl.me.tactic === 'ibisha-base', 'deriveBoard:再生の差し替えは表示だけ', '');
   }
 
   // compat.judge の対敵軸（§3-1）: level は変えず vs に乗せる。層ごとに候補別の尺度
@@ -562,149 +518,98 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
       };
     }
     const rnd = mulberry32(20240511);
-    const stratIds = Object.keys(K.STRATEGIES);
     const tIds = K.TACTICS.map(t => t.id), cIds = K.CASTLES.map(c => c.id);
-    const candsOf = k => k === 'strategy' ? stratIds : k === 'tactic' ? tIds : cIds;
+    const candsOf = k => k === 'tactic' ? tIds : cIds;
     // その層に「いまの値以外で両立する候補」があるか（暗黙の層が飽和しているかの判定用。
     // 例: 早石田のように玉を囲わずに仕掛ける戦法は、両立する囲いが1つも無い）
     const hasAlternative = (st, k, opp) =>
       candsOf(k).some(id => id !== st[FIELD[k]] && K.compat.judge(st, k, id, opp).level !== 'ng');
-    let list = [], drops = 0, swaps = 0, mismatch = 0, mutated = 0;
+    let slots = CS.emptySlots(), showOpp = true, touched = 0, mutated = 0, nondet = 0, sugBad = 0, sugCount = 0;
     const ngLeft = [];
     for (let i = 0; i < 1000; i++) {
       const who = rnd() < 0.5 ? 'me' : 'opp';
-      const kind = KINDS[Math.floor(rnd() * 3)];
+      const kind = KINDS[Math.floor(rnd() * KINDS.length)];
       const roll = rnd();
-      const cur = CS.sides(list)[who];      // 「同じ値を選び直す」（L11）を remove ともに操作列へ混ぜる（§5）
-      const op = roll < 0.18 ? { type: 'remove', who, kind }
-        : roll < 0.30 && cur && cur[FIELD[kind]] != null
-          ? { type: 'set', who, kind, id: cur[FIELD[kind]] }
-        : { type: 'set', who, kind,
-            id: (kind === 'strategy' ? stratIds : kind === 'tactic' ? tIds : cIds)[Math.floor(rnd() * (kind === 'strategy' ? stratIds.length : kind === 'tactic' ? tIds.length : cIds.length))] };
-      const before = jstr(list);
-      const a = CS.apply(list, op);
-      const p = CS.preview(list, op);
-      if (jstr(a) !== jstr(p)) mismatch++;
-      if (jstr(list) !== before) mutated++;              // apply/preview は入力を変えない
-      for (const c of a.changed) { if (c.dropped) drops++; else swaps++; }
-      list = a.list;
-      const S = CS.sides(list);
-      // 「ng を残さない」の厳密な条件:
-      //   - 明示制約（新しい選択＝その側の最高優先を除く）が ng → 連鎖が残した bug
-      //   - 暗黙の層が ng → 両立する値が存在しない（飽和）場合だけ許される
-      //   - 新しい選択が ng → その ng の出所が「飽和した暗黙の層」の場合だけ許される
+      const id = roll < 0.15 ? null : candsOf(kind)[Math.floor(rnd() * candsOf(kind).length)];
+      if (rnd() < 0.1) showOpp = !showOpp;
+      const before = jstr(slots);
+      const next = CS.setSlot(slots, who, kind, id);
+      if (jstr(slots) !== before) mutated++;                 // setSlot は入力を変えない
+      // 変わってよいのは操作したスロットだけ（他の層・他の側を勝手に差し替えない）
+      for (const w of ['me', 'opp']) for (const k of KINDS) {
+        if (w === who && k === kind) continue;
+        if (next[w][k] !== slots[w][k]) touched++;
+      }
+      slots = next;
+      const S = CS.sides(slots, showOpp);
+      if (jstr(S) !== jstr(CS.sides(slots, showOpp))) nondet++;
+      // 明示した層はそのまま、暗黙の層が ng になるのは両立する候補が無い（飽和）ときだけ
       for (const w of ['me', 'opp']) {
         const st = S[w];
-        if (!st) continue;
-        const opp = w === 'me' ? S.opp : S.me;
-        const maxRank = Math.max(...KINDS.map(k => st.rank[k]));
-        const impliedUnsat = KINDS.some(k => st.rank[k] < 0
-          && K.compat.judge(st, k, st[FIELD[k]], opp).level === 'ng' && !hasAlternative(st, k, opp));
-        for (const k of ['tactic', 'castle']) {
-          if (K.compat.judge(st, k, st[FIELD[k]], opp).level !== 'ng') continue;
-          const implied = st.rank[k] < 0;
-          const allowed = implied ? !hasAlternative(st, k, opp)
-            : (st.rank[k] === maxRank && impliedUnsat);
-          if (!allowed && ngLeft.length < 5) {
-            ngLeft.push(`i=${i} op=${jstr(op)} ${w}.${k}=${st[FIELD[k]]} list=${jstr(list)}`);
+        const opp = w === 'me' ? (showOpp ? S.opp : null) : S.me;
+        for (const k of KINDS) {
+          if (slots[w][k] != null) { if (st[FIELD[k]] !== slots[w][k]) touched++; continue; }
+          if (K.compat.judge(st, k, st[FIELD[k]], opp).level === 'ng' && hasAlternative(st, k, opp) && ngLeft.length < 5) {
+            ngLeft.push(`i=${i} ${w}.${k}=${st[FIELD[k]]} slots=${jstr(slots)}`);
           }
         }
       }
+      // 両立しない明示選択には、直す候補（ng でないもの）が返る（候補があるときだけ検証）
+      if (i % 20 === 0) {
+        const S2 = CS.sides(slots, showOpp), cf = CS.conflicts(slots, S2, showOpp);
+        for (const w of ['me', 'opp']) for (const k of KINDS) {
+          if (!cf[w][k]) continue;
+          sugCount++;
+          const sg = CS.suggest(slots, showOpp, w, k);
+          if (sg.some(c => CS.evaluate(slots, showOpp, w, k, c).j.level === 'ng')) sugBad++;
+        }
+      }
     }
-    ok(mismatch === 0, 'constraints:preview と apply の結果一致（1000回）', `不一致 ${mismatch} 件`);
-    ok(mutated === 0, 'constraints:apply は入力リストを変更しない', `${mutated} 件`);
-    ok(ngLeft.length === 0,
-      `constraints:無作為1000操作で「解があるのに ng」0件（差替 ${swaps}・削除 ${drops}）`, ngLeft.join(' / '));
-    // 操作列の終端で preview のキャッシュが効いていること（同じキーで同一結果オブジェクト）
-    ok(CS.preview(list, { type: 'remove', who: 'me', kind: 'castle' })
-      === CS.preview(list, { type: 'remove', who: 'me', kind: 'castle' }),
-      'constraints:preview は同じキーでキャッシュを返す');
+    ok(touched === 0, 'constraints:無作為1000操作で他のスロットが勝手に変わらない', `${touched} 件`);
+    ok(mutated === 0, 'constraints:setSlot は入力の slots を変更しない', `${mutated} 件`);
+    ok(nondet === 0, 'constraints:sides は決定的（1000回）', `${nondet} 件`);
+    ok(ngLeft.length === 0, `constraints:無作為1000操作で「解があるのに既定の層が ng」0件`, ngLeft.join(' / '));
+    ok(sugBad === 0, `constraints:suggest は ng の候補を返さない（検査 ${sugCount} 件）`, `${sugBad} 件`);
   }
 }
 
-// ---------- 7. hash-link: 新形式（k=/sel=）と旧形式の変換（計画書 §2） ----------
+// ---------- 7. hash-link: k=/opp=/sel= の読み書き（盤面は URL ハッシュだけが正） ----------
 {
   const HL = K.hashLink;
   ok(HL && HL.parseHash && HL.buildQuery, 'hash-link: parseHash/buildQuery がある');
+  const mk = (mt = null, mc = null, ot = null, oc = null) =>
+    ({ me: { tactic: mt, castle: mc }, opp: { tactic: ot, castle: oc } });
 
-  // 新形式の読み取り
   {
-    const p = HL.parseHash('v=board&k=os:furibisha,ot:shikenbisha,mc:funa&sel=mc');
-    ok(jstr(p.constraints) === jstr([
-      { who: 'opp', kind: 'strategy', id: 'furibisha' },
-      { who: 'opp', kind: 'tactic', id: 'shikenbisha' },
-      { who: 'me', kind: 'castle', id: 'funa' },
-    ]) && p.selected === 'me.castle' && p.view === 'board',
-    'hash-link:新形式 k=/sel= の読み取り', jstr(p));
-  }
-  // 旧形式 → 新しい状態への変換（囲い・戦法は実ビューに復帰したのでタブを直接開く）
-  {
-    const p = HL.parseHash('v=castle&c=yagura&t=bougin&cf=mino');
-    ok(p.view === 'castle' && p.castleId === 'yagura' && p.clusterFamily === 'mino',
-      'hash-link:旧 castle → 囲いタブ', jstr(p));
+    const p = HL.parseHash('k=ot:shikenbisha,mc:funa&opp=1&sel=mc');
+    ok(jstr(p.slots) === jstr(mk(null, 'funa', 'shikenbisha')) && p.showOpp === true && p.selected === 'me.castle',
+      'hash-link:k=/opp=/sel= の読み取り', jstr(p));
   }
   {
-    const p = HL.parseHash('v=tactic&t=bougin&c=funa');
-    ok(p.view === 'tactic' && p.tacticId === 'bougin',
-      'hash-link:旧 tactic → 戦法タブ', jstr(p));
-  }
-  {
-    // pick 順（'tcs' = tactic→castle→strategy）が制約の並び順になる。mw=0 は showThreat:false
-    const p = HL.parseHash('v=matchup&ms=ibisha&mt=bougin&mc=funa&mp=tcs&os=furibisha&ot=shikenbisha&oc=mino&op=&mw=0');
-    ok(jstr(p.constraints) === jstr([
-      { who: 'me', kind: 'tactic', id: 'bougin' },
-      { who: 'me', kind: 'castle', id: 'funa' },
-      { who: 'me', kind: 'strategy', id: 'ibisha' },
-      { who: 'opp', kind: 'strategy', id: 'furibisha' },
-      { who: 'opp', kind: 'tactic', id: 'shikenbisha' },
-      { who: 'opp', kind: 'castle', id: 'mino' },
-    ]) && p.selected === 'me.strategy' && p.showThreat === false,
-      'hash-link:旧 matchup → pick 順の制約', jstr(p));
-  }
-  {
-    // mo=0 は相手の制約を全部取り除く
-    const p = HL.parseHash('v=matchup&ms=ibisha&mc=funa&os=furibisha&ot=shikenbisha&mo=0');
-    ok(p.constraints.every(e => e.who === 'me'), 'hash-link:旧 mo=0 で相手を除去', jstr(p));
-  }
-  {
-    // pick が空なら strategy,tactic,castle の順
-    const p = HL.parseHash('ms=furibisha&mt=shikenbisha&mc=mino');
-    ok(jstr(p.constraints) === jstr([
-      { who: 'me', kind: 'strategy', id: 'furibisha' },
-      { who: 'me', kind: 'tactic', id: 'shikenbisha' },
-      { who: 'me', kind: 'castle', id: 'mino' },
-    ]), 'hash-link:旧形式 pick 空は層の既定順', jstr(p));
+    // 空・旧形式（k=/opp= が無い、s 層や v= の付いた形）は初期状態で開く
+    const init = { slots: mk(), showOpp: false, selected: null };
+    ok(jstr(HL.parseHash('')) === jstr(init), 'hash-link:空のハッシュは初期状態', jstr(HL.parseHash('')));
+    ok(jstr(HL.parseHash('v=castle&c=yagura&t=bougin')) === jstr(init), 'hash-link:旧 castle/tactic 形式は初期状態');
+    ok(jstr(HL.parseHash('v=matchup&ms=ibisha&mc=funa&os=furibisha')) === jstr(init), 'hash-link:旧 matchup 形式は初期状態');
+    // 旧 k= の戦略層（s）・不正な id・不正な sel は黙って捨てる
+    const p = HL.parseHash('v=board&k=os:furibisha,ms:ibisha,mt:bougin,mc:nope&sel=ms');
+    ok(jstr(K.constraints.normalizeSlots(p.slots)) === jstr(mk('bougin')) && p.selected === null && p.showOpp === false,
+      'hash-link:s 層・不正な id・不正な sel は捨てる', jstr(p));
   }
   // 往復: buildQuery → parseHash で同じ状態に戻る
   {
-    const st = {
-      view: 'board',
-      constraints: [
-        { who: 'opp', kind: 'strategy', id: 'furibisha' },
-        { who: 'opp', kind: 'tactic', id: 'shikenbisha' },
-        { who: 'me', kind: 'castle', id: 'funa' },
-      ],
-      selected: 'me.castle', clusterFamily: null,
-    };
+    const st = { slots: mk('bougin', 'funa', 'shikenbisha', 'mino'), showOpp: true, selected: 'opp.tactic' };
     const q = HL.buildQuery(st);
     const p = HL.parseHash(q);
-    ok(q.includes('k=os:furibisha,ot:shikenbisha,mc:funa') && q.includes('sel=mc'),
-      'hash-link:書き出しは新形式のみ', q);
-    ok(jstr(p.constraints) === jstr(st.constraints) && p.selected === st.selected && p.view === st.view,
+    ok(q === 'k=mt:bougin,mc:funa,ot:shikenbisha,oc:mino&opp=1&sel=ot', 'hash-link:書き出しの形式（v= も s 層も無い）', q);
+    ok(jstr(p.slots) === jstr(st.slots) && p.showOpp === true && p.selected === 'opp.tactic',
       'hash-link:ハッシュ往復で同じ状態', `${q} → ${jstr(p)}`);
   }
   {
-    // クラスタ系統だけの往復
-    const q = HL.buildQuery({ view: 'cluster', constraints: [], selected: 'me.castle', clusterFamily: 'yagura' });
-    const p = HL.parseHash(q);
-    ok(p.view === 'cluster' && p.clusterFamily === 'yagura', 'hash-link:cluster の往復', `${q} → ${jstr(p)}`);
-  }
-  {
-    // showThreat=false は mw=0 で往復する
-    const st = { view: 'board', constraints: [{ who: 'me', kind: 'castle', id: 'funa' }], selected: 'me.castle', showThreat: false };
-    const q = HL.buildQuery(st);
-    const p = HL.parseHash(q);
-    ok(q.includes('mw=0') && p.showThreat === false, 'hash-link:showThreat の往復（mw=0）', `${q} → ${jstr(p)}`);
+    // 初期状態のハッシュは空（リセット＝ハッシュを空にする）。相手の表示だけでも書く
+    ok(HL.buildQuery({ slots: mk(), showOpp: false, selected: 'me.tactic' }) === '', 'hash-link:初期状態は空のハッシュ');
+    const q = HL.buildQuery({ slots: mk(), showOpp: true, selected: 'opp.castle' });
+    ok(q === 'opp=1&sel=oc' && HL.parseHash(q).showOpp === true, 'hash-link:相手の表示だけの往復', q);
   }
 }
 
@@ -760,14 +665,37 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
 
   // evaluate のメモ（S3/S4・R5 完了条件）: 同じ引数では judge の新規計算が0回
   {
-    const list = [{ who: 'me', kind: 'strategy', id: 'ibisha' }];
-    const r0 = K.constraints.evaluate(list, 'me', 'castle', 'funa');  // キャッシュを温める
+    const slots = K.constraints.emptySlots();
+    const r0 = K.constraints.evaluate(slots, false, 'me', 'castle', 'funa');  // キャッシュを温める
     let n = 0;
     const orig = K.compat.judge;
     K.compat.judge = (...a2) => { n++; return orig(...a2); };
-    const r1 = K.constraints.evaluate(list, 'me', 'castle', 'funa');
+    const r1 = K.constraints.evaluate(slots, false, 'me', 'castle', 'funa');
     K.compat.judge = orig;
     ok(r0 === r1 && n === 0, 'constraints:evaluate は同じ引数でキャッシュを返し judge を再計算しない', `judge ${n}回`);
+  }
+  // pieceMatch.plan: 局面の切り替えの移動リストを1回だけ計算する（駒レイヤは結果を描くだけ）
+  {
+    const PM = K.pieceMatch;
+    const mk = (p, sq, owner = 'sente') => ({ p, sq, owner, role: 'core' });
+    const before = [mk('銀', '39'), mk('歩', '37'), mk('玉', '59'), mk('歩', '33', 'gote')];
+    const after = [mk('銀', '38'), mk('歩', '36'), mk('玉', '59'), mk('歩', '33', 'gote')];
+    const pl = PM.plan(before, after, null);
+    ok(pl.pairs.length === 4 && pl.gone.length === 0 && pl.appear.length === 0 && pl.lead === -1 && pl.path === null
+      && pl.after !== after && after.every(x => x.skip === undefined),
+    'pieceMatch.plan:全駒が対応づく移動リスト（入力は書き換えない）', jstr(pl));
+    // 戦法の主役の駒（trace）は筋道専用になり、通常の対応づけから外れて appear に入る
+    const trace = { square: '38', piece: '銀', path: ['39', '38'] };
+    const pl2 = PM.plan(before, after, trace);
+    ok(pl2.lead === 0 && pl2.after[0].skip === 'lead' && pl2.appear.includes(0) && !pl2.pairs.some(q => q.n === 0)
+      && jstr(pl2.path) === jstr(trace.path), 'pieceMatch.plan:主役の駒は筋道専用に外す', jstr(pl2));
+    ok(PM.plan(before, after, { ...trace, path: ['38'] }).lead === -1, 'pieceMatch.plan:経路が1マスなら筋道にしない');
+    ok(PM.plan(before, after, { ...trace, piece: '金' }).lead === -1, 'pieceMatch.plan:該当する駒がなければ lead なし');
+    const pl3 = PM.plan(before, [mk('玉', '59'), mk('金', '49')], null);
+    ok(pl3.gone.length === 3 && jstr(pl3.appear) === jstr([1]) && pl3.pairs.length === 1,
+      'pieceMatch.plan:消える駒（gone）と現れる駒（appear）', jstr(pl3));
+    ok(PM.routeMs(['39', '38', '27']) === 560 && PM.routeMs(new Array(20).fill('11')) === 1500,
+      'pieceMatch.routeMs:区画数に比例し 1500ms で頭打ち');
   }
   {
     const cache = new K.LRU(2);

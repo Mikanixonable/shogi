@@ -44,12 +44,8 @@
 .pc i span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-top:12%; font:700 min(58cqh,60cqw)/1 var(--font-d); color:var(--ink); }
 .pc.core i span { color:var(--core); }
 .pc.off { opacity:.28; filter:none; }
-.pc.hidden { opacity:0; }
-.pc.gote { transform:rotate(180deg); animation:goteIn .45s var(--ease) backwards; }
+.pc.gote { transform:rotate(180deg); }
 .pc.gote i span { color:var(--gote-ink); }
-@keyframes goteIn { from { opacity:0; transform:rotate(180deg) translateY(30%); } }
-/* 再描画で居続けた駒・消えゆく駒の複製は、入場アニメを鳴らさない */
-.pc.no-enter { animation:none; }
 
 /* ミニ盤（左のカード） */
 .mini-bg { fill:url(#wood); }
@@ -58,13 +54,9 @@
 .mini-pc.core { fill:var(--core); }
 .mini-pc.off { opacity:.28; }
 
-/* 盤の重ね表示（骨格線・筋道の矢印）。駒の上 */
+/* 盤の重ね表示（筋道の矢印）。駒の上 */
 .overlay { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; overflow:visible; }
-.overlay .sk, .overlay .rt { vector-effect:non-scaling-stroke; }
-.overlay .sk-line { stroke:var(--accent-2); stroke-width:2.5px; stroke-linecap:round; opacity:.85; }
-.overlay .sk-dot  { fill:var(--accent-2); opacity:.85; }
-.overlay .sk-ring { fill:none; stroke:var(--accent-2); stroke-width:2.5px; opacity:.85; }
-.overlay .sk-g { animation:skIn .4s var(--ease) .45s backwards; }
+.overlay .rt { vector-effect:non-scaling-stroke; }
 @keyframes skIn { from { opacity:0; } }
 .overlay .rt-line { fill:none; stroke:var(--rt,var(--accent)); stroke-width:2.5px; stroke-dasharray:7 5; stroke-linecap:round; stroke-linejoin:round; opacity:.95; }
 .overlay .rt-line.rt-good { stroke:var(--good); }
