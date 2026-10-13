@@ -2,6 +2,8 @@
 // core: 囲いを構成する駒 / shell+filler: 補助の駒（setup と合わせて先手の全駒になる）
 //   shell: 囲いの形として意味がある歩（城壁の前線）。戦法と合成するときもそのまま置く
 //   filler: 比較用に揃えた駒（初期位置の角・香・桂、比較用の銀、遠側の歩）。合成のときは置かない
+// leave: 「この囲いではその駒がいない」の宣言。「金49」= マス指定（合成のとき残った駒を
+//        filler の同種の空きマス → 初期位置 → 持ち駒 へ退かす）、「角」= 盤上全体（持ち駒へ）
 // flex: 戦法に貸し出せる core の駒と行き先（崩し形になる。例: 雁木の右銀→腰掛け銀）
 // pros・cons の sq は盤上で示すマス、attacks の gote は後手の駒、target は狙われるマス
 window.Kakoi = window.Kakoi || {};
@@ -197,6 +199,7 @@ Kakoi.CASTLES.push(
     id: 'kabuto', name: '兜囲い（兜矢倉）', short: '兜矢倉', reading: 'かぶとがこい', side: 'ibisha', family: 'gangi', subtype: 'hidarimae', refFamily: '名前は矢倉系（文献でも矢倉系統）だが、形は雁木型', setup: 'ibisha',
     core: '玉68 銀77 金78 金58',
     shell: '歩87 歩76 歩67 歩57',
+    leave: '角',
     filler: '銀26 香99 桂89 歩97 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     hand: '角',
@@ -278,6 +281,7 @@ Kakoi.CASTLES.push(
     id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（後継ソフト Ponanza 由来の「ポナンザ囲い」の表記もある）', setup: 'ibisha',
     core: '玉78 銀77 金68 金58',
     shell: '歩87 歩76 歩67 歩57',
+    leave: '角',
     filler: '銀26 香99 桂89 歩97 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     hand: '角',
@@ -332,6 +336,7 @@ Kakoi.CASTLES.push(
     id: 'ginyagura', name: '銀矢倉', short: '銀矢倉', reading: 'ぎんやぐら', side: 'ibisha', family: 'yagura', subtype: 'gin', setup: 'ibisha',
     core: '玉88 銀77 金78 銀67',
     shell: '歩97 歩87 歩76 歩66',
+    leave: '金49',
     filler: '香99 桂89 角68 金58 歩56 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     tags: ['相居飛車', '持久戦'],

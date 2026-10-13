@@ -151,6 +151,25 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
+    // leave: 「この囲いではその駒がいない」の宣言。「金58」= マス指定、「角」= 盤上全体
+    if (c.leave !== undefined) {
+      if (typeof c.leave !== 'string') errors.push('leaveが文字列でない');
+      else {
+        const onBoard = new Set(sente.map(x => x.p));
+        for (const t of c.leave.trim().split(/\s+/).filter(Boolean)) {
+          if (t.length === 1) {                          // 駒種指定: 盤上に置かない
+            if (!/^[玉飛角金銀桂香歩]$/.test(t)) errors.push(`leaveの駒表記が不正: ${t}`);
+            else {
+              if (onBoard.has(t)) errors.push(`leaveの「${t}」: その駒種が図（setup/shell/filler/core）の中にある`);
+              if (!(c.hand || '').includes(t)) warnings.push(`leaveの「${t}」は hand にもあるべき`);
+            }
+          } else if (!TOKEN.test(t)) errors.push(`leaveの駒表記が不正: ${t}`);
+          else if (sente.some(x => x.p === t[0] && x.f === +t[1] && x.r === +t[2]))
+            errors.push(`leaveの駒が図（setup/shell/filler/core）の中にある: ${t}`);
+        }
+      }
+    }
+
     if (!isArr(c.attacks)) errors.push('attacksが配列でない');
     else {
       const ids = new Set();

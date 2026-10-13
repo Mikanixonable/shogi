@@ -14,7 +14,7 @@
 `view / castleId / tacticId / tacticCastleId / attackId / mode / skeleton / heat / heatScope / familyFilter / clusterFamily` を `location.hash` にシリアライズし、「この囲い」「この組み合わせ」への直リンクを可能にする。`?debug`・`?flat` はそのまま残す。
 - `js/ui/store.js` の保存・読込に hash を併記する形が自然（localStorage は起動時の既定として残す）
 - ハッシュから起動したときの sanitize（`app.js` の `repo.has` 等の検証）を共通経路に通す
-- 例: `castles.html#view=tactic&tactic=bougin&castle=yagura`
+- 例: `index.html#view=tactic&tactic=bougin&castle=yagura`
 
 ### A-2. 任意の囲いを重ねる [S]
 `combinePosition` は汎用だが、UI は「相性のよい囲い」列挙分しか選べない（`tactic-detail-view.js` の `.tc-castle`）。`sodebisha` は `castles:[]` で導線すらない。全囲いを選べるセレクタ（ドロップダウン or 小さな一覧）を足す。合成関数は変更なしで済む。
