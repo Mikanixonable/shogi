@@ -248,8 +248,6 @@ window.Kakoi = window.Kakoi || {};
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
-      e.threatSw.checked = state.showThreat !== false;
-      e.threatWrap.hidden = !S.opp;
       e.clearAll.hidden = !(state.constraints || []).length;
       const selTactic = sel && sel.kind === 'tactic';
       e.playBtn.hidden = !selTactic;

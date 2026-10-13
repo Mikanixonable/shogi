@@ -190,7 +190,7 @@
         nameOpp: $('nameOpp'), subOpp: $('subOpp'), nameMe: $('nameMe'), subMe: $('subMe'),
         stageH: $('stageH'),
         legend: $('legend'), handOpp: $('handOpp'), handMe: $('handMe'),
-        threatWrap: $('threatWrap'), threatSw: $('threatSw'), playBtn: $('playBtn'),
+        playBtn: $('playBtn'),
         addOpp: $('addOpp'),
         clearOpp: $('clearOpp'), clearMe: $('clearMe'), clearAll: $('clearAll'),
         ptable: $('ptable'), boardwrap: $('boardwrap'), rail: $('pickRail'),

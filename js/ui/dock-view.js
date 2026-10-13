@@ -173,6 +173,8 @@ window.Kakoi = window.Kakoi || {};
         pane.fold.disabled = empty;
         pane.clear.hidden = empty;
         if (pane.addopp) pane.addopp.hidden = !empty;
+        // 脅威の帯スイッチ（相手の面）: 畳み・相手なしでは CSS で隠れる
+        if (pane.threat) pane.threat.checked = state.showThreat !== false;
         if (open) {
           const ck = `${who}:${tab}`;
           if (pane.cfgKey !== ck) {
