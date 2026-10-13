@@ -23,7 +23,7 @@ window.Kakoi = window.Kakoi || {};
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
      *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe, stageH,
-     *        legend, handOpp, handMe, threatWrap, threatSw, playBtn,
+     *        legend, handOpp, handMe, playBtn,
      *        addOpp, clearOpp, clearMe, clearAll, ptable, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
@@ -78,7 +78,6 @@ window.Kakoi = window.Kakoi || {};
         repo, rows: this.rows, playback: this.playback,
         nameOf: (w, k, id) => this._nameOf(w, k, id),
       });
-      els.threatSw.addEventListener('change', () => this.store.set({ showThreat: els.threatSw.checked }));
       els.playBtn.addEventListener('click', () => this._onPlay());
       els.addOpp.addEventListener('click', () => this._addOpponent());
       els.clearOpp.addEventListener('click', () => this._removeSide('opp'));

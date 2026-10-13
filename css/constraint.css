@@ -53,9 +53,9 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 .vchip:hover { border-color:var(--accent); color:var(--accent); }
 .vchip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
-/* ===== 中央: 帯の下の凡例行（脅威の帯・再生ボタンの調整） ===== */
+/* ===== 中央: 帯の下の凡例行（再生ボタンの調整） ===== */
 #boardPane .stage-f .legend i { background:var(--bad); }
-#threatWrap[hidden], #playBtn[hidden], #clearAll[hidden] { display:none; }
+#playBtn[hidden], #clearAll[hidden] { display:none; }
 
 /* ===== narrow ===== */
 @media (max-width:979px) {

@@ -26,6 +26,7 @@ window.Kakoi = window.Kakoi || {};
         ${STRATEGY_IDS.map(id =>
           `<button type="button" data-value="${id}" data-kind="strategy" data-id="${id}">${esc(K.STRATEGIES[id].label)}</button>`).join('')}
       </div>
+      ${who === 'opp' ? `<label class="switch dk-threat" title="盤に重ねる相手の攻め筋の帯（飛車の筋・主役の経路の終点）"><input type="checkbox"> 脅威の帯</label>` : ''}
       <div class="dk-body" tabindex="0" role="region"
         aria-label="${who === 'me' ? '自分' : '相手'}の一覧"></div>
     </section>`;
@@ -45,7 +46,11 @@ window.Kakoi = window.Kakoi || {};
       who, el, body: el.querySelector('.dk-body'), views: {}, cur: null, cfgKey: null,
       fold: el.querySelector('.dk-fold'), strategySeg: el.querySelector('.dk-strategy'),
       addopp: el.querySelector('.dk-addopp'), clear: el.querySelector('.dk-clear'),
+      threat: el.querySelector('.dk-threat input'),
     };
+    // 脅威の帯スイッチ（相手の面だけにある）: 盤に重ねる攻め筋の帯の表示を切り替える
+    if (pane.threat) pane.threat.addEventListener('change',
+      () => ctx.store.set({ showThreat: pane.threat.checked }));
     pane.segTab = new K.Segmented(el.querySelector('.dk-tab'), v => ctx.setPane(who, { tab: v }));
     pane.segStrategy = new K.Segmented(el.querySelector('.dk-strategy'),
       v => ctx.onChoose(who, 'strategy', v));

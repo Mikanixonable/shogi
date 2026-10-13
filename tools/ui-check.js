@@ -229,12 +229,13 @@ async function sweepBoard(page) {
     const el = document.querySelector('#ptable');
     return document.querySelector('#boardwrap').dataset.pt === 'on' && el.dataset.side === 'opp';
   });
-  // 脅威の帯スイッチを切る → 帯が消える
-  await page.click('#threatSw'); await wait(300);
+  // 脅威の帯スイッチを切る → 帯が消える（スイッチは左ドックの相手の面にある）
+  const THREAT_SW = '#pickRail .dk-pane[data-who="opp"] .dk-threat input';
+  await page.click(THREAT_SW); await wait(300);
   r.t6 = await snap(page);
   r.rects.push(r.t6.rect);
   r.threatOff = r.t6.threats === 0;
-  await page.click('#threatSw'); await wait(300);
+  await page.click(THREAT_SW); await wait(300);
   await mark();
 
   // 連鎖: cascade のある候補を選ぶと自動差し替えが起き、トーストが出る
@@ -368,8 +369,8 @@ async function sweepBoard(page) {
     }) && before2 !== await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
     await mark();
     // mw=0 で消した脅威の帯はスイッチを戻すと出る（hashchange がスイッチにも届く）
-    await page.evaluate(() => { document.getElementById('threatSw').checked = true;
-      document.getElementById('threatSw').dispatchEvent(new Event('change')); });
+    await page.evaluate(() => { const sw = document.querySelector('#pickRail .dk-pane[data-who="opp"] .dk-threat input');
+      sw.checked = true; sw.dispatchEvent(new Event('change')); });
     await wait(250);
     await mark();
   }
