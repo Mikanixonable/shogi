@@ -104,6 +104,23 @@ async function sweepBoard(page, expect) {
   const mark = async () => r.rects.push(await boardRect(page));
   r.t0 = await snap(page);
   r.rects.push(r.t0.rect);
+  r.boardStageOffset = await page.evaluate(() => {
+    const s = document.querySelector('#stageMain').getBoundingClientRect();
+    const b = document.querySelector('#board').getBoundingClientRect();
+    return Math.abs((b.top + b.bottom - s.top - s.bottom) / 2);
+  });
+  r.boardOrder = await page.evaluate(() => {
+    const opp = document.querySelector('#bandOpp').getBoundingClientRect();
+    const board = document.querySelector('#board').getBoundingClientRect();
+    const me = document.querySelector('#bandMe').getBoundingClientRect();
+    return opp.bottom <= board.top && board.bottom <= me.top;
+  });
+  r.boardBandGaps = await page.evaluate(() => {
+    const opp = document.querySelector('#bandOpp').getBoundingClientRect();
+    const board = document.querySelector('#board').getBoundingClientRect();
+    const me = document.querySelector('#bandMe').getBoundingClientRect();
+    return [board.top - opp.bottom, me.top - board.bottom];
+  });
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
   r.oppTabEnabled = await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled);
@@ -490,6 +507,9 @@ async function main() {
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
       ok(b.bandGhost0, '相手の表示 OFF の間は相手の帯が幽霊行で、後手の駒は出ない', '');
+      ok(b.boardStageOffset <= 8, '盤面は中央領域の上下中央に配置される', `${b.boardStageOffset}px`);
+      ok(b.boardOrder, '盤面の上に相手、下に自分の表示域が並ぶ', '');
+      ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と相手・自分の表示帯の余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
       ok(b.rectDrift === -1, '盤の矩形は全ステップで不変（F1 ±0.5px）', `ずれたステップ=${b.rectDrift}`);
       ok(b.cards === expect.castles, '囲いタイル', `${b.cards}枚`);
       ok(b.fams === expect.famsUsed, '囲いのクラスタ見出し（系統ごと）', `${b.fams}系統`);

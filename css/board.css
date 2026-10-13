@@ -6,7 +6,8 @@
    .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
 .boardwrap { display:grid; position:relative; grid-template-columns:minmax(0,1fr) 22px;
              grid-template-rows:22px minmax(0,auto);
-             width:min(calc(100cqw - 48px), calc((100cqh - 22px) * 9 / 9.6 + 22px)); }
+             width:min(calc(100cqw - 48px), calc((100cqh - 22px) * 9 / 9.6 + 22px));
+             transform:translateY(-13px); }
 .flabels { display:grid; grid-template-columns:repeat(9,1fr); font:500 11px var(--font-d); color:var(--muted); text-align:center; align-items:end; padding-bottom:4px; }
 .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:11px var(--font-d); color:var(--muted); align-items:center; justify-items:center; }
 
@@ -86,8 +87,8 @@
 /* 狭い画面: 高さで収める必要がない（ページ全体がスクロールする）ので、盤は幅いっぱいに。
    高さ方向の container 指定を外して boardarea が内容の高さを取れるようにする（cqw は残る） */
 @media (max-width:979px) {
-  .boardarea { container-type:inline-size; }
+  .boardarea { container-type:inline-size; align-items:center; }
   /* 段ラベルを細め（16px）にし、持ち駒列の margin を22pxずつに詰めて盤を幅いっぱいに使う */
-  .boardwrap { grid-template-columns:minmax(0,1fr) 16px; width:calc(100cqw - 44px); }
+  .boardwrap { grid-template-columns:minmax(0,1fr) 16px; width:calc(100cqw - 44px); transform:none; }
   .rlabels { font-size:9.5px; }
 }
