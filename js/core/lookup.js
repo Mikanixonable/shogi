@@ -12,21 +12,20 @@ window.Kakoi = window.Kakoi || {};
   const castleFamilyOf = c => c ? (Kakoi.CASTLE_FAMILIES || []).find(f => f && f.id === c.family) || null : null;
 
   // 層の日本語名（constraint-mode / board-detail-view / constraint-bar / dock-view / detail-sections で共通）
-  const LAYER_JA = { strategy: '戦略', tactic: '戦法', castle: '囲い' };
+  const LAYER_JA = { tactic: '戦法', castle: '囲い' };
   // 制約モデルのスキーマ: 層の既定順・側・層 → 実効値（sides() の戻り値）のフィールド名
-  const KINDS = ['strategy', 'tactic', 'castle'];
+  const KINDS = ['tactic', 'castle'];
   const WHOS = ['me', 'opp'];
-  const FIELD = { strategy: 'strategy', tactic: 'tacticId', castle: 'castleId' };
+  const FIELD = { tactic: 'tacticId', castle: 'castleId' };
   // 相手との相性の印（◎=良い △=悪い）。ドックのバッジと右ドックで同じ意味に統一する（計画書 U1）
   const VS_MARK = { good: '◎', bad: '△', neutral: '' };
 
   const strategyLabel = s => (Kakoi.STRATEGIES && Kakoi.STRATEGIES[s] && Kakoi.STRATEGIES[s].label) || s || '';
 
-  // 層と id から表示名を解決する（strategy はラベル、tactic/castle はデータの name。
+  // 層と id から表示名を解決する（データの name。
   // id==null のとき empty を返す。opt.short で短縮名 —— トーストなどで長い正式名を避ける）
   const nameOf = (kind, id, { short = false, empty = '（未選択）' } = {}) => {
     if (id == null) return empty;
-    if (kind === 'strategy') return strategyLabel(id);
     const x = kind === 'tactic' ? findTactic(id) : findCastle(id);
     return x ? (short && x.short ? x.short : x.name) : id;
   };
@@ -34,10 +33,7 @@ window.Kakoi = window.Kakoi || {};
   // その囲いを許す戦略の集合（strategies があればそれだけ、なければ side）
   const castleSides = c => (Array.isArray(c.strategies) ? c.strategies : [c.side]);
 
-  // 左ドックの上下分割の定数（app.js の既定値と dock-view.js のスプリッタで共有）
-  const DOCK = { MIN_PANE: 120, SPLIT_MIN: .2, SPLIT_MAX: .8, SPLIT_DEFAULT: .5 };
-
-  const api = { findTactic, findCastle, tacticFamilyOf, castleFamilyOf, LAYER_JA, KINDS, WHOS, FIELD, VS_MARK, strategyLabel, nameOf, castleSides, DOCK };
+  const api = { findTactic, findCastle, tacticFamilyOf, castleFamilyOf, LAYER_JA, KINDS, WHOS, FIELD, VS_MARK, strategyLabel, nameOf, castleSides };
   Kakoi.lookup = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

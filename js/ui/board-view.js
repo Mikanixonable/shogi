@@ -1,6 +1,7 @@
 // 盤の表示: マス・利きヒート・ハイライト（data-tone）の DOM を管理する。
-// 駒そのものの生成・移動・表示モードは駒レイヤに委譲する:
-//   立体版 js/ui/piece-layer-3d.js（既定） / DOM版 js/ui/piece-layer-dom.js（?flat・WebGL 非対応時）
+// 駒の対応づけ（どの駒がどこへ動いたか＝移動リスト）はここで1回だけ計算し（pieceMatch.plan）、
+// 駒そのものの生成・表示モードは駒レイヤが描くだけ:
+//   立体版 js/ui/piece-layer-3d.js（既定。移動リストどおり滑らせる） / DOM版 js/ui/piece-layer-dom.js（?flat・WebGL 非対応時。静止）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -18,6 +19,7 @@ window.Kakoi = window.Kakoi || {};
       this.squares.className = 'squares';
       els.board.prepend(this.squares);
       this._lasting = { squares: [], tone: null };
+      this._pieces = [];    // いま盤に描いている駒（次の移動リストの before。駒レイヤの並びと同じ）
       this.layer = this._pickLayer();
     }
 
@@ -39,7 +41,10 @@ window.Kakoi = window.Kakoi || {};
      *   trace: 主役の駒を path の各マスを経由する軌跡で動かす（戦法の筋道）
      */
     render(position, { mode, heat, animate, trace }) {
-      this.layer.capture(); // マスの DOM を壊す前に、今いる駒を移動元として記録させる
+      const anim = animate && !reducedMotion();
+      const after = position.pieces.map(x => ({ p: x.p, owner: x.owner, role: x.role, sq: `${x.f}${x.r}` }));
+      const plan = Kakoi.pieceMatch.plan(this._pieces, after, anim ? trace : null);
+      this._pieces = plan.after;
       let html = '';
       for (let r = 1; r <= 9; r++) for (let f = 9; f >= 1; f--) {
         const h = heat ? heat[f][r] : 0;
@@ -49,7 +54,7 @@ window.Kakoi = window.Kakoi || {};
       }
       this.squares.innerHTML = html;
       this._applyTone(this._lasting.squares, this._lasting.tone);
-      this.layer.render(position, { mode, animate: animate && !reducedMotion(), trace });
+      this.layer.render(plan, { mode, animate: anim });
     }
 
     /** 盤を作り直さずに、駒の表示モードだけを切り替える */

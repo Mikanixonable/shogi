@@ -1,7 +1,8 @@
 // 両立判定（対局図用。DOM に依存しない）: 「いまの他の層」と候補を compose して、
 // 盤上の衝突（SQUARE/PAWN/COUNT/CONTACT）と将棋の原則（玉飛接近・同翼・戦略の整合・手数）
-// から3段階（best/ok/ng）で判定する。連動による自動差し替えは constraints.apply が担う
-// （searchAlternative/cleanBase はそのために公開している内部API）。計画書 §3-2 / §4-2。
+// から3段階（best/ok/ng）で判定する。選んだ層は自動で差し替えない（✕と理由の表示は
+// constraints.conflicts が担う）。searchAlternative は未選択の層の既定値が ng のときの
+// 補完（constraints.sides）に使う内部API。計画書 §3-2 / §4-2。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -227,7 +228,7 @@ window.Kakoi = window.Kakoi || {};
     //   strategy: 候補の戦略の実効戦法（既定値）が相手に持つ適性
     //   tactic:   tactic.against[相手の戦略] ＋ againstTactic[相手の実効戦法id]（§6-3）
     // 同じ側の整合（level）とは別の軸なので level には混ぜない
-    // （相性が悪くても選べる・連動は起きない＝要件5）。UI の相手との相性バッジ用に返すだけ
+    // （相性が悪くても選べる＝要件5）。UI の相手との相性バッジ用に返すだけ
     let vs = null;
     if (opp && Kakoi.matchup) {
       if (layer === 'castle' && ev.castle) {
@@ -257,36 +258,37 @@ window.Kakoi = window.Kakoi || {};
         };
       }
     }
-    return { level, reasons: dedupeReasons(reasons), moved: ev.moved, fitness, vs, _ng: ngAll };
+    return { level, reasons: dedupeReasons(reasons), moved: ev.moved, fitness, vs, ng: ngAll };
   }
 
   /**
    * 候補と「いまの他の層」の両立判定。
    * @param {{strategy:string, tacticId?:string|null, castleId?:string|null}} me 選択状態
-   * @param {'strategy'|'tactic'|'castle'} layer 候補の層
-   * @param {string} candidateId 戦略キー / 戦法id / 囲いid
+   * @param {'tactic'|'castle'} layer 候補の層
+   * @param {string} candidateId 戦法id / 囲いid
    * @param {Object|null} [opp] 相手の選択状態（あると fitness と上位帯の ◎ 昇格が働く）
-   * @returns {{level:'best'|'ok'|'ng', reasons:Array<{code:string, squares?:string[], text:string}>, moved:number, fitness:number|null}}
+   * @returns {{level:'best'|'ok'|'ng', reasons:Array<{code:string, squares?:string[], text:string}>,
+   *   moved:number, fitness:number|null, vs:Object|null, ng:Array<{code:string, squares?:string[], text:string}>}}
+   *   ng: ×の直接の理由だけ（reasons は注記・相性表の理由も含む）
    */
   function judge(me, layer, candidateId, opp = null) {
     const k = JSON.stringify([normSide(me), layer, candidateId, normSide(opp)]);
     if (judgeMemo.has(k)) return judgeMemo.get(k);
     const f = judgeFull(me, layer, candidateId, opp);
-    const out = { level: f.level, reasons: f.reasons, moved: f.moved, fitness: f.fitness, vs: f.vs };
+    const out = { level: f.level, reasons: f.reasons, moved: f.moved, fitness: f.fitness, vs: f.vs, ng: f.ng };
     judgeMemo.set(k, out);
     return out;
   }
 
-  // ---------- resolve: ×を選んだときの自動差し替え（§4-2） ----------
+  // ---------- 未選択の層の既定値が×のときの補完（§4-2） ----------
   function candidatesOf(L) {
-    if (L === 'strategy') return Object.keys(Kakoi.STRATEGIES || {});
     if (L === 'tactic') return (Kakoi.TACTICS || []).map(t => t.id);
     return (Kakoi.CASTLES || []).map(c => c.id);
   }
   function familyIdOf(L, id) {
     if (L === 'tactic') { const t = findTactic(id); return t ? t.family : null; }
-    if (L === 'castle') { const c = findCastle(id); return c ? c.family : null; }
-    return null; // strategy 層に系統は無い
+    const c = findCastle(id);
+    return c ? c.family : null;
   }
   // 戦略テンプレートの既定値（§4-2.3）。解決規則は core/defaults.js が唯一の権威
   const defaultOf = (L, strategy, opp) => Kakoi.defaults.defaultIdOf(L, strategy, opp && opp.strategy);
@@ -309,24 +311,10 @@ window.Kakoi = window.Kakoi || {};
     }
     return null;
   }
-  // まだ処理していない層がいま ng なら、あとで差し替わる前提で未選択（＝戦略既定）に戻した評価用ベース。
-  // さもないと古い ng の値のせいで、本来両立する候補まで全て × に見えてしまう
-  function cleanBase(next, L, others, done, opp) {
-    const base = { ...next };
-    for (const O of others) {
-      if (O === L || done.has(O)) continue;
-      const v = base[FIELD[O]];
-      if (v == null) continue;
-      if (judgeFull(base, O, v, opp).level === 'ng') base[FIELD[O]] = null;
-    }
-    return base;
-  }
-
   // 代替候補を探す。順番は「戦略の既定値 → 相性表の◎ → fitness → 同じ系統 → 動く駒が最小」
   // （§4-2 / L12。既定値は最も自然な差し替え先なので最初に試す。
   //   同点は TACTICS/CASTLES/STRATEGIES のデータ順で決定的）
-  function searchAlternative(next, L, cur, others, done, opp) {
-    const base = cleanBase(next, L, others, done, opp);
+  function searchAlternative(base, L, cur, opp) {
     const ok = candidatesOf(L).filter(c => c !== cur)
       .map(cid => ({ id: cid, j: judgeFull(base, L, cid, opp) }))
       .filter(e => e.j.level !== 'ng');
@@ -364,9 +352,9 @@ window.Kakoi = window.Kakoi || {};
     return best;
   }
 
-  // judgeFull / searchAlternative / cleanBase は constraints.apply の連動解決が
+  // judgeFull / searchAlternative は constraints.sides の既定値の補完が
   // 同じ規則を再利用するための内部API（メモ化を通さない生の評価）
-  const api = { judge, judgeFull, searchAlternative, cleanBase };
+  const api = { judge, judgeFull, searchAlternative };
   Kakoi.compat = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

@@ -16,7 +16,6 @@
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/board.css">
 <link rel="stylesheet" href="css/tactics.css">
-<link rel="stylesheet" href="css/clusters.css">
 <link rel="stylesheet" href="css/matchup.css">
 <link rel="stylesheet" href="css/constraint.css">
 <link rel="stylesheet" href="css/dock.css">
@@ -27,33 +26,20 @@
   <defs><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--wood-1)"/><stop offset="1" style="stop-color:var(--wood-2)"/></linearGradient></defs>
 </svg>
 
-<!-- 全体の表示設定（左: 画面の切り替え、右: 表示設定） -->
+<!-- 全体の設定（右: 歯車で開く表示設定のポップオーバー） -->
 <header class="glass">
   <div class="brand"><a class="mark" href="index.html" title="トップへ" aria-label="将棋の囲い図鑑 トップへ">玉</a><h1>将棋の囲い図鑑</h1><button class="about" id="aboutOpen" type="button">このサイトについて</button></div>
-  <div class="seg nav" id="viewSeg" role="group" aria-label="画面の切り替え">
-    <button data-value="castle">囲い</button>
-    <button data-value="tactic">戦法</button>
-    <button data-value="board">対局図</button>
-    <button data-value="cluster">分類マップ</button>
-  </div>
-  <div class="tools" id="tools">
+  <div class="tools" id="tools" role="group" aria-label="表示設定">
     <div class="setting">
       <span class="lbl">駒の表示</span>
       <div class="seg" id="modeSeg">
         <button data-value="all">全駒</button>
         <button data-value="dim">囲いを強調</button>
-        <button data-value="core">囲いのみ</button>
       </div>
     </div>
     <label class="switch"><input type="checkbox" id="heat"> 守りの利き</label>
-    <div class="setting" id="heatScopeWrap">
-      <div class="seg small" id="heatScopeSeg" title="利きを数える駒">
-        <button data-value="core">囲いの駒</button>
-        <button data-value="all">全ての駒</button>
-      </div>
-    </div>
-    <label class="switch"><input type="checkbox" id="skeleton"> 骨格線</label>
-    <button class="ib txt" id="resetSettings" type="button" title="URLと表示状態を初期値に戻して再読み込み">リセット</button>
+    <label class="switch"><input type="checkbox" id="threat"> 脅威の帯</label>
+    <button class="ib txt" id="resetSettings" type="button" title="戦法・囲い・相手の表示を初期状態に戻す（表示の設定は残る。ブラウザの「戻る」で元に戻せる）">盤をリセット</button>
   </div>
   <button class="ib" id="toolsToggle" type="button" aria-label="表示設定を開く" aria-expanded="false" aria-controls="tools" title="表示設定">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2.4"/><circle cx="8" cy="16" r="2.4"/></svg>
@@ -66,74 +52,44 @@
   </button>
 </header>
 
-<!-- 各パネルは view-pane を画面ごとに持つ。画面は「囲い（castle）」「戦法（tactic）」「対局図（board）」「分類マップ（cluster）」の4つ -->
+<!-- 画面は1つ（対局図）: 選ぶ（左ドック）・見る（中央）・読む（右ドック） -->
 <div class="app">
-  <!-- 選ぶ（左ドック。board は上下2面の分割ペイン（DockView）。castle は系統チップ＋カード一覧、tactic は系統別一覧） -->
+  <!-- 選ぶ（左ドック。DockView が「自分／相手」のタブで切り替える1枚の面を組み立てる） -->
   <nav class="panel glass rail" aria-label="一覧">
-    <div class="view-pane" data-view="castle">
-      <div class="seg wide" id="castleSideSeg">
-        <button data-value="ibisha">居飛車</button>
-        <button data-value="furibisha">振り飛車</button>
-      </div>
-      <div class="fchips" id="familyChips" role="group" aria-label="系統で絞り込む"></div>
-      <div class="rail-h"><span class="count" id="railCount"></span><span class="keys"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動</span></div>
-      <div class="cards" id="cards"></div>
-    </div>
-    <div class="view-pane pane-fill" data-view="tactic" id="tacticRail"></div>
-    <div class="view-pane pane-fill" data-view="board" id="pickRail"></div>
-    <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
+    <div class="pane-fill" id="pickRail"></div>
   </nav>
 
-  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手なしのときは自分の帯が盤の上に来る（従来どおり） -->
-  <main class="panel glass stage" id="stageMain" data-opp="false">
-    <div class="view-pane" data-view="board" id="boardPane">
-      <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
-        <div class="sband-h">
-          <span class="who">相手<small>後手</small></span>
-          <div class="ttl"><h3 class="sband-name" id="nameOpp"></h3><div class="rd"><span class="sband-sub" id="subOpp"></span></div></div>
-          <button class="sband-clear" id="addOpp" type="button" title="相手側に制約を足す">＋ 相手を加える</button>
-          <button class="sband-clear" id="clearOpp" type="button" title="相手の制約をすべて外す" hidden>相手をはずす</button>
-        </div>
-        <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
+  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手は表示 ON/OFF（OFF のときも帯の行は残す） -->
+  <main class="panel glass stage" id="stageMain">
+    <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
+      <div class="sband-h">
+        <span class="who">相手<small>後手</small></span>
+        <div class="ttl"><h3 class="sband-name" id="nameOpp"></h3><div class="rd"><span class="sband-sub" id="subOpp"></span></div></div>
+        <label class="switch sband-sw" title="相手の局面を盤に表示する"><input type="checkbox" id="showOpp"> 表示</label>
       </div>
-      <div class="sideband" id="bandMe" data-side="me">
-        <div class="sband-h">
-          <span class="who">自分<small>先手</small></span>
-          <div class="ttl" id="ttl"><h3 class="sband-name" id="nameMe"></h3><div class="rd"><span class="sband-sub" id="subMe"></span></div></div>
-          <button class="sband-clear" id="clearAll" type="button" title="両側の制約をすべて外す" hidden>すべてはずす</button>
-          <button class="sband-clear" id="clearMe" type="button" title="自分の制約をすべて外す">自分をはずす</button>
-        </div>
-        <div class="cbar" id="cbarMe" role="group" aria-label="自分の制約条件"></div>
-      </div>
-      <div class="stage-f" id="stageF">
-        <span class="legend" id="legend"></span>
-        <button class="play-btn" id="playBtn" type="button">順に再生</button>
-      </div>
+      <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
     </div>
-    <div class="view-pane" data-view="castle">
-      <div class="stage-h">
-        <div class="ttl" id="castleTtl"><h2 id="castleTitle"></h2><div class="rd"><span id="castleReading"></span><span class="setup" id="castleSetup"></span></div></div>
+    <div class="sideband" id="bandMe" data-side="me">
+      <div class="sband-h">
+        <span class="who">自分<small>先手</small></span>
+        <div class="ttl" id="ttl"><h3 class="sband-name" id="nameMe"></h3><div class="rd"><span class="sband-sub" id="subMe"></span></div></div>
       </div>
-      <div class="stage-f">
-        <span class="legend" id="castleLegend"></span>
-        <span class="hand" id="castleHand"></span>
-      </div>
+      <div class="cbar" id="cbarMe" role="group" aria-label="自分の制約条件"></div>
     </div>
-    <div class="view-pane" data-view="tactic" id="tacticStage"></div>
-    <div class="view-pane pane-fill" data-view="cluster" id="clusterStage"></div>
-    <!-- 盤（BoardView / OverlayView は1組だけ。囲い・戦法・対局図で共有） -->
-    <div class="view-pane board-pane" data-view="board castle tactic">
-      <div class="boardarea">
-        <div class="boardwrap" id="boardwrap">
-          <div id="ptable" class="ptable" role="group" aria-label="戦法の周期表（盤の筋とそろえた表）"></div>
-          <div class="flabels" id="files"></div><div></div>
-          <div class="board" id="board" tabindex="0" role="group"
-            aria-label="将棋盤（フォーカス中は矢印キーで選択中の制約が隣の候補に変わる）"></div>
-          <div class="rlabels" id="ranks"></div>
-          <!-- 持ち駒は盤の左右に立てる（伝統的な記法。相手=左上・自分=右下） -->
-          <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
-          <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
-        </div>
+    <div class="stage-f" id="stageF">
+      <span class="legend" id="legend"></span>
+      <button class="play-btn" id="playBtn" type="button">順に再生</button>
+    </div>
+    <!-- 盤（BoardView / OverlayView は1組だけ） -->
+    <div class="boardarea">
+      <div class="boardwrap" id="boardwrap">
+        <div class="flabels" id="files"></div><div></div>
+        <div class="board" id="board" tabindex="0" role="group"
+          aria-label="将棋盤（フォーカス中は矢印キーで選択中の制約が隣の候補に変わる）"></div>
+        <div class="rlabels" id="ranks"></div>
+        <!-- 持ち駒は盤の左右に立てる（伝統的な記法。相手=左上・自分=右下） -->
+        <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
+        <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
       </div>
     </div>
   </main>
@@ -142,12 +98,7 @@
        1180px 以下では右端のドロワーになり、#detailToggle で開閉する） -->
   <aside class="panel glass detail">
     <button class="ib" id="detailToggle" type="button" aria-expanded="false" aria-label="解説パネルを開閉">解説</button>
-    <div class="view-pane" data-view="board">
-      <div class="detail-body" id="detail"></div>
-    </div>
-    <div class="view-pane pane-fill detail-body" data-view="castle" id="castleDetail"></div>
-    <div class="view-pane pane-fill detail-body" data-view="tactic" id="tacticDetail"></div>
-    <div class="view-pane pane-fill" data-view="cluster" id="clusterDetail"></div>
+    <div class="detail-body" id="detail"></div>
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>
 </div>
@@ -166,7 +117,7 @@
     <p>次は攻め駒の筋です。振り飛車の向かい飛車・三間飛車・四間飛車・中飛車は、飛車をそれぞれ8・7・6・5筋に置きます。居飛車の棒銀・早繰り銀・腰掛け銀は、銀をそれぞれ2・3〜4・5筋に進めます。戦法の名前は、飛車や銀をどの筋に置くかでほぼ並べられます。居飛車の攻めの主役が桂ではなく銀なのは、桂が前にしか進めず戻れない消耗品だからです。</p>
     <p>金銀が玉の周りに揃ってくると、今度は角を6八や7九へ引いて使うようになります。もともと角を守るために出ていった金銀が玉の囲いに変わり、最後は守られていた角のほうが出ていく。いったん集まった駒が役割を変えながら居座り続けるのは、都市の集積に慣性があるのにも似ています。振り飛車はこの左右が逆で、飛車を左へ振るぶん、玉は右へ寄せて囲います。</p>
     <p>そのうえで相手を見ます。相手が振り飛車なら攻めは横から来るので、横に厚い舟囲いを選びます。相手が居飛車なら攻めは縦から来るので、縦の厚みが欲しくなります。囲いを選ぶときの目安にしてください。</p>
-    <p>画面は「対局図」と「分類マップ」の二つです。対局図では戦型・戦法・囲いの制約条件を自分と相手に積み上げて、合成した局面を盤面で確かめます。分類マップでは囲いの系統を樹形図で眺められます。</p>
+    <p>画面は「対局図」の一つです。自分と相手それぞれに戦法と囲いを選ぶと、合成した局面が盤面に描かれます。選んだものは自動では差し替えず、両立しない組み合わせは理由を添えて示すので、直す候補を選び直してください。戦型は戦法から決まり、盤面の状態はURLにそのまま入るので、ブラウザの「戻る」で元に戻せます。</p>
   </div>
 </dialog>
 

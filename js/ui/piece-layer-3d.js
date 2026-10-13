@@ -63,10 +63,10 @@ window.Kakoi = window.Kakoi || {};
     /** @param {HTMLElement} boardEl position:relative の盤 */
     constructor(boardEl) {
       this.kind = '3d';
+      this.animates = true;          // 駒を滑らせる描画（DOM 版は静止）
       this.board = boardEl;
       this.mode = 'all';
       this.cur = [];                 // いま盤にいる駒 {group, mats, p, owner, role, sq, op, target}
-      this._before = [];
       this._tweens = [];
       this._raf = 0;
       this._keys = [];               // アトラスのタイル一覧 "字:色"
@@ -112,7 +112,7 @@ window.Kakoi = window.Kakoi || {};
         this._readColors(); this._rebuildAtlas(); this._recolor(); this._draw();
       });
       this._themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-      // 盤のサイズ・DPR 変化に追従（分類マップ画面で 0 サイズなら描画を止める）
+      // 盤のサイズ・DPR 変化に追従（非表示で 0 サイズなら描画を止める）
       this._ro = new ResizeObserver(() => this._resize());
       this._ro.observe(boardEl);
       this._resize();
@@ -120,29 +120,22 @@ window.Kakoi = window.Kakoi || {};
 
     // ---- 駒の入れ替え ----
 
-    /** 局面が渡される前に呼ぶ（DOM版と同じ手順）。今いる駒を移動元として記録する */
-    capture() { this._before = this.cur.map(pc => ({ p: pc.p, owner: pc.owner, sq: pc.sq, ref: pc })); }
-
     /**
-     * @param {Kakoi.Position} position
-     * @param {{ mode:string, animate:boolean,
-     *   trace?:{square:string, piece:string, path:string[]} }} opts
+     * 局面を描く。駒の対応づけ（移動リスト）は BoardView が pieceMatch.plan で1回だけ計算して渡す。
+     * いま盤にいる駒（this.cur）は、前回の plan.after と同じ並びで持っている
+     * @param {{ after:Array<{p:string,owner:string,role:string,sq:string,skip?:string}>,
+     *   pairs:Array<{o:number,n:number}>, gone:number[], appear:number[],
+     *   lead:number, path:string[]|null }} plan pieceMatch.plan の結果
+     * @param {{ mode:string, animate:boolean }} opts
      */
-    render(position, { mode, animate, trace }) {
+    render(plan, { mode, animate }) {
       this.mode = mode || 'all';
-      const before = this._before;
-      this._before = [];
-      const after = position.pieces.map(x => ({ p: x.p, owner: x.owner, role: x.role, sq: `${x.f}${x.r}` }));
-      // 戦法の主役の駒は筋道をたどる専用の動きにするので、通常の対応づけからは外す
-      const leadIdx = trace && trace.path && trace.path.length > 1
-        ? after.findIndex(n => n.owner === 'sente' && n.sq === trace.square && n.p === trace.piece) : -1;
-      if (leadIdx >= 0) after[leadIdx].skip = 'lead';
-      const m = Kakoi.pieceMatch.pair(before, after);
+      const before = this.cur, { after, lead: leadIdx } = plan, m = plan;
       const next = new Array(after.length).fill(null);
       const claimed = new Set(m.pairs.map(pr => pr.o));
 
       for (const { o, n } of m.pairs) {
-        const pc = before[o].ref, dst = after[n];
+        const pc = before[o], dst = after[n];
         pc.sq = dst.sq; pc.role = dst.role;
         next[n] = pc;
         this._retile(pc);
@@ -167,19 +160,19 @@ window.Kakoi = window.Kakoi || {};
         if (n.skip === 'lead') {
           // 経路再生用に新しい駒を作るので、同じマスに居残っている同名の駒はここで消す
           const si = before.findIndex((o, i) => !claimed.has(i) && o.p === n.p && o.owner === n.owner && o.sq === n.sq);
-          if (si >= 0) { claimed.add(si); this._remove(before[si].ref); }
+          if (si >= 0) { claimed.add(si); this._remove(before[si]); }
           const pc = this._make(n);
           next[ni] = pc;
           this._place(pc);
           pc.op = this._targetOp(pc); this._applyOp(pc);
-          if (animate) this._route(pc, trace.path);
+          if (animate) this._route(pc, plan.path);
           continue;
         }
         // 同じマスに同じ駒が居続けるもの（後手の駒など）は入場せずそのまま使い回す
         const si = before.findIndex((o, i) => !claimed.has(i) && o.p === n.p && o.owner === n.owner && o.sq === n.sq);
         if (si >= 0) {
           claimed.add(si);
-          const pc = before[si].ref;
+          const pc = before[si];
           pc.role = n.role;
           next[ni] = pc;
           this._retile(pc);
@@ -218,7 +211,7 @@ window.Kakoi = window.Kakoi || {};
       }
 
       for (const oi of m.gone) {           // 対応先のなかった駒は薄めながら消す
-        const pc = before[oi].ref;
+        const pc = before[oi];
         this._clearTweens(pc);
         if (animate && pc.op > .01) {
           const o = pc.op;
@@ -272,10 +265,10 @@ window.Kakoi = window.Kakoi || {};
       pc.group.rotation.z = pc.owner === 'gote' ? Math.PI : 0;
     }
 
-    /** 表示モードが要求する不透明度（.pc の off/hidden と同じ） */
+    /** 表示モードが要求する不透明度（.pc の off と同じ） */
     _targetOp(pc) {
       if (pc.owner === 'gote' || pc.role === 'core' || pc.role === 'lead') return 1;
-      return this.mode === 'core' ? 0 : this.mode === 'dim' ? .28 : 1;
+      return this.mode === 'dim' ? .28 : 1;
     }
 
     _applyMode(pc, animate) {
@@ -340,7 +333,7 @@ window.Kakoi = window.Kakoi || {};
       const pts = path.map(sq => this._pos(sq));
       if (pts.length < 2) { this.board.style.removeProperty('--rt-d'); return; }
       pc.group.position.set(pts[0].x, pts[0].y, 0);
-      const dur = Math.min(280 * (pts.length - 1), 1500);
+      const dur = Kakoi.pieceMatch.routeMs(path);
       this._anim(dur, EASE_ROUTE, k => {
         const t = k * (pts.length - 1);
         const i = Math.min(Math.floor(t), pts.length - 2), f = t - i;

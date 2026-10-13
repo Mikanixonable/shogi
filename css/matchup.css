@@ -1,4 +1,4 @@
-/* 対局図で育った部品: 「相手を加える」ボタン・fitness の要約・理由リスト・トースト。
+/* 対局図で育った部品: fitness の要約・理由リスト・トースト。
    「墨と余白」: 相性の印は ◎＝朱の引き締め。理由は必ず記号とテキストで */
 
 /* 戦型の重みの多角形: 囲いの強み（実線）に重ねる朱の破線 */
@@ -13,10 +13,6 @@
 .mu-reasons li[data-sq] { text-decoration:underline dotted var(--line-2); text-underline-offset:4px; }
 .mu-reasons li[data-sq]:hover { background:var(--faint); }
 
-/* 「対局図で開く」リンクボタン（囲いの解説・戦法の囲い一覧からの導線） */
-.mu-open { display:inline-block; border:1px solid var(--line); background:none; padding:6px 14px;
-           font-size:12px; letter-spacing:.1em; color:var(--fg); cursor:pointer; transition:border-color .2s, color .2s, background .2s; }
-.mu-open:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 /* 相性表の ◎ は朱ではなく墨色の左帯（U1: 朱は選択だけ。相性は色ではなく印で読む） */
 .tc-castle[data-compat="best"] { box-shadow:inset 2px 0 0 var(--fg); }
 

@@ -28,8 +28,7 @@ window.Kakoi = window.Kakoi || {};
       const dir = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1;
       return { kind: 'castle', id: castles[(i + dir + castles.length) % castles.length].id };
     }
-    // 戦略は2択のトグル
-    return { kind: 'strategy', id: st.strategy === 'ibisha' ? 'furibisha' : 'ibisha' };
+    return null;
   }
 
   K.keyboardNav = { arrowTarget };

@@ -25,7 +25,7 @@ window.Kakoi = window.Kakoi || {};
       // radiogroup の流儀: 矢印は選択を回す（移動した時点で選ばれる）
       el.addEventListener('keydown', e => {
         if (!e.key.startsWith('Arrow')) return;
-        const xs = [...el.querySelectorAll('button[data-value]')];
+        const xs = [...el.querySelectorAll('button[data-value]:not(:disabled)')];   // 無効な選択肢は飛ばす
         const i = xs.indexOf(e.target.closest('button[data-value]'));
         if (i < 0) return;
         e.preventDefault();

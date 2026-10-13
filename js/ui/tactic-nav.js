@@ -2,7 +2,6 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { ZEN } = Kakoi.notation;
 
   /** 戦法の筋の中心（早繰り銀 [4,3] なら 3.5） */
   const center = t => t.lead.files.reduce((a, b) => a + b, 0) / t.lead.files.length;
@@ -37,9 +36,6 @@ window.Kakoi = window.Kakoi || {};
 
   /** 注記が「まれ」で始まる戦法 */
   const isRare = t => /^まれ/.test(t.note || '');
-
-  /** 「６筋」「４・３筋」 */
-  const fileBadge = t => t.lead.files.map(f => ZEN[f]).join('・') + '筋';
 
   /**
    * 矢印キーで次に選ぶ戦法。←→ は同じ系統で前後（端は反対側へ）、↑↓ は隣の段で筋が最も近いもの
@@ -107,5 +103,5 @@ window.Kakoi = window.Kakoi || {};
     return { cells, dots };
   }
 
-  Kakoi.tacticNav = { tacticRows, lanesOf, laneRows, fileBadge, isRare, neighbor, placeTactics };
+  Kakoi.tacticNav = { tacticRows, lanesOf, laneRows, isRare, neighbor, placeTactics };
 })();

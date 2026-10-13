@@ -1,6 +1,7 @@
 // 駒の対応づけ（共有ロジック）: 局面の切り替えで「どの駒がどこへ動いたか」を、
-// 駒の動きの自然さをコスト化した貪欲ペアリングで決める。
-// 純粋関数だけなので DOM 版（piece-layer-dom）・立体版（piece-layer-3d）どちらの駒レイヤも同じ対応づけを使う
+// 駒の動きの自然さをコスト化した貪欲ペアリングで決める。plan が「移動リスト」を1回だけ計算し
+// （BoardView が呼ぶ）、立体版（piece-layer-3d）はそれを描く。DOM 版は静止表示なので使わない。
+// 純粋関数だけなので DOM を持たない。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -148,5 +149,28 @@ window.Kakoi = window.Kakoi || {};
     return { pairs, gone, appear };
   }
 
-  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, pair };
+  /** 戦法の主役の駒が筋道（path）をたどる時間（ms）。経路の矢印の出現もこれに合わせる */
+  const routeMs = path => Math.min(280 * (path.length - 1), 1500);
+
+  /**
+   * 局面の切り替えの「移動リスト」: before → after の対応づけを1回だけ計算する。描画側は結果を描くだけ。
+   * trace があるとき、戦法の主役の駒（先手の trace.piece が trace.square にいるもの）は
+   * 筋道をたどる専用の動きにするので、通常の対応づけからは外す（pair の skip）。
+   * @param {Array<{p:string, sq:string, owner:string, role?:string}>} before 直前に描いた駒（前回の plan.after）
+   * @param {Array<{p:string, sq:string, owner:string, role?:string}>} after 新しい局面の駒
+   * @param {{square:string, piece:string, path:string[]}|null} [trace]
+   * @returns {{ after:Array, pairs:Array<{o:number,n:number,cost:number}>, gone:number[], appear:number[],
+   *   lead:number, path:string[]|null }}
+   *   after: skip を付けた after のコピー。lead: 筋道をたどる駒の after の添字（無ければ -1）、path はその経路
+   */
+  function plan(before, after, trace) {
+    const next = after.map(x => ({ ...x }));
+    const lead = trace && trace.path && trace.path.length > 1
+      ? next.findIndex(n => n.owner === 'sente' && n.sq === trace.square && n.p === trace.piece) : -1;
+    if (lead >= 0) next[lead].skip = 'lead';
+    const m = pair(before, next);
+    return { ...m, after: next, lead, path: lead >= 0 ? trace.path : null };
+  }
+
+  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, pair, plan, routeMs };
 })();

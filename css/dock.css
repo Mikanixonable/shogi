@@ -1,16 +1,19 @@
-/* 左ドック（U4。計画書 §4-2〜§4-4）: 上下2面の分割ペイン＋戦法/囲いタイル。
-   「墨と余白」: 面を増やさず、罫線・破線・記号（◎/△/→要約）で状態を示す。
+/* 左ドック（U4。計画書 §4-2〜§4-4）: 自分／相手のタブで切り替える1枚の面＋戦法/囲いタイル。
+   「墨と余白」: 面を増やさず、罫線・破線・記号（✕/◎/△）で状態を示す。
    暫定ドックの2軸バッジの規則はそのままタイルに引き継ぐ（constraint.css の .cr-item と同じ意味） */
 
-/* ===== 上下分割（上=相手固定・下=自分固定。面はアコーディオン式に畳める） ===== */
-#pickRail { padding:10px 14px; position:relative; }    /* 暫定の 16/18 より詰めてタイルを立てる */
+#pickRail { padding:10px 14px; position:relative; }    /* タイルを立てるため余白は詰める */
 #pickRail .dk { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; position:relative; }
-/* 上端の凡例 ? ボタン（U6） */
-.dk-top { flex:none; display:flex; justify-content:flex-end; min-height:18px; margin:-4px -6px 2px 0; }
+/* 上端: 自分／相手のタブ（相手を表示していないときは相手が無効）と凡例 ? ボタン（U6） */
+.dk-top { flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:6px;
+          border-bottom:1px solid var(--line); margin-bottom:8px; }
+.dk-who button { padding:5px 16px; font-size:14px; letter-spacing:.14em; }
+.dk[data-who="opp"] .dk-who [aria-pressed="true"] { color:var(--gote-ink); }
+.dk-who button:disabled { opacity:.4; cursor:default; }
 .dk-legend { width:18px; height:18px; padding:0; border:1px solid var(--line-2); border-radius:50%;
              background:none; color:var(--muted); font:600 11px/1 var(--font-n); cursor:pointer; }
 .dk-legend:hover, .dk-legend[aria-expanded="true"] { color:var(--fg); border-color:var(--fg); }
-.dk-legend-pop { position:absolute; top:22px; right:0; z-index:12; min-width:200px; max-width:260px;
+.dk-legend-pop { position:absolute; top:30px; right:0; z-index:12; min-width:200px; max-width:260px;
                  padding:9px 12px; background:var(--bg); border:1px solid var(--line-2);
                  box-shadow:0 8px 22px rgba(24,18,8,.14); font-size:12px; line-height:1.7; }
 .dk-legend-pop b { display:block; margin-bottom:3px; }
@@ -19,64 +22,29 @@
                         text-align:center; margin-right:5px; }
 .dk-legend-pop .lg-sel { box-shadow:inset 0 -2px 0 var(--accent); font-weight:700; }
 .dk-legend-pop .lg-imp { border-style:dashed; color:var(--muted); }
-.dk-pane { display:flex; flex-direction:column; min-width:0; min-height:120px; }
-.dk-pane[data-who="opp"]:not([data-closed="true"]) { flex:var(--dock-split, .5) 1 0; }
-.dk-pane[data-who="me"]:not([data-closed="true"])  { flex:calc(1 - var(--dock-split, .5)) 1 0; }
-/* 片方だけ開いているときは残りの高さを全部使う（split は2面とも開いている時だけ効く） */
-.dk:has(.dk-pane[data-who="me"][data-closed="true"]) .dk-pane[data-who="opp"]:not([data-closed="true"]),
-.dk-pane[data-who="opp"][data-closed="true"] ~ .dk-pane[data-who="me"]:not([data-closed="true"]) { flex:1 1 0; }
-/* 畳んだ面・空の面（相手なし）はヘッダだけ残す。開いた面が残りの高さを全部使う */
-.dk-pane[data-closed="true"] { flex:none; min-height:0; }
-.dk-pane[data-closed="true"] .dk-tab,
-.dk-pane[data-closed="true"] .dk-strategy,
-.dk-pane[data-closed="true"] .dk-threat,
-.dk-pane[data-closed="true"] .dk-body { display:none; }
+.dk-pane { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; min-height:0; }
 
-.dk-pane-h { flex:none; display:flex; align-items:center; gap:4px 10px; flex-wrap:wrap; padding-bottom:5px; }
-.dk-fold { display:grid; place-items:center; width:20px; height:20px; padding:0; border:1px solid var(--line);
-           background:none; color:var(--muted); cursor:pointer; }
-.dk-fold .caret { display:block; width:0; height:0; border:4px solid transparent; border-top-color:currentColor;
-                  transition:transform .2s var(--ease); }
-.dk-fold[aria-expanded="false"] .caret { transform:rotate(-90deg); }
-.dk-fold:hover { color:var(--fg); border-color:var(--line-2); }
-.dk-fold:disabled { opacity:.4; cursor:default; }
-.dk-who-l { font:600 12px/1 var(--font-d); letter-spacing:.18em; color:var(--muted); }
-.dk-pane[data-who="opp"] .dk-who-l { color:var(--gote-ink); }
-.dk-tab { margin-left:auto; }
+.dk-pane-h { flex:none; display:flex; align-items:center; justify-content:space-between; gap:4px 10px; flex-wrap:wrap; padding-bottom:5px; }
 .dk-tab button { padding:3px 9px; font-size:13px; }
-.dk-addopp { margin-left:auto; border:1px dashed var(--line-2); background:none; padding:4px 12px;
-             font-size:12.5px; color:var(--fg); cursor:pointer; letter-spacing:.05em; }
-.dk-addopp:hover { border-color:var(--accent); color:var(--accent); }
 .dk-clear { border:1px solid var(--line); background:none; padding:2px 9px; font-size:12px;
             color:var(--muted); cursor:pointer; letter-spacing:.06em; }
 .dk-clear:hover { color:var(--bad); border-color:var(--bad); }
-.dk-clear[hidden], .dk-addopp[hidden] { display:none; }
+.dk-clear[hidden] { display:none; }
 .dk-strategy { flex:none; margin-bottom:5px; }
-/* 脅威の帯スイッチ（相手の面・戦略セグの下。中央フッタから移動） */
-.dk-threat { flex:none; margin-bottom:6px; font-size:12.5px; letter-spacing:.04em; }
 .dk-body { flex:1 1 auto; min-height:0; overflow:auto; padding-right:3px; outline-offset:-1px; }
-/* 採用中の戦略に合わない項目・行・系統は hidden で隠す（flex/grid の display を消す） */
+/* 絞り込んだ戦略に合わない項目・行・系統は hidden で隠す（flex/grid の display を消す） */
 .dk-body [hidden] { display:none !important; }
 .dk-view { display:flex; flex-direction:column; gap:12px; padding-bottom:2px; }
 
-/* ===== スプリッタ（role=separator。罫線＋握りの2本線） ===== */
-.dk-sep { flex:none; position:relative; height:10px; margin:1px 0; cursor:row-resize; touch-action:none; user-select:none; }
-.dk-sep::before { content:""; position:absolute; left:0; right:0; top:4.5px; height:1px; background:var(--line-2); }
-.dk-sep::after { content:""; position:absolute; left:50%; top:2.5px; width:30px; height:4px; transform:translateX(-50%);
-                 border-top:1px solid var(--line-2); border-bottom:1px solid var(--line-2); }
-.dk-sep:hover::before { background:var(--accent); }
-.dk-sep:hover::after { border-color:var(--accent); }
-.dk-sep:focus-visible { outline:2px solid var(--fg); }
-
 /* ===== 選択肢の2軸バッジ（計画書 §3-1 / U1） =====
    記号の意味を分ける: 選択=朱の下線＋太字 / 相手との相性=◎△の文字だけ（朱の線は引かない）
-   / 連動=⇄＋灰色の破線枠 / フォーカスは theme.css の墨の輪 */
+   / 両立しない=✕＋灰色の破線枠 / フォーカスは theme.css の墨の輪 */
 .dk-item { position:relative; }
 .dk-item .dk-vs { font-style:normal; font-size:12px; min-width:12px; text-align:center; line-height:1; }
-.dk-item .dk-csc { font:500 10px/1.25 var(--font-n); letter-spacing:.02em; color:var(--muted); }
-.dk-item .dk-csc:empty { display:none; }
-/* 連動（選ぶと他の層も変わる）: 灰色の破線枠＋⇄の印 */
-.dk-item[data-cascade="true"] { border-style:dashed; border-color:var(--line-2); }
+.dk-item .dk-ng { font:500 10px/1.25 var(--font-n); letter-spacing:.02em; color:var(--muted); }
+.dk-item .dk-ng:empty { display:none; }
+/* 両立しない（いまの他の層と組めない）: 灰色の破線枠＋✕の印。選べるが、選ぶとチップに✕と理由が出る */
+.dk-item[data-ng="true"] { border-style:dashed; border-color:var(--line-2); }
 /* 相手との相性は ◎/△ の文字だけ。色は墨色寄りで朱は使わない（U1） */
 .dk-item[data-vs="good"] .dk-vs { color:var(--fg); font-weight:700; }
 .dk-item[data-vs="bad"] .dk-vs { color:var(--muted); font-weight:700; }
@@ -89,11 +57,6 @@
 .dk-item[data-rare="true"] .nm { color:var(--muted); font-style:italic; }
 /* 選択中の派生を持つ親タイル（§4-3） */
 .dk-item[data-vsel="true"] { border-color:var(--accent-2); }
-
-/* 戦略セグのボタンにも同じ印を。連動=灰色の破線、相性=文字だけ（U1） */
-.dk-strategy button[data-cascade="true"] { outline:1px dashed var(--line-2); outline-offset:-1px; }
-.dk-strategy button[data-vs="good"] { font-weight:700; }
-.dk-strategy button[data-implied="true"] { font-style:italic; }
 
 /* ===== 戦法タイル（§4-3: 行=主役の駒、列=筋、1マス=最終マス） ===== */
 /* 行頭の系統アイコン: 駒の形の小さなタイル（tactics.css の周期表と共有だった器をこちらへ） */
@@ -136,13 +99,13 @@
           color:var(--muted); transition:border-color .2s, color .2s; }
 .dk-var .nm { font-size:9.5px; text-align:center; overflow-wrap:anywhere; }
 .dk-var .dk-vs { position:absolute; top:0; right:2px; min-width:0; font-size:8px; line-height:1.2; }
-.dk-var .dk-csc { position:absolute; bottom:0; left:2px; font-size:8px; }
+.dk-var .dk-ng { position:absolute; bottom:0; left:2px; font-size:8px; }
 .dk-var:hover { color:var(--fg); border-color:var(--line-2); }
 
-/* 採用中の戦略に合わない項目は表示しない（分類は戦略だけ。「もう一方」は持たない） */
+/* 絞り込んだ戦略に合わない項目は表示しない（分類は戦略だけ。「もう一方」は持たない） */
 .dk-on { display:flex; flex-direction:column; gap:12px; }
 /* 制約チップからの連動（U5）: 対象の項目に一瞬だけ墨の輪郭を添える */
-.dk-item[data-reveal="true"], .dk-strategy[data-reveal="true"] { box-shadow:0 0 0 2px var(--fg); }
+.dk-item[data-reveal="true"] { box-shadow:0 0 0 2px var(--fg); }
 
 /* ===== 囲いタイル（§4-4: 系統ごとの折りたたみブロック） ===== */
 .dk-fam { display:flex; flex-direction:column; gap:6px; }
@@ -170,13 +133,10 @@
 .dk-card .thumb svg { width:auto; max-width:100%; height:100%; display:block; margin:auto; }
 .dk-card .nm { font-size:12px; line-height:1.25; text-align:center; letter-spacing:.02em; }
 
-/* ===== narrow: 上下分割の比率はやめ、2面を内容の高さで縦に並べる ===== */
+/* ===== narrow: ページ全体でスクロールするので、一覧は内容の高さを取る ===== */
 @media (max-width:979px) {
-  /* ページ全体でスクロールしドックの高さは内容次第: basis:0 の grow 分割だと高さが潰れるので
-     面は内容の高さを取る（split は使わない）。畳みはそのまま効く */
   #pickRail .dk { flex:none; display:block; }
   .dk-pane { display:block; min-height:0; }
-  .dk-sep { display:none; }
   .dk-body { overflow:visible; }
   .dk-cards { grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); }
 }
