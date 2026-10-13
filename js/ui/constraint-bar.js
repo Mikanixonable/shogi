@@ -1,4 +1,5 @@
-// 制約バー: 盤の上に並ぶ制約チップ。1チップ=1制約。自分側→相手側、それぞれリスト順（先頭ほど古い）。
+// 制約バー: 盤の上下に並ぶ制約チップ。1チップ=1制約。自分側→相手側、それぞれリスト順（先頭ほど古い）。
+// who 指定のバーはその側のチップだけを描く（盤の上=相手用・下=自分用）。指定なしは両側を1行に（従来形）。
 // 暗黙の層（戦略既定値で補った戦法・囲い・推論した戦略）は破線で薄く表示し、×は付けない。
 // 右端には導出ラベル（戦型など。消せない灰色チップ）を並べる。計画書 §0-2 / §1-1 / §1-4。
 // ホバー予告用の API として flash(pairs) を持つ（§3-3。呼び出しは左ドック側）。
@@ -12,11 +13,14 @@ window.Kakoi = window.Kakoi || {};
 
   class ConstraintBar {
     /**
-     * @param {HTMLElement} el `#constraintBar`
-     * @param {{ onSelect:(who:'me'|'opp', kind:string)=>void,
+     * @param {HTMLElement} el `.cbar` の入れ物
+     * @param {{ who?:'me'|'opp'|null,
+     *   onSelect:(who:'me'|'opp', kind:string)=>void,
      *   onRemove:(who:string, kind:string)=>void }} handlers
+     *   who: このバーが受け持つ側。null（省略）なら両側を自分→相手の順に並べる
      */
-    constructor(el, { onSelect, onRemove }) {
+    constructor(el, { who = null, onSelect, onRemove }) {
+      this.who = who;
       this.el = el;
       el.addEventListener('click', e => {
         const x = e.target.closest('.cchip-x');
@@ -45,7 +49,7 @@ window.Kakoi = window.Kakoi || {};
      */
     render({ list, me, opp, selected, labels, nameOf }) {
       const chips = [];
-      for (const who of ['me', 'opp']) {
+      for (const who of this.who ? [this.who] : ['me', 'opp']) {
         const S = who === 'me' ? me : opp;
         // 明示制約（リスト順）
         for (const e of list.filter(x => x.who === who)) {

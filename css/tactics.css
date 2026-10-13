@@ -60,7 +60,6 @@ body[data-view="board"] .overlay .rt-head { animation:skIn .4s var(--ease) var(-
 .tr-item[aria-current="true"] .nm { font-weight:600; }
 
 /* ===== 中央: 見出しと再生 ===== */
-.stage-h h2 .al { margin-left:12px; font:400 12px var(--font-d); letter-spacing:.08em; color:var(--muted); }
 .stage-f .legend i { background:var(--core); }
 .play-btn { flex:none; cursor:pointer; border:1px solid var(--line); padding:4px 16px; font-size:12px; letter-spacing:.12em;
             background:none; color:var(--fg); transition:border-color .2s, color .2s, background .2s; }
@@ -88,5 +87,3 @@ body[data-view="board"] .overlay .rt-head { animation:skIn .4s var(--ease) var(-
          font-size:13px; cursor:pointer; transition:color .2s, border-color .2s, background .2s; }
 .tc-go:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
 .tc-desc { margin-top:8px; }
-/* 「戦法 × 囲い」の併記の×を薄く */
-.stage-h h2 .x { color:var(--muted); font-weight:400; padding:0 .2em; }

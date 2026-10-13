@@ -11,7 +11,7 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const K = window.Kakoi;
   const { plain } = K.html;
-  const { parsePieces } = K.notation;
+  const { parsePieces, KAN } = K.notation;
   const FIELD = K.constraints.FIELD;
   const LAYER_JA = { strategy: '戦略', tactic: '戦法', castle: '囲い' };
   const mirrorSq = s => `${10 - +s[0]}${10 - +s[1]}`;
@@ -24,8 +24,9 @@ window.Kakoi = window.Kakoi || {};
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: bar, stageH, title, titleWrap, reading, setup, legend, hand,
-     *        threatWrap, threatSw, playBtn, ptable, boardwrap, rail, detail
+     *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe, stageH,
+     *        legend, handOpp, handMe, threatWrap, threatSw, playBtn,
+     *        clearOpp, clearMe, clearAll, ptable, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
       Object.assign(this, { repo, store, board, overlay, els });
@@ -34,11 +35,13 @@ window.Kakoi = window.Kakoi || {};
       this._ptKey = null;
       this._meTactic = null;
       this._lastChanged = null;
+      this._stageKeys = {};
 
-      this.bar = new K.ConstraintBar(els.bar, {
-        onSelect: (w, k) => this._select(w, k),
-        onRemove: (w, k) => this._remove(w, k),
-      });
+      // 制約バーは盤の上（相手）と下（自分）の2本。相手がいないときは自分の帯が盤の上に回る
+      this.bars = {
+        opp: new K.ConstraintBar(els.barOpp, { who: 'opp', onSelect: (w, k) => this._select(w, k), onRemove: (w, k) => this._remove(w, k) }),
+        me: new K.ConstraintBar(els.barMe, { who: 'me', onSelect: (w, k) => this._select(w, k), onRemove: (w, k) => this._remove(w, k) }),
+      };
       this.table = new K.TacticTableView(els.ptable, { onSelect: id => this._set(this._selWho(), 'tactic', id) });
       // 左ドック: 上下2面の分割ペイン（U4）。面の {who,tab} と分割比は dock が store に書く
       this.dock = new K.DockView(els.rail /* #pickRail */, {
@@ -46,7 +49,8 @@ window.Kakoi = window.Kakoi || {};
         onChoose: (w, k, id) => this._set(w, k, id),
         onRemoveSide: w => this._removeSide(w),
         onPreview: (w, k, id) => this._preview(w, k, id),
-        onPreviewEnd: () => { this.bar.flash(null); this.board.hover([], null); },
+        onPreviewEnd: () => { this._flash(null); this.board.hover([], null); },
+        onAddOpponent: () => this._addOpponent(),
       });
       // 右ドック（U5）: selected の種類に応じて部品を組み立てる自己完結ビュー
       this.detail = new K.BoardDetailView(els.detail, {
@@ -57,6 +61,9 @@ window.Kakoi = window.Kakoi || {};
       });
       els.threatSw.addEventListener('change', () => this.store.set({ showThreat: els.threatSw.checked }));
       els.playBtn.addEventListener('click', () => this._onPlay());
+      els.clearOpp.addEventListener('click', () => this._removeSide('opp'));
+      els.clearMe.addEventListener('click', () => this._removeSide('me'));
+      els.clearAll.addEventListener('click', () => this._removeAll());
       this.player = new K.TacticPlayer({
         onStep: t => this._applyPlayStep(t),
         onChange: playing => this._setPlaying(playing),
@@ -87,6 +94,8 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _select(who, kind) { this.store.set({ selected: `${who}.${kind}` }); }
+
+    _flash(pairs) { this.bars.me.flash(pairs); this.bars.opp.flash(pairs); }
 
     _remove(who, kind) {
       const s = this.store.state;
@@ -135,6 +144,21 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
+    /** 「すべてはずす」: 両側の制約を全部消す（盤は自分側の既定値だけが残る） */
+    _removeAll() {
+      this._lastChanged = null;
+      const s = this.store.state;
+      if (!s.constraints.length) return;
+      const prev = { list: s.constraints, sel: s.selected };
+      this.store.set({ constraints: [], selected: 'me.castle' });
+      if (K.Toast) {
+        K.Toast.show('制約を全部外しました', {
+          host: this.els.stageH,
+          action: { label: '元に戻す', fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); } },
+        });
+      }
+    }
+
     /** 「相手を加える」（詳細の .mu-open）: 相手の戦略を暗黙制約として足し、相手を選択する */
     _addOpponent() {
       const s = this.store.state;
@@ -153,7 +177,7 @@ window.Kakoi = window.Kakoi || {};
     _preview(who, kind, id) {
       const s = this.store.state;
       const p = K.constraints.preview(s.constraints, { type: 'set', who, kind, id });
-      this.bar.flash(p.changed.map(c => ({ who: c.who, kind: c.kind })));
+      this._flash(p.changed.map(c => ({ who: c.who, kind: c.kind })));
       // judge の土台は「候補を置いた後」の側（その側が空でも候補から戦略が推論される）
       const Sp = K.constraints.sides(p.list);
       const st = Sp[who] || {};
@@ -202,7 +226,7 @@ window.Kakoi = window.Kakoi || {};
       this.player.stop();
       this.board.setLasting([], null);
       this.overlay.clear();
-      this.bar.flash(null);
+      this._flash(null);
       if (K.Toast) K.Toast.hide();
     }
 
@@ -336,61 +360,82 @@ window.Kakoi = window.Kakoi || {};
       this.overlay.skeleton(pos);
     }
 
-    // ---------- 制約バー ----------
+    // ---------- 制約バー（盤の上=相手・下=自分の2本。導出ラベルは自分側の右端） ----------
     _paintBar(state, d) {
-      this.bar.render({
+      const common = {
         list: state.constraints || [], me: d.S.me, opp: d.S.opp,
-        selected: state.selected, labels: d.labels,
-        nameOf: (w, k, id) => this._nameOf(w, k, id),
-      });
+        selected: state.selected, nameOf: (w, k, id) => this._nameOf(w, k, id),
+      };
+      this.bars.opp.render({ ...common, labels: null });
+      this.bars.me.render({ ...common, labels: d.labels });
     }
 
-    // ---------- 中央の見出し・足元 ----------
+    // ---------- 盤の上下の帯（状態の名前＋制約バー）・足元 ----------
+    // 帯の名前: 選択中の側はその制約の名前（旧見出しと同じ）、もう一方の側は実効の組み合わせ
+    _sideName(who, st, sel) {
+      const strat = (K.STRATEGIES[st.strategy] || {}).label || '';
+      const combo = ['tactic', 'castle']
+        .map(k => st[FIELD[k]] ? this._nameOf(who, k, st[FIELD[k]]) : null)
+        .filter(Boolean).join('・');
+      if (sel && sel.who === who) {
+        const id = st[FIELD[sel.kind]];
+        if (sel.kind === 'strategy') return { name: strat || '戦略', sub: '戦略' };
+        const x = sel.kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
+        if (x) {
+          const fam = sel.kind === 'tactic'
+            ? this.repo.tacticFamilies().find(f => f.id === x.family)
+            : this.repo.familyOf(x);
+          const sub = [x.reading, fam && fam.name, sel.kind === 'tactic' ? x.context : null]
+            .filter(Boolean).join('　／　');
+          return { name: x.name, sub };
+        }
+        return { name: LAYER_JA[sel.kind], sub: strat };
+      }
+      return { name: combo || strat || '（未選択）', sub: strat };
+    }
+
+    // 伝統的な記法の持ち駒: 主語（▲/△）＋駒＋二枚以上は漢数字（歩二・香 など）
+    _handText(pos, mark) {
+      const h = (pos && pos.hand) || [];
+      if (!h.length) return '';
+      const cnt = new Map();
+      for (const p of h) cnt.set(p, (cnt.get(p) || 0) + 1);
+      return mark + [...cnt.entries()].map(([p, n]) => p + (n > 1 ? KAN[n] : '')).join(' ');
+    }
+
     _paintStage(state, d) {
       const e = this.els, { S } = d;
       const sel = parseSel(state.selected);
-      const st = sel && (S[sel.who] || S.me);
-      let title = '将棋の囲い', reading = '', context = '';
-      if (sel && st) {
-        const id = st[FIELD[sel.kind]];
-        const pre = sel.who === 'opp' ? '相手の' : '';
-        if (sel.kind === 'strategy') {
-          title = (K.STRATEGIES[id] && K.STRATEGIES[id].label) || '戦略';
-          reading = '';
-          context = `${pre}戦略`;
-        } else {
-          const x = sel.kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
-          if (x) {
-            title = `${pre}${x.name}`;
-            reading = x.reading || '';
-            const fam = sel.kind === 'tactic'
-              ? this.repo.tacticFamilies().find(f => f.id === x.family)
-              : this.repo.familyOf(x);
-            context = [fam && fam.name, sel.kind === 'tactic' ? x.context : null].filter(Boolean).join(' ／ ');
-            if (sel.who === 'opp') context = `相手の${LAYER_JA[sel.kind]}${context ? ` ／ ${context}` : ''}`;
-          } else {
-            title = `${pre}${LAYER_JA[sel.kind]}`;
-          }
+      const hasOpp = !!S.opp;
+      e.stage.dataset.opp = hasOpp ? 'true' : 'false';
+      e.bandOpp.hidden = !hasOpp;
+
+      for (const who of ['me', 'opp']) {
+        const st = S[who];
+        if (!st) continue;
+        const nameEl = who === 'me' ? e.nameMe : e.nameOpp;
+        const subEl = who === 'me' ? e.subMe : e.subOpp;
+        const { name, sub } = this._sideName(who, st, sel);
+        const stageKey = `${who}|${name}|${sub}`;
+        if (stageKey !== this._stageKeys[who]) {
+          this._stageKeys[who] = stageKey;
+          nameEl.textContent = name;
+          subEl.textContent = subEl.title = sub;
+          const ttl = nameEl.closest('.ttl');
+          if (ttl) { ttl.classList.remove('swap'); void ttl.offsetWidth; ttl.classList.add('swap'); }
         }
+        (who === 'me' ? e.bandMe : e.bandOpp).dataset.sel = sel && sel.who === who ? 'true' : 'false';
       }
-      // 見出しが変わったときだけ差し替え＋フェード（attackId など無関係な更新で再生しない）
-      const stageKey = `${title}|${reading}|${context}`;
-      if (stageKey !== this._stageKey) {
-        this._stageKey = stageKey;
-        e.title.textContent = title;
-        e.reading.textContent = reading;
-        e.setup.textContent = e.setup.title = context;
-        e.titleWrap.classList.remove('swap'); void e.titleWrap.offsetWidth; e.titleWrap.classList.add('swap');
-      }
+
       e.legend.innerHTML = '<i></i>' + (d.threat
         ? '朱の帯は相手の攻め筋。破線は主役の駒の動き（墨＝自分・朱＝相手）。枠のマスは両軍の接触'
         : '朱色は囲いの駒と主役の駒。破線は主役の駒の動き');
-      const meH = d.mePos.position.hand || [];
-      const oppH = d.oppPos ? (d.oppPos.position.hand || []) : [];
-      e.hand.textContent = meH.length || oppH.length
-        ? `持ち駒：${meH.length ? '▲' + meH.join('・') : ''}${meH.length && oppH.length ? '　' : ''}${oppH.length ? '△' + oppH.join('・') : ''}` : '';
+      // 持ち駒は盤の左右（敵=左・味方=右）
+      e.handMe.textContent = this._handText(d.mePos.position, '▲');
+      e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
       e.threatSw.checked = state.showThreat !== false;
       e.threatWrap.hidden = !S.opp;
+      e.clearAll.hidden = !(state.constraints || []).length;
       const selTactic = sel && sel.kind === 'tactic';
       e.playBtn.hidden = !selTactic;
       if (!selTactic && this._playing) this.player.stop();

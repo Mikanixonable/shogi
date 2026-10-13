@@ -2,23 +2,43 @@
    「墨と余白」: 面を増やさず、罫線・破線・記号（◎/△/→要約）で状態を示す。
    暫定ドックの2軸バッジの規則はそのままタイルに引き継ぐ（constraint.css の .cr-item と同じ意味） */
 
-/* ===== 上下分割 ===== */
+/* ===== 上下分割（上=相手固定・下=自分固定。面はアコーディオン式に畳める） ===== */
 #pickRail { padding:10px 14px; }              /* 暫定の 16/18 より詰めてタイルを立てる */
 #pickRail .dk { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
 .dk-pane { display:flex; flex-direction:column; min-width:0; min-height:120px; }
-.dk-pane[data-pane="top"] { flex:var(--dock-split, .5) 1 0; }
-.dk-pane[data-pane="bottom"] { flex:calc(1 - var(--dock-split, .5)) 1 0; }
+.dk-pane[data-who="opp"]:not([data-closed="true"]) { flex:var(--dock-split, .5) 1 0; }
+.dk-pane[data-who="me"]:not([data-closed="true"])  { flex:calc(1 - var(--dock-split, .5)) 1 0; }
+/* 片方だけ開いているときは残りの高さを全部使う（split は2面とも開いている時だけ効く） */
+.dk:has(.dk-pane[data-who="me"][data-closed="true"]) .dk-pane[data-who="opp"]:not([data-closed="true"]),
+.dk-pane[data-who="opp"][data-closed="true"] ~ .dk-pane[data-who="me"]:not([data-closed="true"]) { flex:1 1 0; }
+/* 畳んだ面・空の面（相手なし）はヘッダだけ残す。開いた面が残りの高さを全部使う */
+.dk-pane[data-closed="true"] { flex:none; min-height:0; }
+.dk-pane[data-closed="true"] .dk-tab,
+.dk-pane[data-closed="true"] .dk-strategy,
+.dk-pane[data-closed="true"] .dk-body { display:none; }
 
-.dk-pane-h { flex:none; display:flex; align-items:center; gap:4px 14px; flex-wrap:wrap; padding-bottom:5px; }
-.dk-who button, .dk-tab button { padding:3px 9px; font-size:12px; }
-.dk-tools { margin-left:auto; display:inline-flex; align-items:center; gap:12px; }
+.dk-pane-h { flex:none; display:flex; align-items:center; gap:4px 10px; flex-wrap:wrap; padding-bottom:5px; }
+.dk-fold { display:grid; place-items:center; width:20px; height:20px; padding:0; border:1px solid var(--line);
+           background:none; color:var(--muted); cursor:pointer; }
+.dk-fold .caret { display:block; width:0; height:0; border:4px solid transparent; border-top-color:currentColor;
+                  transition:transform .2s var(--ease); }
+.dk-fold[aria-expanded="false"] .caret { transform:rotate(-90deg); }
+.dk-fold:hover { color:var(--fg); border-color:var(--line-2); }
+.dk-fold:disabled { opacity:.4; cursor:default; }
+.dk-who-l { font:600 11px/1 var(--font-d); letter-spacing:.18em; color:var(--muted); }
+.dk-pane[data-who="opp"] .dk-who-l { color:var(--gote-ink); }
+.dk-tab { margin-left:auto; }
+.dk-tab button { padding:3px 9px; font-size:12px; }
+.dk-addopp { margin-left:auto; border:1px dashed var(--line-2); background:none; padding:4px 12px;
+             font-size:11.5px; color:var(--fg); cursor:pointer; letter-spacing:.05em; }
+.dk-addopp:hover { border-color:var(--accent); color:var(--accent); }
 .dk-clear { border:1px solid var(--line); background:none; padding:2px 9px; font-size:11px;
             color:var(--muted); cursor:pointer; letter-spacing:.06em; }
 .dk-clear:hover { color:var(--bad); border-color:var(--bad); }
+.dk-clear[hidden], .dk-addopp[hidden] { display:none; }
 .dk-strategy { flex:none; margin-bottom:5px; }
 .dk-body { flex:1 1 auto; min-height:0; overflow:auto; padding-right:3px; outline-offset:-1px; }
 .dk-view { display:flex; flex-direction:column; gap:12px; padding-bottom:2px; }
-.dk-empty { margin:0 0 2px; font-size:11.5px; color:var(--muted); }
 
 /* ===== スプリッタ（role=separator。罫線＋握りの2本線） ===== */
 .dk-sep { flex:none; position:relative; height:10px; margin:1px -4px; cursor:row-resize; touch-action:none; user-select:none; }
@@ -113,13 +133,13 @@
 .dk-card .thumb svg { width:100%; height:auto; display:block; }
 .dk-card .nm { font-size:10.5px; line-height:1.25; text-align:center; letter-spacing:.02em; }
 
-/* ===== narrow: 上下分割をやめ、タブ切替の1面にする（§4-2末） ===== */
+/* ===== narrow: 上下分割の比率はやめ、2面を内容の高さで縦に並べる ===== */
 @media (max-width:980px) {
   /* ページ全体でスクロールしドックの高さは内容次第: basis:0 の grow 分割だと高さが潰れるので
-     面は内容の高さを取る（split は使わない） */
+     面は内容の高さを取る（split は使わない）。畳みはそのまま効く */
   #pickRail .dk { flex:none; display:block; }
   .dk-pane { display:block; min-height:0; }
-  .dk-pane[data-pane="bottom"], .dk-sep { display:none; }
+  .dk-sep { display:none; }
   .dk-body { overflow:visible; }
   .dk-cards { grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); }
 }

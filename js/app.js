@@ -25,7 +25,7 @@
 
   const repo = new K.Repository(DATA);
 
-  const DOCK_DEFAULT = { split: 0.5, top: { who: 'opp', tab: 'tactic' }, bottom: { who: 'me', tab: 'castle' } };
+  const DOCK_DEFAULT = { split: 0.5, opp: { tab: 'tactic', open: true }, me: { tab: 'castle', open: true } };
 
   const store = new K.Store(
     {
@@ -116,19 +116,20 @@
       (Array.isArray(st.constraints) ? st.constraints : []).filter(valid),
       { type: 'remove' },
     ).list;
-    // dock: 形だけ整える（UI は U4 が作る）
+    // dock: 上=相手・下=自分の固定2面（面ごとに tab と開閉）。旧 {top,bottom}.{who,tab} は tab だけ引き継ぐ
     const dk = st.dock && typeof st.dock === 'object' ? st.dock : {};
-    const pane = (p, fb) => {
+    const dkPane = (p, oldP, fb) => {
       p = p && typeof p === 'object' ? p : {};
+      const tab = p.tab || (oldP && oldP.tab);
       return {
-        who: p.who === 'me' || p.who === 'opp' ? p.who : fb.who,
-        tab: ['strategy', 'tactic', 'castle'].includes(p.tab) ? p.tab : fb.tab,
+        tab: tab === 'tactic' || tab === 'castle' ? tab : fb.tab,
+        open: p.open !== false,
       };
     };
     st.dock = {
       split: typeof dk.split === 'number' ? Math.min(.8, Math.max(.2, dk.split)) : DOCK_DEFAULT.split,
-      top: pane(dk.top, DOCK_DEFAULT.top),
-      bottom: pane(dk.bottom, DOCK_DEFAULT.bottom),
+      opp: dkPane(dk.opp, dk.top, DOCK_DEFAULT.opp),
+      me: dkPane(dk.me, dk.bottom, DOCK_DEFAULT.me),
     };
     // selected: 'who.kind' 形式。相手側を指しているのに相手の制約が無いときは握り直す
     if (!/^(me|opp)\.(strategy|tactic|castle)$/.test(st.selected || '')) st.selected = null;
@@ -161,10 +162,13 @@
     board: new K.ConstraintMode({
       ...common,
       els: {
-        bar: $('constraintBar'), stageH: $('stageH'),
-        title: $('title'), titleWrap: $('ttl'), reading: $('reading'), setup: $('setup'),
-        legend: $('legend'), hand: $('hand'),
+        stage: $('stageMain'), bandOpp: $('bandOpp'), bandMe: $('bandMe'),
+        barOpp: $('cbarOpp'), barMe: $('cbarMe'),
+        nameOpp: $('nameOpp'), subOpp: $('subOpp'), nameMe: $('nameMe'), subMe: $('subMe'),
+        stageH: $('stageH'),
+        legend: $('legend'), handOpp: $('handOpp'), handMe: $('handMe'),
         threatWrap: $('threatWrap'), threatSw: $('threatSw'), playBtn: $('playBtn'),
+        clearOpp: $('clearOpp'), clearMe: $('clearMe'), clearAll: $('clearAll'),
         ptable: $('ptable'), boardwrap: $('boardwrap'), rail: $('pickRail'),
         detail: $('detail'),
       },

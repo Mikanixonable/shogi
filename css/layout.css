@@ -71,11 +71,12 @@ body[data-view="cluster"] .view-pane[data-view~="cluster"] { display:contents; }
 /* 親のグリッド全体を使う画面（一覧・解説・分類マップ）は箱として全行にまたがる */
 body[data-view="board"] .view-pane.pane-fill[data-view~="board"],
 body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:flex; flex-direction:column; grid-row:1 / -1; min-height:0; overflow:auto; }
-/* 中央: 見出し → 制約バー → 盤 → 足元の順を、画面ごとのパネルに分かれていても保つ */
-.stage .stage-h { order:0; }
-.stage .cbar { order:1; }
-.stage .boardarea { order:2; }
+/* 中央: 相手の帯 → 盤 → 自分の帯 → 足元。相手がいないときは自分の帯が盤の上に回る（従来どおり） */
+.stage .sideband[data-side="opp"] { order:0; }
+.stage .boardarea { order:1; }
+.stage .sideband[data-side="me"] { order:2; }
 .stage .stage-f { order:3; }
+.stage[data-opp="false"] .sideband[data-side="me"] { order:0; }
 
 /* ===== rail: 囲いを選ぶ ===== */
 .rail { display:grid; grid-template-rows:auto auto auto minmax(0,1fr); padding:16px 18px; gap:10px; }
@@ -104,19 +105,38 @@ body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:f
 .card[aria-current="true"] .nm { font-weight:600; color:var(--fg); }
 
 /* ===== stage: 盤を見る ===== */
-.stage { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto; padding:18px 26px 14px; gap:10px; }
-.stage-h { display:flex; align-items:flex-end; gap:12px; }
-.stage-h .ttl { margin-right:auto; min-width:0; }
-.stage-h h2 { margin:0; font:800 26px/1.3 var(--font-d); letter-spacing:.12em; }
-.stage-h .rd { font-size:12px; color:var(--muted); letter-spacing:.1em; }
-.stage-h .setup { margin-left:12px; padding-left:12px; border-left:1px solid var(--line-2); letter-spacing:.02em; }
+.stage { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; padding:18px 26px 14px; gap:10px; }
+/* 状態の帯（sideband）: 盤の上=相手・下=自分。左に側の印、その右に状態の名前 */
+.sideband { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.sideband[hidden] { display:none; }
+.sband-h { display:flex; align-items:flex-end; gap:12px; min-height:26px; flex-wrap:wrap; row-gap:5px; }
+.sband-h .who { flex:none; font:600 10.5px/1 var(--font-d); letter-spacing:.18em; color:var(--muted);
+                border:1px solid var(--line); padding:4px 8px 3px; }
+.sband-h .who small { font-size:9px; letter-spacing:.08em; margin-left:5px; opacity:.75; }
+.sideband[data-side="opp"] .who { color:var(--gote-ink); }
+.sideband[data-sel="true"] .who { color:var(--accent); border-color:var(--accent); }
+.sband-h .ttl { margin-right:auto; min-width:0; display:flex; align-items:baseline; gap:11px; }
+.sband-name { margin:0; font:800 21px/1.3 var(--font-d); letter-spacing:.12em; }
+.sband-h .rd { font-size:11.5px; color:var(--muted); letter-spacing:.1em; min-width:0;
+               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sband-clear { flex:none; border:1px solid var(--line); background:none; padding:3px 10px; font-size:11px;
+               color:var(--muted); cursor:pointer; letter-spacing:.06em; transition:color .2s, border-color .2s; }
+.sband-clear:hover { color:var(--bad); border-color:var(--bad); }
+.sband-clear[hidden] { display:none; }
 .ttl.swap { animation:swap .45s var(--ease); }
 @keyframes swap { from { opacity:0; transform:translateY(4px); } }
+/* 持ち駒: 伝統的な記法で盤の左右に立てる（相手=左・自分=右）。無いときは畳む */
+.handcol { writing-mode:vertical-rl; text-orientation:upright; font:600 12.5px/1.1 var(--font-d);
+           letter-spacing:.16em; color:var(--muted); display:flex; align-items:center;
+           padding:6px 3px; user-select:none; }
+.handcol:empty { display:none; }
+/* 持ち駒の分だけ盤を細くする（boardwrap の幅式から手駒列の幅を引く） */
+.boardarea:has(> .handcol:not(:empty)) .boardwrap {
+  width:min(calc(100cqw - 44px), calc((100cqh - 22px - var(--ptable-h)) * 9 / 9.6 + 22px));
+}
 .stage-f { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; color:var(--muted); min-height:20px; }
 .stage-f .legend { display:flex; align-items:center; gap:7px; }
 .stage-f .legend i { width:10px; height:10px; display:inline-block; }
-.stage-f .hand { padding:2px 10px; border:1px solid var(--line); }
-.stage-f .hand:empty { display:none; }
 
 /* ===== detail: 解説を読む（タブなし・一続き） ===== */
 .detail { padding:16px 22px 18px; display:grid; grid-template-rows:minmax(0,1fr); gap:14px; }
@@ -210,8 +230,8 @@ sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underlin
   .detail .vert { display:none; }
   .rail-h .keys { display:none; } /* キーボードの案内は画面幅を使わないので出さない */
   .cards { grid-template-columns:none; grid-template-rows:none; grid-auto-flow:column; grid-auto-columns:108px; grid-auto-rows:116px; overflow-x:auto; overflow-y:hidden; padding-bottom:4px; }
-  .stage-h h2 { font-size:22px; }
-  .stage-h .rd { white-space:normal; }
+  .sband-name { font-size:19px; }
+  .sband-h .rd { white-space:normal; }
   /* タップしやすい高さ */
   .fchip { padding:5px 11px; }
   .tr-item { padding:8px 12px; }
