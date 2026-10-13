@@ -125,19 +125,18 @@ window.Kakoi = window.Kakoi || {};
       if (next) this.selectTactic(next.id);
     }
 
-    /** 「対局図で開く」: この戦法と選んだ囲いを自分側にセットして対局図へ移る（計画書 §6 の導線） */
+    /** 「対局図で開く」: この戦法と選んだ囲いを自分側の制約にして対局図へ移る（計画書 §3 の導線。
+        strategy → tactic → castle の順に apply し、連動解決は apply に任せる） */
     _openMatchup(castleId) {
       if (!this.repo.has(castleId)) return;
       const tactic = this._current();
       const fam = this.repo.tacticFamilies().find(f => f.id === tactic.family);
       const s = this.store.state;
-      this.store.set({
-        view: 'matchup',
-        matchup: {
-          ...s.matchup,
-          me: { strategy: fam ? fam.side : 'ibisha', tacticId: tactic.id, castleId, pick: ['tactic', 'castle'] },
-        },
-      });
+      let list = s.constraints || [];
+      for (const [kind, id] of [['strategy', fam ? fam.side : 'ibisha'], ['tactic', tactic.id], ['castle', castleId]]) {
+        list = K.constraints.apply(list, { type: 'set', who: 'me', kind, id }).list;
+      }
+      this.store.set({ view: 'board', constraints: list, selected: 'me.tactic', attackId: null });
     }
 
     /** 相性のよい囲いへ移る。戦型の違う囲いは、系統の絞り込みが合わなければ解除して選ぶ */
