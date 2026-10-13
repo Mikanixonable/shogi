@@ -1,4 +1,4 @@
-// 制約バー: 盤の上下に並ぶ制約チップ。1チップ=1スロット（戦法→囲いの固定順。U5）。
+// 制約バー: 盤の上下に並ぶ導出戦型・囲い・戦法のチップ。
 // who 指定のバーはその側のチップだけを描く（盤の上=相手用・下=自分用）。
 // 明示した層はいつでも×で外せる（外すと戦略既定値の既定チップに変わる）。
 // 既定値で補った層（implied）は破線で薄く、×は付けない。
@@ -8,19 +8,18 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { LAYER_JA: KIND_JA, KINDS, FIELD, findTactic, findCastle, castleFamilyOf } = Kakoi.lookup;
+  const { FIELD, findTactic, findCastle, tacticFamilyOf, castleSides, strategyLabel } = Kakoi.lookup;
   const { plain } = Kakoi.html;
-  const CHIP_SEL = '.cchip-b';
-  const descriptionOf = (kind, id) => {
-    const item = kind === 'tactic' ? findTactic(id) : findCastle(id);
-    if (!item) return '';
-    const family = kind === 'castle' ? castleFamilyOf(item) : null;
-    const summary = kind === 'castle'
-      ? [item.reading, family && family.name, family && family.shape].filter(Boolean).join(' · ')
-      : plain(item.desc || '').replace(/\s+/g, ' ').trim().split(/[。！？]/u)[0];
-    const text = summary.trim();
-    const chars = [...text];
-    return chars.length > 40 ? `${chars.slice(0, 39).join('')}…` : text;
+  const CHIP_LABEL = { strategy: '戦型', castle: '囲い', tactic: '戦法' };
+  const CHIP_SEL = '.cchip-b:not([data-kind="strategy"])';
+  const pieceStrategy = (kind, id, fallback) => {
+    if (kind === 'tactic') {
+      const family = tacticFamilyOf(findTactic(id));
+      return family ? family.side : fallback;
+    }
+    const castle = findCastle(id);
+    const sides = castle ? castleSides(castle) : [];
+    return sides.includes(fallback) ? fallback : sides[0] || fallback;
   };
 
   class ConstraintBar {
@@ -40,13 +39,13 @@ window.Kakoi = window.Kakoi || {};
         const x = e.target.closest('.cchip-x');
         if (x) { onRemove(x.dataset.who, x.dataset.kind); return; }
         const b = e.target.closest('.cchip-b');
-        if (b) onSelect(b.dataset.who, b.dataset.kind);
+        if (b && b.dataset.kind !== 'strategy') onSelect(b.dataset.who, b.dataset.kind);
       });
       // Delete/Backspace でそのチップの制約を外す（U3）。矢印は roving がフォーカスだけを動かす
       el.addEventListener('keydown', e => {
         if (e.key !== 'Delete' && e.key !== 'Backspace') return;
         const b = e.target.closest('.cchip-b');
-        if (!b || !b.parentElement || b.parentElement.dataset.implied === 'true') return;
+        if (!b || b.dataset.kind === 'strategy' || !b.parentElement || b.parentElement.dataset.implied === 'true') return;
         e.preventDefault();
         onRemove(b.dataset.who, b.dataset.kind);
       });
@@ -62,23 +61,31 @@ window.Kakoi = window.Kakoi || {};
      *   ng: この側の両立しない明示層 {tactic?:Array, castle?:Array}（理由は {code,text}）
      */
     render({ st, ng, selected, labels, nameOf }) {
-      // 表示は戦法→囲いの固定順（U5）。明示した層は×つき、既定値で補った層（implied）は破線で×なし
-      const want = [];
+      // 戦型→囲い→戦法の順に並べ、既定値で補った層は破線で示す
       const who = this.who;
-      for (const kind of st ? KINDS : []) {
-        const id = st[FIELD[kind]];
-        if (id == null) continue;
-        const implied = !!st.implied[kind];
+      const want = [];
+      if (st) {
+        const strategy = st.strategy;
         want.push({
-          key: `${who}.${kind}`, who, kind, id,
-          name: nameOf(who, kind, id),
-          description: descriptionOf(kind, id),
-          sel: selected === `${who}.${kind}`,
-          implied,
-          removable: !implied,    // 明示した層はいつでも外せる（U5）
-          ng: !implied && ng && ng[kind] ? ng[kind].map(r => plain(r.text)).join('／') : '',
+          key: `${who}.strategy`, who, kind: 'strategy', id: strategy,
+          name: strategyLabel(strategy), strategy, sel: false, implied: false, removable: false, ng: '',
         });
+        for (const kind of ['castle', 'tactic']) {
+          const id = st[FIELD[kind]];
+          if (id == null) continue;
+          const implied = !!st.implied[kind];
+          want.push({
+            key: `${who}.${kind}`, who, kind, id,
+            name: nameOf(who, kind, id),
+            strategy: pieceStrategy(kind, id, strategy),
+            sel: selected === `${who}.${kind}`,
+            implied,
+            removable: !implied,    // 明示した層はいつでも外せる（U5）
+            ng: !implied && ng && ng[kind] ? ng[kind].map(r => plain(r.text)).join('／') : '',
+          });
+        }
       }
+      want.forEach((w, i) => { w.position = i === 0 ? 'first' : i === want.length - 1 ? 'last' : 'middle'; });
       this._syncChips(want);
 
       const labWant = (labels || []).map(l => ({ key: l.id, ...l }));
@@ -94,7 +101,7 @@ window.Kakoi = window.Kakoi || {};
         seen.add(w.key);
         let c = this._nodes.get(w.key);
         if (!c) {
-          c = this._buildChip();
+          c = this._buildChip(w.kind);
           this._nodes.set(w.key, c);
         }
         this._applyChip(c, w);
@@ -129,27 +136,19 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    _buildChip() {
+    _buildChip(kind) {
       const c = document.createElement('span');
       c.className = 'cchip';
-      const b = document.createElement('button');
-      b.type = 'button';
+      const b = document.createElement(kind === 'strategy' ? 'span' : 'button');
+      if (kind !== 'strategy') b.type = 'button';
       b.className = 'cchip-b';
       const type = document.createElement('span');
       type.className = 'cchip-type';
-      const copy = document.createElement('span');
-      copy.className = 'cchip-copy';
-      const nameLine = document.createElement('span');
-      nameLine.className = 'cchip-name-line';
       const ng = document.createElement('i');
       ng.className = 'cchip-ng';
       const nm = document.createElement('span');
       nm.className = 'cchip-nm';
-      const desc = document.createElement('span');
-      desc.className = 'cchip-desc';
-      nameLine.append(nm, ng);
-      copy.append(nameLine, desc);
-      b.append(type, copy);
+      b.append(type, ng, nm);
       c.append(b);
       return c;
     }
@@ -173,7 +172,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _applyChip(c, w) {
-      const sig = `${w.who}|${w.kind}|${w.id}|${w.name}|${w.description}|${w.implied}|${w.sel}|${w.removable}|${w.ng}`;
+      const sig = `${w.who}|${w.kind}|${w.id}|${w.name}|${w.strategy}|${w.position}|${w.implied}|${w.sel}|${w.removable}|${w.ng}`;
       if (c._sig === sig) return;
       c._sig = sig;
       c.dataset.who = w.who;
@@ -181,17 +180,19 @@ window.Kakoi = window.Kakoi || {};
       c.dataset.implied = w.implied ? 'true' : 'false';
       c.dataset.sel = w.sel ? 'true' : 'false';
       c.dataset.ng = w.ng ? 'true' : 'false';
+      c.dataset.strategy = w.strategy;
+      c.dataset.position = w.position;
       const b = c.querySelector('.cchip-b');
       b.dataset.who = w.who;
       b.dataset.kind = w.kind;
-      const base = `${w.who === 'me' ? '自分' : '相手'}の${KIND_JA[w.kind]}${w.implied ? '（既定値）' : ''}`;
+      const base = `${w.who === 'me' ? '自分' : '相手'}の${CHIP_LABEL[w.kind]}${w.implied ? '（既定値）' : ''}`;
       const title = w.ng ? `${base}。両立しない: ${w.ng}` : base;
       b.title = w.ng ? title : '';
-      b.setAttribute('aria-label', `${base}「${w.name}」。${w.description}${w.ng ? ` 両立しない: ${w.ng}` : ''}`);
-      b.querySelector('.cchip-type').textContent = KIND_JA[w.kind];
+      if (w.kind === 'strategy') b.removeAttribute('aria-label');
+      else b.setAttribute('aria-label', `${base}「${w.name}」${w.ng ? `。両立しない: ${w.ng}` : ''}`);
+      b.querySelector('.cchip-type').textContent = CHIP_LABEL[w.kind];
       b.querySelector('.cchip-ng').textContent = w.ng ? '✕' : '';
       b.querySelector('.cchip-nm').textContent = w.name;
-      b.querySelector('.cchip-desc').textContent = w.description;
       this._xButton(c, w.removable, `${base}「${w.name}」`);
       const x = c.querySelector('.cchip-x');
       if (x) { x.dataset.who = w.who; x.dataset.kind = w.kind; }

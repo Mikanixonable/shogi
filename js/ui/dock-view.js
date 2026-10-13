@@ -14,7 +14,7 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { VS_MARK, findTactic, KINDS, FIELD } = K.lookup;
   const { esc } = K.html;
-  const STRATEGY_IDS = ['ibisha', 'furibisha'];
+  const STRATEGY_IDS = ['furibisha', 'ibisha'];
   const castlePos = c => K.Position.fromCastle(c, K.SETUPS[c.setup]);
   // 一覧の並べ方は表示の好み（盤面の状態ではない）なのでここで localStorage に持つ
   const PREF = 'shogi-castle:dock';
@@ -50,31 +50,27 @@ window.Kakoi = window.Kakoi || {};
       this.sort = K.dockGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
       el.innerHTML =
         `<div class="dk">` +
-        `<div class="dk-top">` +
-        `<div class="dk-title"><b></b><small></small></div>` +
-        // 凡例（U6）: ✕◎△点線の読み方を開く小さな ? ボタン
-        `<button type="button" class="dk-legend" aria-expanded="false" ` +
-        `aria-label="記号の見方" title="記号の見方">?</button></div>` +
-        `<section class="dk-pane">` +
-        `<header class="dk-pane-h">` +
-        // 層: 塗りの大きな2択（アイコン付き）
-        `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
-        `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
-        `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
-        `<div class="dk-filter-row">` +
-        // 戦略: 「居／振」の丸印を添えた朱のピル
-        `<div class="seg dk-strategy" role="group" aria-label="戦略で絞り込む">` +
-        STRATEGY_IDS.map(id => `<button type="button" data-value="${id}"><b aria-hidden="true">${STRAT_MARK[id]}</b>` +
-          `${esc(K.STRATEGIES[id].label)}</button>`).join('') +
-        `</div>` +
-        // 並べ方（囲いのみ）: 戦略ピルの横にアイコンを並べ、開かずに選べるようにする
-        `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
-        K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
-          `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
-        `</div></div>` +
-        `</div>` +
-        `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
-        `</section></div>` +
+         `<div class="dk-top">` +
+         `<div class="dk-title"><b></b><small></small></div>` +
+         // 凡例（U6）: ✕◎△点線の読み方を開く小さな ? ボタン
+         `<button type="button" class="dk-legend" aria-expanded="false" ` +
+         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
+         `<div class="dk-filter-row">` +
+         `<div class="seg dk-strategy" role="group" aria-label="戦型（振り飛車／居飛車）">` +
+         STRATEGY_IDS.map(id => `<button type="button" data-value="${id}"><b aria-hidden="true">${STRAT_MARK[id]}</b>` +
+           `${esc(K.STRATEGIES[id].label)}</button>`).join('') +
+         `</div></div>` +
+         `<section class="dk-pane">` +
+         `<header class="dk-pane-h">` +
+         `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
+         `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
+         `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
+         `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
+         K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
+           `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
+         `</div></div>` +
+         `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
+         `</section></div>` +
         // 駒の見出し（バインダー）: 上=相手・下=自分。相手の駒の角の × で相手の表示を OFF にする
         `<div class="dk-binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">` +
         `<span class="dk-pc-ghost" aria-hidden="true"></span>` +
@@ -256,7 +252,7 @@ window.Kakoi = window.Kakoi || {};
       const clearHost = document.querySelector(`#stageMain .sideband[data-side="${who}"] .cbar`);
       if (clearHost && this.clearBtn.parentElement !== clearHost) clearHost.append(this.clearBtn);
       this.clearBtn.hidden = KINDS.every(k => side[k] == null);
-      this.clearBtn.title = `${who === 'opp' ? '相手' : '自分'}の戦法・囲いをリセット`;
+      this.clearBtn.title = `${who === 'opp' ? '相手' : '自分'}の囲い・戦法をリセット`;
       this.clearBtn.setAttribute('aria-label', this.clearBtn.title);
 
       // 絞り込みは、導出した戦略が変わったとき（戦法を選んだ・ハッシュで開いた）にそれへ合わせる

@@ -87,7 +87,8 @@ const snap = page => page.evaluate(() => {
         mark: (c.querySelector('.cchip-ng') || {}).textContent || '', text: c.textContent.trim(),
         name: (c.querySelector('.cchip-nm') || {}).textContent || '',
         type: (c.querySelector('.cchip-type') || {}).textContent || '',
-        description: (c.querySelector('.cchip-desc') || {}).textContent || '' })),
+        remove: !!c.querySelector('.cchip-x'),
+        hasDescription: !!c.querySelector('.cchip-desc') })),
     gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
     canvas: !!document.querySelector('#board canvas'),
     threats: document.querySelectorAll('#board .ov-threat').length,
@@ -131,6 +132,13 @@ async function sweepBoard(page, expect) {
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
   r.layerTabs = await page.$$eval(`${DOCK} .dk-tab button`, els => els.map(el => el.textContent.trim()));
+  r.strategyOrder = await page.$$eval(`${DOCK} .dk-strategy button`, els => els.map(el => el.dataset.value));
+  r.controlOrder = await page.evaluate(() => {
+    const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
+    const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
+    const sort = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
+    return strategy.bottom < tabs.top && tabs.bottom <= sort.top;
+  });
   r.binderStyle = await page.evaluate(() => {
     const binder = document.querySelector('#pickRail .dk-binder').getBoundingClientRect();
     const opp = document.querySelector('#pickRail .dk-pc[data-who="opp"]').getBoundingClientRect();
@@ -138,7 +146,7 @@ async function sweepBoard(page, expect) {
     const ghost = document.querySelector('#pickRail .dk-pc-ghost');
     return getComputedStyle(ghost).display !== 'none'
       && Math.abs(opp.top - binder.top - 30) < 1
-      && Math.abs(binder.bottom - me.bottom - 30) < 1
+      && Math.abs(me.top - opp.bottom) < 1
       && Math.round(me.width) === 46;
   });
   r.oppTabEnabled = await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled);
@@ -176,7 +184,7 @@ async function sweepBoard(page, expect) {
   r.rects.push(r.t1.rect);
   r.added = !!r.t1.slots.me.castle && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い')
     && r.t1.chips.some(c => c.who === 'me' && c.kind === 'castle' && !c.implied
-      && c.type === '囲い' && c.name.length > 0 && c.description.length > 0);
+      && c.type === '囲い' && c.name.length > 0 && c.remove && !c.hasDescription);
   r.resetInMeBar = await page.evaluate(() => {
     const btn = document.querySelector('#cbarMe .dk-clear');
     return !!btn && btn.textContent === 'リセット' && !document.querySelector('#pickRail .dk-clear');
@@ -207,6 +215,19 @@ async function sweepBoard(page, expect) {
   r.t2 = await snap(page);
   r.rects.push(r.t2.rect);
   r.tacticSel = !!r.t2.slots.me.tactic && r.t2.selected === 'me.tactic' && r.t2.detailKind.includes('戦法');
+  r.horizontalChips = await page.evaluate(() => {
+    const host = document.querySelector('#cbarMe .cbar-x');
+    const chips = [...host.querySelectorAll('.cchip:not(.cchip-label)')];
+    return getComputedStyle(host).flexWrap === 'nowrap'
+      && chips.map(c => c.dataset.kind).join(',') === 'strategy,castle,tactic'
+      && chips.map(c => c.dataset.position).join(',') === 'first,middle,last'
+      && chips.every(c => ['ibisha', 'furibisha'].includes(c.dataset.strategy))
+      && chips.every(c => getComputedStyle(c, '::before').clipPath.includes('polygon'))
+      && chips.slice(0, 2).every(c => c.dataset.strategy === 'ibisha'
+        ? getComputedStyle(c, '::after').clipPath.includes('polygon')
+        : parseFloat(getComputedStyle(c, '::after').width) === 15)
+      && Math.abs(chips[0].getBoundingClientRect().top - chips[2].getBoundingClientRect().top) < 1;
+  });
   // 別のタイルを押す → 自分の戦法が変わる（囲いは自動では変わらない）
   const tA = r.t2.slots.me.tactic, cA = r.t2.slots.me.castle;
   await page.evaluate(() => {
@@ -266,15 +287,17 @@ async function sweepBoard(page, expect) {
     const fams = [...document.querySelectorAll('#pickRail .dk-fam:not([hidden])')];
     const sorts = [...document.querySelectorAll('#pickRail .dk-sort-seg button')];
     const sortIds = sorts.map(button => button.dataset.value);
-    const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
-    const sortBar = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
+      const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
+      const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
+      const sortBar = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
     const cards = document.querySelector('#pickRail .dk-cards');
     const thumb = document.querySelector('#pickRail .dk-card .thumb').getBoundingClientRect();
     return fams.length > 0 && fams.every(s => s.style.getPropertyValue('--fam').startsWith('var(--f-')
         && getComputedStyle(s).borderLeftWidth === '4px')
       && sorts.length === Kakoi.dockGrids.CASTLE_SORTS.length && sorts.every(b => b.offsetWidth > 0)
       && !sortIds.includes('wide') && !sortIds.includes('quick')
-      && Math.abs(strategy.top + strategy.height / 2 - sortBar.top - sortBar.height / 2) < 2
+        && strategy.bottom < tabs.top
+        && tabs.bottom <= sortBar.top
       && getComputedStyle(cards).gridTemplateColumns.split(' ').length === 3
       && Math.round(thumb.height) === 50
       && !document.querySelector('#pickRail .dk-sort select');
@@ -425,7 +448,7 @@ async function sweepBoard(page, expect) {
   r.focusBoard = await page.evaluate(() => document.activeElement && document.activeElement.id === 'board');
   await mark();
   //   制約チップでは矢印は roving がフォーカスだけを動かす（選択は変えず、body にも逃がさない）
-  const chip = await page.$('#cbarMe .cchip-b');
+  const chip = await page.$('#cbarMe .cchip-b:not([data-kind="strategy"])');
   if (chip) {
     await chip.focus();
     await page.keyboard.press('ArrowRight'); await wait(200);
@@ -574,6 +597,32 @@ async function checkFlat(page) {
   });
 }
 
+async function checkRookArrows(browser, url, errs) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  watch(page, errs);
+  await page.addInitScript(() => { try { localStorage.clear(); } catch {} });
+  await page.goto(`${url}&flat`, { waitUntil: 'networkidle' });
+  await page.click(`${DOCK} .dk-strategy button[data-value="furibisha"]`);
+  await page.click(`${DOCK} .dk-tab button[data-value="tactic"]`);
+  await page.click(`${DOCK} .dk-tile[data-id="mukaibisha"]`);
+  await page.click(`${DOCK} .dk-pc[data-who="opp"]`);
+  await page.click(`${DOCK} .dk-strategy button[data-value="furibisha"]`);
+  await page.click(`${DOCK} .dk-tile[data-id="mukaibisha"]`);
+  await wait(300);
+  const result = await page.evaluate(() => {
+    const routes = [...document.querySelectorAll('#board .rt-g .rt')];
+    const me = routes.find(el => el.classList.contains('rt-ink'));
+    const opp = routes.find(el => el.classList.contains('rt-bad'));
+    const endpoint = route => route && route.getAttribute('points').split(' ').at(-1).split(',').map(Number);
+    const meEnd = endpoint(me), oppEnd = endpoint(opp);
+    return routes.length === 2 && meEnd && oppEnd
+      && Math.abs(Math.hypot(meEnd[0] - 1.5, meEnd[1] - 7.5) - .42) < .01
+      && Math.abs(Math.hypot(oppEnd[0] - 7.5, oppEnd[1] - 1.5) - .42) < .01;
+  });
+  await page.close();
+  return result;
+}
+
 async function main() {
   fs.mkdirSync(SHOTS, { recursive: true });
   const { srv, port } = await serve();
@@ -583,6 +632,8 @@ async function main() {
     const base = `http://127.0.0.1:${port}/index.html`;
     const baseDebug = `${base}?debug`;
     if (!SHOTS_ONLY) {
+      ok(await checkRookArrows(browser, baseDebug, errs),
+        '飛車を主役とする戦法にも先手・後手の矢印を表示する');
       // ---- 巡回（1440px ライト。?debug で window.__kakoi を立てて状態を見る） ----
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
       watch(page, errs);
@@ -602,9 +653,11 @@ async function main() {
       ok(b.panes === 1 && b.oppTabEnabled, '左ドックは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
       ok(b.binderStyle, 'バインダーは上下端に配置し、相手 OFF 時は点線の駒影を残す', '');
       ok(b.layerTabs.join(',') === '囲い,戦法', '左ドックのタブ順は囲い→戦法', b.layerTabs.join(' → '));
+      ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左ドックの戦型トグルは振り飛車→居飛車', b.strategyOrder.join(' → '));
+      ok(b.controlOrder, '戦型、囲い／戦法、囲いソートの順に縦配置', '');
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
       ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
-      ok(b.famColors, 'A案: 系統色の帯と3列タイル、戦略・並べ方を同じ行に表示', '');
+      ok(b.famColors, 'A案: 系統色の帯と3列タイル、戦略と並べ方を別段に表示', '');
       ok(b.basicStyle, '基本の囲いは朱の印で識別され、絞り込みトグルは無い', '');
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
@@ -623,6 +676,7 @@ async function main() {
       ok(b.collapse, '系統ブロックを折りたためる', '');
       ok(b.tabSwitch, '面のタブ切替（囲い→戦法）で選択も戦法になる', '');
       ok(b.added, '囲いを選ぶ→スロットとチップが増え、詳細が囲いになる', JSON.stringify(b.t1 && b.t1.slots));
+      ok(b.horizontalChips, '制約カプセルは戦型→囲い→戦法の順で連結', '');
       ok(b.resetInMeBar, '「リセット」は自分の制約バー右端に表示される', '');
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
