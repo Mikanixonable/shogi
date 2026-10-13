@@ -1,2 +1,21 @@
 node_modules/
 tools/shots/
+
+# macOS
+.DS_Store
+
+# 使い捨てスクリプト（_ 接頭辞。例: tools/_measure-tiles.js）
+tools/_*
+
+# 環境変数・シークレット（現状未使用だが混入防止）
+.env
+.env.*
+!.env.example
+
+# ログ・デバッグ出力
+*.log
+npm-debug.log*
+
+# エディタ（任意。共有したければ外す）
+.idea/
+.vscode/
