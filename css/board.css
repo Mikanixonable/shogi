@@ -1,23 +1,52 @@
-/* 盤と駒: 本盤・マスの重ね表示（利き・ハイライト）・先手後手の駒・ミニ盤
-   「墨と余白」: 板はフラットな榧の一枚、駒は和紙色の駒面に墨の輪郭線と墨字 */
+/* 盤と駒: 榧の柾目と太刀盛りの線、利き・ハイライト、先手後手の駒・ミニ盤 */
 
 .boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
-/* 盤の外枠: 上に筋ラベル（22px）、下に盤本体。持ち駒列の幅（左右24pxずつ）は
+/* 盤の外枠: 座標ラベルと盤の間に余白を置く。持ち駒列の幅（左右24pxずつ）は
    .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
-.boardwrap { display:grid; position:relative; grid-template-columns:minmax(0,1fr) 22px;
-             grid-template-rows:22px minmax(0,auto);
-             width:min(calc(100cqw - 48px), calc((100cqh - 22px) * 9 / 9.6 + 22px));
+.boardwrap { --coord-h:28px; --coord-w:28px; --coord-gap:8px;
+             --wood-1:#f5d996; --wood-2:#dba85e; --wood-line:rgba(62,37,12,.7);
+             --wood-grain:rgba(96,57,16,.065); --wood-glint:rgba(255,247,218,.3);
+             --wood-glow:rgba(255,250,231,.68); --wood-frame:#a27439; --wood-highlight:rgba(255,246,212,.42);
+             --wood-hoshi:#63431f; --wood-mark:#604522;
+             --piece-1:#f4dda9; --piece-edge:rgba(80,48,15,.72);
+             display:grid; position:relative; grid-template-columns:minmax(0,1fr) var(--coord-w);
+             grid-template-rows:var(--coord-h) minmax(0,auto); gap:var(--coord-gap);
+             width:min(calc(100cqw - 48px),
+               calc((100cqh - var(--coord-h) - var(--coord-gap)) * 9 / 9.6 + var(--coord-w) + var(--coord-gap)));
              transform:translateY(-13px); }
-.flabels { display:grid; grid-template-columns:repeat(9,1fr); font:500 16px var(--font-d); color:var(--muted); text-align:center; align-items:end; padding-bottom:4px; }
-.rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:16px var(--font-d); color:var(--muted); align-items:center; justify-items:center; }
+:root[data-theme="dark"] .boardwrap {
+  --wood-1:#c8a56c; --wood-2:#99703c; --wood-line:rgba(48,30,11,.8);
+  --wood-grain:rgba(55,34,12,.12); --wood-glint:rgba(255,239,195,.18);
+  --wood-glow:rgba(255,241,198,.38); --wood-frame:#76542a; --wood-highlight:rgba(255,239,195,.22);
+  --wood-hoshi:#493015; --wood-mark:#4b351a; --piece-1:#eccd94; --piece-edge:rgba(62,38,15,.84);
+}
+.flabels { display:grid; grid-template-columns:repeat(9,1fr); font:500 16px var(--font-d); color:var(--wood-mark); text-align:center; align-items:end; padding-bottom:4px; }
+.rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:16px var(--font-d); color:var(--wood-mark); align-items:center; justify-items:center; }
 
 .board { position:relative; aspect-ratio:9/9.6; overflow:hidden;
-         background:linear-gradient(170deg,var(--wood-1),var(--wood-2));
-         box-shadow:0 0 0 1px var(--wood-line); }
+         isolation:isolate;
+         background:
+           radial-gradient(circle at 33.333% 33.333%, var(--wood-hoshi) 0 2px, transparent 2.8px),
+           radial-gradient(circle at 66.667% 33.333%, var(--wood-hoshi) 0 2px, transparent 2.8px),
+           radial-gradient(circle at 33.333% 66.667%, var(--wood-hoshi) 0 2px, transparent 2.8px),
+           radial-gradient(circle at 66.667% 66.667%, var(--wood-hoshi) 0 2px, transparent 2.8px),
+           radial-gradient(90% 70% at 30% 14%, var(--wood-glow), transparent 72%),
+           repeating-linear-gradient(90deg, transparent 0 11px, var(--wood-grain) 12px 13px, transparent 14px 31px),
+           repeating-linear-gradient(90deg, transparent 0 38px, var(--wood-glint) 39px 40px, transparent 41px 67px),
+           linear-gradient(170deg,var(--wood-1),var(--wood-2));
+         box-shadow:0 0 0 1px var(--wood-line), 0 0 0 4px var(--wood-frame),
+                    0 0 0 5px var(--wood-line), 0 10px 22px rgba(45,27,7,.28),
+                    inset 0 0 0 1px var(--wood-highlight); }
+.board::before { content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+                 background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='360'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.16 .0035' numOctaves='3' seed='11' result='n'/%3E%3CfeColorMatrix in='n' type='matrix' values='0 0 0 0 .59 0 0 0 0 .36 0 0 0 0 .12 1.6 0 0 0 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='white' filter='url(%23g)'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+                 mix-blend-mode:multiply; opacity:.38; }
+:root[data-theme="dark"] .board::before { opacity:.28; }
 
 .squares { position:absolute; inset:0; display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); }
 
-.sq { position:relative; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line); display:flex; align-items:center; justify-content:center; container-type:size; }
+.sq { position:relative; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line);
+      box-shadow:inset 1px 0 0 var(--wood-highlight), inset 0 1px 0 var(--wood-highlight);
+      display:flex; align-items:center; justify-content:center; container-type:size; }
 .sq:nth-child(9n) { border-right:0; }
 .sq:nth-child(n+73) { border-bottom:0; }
 
@@ -36,13 +65,20 @@
 /* 立体駒レイヤ（既定）: マス DOM と重ね表示 SVG の間に挟む盤全面の canvas。盤は表示専用なので操作は通さない */
 .pieces3d { position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
 
-/* 駒: 墨の輪郭線（i）に和紙色の駒面（i::before）を重ね、字は墨書き。飾りはなし（?flat / WebGL 非対応時の DOM レイヤ用） */
-.pc { width:84%; height:90%; position:relative; z-index:1; filter:drop-shadow(0 1px 0 rgba(60,40,10,.25)); transition:opacity .3s var(--ease); }
+/* 駒: ?flat / WebGL 非対応時の DOM レイヤ。黄楊の木地に柾目と彫り字の陰影を添える */
+.pc { width:84%; height:90%; position:relative; z-index:1;
+      filter:drop-shadow(0 1px 0 rgba(60,40,10,.3)) drop-shadow(0 3px 2px rgba(45,26,7,.18));
+      transition:opacity .3s var(--ease); }
 .pc i { position:absolute; inset:0; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
         background:var(--piece-edge); font-style:normal; }
 .pc i::before { content:""; position:absolute; inset:1px; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
-        background:var(--piece-1); }
-.pc i span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-top:12%; font:700 min(58cqh,60cqw)/1 var(--font-d); color:var(--ink); }
+        background:
+          linear-gradient(145deg, rgba(255,255,255,.42), transparent 48%, rgba(128,83,30,.11)),
+          repeating-linear-gradient(90deg, transparent 0 9px, rgba(132,89,34,.1) 10px 11px, transparent 12px 25px),
+          var(--piece-1); }
+.pc i span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-top:12%;
+            font:700 min(58cqh,60cqw)/1 var(--font-d); color:var(--ink);
+            text-shadow:.8px 1px .7px rgba(48,28,8,.42), -.45px -.45px 0 rgba(255,249,230,.72); }
 .pc.core i span { color:var(--core); }
 .pc.off { opacity:.28; filter:none; }
 .pc.gote { transform:rotate(180deg); }
@@ -51,7 +87,7 @@
 /* ミニ盤（左のカード） */
 .mini-bg { fill:url(#wood); }
 .mini-ln { stroke:var(--wood-line); stroke-width:.35; }
-.mini-pc { font:700 9.6px var(--font-d); fill:var(--ink); text-anchor:middle; dominant-baseline:central; }
+.mini-pc { font:700 11.5px var(--font-d); fill:var(--ink); text-anchor:middle; dominant-baseline:central; }
 .mini-pc.core { fill:var(--core); }
 .mini-pc.off { opacity:.28; }
 
@@ -87,8 +123,10 @@
 /* 狭い画面: 高さで収める必要がない（ページ全体がスクロールする）ので、盤は幅いっぱいに。
    高さ方向の container 指定を外して boardarea が内容の高さを取れるようにする（cqw は残る） */
 @media (max-width:979px) {
+  .boardwrap { --coord-h:24px; --coord-w:17px; --coord-gap:5px; }
   .boardarea { container-type:inline-size; align-items:center; }
-  /* 段ラベルを細め（16px）にし、持ち駒列の margin を22pxずつに詰めて盤を幅いっぱいに使う */
-  .boardwrap { grid-template-columns:minmax(0,1fr) 16px; width:calc(100cqw - 44px); transform:none; }
+  /* 段ラベルを細め（14px）にし、持ち駒列の margin を22pxずつに詰める */
+  .boardwrap { width:calc(100cqw - 44px); transform:none; }
+  .flabels { font-size:14px; }
   .rlabels { font-size:14px; }
 }
