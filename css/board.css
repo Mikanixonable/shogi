@@ -44,7 +44,7 @@
 
 .squares { position:absolute; inset:0; display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); }
 
-.sq { position:relative; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line);
+.sq { position:relative; z-index:1; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line);
       box-shadow:inset 1px 0 0 var(--wood-highlight), inset 0 1px 0 var(--wood-highlight);
       display:flex; align-items:center; justify-content:center; container-type:size; }
 .sq:nth-child(9n) { border-right:0; }
@@ -63,7 +63,7 @@
 @keyframes pulse { 50% { opacity:.55; } }
 
 /* 立体駒レイヤ（既定）: マス DOM と重ね表示 SVG の間に挟む盤全面の canvas。盤は表示専用なので操作は通さない */
-.pieces3d { position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+.pieces3d { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; }
 
 /* 駒: ?flat / WebGL 非対応時の DOM レイヤ。黄楊の木地に柾目と彫り字の陰影を添える */
 .pc { width:84%; height:90%; position:relative; z-index:1;
@@ -91,8 +91,9 @@
 .mini-pc.core { fill:var(--core); }
 .mini-pc.off { opacity:.28; }
 
-/* 盤の重ね表示（筋道の矢印）。駒の上 */
-.overlay { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; overflow:visible; }
+/* 盤の重ね表示（筋道の矢印）。矢印はマス・駒の下、盤面の上 */
+.overlay { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; overflow:visible; }
+.overlay-through { z-index:3; opacity:.2; }
 .overlay .rt { vector-effect:non-scaling-stroke; }
 @keyframes skIn { from { opacity:0; } }
 .overlay .rt-line { fill:none; stroke:var(--rt,var(--accent)); stroke-width:2.5px; stroke-dasharray:7 5; stroke-linecap:round; stroke-linejoin:round; opacity:.95; }
@@ -113,7 +114,7 @@
              animation:skIn .35s var(--ease) backwards; }
 
 /* 接触の印（対局図: 両軍の駒がぶつかったマスの ◆。中立は墨、両立しない重なりは朱） */
-.ov-contacts { position:absolute; inset:0; z-index:3; pointer-events:none; }
+.ov-contacts { position:absolute; inset:0; z-index:4; pointer-events:none; }
 .ov-contact { position:absolute; width:3.2%; aspect-ratio:1; transform:translate(-50%,-50%) rotate(45deg);
               background:var(--ink); opacity:.75; border-radius:1px;
               box-shadow:0 0 0 2px color-mix(in srgb, var(--piece-1) 85%, transparent);

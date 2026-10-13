@@ -59,7 +59,7 @@
     <div class="pane-fill" id="pickRail"></div>
   </nav>
 
-  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手の表示 ON/OFF は左ドックの駒の見出し（OFF のときも帯の行は残す） -->
+  <!-- 見る: 盤の上に相手（一段小さく）・自分の帯を2行で。相手の表示 ON/OFF は左ドックの駒の見出し（OFF のときも帯の行は残す） -->
   <main class="panel glass stage" id="stageMain">
     <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
       <div class="sband-h">
@@ -67,6 +67,8 @@
       </div>
       <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
     </div>
+    <div class="relation-row" id="relationshipLabels" data-empty="true" aria-hidden="true"
+         role="note" aria-label="相手と自分の関係"></div>
     <div class="sideband" id="bandMe" data-side="me">
       <div class="sband-h">
         <span class="who">自分<small>先手</small></span>

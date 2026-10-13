@@ -20,7 +20,7 @@ window.Kakoi = window.Kakoi || {};
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: stage, bandOpp, bandMe, barOpp, barMe,
+     *   els: stage, bandOpp, relations, bandMe, barOpp, barMe,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
@@ -29,7 +29,7 @@ window.Kakoi = window.Kakoi || {};
       this._pvKey = null;
       this._pvRaf = null;
 
-      // 制約バーは盤の上（相手）と下（自分）の2本
+      // 制約バーは盤の上に2本（上から相手・自分）
       const barHandlers = {
         onSelect: (w, k) => this._select(w, k),
         onRemove: (w, k) => this._remove(w, k),

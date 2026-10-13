@@ -2,14 +2,12 @@
    「墨と余白」: 罫線と記号で示す。色だけに頼らない（種類名・名称・破線を併記） */
 
 /* ===== 制約バー: 見出しと盤の間。チップ1つ=スロット1つ ===== */
-/* .cbar-x はカプセルを横一列に流し、.cbar-lab は導出ラベルを右端に置く */
-.cbar { display:flex; flex:1 1 auto; min-width:0; min-height:44px; align-content:center; align-items:center; flex-wrap:wrap; gap:3px 0; overflow:hidden; }
-.cbar-x { display:flex; flex:1 1 100%; min-width:0; align-items:center; flex-wrap:nowrap; gap:0; padding:2px 12px 2px 0;
+/* .cbar-x はカプセルを横一列に流し、リセットは同じ行の右端に置く */
+.cbar { display:flex; flex:1 1 auto; min-width:0; min-height:44px; align-items:center; flex-wrap:nowrap; gap:6px; overflow:visible; }
+.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; flex-wrap:nowrap; gap:0; padding:2px 12px 2px 0;
           overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
           mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent); }
 .cbar-x::-webkit-scrollbar { display:none; }
-.cbar-lab { display:flex; flex:none; align-items:center; gap:5px; margin-left:auto; }
-.cbar-lab:empty { display:none; }
 /* チップ: 種類・名称と解除記号だけを、凹凸が連結する一枚の帯にまとめる */
 .cchip { --chip-ink:var(--t-silver); --chip-bg:color-mix(in srgb,var(--chip-ink) 14%,var(--bg));
          position:relative; display:flex; flex:none; min-width:0; max-width:100%; height:40px; align-items:center; gap:4px; padding:3px 20px 3px 6px;
@@ -18,8 +16,8 @@
 .cchip[data-position="last"] { margin-left:-14px; padding-left:22px; }
 .cchip[data-kind="strategy"] { --chip-ink:var(--accent); }
 .cchip[data-kind="castle"] { --chip-ink:var(--accent-2); }
-.cchip:not(.cchip-label)::before { content:""; position:absolute; z-index:0; inset:1px 0; background:var(--chip-bg);
-                                  filter:drop-shadow(0 0 1px var(--line-2)); }
+.cchip::before { content:""; position:absolute; z-index:0; inset:1px 0; background:var(--chip-bg);
+                 filter:drop-shadow(0 0 1px var(--line-2)); }
 .cchip[data-position="first"][data-strategy="ibisha"]::before { clip-path:polygon(0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
 .cchip[data-position="first"][data-strategy="furibisha"]::before { clip-path:polygon(0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
 .cchip[data-position="middle"][data-strategy="ibisha"]::before { clip-path:polygon(0 20%,14px 50%,0 80%,0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
@@ -54,12 +52,6 @@
 /* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
 .cchip[data-implied="true"] { opacity:.72; }
 .cchip[data-implied="true"] .cchip-type::after { content:"既定"; margin-top:1px; font-size:9px; letter-spacing:.06em; }
-/* 導出ラベル（戦型など）: .cbar-lab に入る消せない灰色チップ。紙色で固定、褪せない */
-.cchip.cchip-label { display:inline-flex; flex:none; min-width:0; min-height:0; max-width:none; padding:3px 9px;
-                     clip-path:none; filter:none;
-                     border:1px solid var(--line); border-radius:999px; background:var(--bg); color:var(--muted); font-size:11px; }
-.cchip.cchip-label .cchip-nm { font-size:11px; font-weight:500; white-space:nowrap; }
-
 /* ===== 右ドック（board-detail-view。U5）: 選択中の制約の説明 ===== */
 /* 先頭: 側の表示名（小）＋項目名（大）。既定値で補った層は破線の「既定」を添える */
 .bd-who { margin:0 0 2px; font-size:11px; letter-spacing:.18em; color:var(--muted); }
@@ -78,6 +70,5 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 @media (max-width:979px) {
   #pickRail { padding:12px 14px; }
   .cbar { overflow:visible; }
-  .cbar-x { flex:1 1 100%; overflow-x:auto; mask-image:none; }
-  .cbar-lab { margin-left:auto; }
+  .cbar-x { flex:1 1 auto; overflow-x:auto; mask-image:none; }
 }

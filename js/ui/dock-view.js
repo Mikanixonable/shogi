@@ -46,15 +46,13 @@ window.Kakoi = window.Kakoi || {};
       this.filter = { me: 'ibisha', opp: 'ibisha' };   // 戦略の絞り込み（側ごと。表示だけの状態）
       this._strat = { me: null, opp: null };           // 絞り込みを最後に合わせた、導出した戦略
       this._last = null;
-      const pref = loadPref();
+      this._whoPrev = null;                            // 前回表示していた側（切り替わりの向きの演出用）
+        const pref = loadPref();
       this.sort = K.dockGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
       el.innerHTML =
         `<div class="dk">` +
          `<div class="dk-top">` +
-         `<div class="dk-title"><b></b><small></small></div>` +
-         // 凡例（U6）: ✕◎△点線の読み方を開く小さな ? ボタン
-         `<button type="button" class="dk-legend" aria-expanded="false" ` +
-         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
+         `<div class="dk-title"><b></b><small></small></div></div>` +
          `<div class="dk-filter-row">` +
          `<div class="seg dk-strategy" role="group" aria-label="戦型（振り飛車／居飛車）">` +
          STRATEGY_IDS.map(id => `<button type="button" data-value="${id}"><b aria-hidden="true">${STRAT_MARK[id]}</b>` +
@@ -67,8 +65,9 @@ window.Kakoi = window.Kakoi || {};
          `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
          `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
          K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
-           `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
-         `</div></div>` +
+          `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
+         `</div><button type="button" class="dk-legend" aria-expanded="false" ` +
+         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
          `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
          `</section></div>` +
         // 駒の見出し（バインダー）: 上=相手・下=自分。相手の駒の角の × で相手の表示を OFF にする
@@ -89,7 +88,7 @@ window.Kakoi = window.Kakoi || {};
       this.clearBtn = document.createElement('button');
       this.clearBtn.type = 'button';
       this.clearBtn.className = 'dk-clear';
-      this.clearBtn.textContent = 'リセット';
+      this.clearBtn.textContent = '×';
       this._bindBinder();
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
@@ -97,7 +96,7 @@ window.Kakoi = window.Kakoi || {};
         if (this._last) this.update(this._last.state, this._last.S);
       });
       this.clearBtn.addEventListener('click', () => h.onClear(this.who));
-      this.sortWrap = this.root.querySelector('.dk-tools');
+      this.sortWrap = this.root.querySelector('.dk-sort-seg');
       const savePref = () => {
         try { localStorage.setItem(PREF, JSON.stringify({ sort: this.sort })); } catch { /* 無視 */ }
         if (this._last) this.update(this._last.state, this._last.S);
@@ -165,6 +164,10 @@ window.Kakoi = window.Kakoi || {};
           `<li><span class="lg-ex">↳ 名称</span>派生の戦法</li>` +
           `<li><span class="lg-ex lg-basic">名称</span>朱の印：基本の形</li>` +
           `</ul>`;
+        const rootRect = this.root.getBoundingClientRect();
+        const btnRect = btn.getBoundingClientRect();
+        pop.style.top = `${btnRect.bottom - rootRect.top + 6}px`;
+        pop.style.right = `${rootRect.right - btnRect.right}px`;
         this.root.appendChild(pop);
         btn.setAttribute('aria-expanded', 'true');
       });
@@ -234,6 +237,15 @@ window.Kakoi = window.Kakoi || {};
       const who = sel.who === 'opp' && !showOpp ? 'me' : sel.who;
       const kind = KINDS.includes(sel.kind) ? sel.kind : 'castle';
       this.who = who; this.kind = kind;
+      // 側が切り替わったときだけ、押した駒のいる向きから面が入る（相手=上・自分=下）
+      if (this._whoPrev && this._whoPrev !== who &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        this.root.animate(
+          [{ opacity: 0, transform: `translateY(${who === 'opp' ? -12 : 12}px)` },
+           { opacity: 1, transform: 'none' }],
+          { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)' });
+      }
+      this._whoPrev = who;
       this.root.dataset.who = who;
       this.el.dataset.who = who;
       this.title.firstChild.textContent = who === 'opp' ? '相手' : '自分';

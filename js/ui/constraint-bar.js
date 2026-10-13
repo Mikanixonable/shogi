@@ -1,9 +1,9 @@
-// 制約バー: 盤の上下に並ぶ導出戦型・囲い・戦法のチップ。
-// who 指定のバーはその側のチップだけを描く（盤の上=相手用・下=自分用）。
+// 制約バー: 盤の上に2行で並ぶ導出戦型・囲い・戦法のチップ。
+// who 指定のバーはその側のチップだけを描く（上の行=相手用・下の行=自分用。相手は一段小さい）。
 // 明示した層はいつでも×で外せる（外すと戦略既定値の既定チップに変わる）。
 // 既定値で補った層（implied）は破線で薄く、×は付けない。
 // 他の層と両立しない明示チップには ✕ と理由（title）を付ける（自動では差し替えない）。
-// 右端には導出ラベル（戦型など。消せない灰色の文字）を並べる。
+// 導出ラベル（戦型など）は帯の間の関係行（#relationshipLabels）に出る。
 // 計画書 §0-2 / §1-1 / §1-4 / U3 / U5。
 window.Kakoi = window.Kakoi || {};
 (() => {
@@ -34,7 +34,6 @@ window.Kakoi = window.Kakoi || {};
       this.who = who;
       this.el = el;
       this._nodes = new Map();   // 'who.kind' → .cchip 要素（差分更新でフォーカスを保つ。U3）
-      this._labNodes = new Map();// label id → 要素
       el.addEventListener('click', e => {
         const x = e.target.closest('.cchip-x');
         if (x) { onRemove(x.dataset.who, x.dataset.kind); return; }
@@ -55,12 +54,11 @@ window.Kakoi = window.Kakoi || {};
 
     /**
      * @param {{ st:object|null, ng:object, selected:string|null,
-     *   labels:Array<{id:string,label:string}>|null,
      *   nameOf:(who:string, kind:string, id:string)=>string }} d
      *   st: この側の constraints.sides() の出力（実効値・implied）。null（相手を表示していない）なら空
      *   ng: この側の両立しない明示層 {tactic?:Array, castle?:Array}（理由は {code,text}）
      */
-    render({ st, ng, selected, labels, nameOf }) {
+    render({ st, ng, selected, nameOf }) {
       // 戦型→囲い→戦法の順に並べ、既定値で補った層は破線で示す
       const who = this.who;
       const want = [];
@@ -87,9 +85,6 @@ window.Kakoi = window.Kakoi || {};
       }
       want.forEach((w, i) => { w.position = i === 0 ? 'first' : i === want.length - 1 ? 'last' : 'middle'; });
       this._syncChips(want);
-
-      const labWant = (labels || []).map(l => ({ key: l.id, ...l }));
-      this._syncLabels(labWant);
       this._roving.refresh();
     }
 
@@ -109,30 +104,6 @@ window.Kakoi = window.Kakoi || {};
       }
       for (const [k, c] of this._nodes) {
         if (!seen.has(k)) { c.remove(); this._nodes.delete(k); }
-      }
-    }
-
-    _syncLabels(want) {
-      const host = this._labHost();
-      const seen = new Set();
-      for (const w of want) {
-        seen.add(w.key);
-        let b = this._labNodes.get(w.key);
-        if (!b) {
-          b = document.createElement('span');
-          b.className = 'cchip cchip-label';
-          this._labNodes.set(w.key, b);
-        }
-        const sig = `${w.id}|${w.label}`;
-        if (b._sig !== sig) {
-          b._sig = sig;
-          b.textContent = `#${w.label}`;      // チップと同じく # を冠する
-          b.title = `戦型「${w.label}」`;
-        }
-        host.appendChild(b);
-      }
-      for (const [k, b] of this._labNodes) {
-        if (!seen.has(k)) { b.remove(); this._labNodes.delete(k); }
       }
     }
 
@@ -204,15 +175,6 @@ window.Kakoi = window.Kakoi || {};
         h = document.createElement('span');
         h.className = 'cbar-x';
         this.el.prepend(h);
-      }
-      return h;
-    }
-    _labHost() {
-      let h = this.el.querySelector('.cbar-lab');
-      if (!h) {
-        h = document.createElement('span');
-        h.className = 'cbar-lab';
-        this.el.append(h);
       }
       return h;
     }
