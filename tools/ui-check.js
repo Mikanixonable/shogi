@@ -84,7 +84,10 @@ const snap = page => page.evaluate(() => {
     sides: Kakoi.constraints.sides(st.slots, st.showOpp),
     chips: [...document.querySelectorAll('#cbarOpp .cchip, #cbarMe .cchip')].map(c =>
       ({ who: c.dataset.who, kind: c.dataset.kind, implied: c.dataset.implied === 'true', ng: c.dataset.ng === 'true',
-        mark: (c.querySelector('.cchip-ng') || {}).textContent || '', text: c.textContent.trim() })),
+        mark: (c.querySelector('.cchip-ng') || {}).textContent || '', text: c.textContent.trim(),
+        name: (c.querySelector('.cchip-nm') || {}).textContent || '',
+        type: (c.querySelector('.cchip-type') || {}).textContent || '',
+        description: (c.querySelector('.cchip-desc') || {}).textContent || '' })),
     gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
     canvas: !!document.querySelector('#board canvas'),
     threats: document.querySelectorAll('#board .ov-threat').length,
@@ -172,7 +175,8 @@ async function sweepBoard(page, expect) {
   r.t1 = await snap(page);
   r.rects.push(r.t1.rect);
   r.added = !!r.t1.slots.me.castle && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い')
-    && r.t1.chips.some(c => c.who === 'me' && c.kind === 'castle' && !c.implied && c.text.includes('#'));
+    && r.t1.chips.some(c => c.who === 'me' && c.kind === 'castle' && !c.implied
+      && c.type === '囲い' && c.name.length > 0 && c.description.length > 0);
   r.resetInMeBar = await page.evaluate(() => {
     const btn = document.querySelector('#cbarMe .dk-clear');
     return !!btn && btn.textContent === 'リセット' && !document.querySelector('#pickRail .dk-clear');

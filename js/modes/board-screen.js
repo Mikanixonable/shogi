@@ -7,8 +7,6 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const K = window.Kakoi;
   const { parsePieces, KAN, mirrorSq } = K.notation;
-  const FIELD = K.constraints.FIELD;
-  const { LAYER_JA } = K.lookup;
   const parseSel = K.constraints.parseSel;
   // 主役が飛車ではなく筋道（経路が2マス以上）のある戦法だけ矢印を引く。
   // 飛車の経路は盤の筋そのものなので矢印が冗長（駒の移動アニメ trace は残す）
@@ -27,7 +25,6 @@ window.Kakoi = window.Kakoi || {};
       this._nameOf = nameOf;
       this._renderKey = null;
       this._meTactic = null;
-      this._stageKeys = {};
       this._derived = null;
     }
 
@@ -143,29 +140,7 @@ window.Kakoi = window.Kakoi || {};
       this.bars.me.render({ ...common, st: d.S.me, ng: d.ng.me, labels: d.labels });
     }
 
-    // ---------- 盤の上下の帯（状態の名前＋制約バー）・足元 ----------
-    // 帯の名前: 選択中の側はその制約の名前（旧見出しと同じ）、もう一方の側は実効の組み合わせ
-    _sideName(who, st, sel) {
-      const strat = (K.STRATEGIES[st.strategy] || {}).label || '';
-      const combo = ['tactic', 'castle']
-        .map(k => st[FIELD[k]] ? this._nameOf(who, k, st[FIELD[k]]) : null)
-        .filter(Boolean).join('・');
-      if (sel && sel.who === who) {
-        const id = st[FIELD[sel.kind]];
-        const x = sel.kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
-        if (x) {
-          const fam = sel.kind === 'tactic'
-            ? this.repo.tacticFamilies().find(f => f.id === x.family)
-            : this.repo.familyOf(x);
-          const sub = [x.reading, fam && fam.name, sel.kind === 'tactic' ? x.context : null]
-            .filter(Boolean).join('　／　');
-          return { name: x.name, sub };
-        }
-        return { name: LAYER_JA[sel.kind], sub: strat };
-      }
-      return { name: combo || strat || '（未選択）', sub: strat };
-    }
-
+    // ---------- 盤の上下の帯（側の表示＋制約バー）・足元 ----------
     // 伝統的な記法の持ち駒: 主語（▲/△）＋駒＋二枚以上は漢数字（歩二・香 など）
     _handText(pos, mark) {
       const h = (pos && pos.hand) || [];
@@ -176,7 +151,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _paintStage(state, d) {
-      const e = this.els, { S } = d;
+      const e = this.els;
       const sel = parseSel(state.selected);
       const hasOpp = !!state.showOpp;
       const moved = this._shownOpp !== undefined && this._shownOpp !== hasOpp;
@@ -184,30 +159,10 @@ window.Kakoi = window.Kakoi || {};
       // 相手 OFF 時も行トラックは確保して盤の矩形を固定し、自分の帯を盤の上へ移す（F1）。
       // 表示 ON/OFF は左ドックの駒の見出しで行う
       e.bandOpp.dataset.empty = hasOpp ? 'false' : 'true';
-      if (!hasOpp) {
-        const stageKey = 'opp|(なし)';
-        if (stageKey !== this._stageKeys.opp) {
-          this._stageKeys.opp = stageKey;
-          e.nameOpp.textContent = '（非表示）';
-          e.subOpp.textContent = e.subOpp.title = '';
-        }
-        e.bandOpp.dataset.sel = 'false';
-      }
+      if (!hasOpp) e.bandOpp.dataset.sel = 'false';
 
       for (const who of ['me', 'opp']) {
-        const st = S[who];
         if (who === 'opp' && !hasOpp) continue;
-        const nameEl = who === 'me' ? e.nameMe : e.nameOpp;
-        const subEl = who === 'me' ? e.subMe : e.subOpp;
-        const { name, sub } = this._sideName(who, st, sel);
-        const stageKey = `${who}|${name}|${sub}`;
-        if (stageKey !== this._stageKeys[who]) {
-          this._stageKeys[who] = stageKey;
-          nameEl.textContent = name;
-          subEl.textContent = subEl.title = sub;
-          const ttl = nameEl.closest('.ttl');
-          if (ttl) { ttl.classList.remove('swap'); void ttl.offsetWidth; ttl.classList.add('swap'); }
-        }
         (who === 'me' ? e.bandMe : e.bandOpp).dataset.sel = sel && sel.who === who ? 'true' : 'false';
       }
 

@@ -20,7 +20,7 @@ window.Kakoi = window.Kakoi || {};
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe,
+     *   els: stage, bandOpp, bandMe, barOpp, barMe,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {

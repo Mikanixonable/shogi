@@ -57,7 +57,6 @@
     els: {
       stage: $('stageMain'), bandOpp: $('bandOpp'), bandMe: $('bandMe'),
       barOpp: $('cbarOpp'), barMe: $('cbarMe'),
-      nameOpp: $('nameOpp'), subOpp: $('subOpp'), nameMe: $('nameMe'), subMe: $('subMe'),
       handOpp: $('handOpp'), handMe: $('handMe'),
       rail: $('pickRail'),
       detail: $('detail'),

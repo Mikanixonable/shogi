@@ -8,9 +8,20 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { LAYER_JA: KIND_JA, KINDS, FIELD } = Kakoi.lookup;
+  const { LAYER_JA: KIND_JA, KINDS, FIELD, findTactic, findCastle, castleFamilyOf } = Kakoi.lookup;
   const { plain } = Kakoi.html;
   const CHIP_SEL = '.cchip-b';
+  const descriptionOf = (kind, id) => {
+    const item = kind === 'tactic' ? findTactic(id) : findCastle(id);
+    if (!item) return '';
+    const family = kind === 'castle' ? castleFamilyOf(item) : null;
+    const summary = kind === 'castle'
+      ? [item.reading, family && family.name, family && family.shape].filter(Boolean).join(' · ')
+      : plain(item.desc || '').replace(/\s+/g, ' ').trim().split(/[。！？]/u)[0];
+    const text = summary.trim();
+    const chars = [...text];
+    return chars.length > 40 ? `${chars.slice(0, 39).join('')}…` : text;
+  };
 
   class ConstraintBar {
     /**
@@ -61,6 +72,7 @@ window.Kakoi = window.Kakoi || {};
         want.push({
           key: `${who}.${kind}`, who, kind, id,
           name: nameOf(who, kind, id),
+          description: descriptionOf(kind, id),
           sel: selected === `${who}.${kind}`,
           implied,
           removable: !implied,    // 明示した層はいつでも外せる（U5）
@@ -123,13 +135,21 @@ window.Kakoi = window.Kakoi || {};
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'cchip-b';
-      const side = document.createElement('i');
-      side.className = 'cchip-side';
+      const type = document.createElement('span');
+      type.className = 'cchip-type';
+      const copy = document.createElement('span');
+      copy.className = 'cchip-copy';
+      const nameLine = document.createElement('span');
+      nameLine.className = 'cchip-name-line';
       const ng = document.createElement('i');
       ng.className = 'cchip-ng';
       const nm = document.createElement('span');
       nm.className = 'cchip-nm';
-      b.append(side, ng, nm);
+      const desc = document.createElement('span');
+      desc.className = 'cchip-desc';
+      nameLine.append(nm, ng);
+      copy.append(nameLine, desc);
+      b.append(type, copy);
       c.append(b);
       return c;
     }
@@ -153,7 +173,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _applyChip(c, w) {
-      const sig = `${w.who}|${w.kind}|${w.id}|${w.name}|${w.implied}|${w.sel}|${w.removable}|${w.ng}`;
+      const sig = `${w.who}|${w.kind}|${w.id}|${w.name}|${w.description}|${w.implied}|${w.sel}|${w.removable}|${w.ng}`;
       if (c._sig === sig) return;
       c._sig = sig;
       c.dataset.who = w.who;
@@ -166,12 +186,13 @@ window.Kakoi = window.Kakoi || {};
       b.dataset.kind = w.kind;
       const base = `${w.who === 'me' ? '自分' : '相手'}の${KIND_JA[w.kind]}${w.implied ? '（既定値）' : ''}`;
       const title = w.ng ? `${base}。両立しない: ${w.ng}` : base;
-      b.title = title;
-      b.setAttribute('aria-label', title);
-      b.querySelector('.cchip-side').textContent = w.who === 'me' ? '▲' : '△';
+      b.title = w.ng ? title : '';
+      b.setAttribute('aria-label', `${base}「${w.name}」。${w.description}${w.ng ? ` 両立しない: ${w.ng}` : ''}`);
+      b.querySelector('.cchip-type').textContent = KIND_JA[w.kind];
       b.querySelector('.cchip-ng').textContent = w.ng ? '✕' : '';
-      b.querySelector('.cchip-nm').textContent = `#${w.name}`;
-      this._xButton(c, w.removable, base);
+      b.querySelector('.cchip-nm').textContent = w.name;
+      b.querySelector('.cchip-desc').textContent = w.description;
+      this._xButton(c, w.removable, `${base}「${w.name}」`);
       const x = c.querySelector('.cchip-x');
       if (x) { x.dataset.who = w.who; x.dataset.kind = w.kind; }
     }
