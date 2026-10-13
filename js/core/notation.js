@@ -3,6 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const ZEN = ['', '１', '２', '３', '４', '５', '６', '７', '８', '９'];
+  const ARABIC = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
   const KAN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
   /** マスを表す整数キー（筋*10+段） */
@@ -17,8 +18,8 @@ window.Kakoi = window.Kakoi || {};
     return str.trim().split(/\s+/).map(t => ({ p: t[0], ...parseSquare(t.slice(1)), ...extra }));
   }
 
-  /** 7,8 → "７八" */
-  const label = (f, r) => ZEN[f] + KAN[r];
+  /** 7,8 → "7八" */
+  const label = (f, r) => ARABIC[f] + KAN[r];
 
   /** "78" → "32": マスを後手側へ回転する（compose.mirror と同じ変換） */
   const mirrorSq = s => `${10 - +s[0]}${10 - +s[1]}`;

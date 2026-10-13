@@ -65,6 +65,10 @@ const sideOf = t => {
 // 戦法の系統の side を戦略として、その戦法を選んだ状態
 const meOf = t => ({ strategy: sideOf(t), tacticId: t.id });
 
+const gin46Hidari = K.TACTICS.find(t => t.id === 'gin46-hidari');
+ok(gin46Hidari && gin46Hidari.short === '4六銀左', 'notation:4六銀左 short label');
+ok(K.notation.label(4, 6) === '4六', 'notation:ASCII file and kanji rank');
+
 // ---------- 1. 216-matrix スナップショット ----------
 const SYM = { best: '◎', ok: '○', ng: '×' };
 const W = Math.max(...K.CASTLES.map(c => c.id.length)) + 1;
