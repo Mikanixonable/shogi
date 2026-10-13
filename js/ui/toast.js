@@ -1,5 +1,5 @@
 // トースト: 画面の下に短く出す通知。自動で消え、「元に戻す」などの操作を1つ載せられる。
-// ホバー（フォーカス）中はタイマーを止める。表示時間は5.6秒（文言を短くしたので8秒から7割へ）
+// ホバー（フォーカス）中はタイマーを止める。表示時間は2.8秒（8秒から半分以下へ）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -20,10 +20,10 @@ window.Kakoi = window.Kakoi || {};
    * @param {string} text 通知文
    * @param {{ action?:{label:string, fn:()=>void}, ms?:number, host?:Element|string }} [opts]
    *   action: 本文の横に置くボタン（押すとトーストを閉じて fn を呼ぶ）
-   *   ms: 自動で消えるまでの時間（既定 5600ms。ホバー・フォーカス中は停止）
+   *   ms: 自動で消えるまでの時間（既定 2800ms。ホバー・フォーカス中は停止）
    *   host: 置き場所（要素またはセレクタ。省略時は body の末尾＝画面への重ね表示）
    */
-  function show(text, { action, ms = 5600, host } = {}) {
+  function show(text, { action, ms = 2800, host } = {}) {
     if (!el) {
       el = document.createElement('div');
       el.className = 'toast';

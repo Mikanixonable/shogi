@@ -260,7 +260,7 @@ Kakoi.TACTICS = [
     id: 'kakukoukan-shiken', name: '角交換四間飛車', short: '角換四間', reading: 'かくこうかんしけんびしゃ', variantOf: 'shikenbisha',
     family: 'furibisha-rook', lead: { piece: '飛', files: [6], square: '68' },
     route: ['28', '68'],
-    pieces: '玉28 飛68 角88 金58 金49 銀39 銀38 桂89 桂29 香99 香19 歩76 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27',
+    pieces: '玉28 飛68 角88 金58 金49 銀79 銀38 桂89 桂29 香99 香19 歩76 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27',
     essential: '飛68 角88 歩67',
     pace: 'both',
     senkei: [],

@@ -226,13 +226,22 @@ window.Kakoi = window.Kakoi || {};
         if (tip) it.el.title = tip; else it.el.removeAttribute('title');
       }
 
-      // 選択中の派生を持つ親タイルを強調する（§4-3）
+      // 選択中の派生を持つ親タイルを強調する（§4-3）。派生が畳まれていれば開く
       if (pane.cur.tiles) {
         const selVar = st && st.tacticId;
         const parentId = selVar && (K.TACTICS.find(t => t.id === selVar) || {}).variantOf;
         for (const t of pane.cur.tiles) {
           if (parentId && t.dataset.id === parentId) t.dataset.vsel = 'true';
           else delete t.dataset.vsel;
+        }
+        if (parentId) {
+          const chip = pane.cur.items.find(i => i.id === selVar);
+          const box = chip && chip.el.closest('.dk-vars');
+          if (box && box.dataset.open === 'false') {
+            box.dataset.open = 'true';
+            const tg = box.querySelector('.dk-vfold');
+            if (tg) tg.setAttribute('aria-expanded', 'true');
+          }
         }
       }
       // 採用中の戦略に合わない項目だけの行・系統はまるごと隠す。
