@@ -116,9 +116,6 @@
            border:1px solid var(--line); background:none; font:inherit; color:inherit; min-width:0;
            container-type:inline-size; transition:border-color .2s, background .2s; }
 .dk-tile:hover { border-color:var(--line-2); }
-/* 駒アイコン（経路の折れ線＋終点の駒字）: 列の幅いっぱいに広げる（9列の1マスなので
-   これ以上は列の幾何が限界） */
-.dk-tile .tglyph { width:100%; max-width:34px; height:auto; display:block; }
 /* 短縮名はタイル幅に追随する（cqw 方式。--n は文字数） */
 .dk-tile .nm { font-size:max(8px, min(13px, calc(96cqw / var(--n, 3)))); line-height:1.15; letter-spacing:.01em;
                max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -131,14 +128,6 @@
           color:var(--muted); transition:border-color .2s, color .2s; }
 .dk-var:hover { color:var(--fg); border-color:var(--line-2); }
 .dk-var .dk-csc { font-size:10px; }
-
-/* 戦法アイコン（tactic-glyph.js）: 格子は薄く、経路は墨、終点の駒は字 */
-.tglyph .tgl-grid { stroke:var(--line); stroke-width:.5; }
-.tglyph .tgl-route { stroke:currentColor; }
-.tglyph .tgl-start { fill:currentColor; stroke:none; }
-.tglyph .tgl-pc { fill:currentColor; stroke:none; font:700 7.8px var(--font-d); text-anchor:middle; dominant-baseline:central; }
-.tglyph .tgl-dia { stroke:var(--accent); stroke-width:1.2; }
-.dk-item[aria-current="true"] .tglyph { color:var(--accent); }
 
 /* 採用中の戦略に合わない項目は表示しない（分類は戦略だけ。「もう一方」は持たない） */
 .dk-on { display:flex; flex-direction:column; gap:12px; }

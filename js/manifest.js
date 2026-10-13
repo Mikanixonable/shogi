@@ -13,7 +13,7 @@ Kakoi.MANIFEST = (() => {
     'js/ui/tactic-nav.js', 'js/ui/tactic-player.js',
     'js/ui/cluster-tree-view.js', 'js/ui/cluster-stage-view.js', 'js/ui/cluster-rail-view.js', 'js/ui/cluster-detail-view.js',
     'js/ui/theme-toggle.js', 'js/ui/tools-toggle.js', 'js/ui/toast.js', 'js/ui/hash-link.js', 'js/ui/cites.js',
-    'js/ui/constraint-bar.js', 'js/ui/roving.js', 'js/ui/undo.js', 'js/ui/tactic-glyph.js',
+    'js/ui/constraint-bar.js', 'js/ui/roving.js', 'js/ui/undo.js',
     'js/ui/dock-splitter.js', 'js/ui/dock-pane.js', 'js/ui/dock-grids.js', 'js/ui/dock-badges.js', 'js/ui/dock-view.js',
     'js/ui/about-modal.js',
   ];
