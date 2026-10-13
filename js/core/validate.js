@@ -98,6 +98,8 @@ window.Kakoi = window.Kakoi || {};
     else if (c.subtype !== undefined && !(isArr(fam.subtypes) && fam.subtypes.some(s => s && s.id === c.subtype)))
       errors.push(`subtype未登録: ${c.subtype}`);
     if (c.refFamily !== undefined && !isStr(c.refFamily)) errors.push('refFamilyが空文字または文字列でない');
+    // basic: 初心者向けに強調する基本の囲い（左ドックで目立たせる）
+    if (c.basic !== undefined && c.basic !== true) errors.push('basicはtrueだけを書く');
     if (c.from !== undefined) {
       const src = isArr(ctx.CASTLES) && isStr(c.from) ? ctx.CASTLES.find(x => x && x.id === c.from) : undefined;
       if (!src) errors.push(`from未登録: ${c.from}`);
@@ -281,6 +283,8 @@ window.Kakoi = window.Kakoi || {};
   }
 
   function tacticBody(t, ctx, errors, warnings) {
+    if (t.basic !== undefined && t.basic !== true) errors.push('basicはtrueだけを書く');
+    if (t.basic && t.variantOf) errors.push('派生（variantOf）はbasicにしない');
     for (const k of ['id', 'name', 'reading', 'pieces', 'context', 'desc'])
       if (!isStr(t[k])) errors.push(`必須項目なし: ${k}`);
     const fam = isArr(ctx.TACTIC_FAMILIES) ? ctx.TACTIC_FAMILIES.find(f => f && f.id === t.family) : undefined;

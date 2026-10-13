@@ -113,16 +113,21 @@ async function sweepBoard(page, expect) {
     const opp = document.querySelector('#bandOpp').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return opp.bottom <= board.top && board.bottom <= me.top;
+    return document.querySelector('#bandOpp').dataset.empty === 'true'
+      ? getComputedStyle(document.querySelector('#bandOpp')).display === 'none' && me.bottom <= board.top
+      : opp.bottom <= board.top && board.bottom <= me.top;
   });
   r.boardBandGaps = await page.evaluate(() => {
     const opp = document.querySelector('#bandOpp').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return [board.top - opp.bottom, me.top - board.bottom];
+    return document.querySelector('#bandOpp').dataset.empty === 'true'
+      ? [board.top - me.bottom]
+      : [board.top - opp.bottom, me.top - board.bottom];
   });
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
+  r.layerTabs = await page.$$eval(`${DOCK} .dk-tab button`, els => els.map(el => el.textContent.trim()));
   r.oppTabEnabled = await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled);
   r.noOldUi = await page.evaluate(() => !document.querySelector('#viewSeg, [data-view], #addOpp, #clearAll, #clearMe, #clearOpp, #skeleton, #heatScopeSeg, .dk-sep, .dk-fold, .dk-addopp, .dk-threat'));
   r.noClusterCss = await page.evaluate(() => ![...document.styleSheets].some(s => /clusters\.css/.test(s.href || '')));
@@ -167,6 +172,15 @@ async function sweepBoard(page, expect) {
     __kakoi.store.state.selected === 'me.tactic' && document.querySelectorAll('#pickRail .dk-tile').length > 0);
   r.tiles = await page.$$eval(`${DOCK} .dk-tile`, els => els.length);
   r.vars = await page.$$eval(`${DOCK} .dk-var`, els => els.length);
+  r.variantStyle = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#pickRail .dk-trow:not([hidden])')];
+    const variants = rows.flatMap(row => [...row.querySelectorAll('.dk-var')]);
+    const basics = rows.flatMap(row => [...row.querySelectorAll('.dk-tile[data-basic="true"]')]);
+    return variants.length > 0 && variants.every(el => !el.hidden
+      && getComputedStyle(el).display !== 'none' && !!el.querySelector('.dk-branch'))
+      && basics.length > 0 && basics.every(el => !!el.querySelector('.dk-seal'))
+      && !document.querySelector('.dk-vshow');
+  });
   r.fileHdr = await page.evaluate(() => {   // 筋の番号ヘッダ: 列は盤の絶対座標（左=9筋）
     const fh = document.querySelector('#pickRail .dk-fh');
     return !!fh && [...fh.querySelectorAll('span')].map(s => s.textContent).join('') === '９８７６５４３２１';
@@ -211,6 +225,24 @@ async function sweepBoard(page, expect) {
       && cards.every(c => c.hidden === !sidesOf(byId[c.dataset.id]).includes(strat));
   }, stratB);
   await page.click(`${DOCK} .dk-strategy button[data-value="${stratA}"]`); await wait(250);
+  // 並べ方: 発展ツリーは from の子を字下げした行で出し、性質順は段（5→1）のブロックにする。
+  await page.selectOption(`${DOCK} .dk-sort select`, 'tree'); await wait(250);
+  r.sortTree = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#pickRail .dk-tree .dk-row')];
+    const byId = Object.fromEntries(Kakoi.CASTLES.map(c => [c.id, c]));
+    return rows.length > 0 && rows.some(x => x.dataset.depth !== '0')
+      && rows.filter(x => x.dataset.depth !== '0').every(x => byId[x.dataset.id].from);
+  });
+  await page.selectOption(`${DOCK} .dk-sort select`, 'hard'); await wait(250);
+  r.sortAxis = await page.evaluate(() => [...document.querySelectorAll('#pickRail .dk-fam')]
+    .every(s => [...s.querySelectorAll('.dk-card')].every(c =>
+      `hard${Kakoi.CASTLES.find(x => x.id === c.dataset.id).ratings.hard}` === s.dataset.family)));
+  await page.selectOption(`${DOCK} .dk-sort select`, 'family'); await wait(250);
+  r.basicStyle = await page.evaluate(() => {
+    const basics = [...document.querySelectorAll('#pickRail .dk-item[data-basic="true"]')];
+    return basics.length > 0 && basics.every(el => !!el.querySelector('.dk-seal'))
+      && !document.querySelector('.dk-basic');
+  });
 
   // 両立しない選択: いまの戦法と合わない囲い（✕の破線枠）を選んでも他の層は差し替わらず、
   // チップに ✕ と理由、右ドックに理由と直す候補が出る。候補を押すと両立する選択に直る
@@ -243,6 +275,12 @@ async function sweepBoard(page, expect) {
   await page.click(`${DOCK} .dk-who [data-value="opp"]`); await wait(450);
   r.t5 = await snap(page);
   r.rects.push(r.t5.rect);
+  r.boardOrderOppOn = await page.evaluate(() => {
+    const opp = document.querySelector('#bandOpp').getBoundingClientRect();
+    const board = document.querySelector('#board').getBoundingClientRect();
+    const me = document.querySelector('#bandMe').getBoundingClientRect();
+    return opp.bottom <= board.top && board.bottom <= me.top;
+  });
   r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && !r.t5.bandOppEmpty
     && await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled)
     && r.t5.selected.startsWith('opp.') && /opp=1/.test(r.t5.hash);
@@ -261,6 +299,16 @@ async function sweepBoard(page, expect) {
   r.t5b = await snap(page);
   r.rects.push(r.t5b.rect);
   r.oppSel = !!r.t5b.slots.opp.tactic && r.t5b.selected === 'opp.tactic';
+  await page.click(`${DOCK} .dk-opp-off`); await wait(350);
+  r.oppDockOff = await page.evaluate(() => {
+    const st = __kakoi.store.state;
+    return !st.showOpp && !st.selected.startsWith('opp.')
+      && document.querySelector('#showOpp').checked === false
+      && document.querySelector('.dk-opp-off').hidden;
+  });
+  await page.click(`${DOCK} .dk-who [data-value="opp"]`); await wait(350);
+  r.oppDockOn = await page.evaluate(() => __kakoi.store.state.showOpp
+    && __kakoi.store.state.selected.startsWith('opp.'));
   // 表示設定のポップオーバー: 脅威の帯を切ると帯が消える（盤の状態には載らない）
   await page.click('#toolsToggle'); await wait(150);
   r.popover = await page.evaluate(() => {
@@ -503,12 +551,16 @@ async function main() {
 
       const b = await sweepBoard(page, expect);
       ok(b.panes === 1 && b.oppTabEnabled, '左ドックは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
+      ok(b.layerTabs.join(',') === '囲い,戦法', '左ドックのタブ順は囲い→戦法', b.layerTabs.join(' → '));
+      ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
+      ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
+      ok(b.basicStyle, '基本の囲いは朱の印で識別され、絞り込みトグルは無い', '');
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
       ok(b.bandGhost0, '相手の表示 OFF の間は相手の帯が幽霊行で、後手の駒は出ない', '');
       ok(b.boardStageOffset <= 8, '盤面は中央領域の上下中央に配置される', `${b.boardStageOffset}px`);
-      ok(b.boardOrder, '盤面の上に相手、下に自分の表示域が並ぶ', '');
+      ok(b.boardOrder && b.boardOrderOppOn, '相手 OFF は味方が盤上、ON は相手・盤面・味方の順に並ぶ', '');
       ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と相手・自分の表示帯の余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
       ok(b.rectDrift === -1, '盤の矩形は全ステップで不変（F1 ±0.5px）', `ずれたステップ=${b.rectDrift}`);
       ok(b.cards === expect.castles, '囲いタイル', `${b.cards}枚`);
@@ -523,6 +575,7 @@ async function main() {
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
       ok(b.dockPick, 'ドックの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
+      ok(b.variantStyle, '派生戦法は分岐チップで常に表示され、表示トグルは無い', `${b.vars}件`);
       ok(b.fileHdr, '戦法グリッドの上に筋の番号（９…１）', '');
       ok(b.segFilter && b.famFilter, '戦略セグは一覧の絞り込みだけ（スロット・導出した戦略は不変）', `rows=${b.segFilter} fams=${b.famFilter}`);
       ok(b.ngBadges > 0, 'いまの組み合わせと両立しない項目に✕の印（data-ng）が出る', `${b.ngBadges}件`);
@@ -535,6 +588,7 @@ async function main() {
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
       ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
+      ok(b.oppDockOff && b.oppDockOn, '左ドックの OFF で相手を非表示にし、相手タブから再表示できる', '');
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
       ok(b.toolsEscape && b.toolsOutside, '表示設定は Escape とパネル外クリックで閉じる', '');
       ok(b.threatOff && b.threatPref, '脅威の帯は表示設定のスイッチ（localStorage の好み。URL には載らない）', `${b.t6 && b.t6.threats}本`);

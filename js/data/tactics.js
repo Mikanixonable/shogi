@@ -41,7 +41,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'mukaibisha', name: '向かい飛車', short: '向飛車', reading: 'むかいびしゃ',
+    id: 'mukaibisha', name: '向かい飛車', short: '向飛車', reading: 'むかいびしゃ', basic: true,
     family: 'furibisha-rook', lead: { piece: '飛', files: [8], square: '88' },
     route: ['28', '88'],
     pieces: '玉28 飛88 角77 金78 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩16 歩97 歩87 歩57 歩47 歩37 歩27',
@@ -73,7 +73,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'sankenbisha', name: '三間飛車', short: '三間', reading: 'さんげんびしゃ',
+    id: 'sankenbisha', name: '三間飛車', short: '三間', reading: 'さんげんびしゃ', basic: true,
     family: 'furibisha-rook', lead: { piece: '飛', files: [7], square: '78' },
     route: ['28', '78'],
     pieces: '玉28 飛78 角77 金58 金49 銀68 銀38 桂89 桂29 香99 香19 歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27',
@@ -201,7 +201,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'shikenbisha', name: '四間飛車', short: '四間', reading: 'しけんびしゃ',
+    id: 'shikenbisha', name: '四間飛車', short: '四間', reading: 'しけんびしゃ', basic: true,
     family: 'furibisha-rook', lead: { piece: '飛', files: [6], square: '68' },
     route: ['28', '68'],
     pieces: '玉28 飛68 角77 金58 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27',
@@ -280,7 +280,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'nakabisha', name: '中飛車', short: '中飛車', reading: 'なかびしゃ',
+    id: 'nakabisha', name: '中飛車', short: '中飛車', reading: 'なかびしゃ', basic: true,
     family: 'furibisha-rook', lead: { piece: '飛', files: [5], square: '58' },
     route: ['28', '58'],
     pieces: '玉28 飛58 角77 金78 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27',
@@ -367,7 +367,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'koshikakegin', name: '腰掛け銀', short: '腰掛銀', reading: 'こしかけぎん',
+    id: 'koshikakegin', name: '腰掛け銀', short: '腰掛銀', reading: 'こしかけぎん', basic: true,
     family: 'ibisha-silver', lead: { piece: '銀', files: [5], square: '56' },
     route: ['39', '38', '47', '56'],
     pieces: '玉79 金78 金58 銀77 銀56 飛28 桂89 桂37 香99 香19 歩96 歩76 歩66 歩46 歩36 歩16 歩87 歩57 歩25',
@@ -398,7 +398,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'hayakurigin', name: '早繰り銀', short: '早繰銀', reading: 'はやくりぎん',
+    id: 'hayakurigin', name: '早繰り銀', short: '早繰銀', reading: 'はやくりぎん', basic: true,
     family: 'ibisha-silver', lead: { piece: '銀', files: [4, 3], square: '46' },
     route: ['39', '38', '37', '46'],
     pieces: '玉69 金78 金49 銀77 銀46 角79 飛28 桂89 桂29 香99 香19 歩76 歩56 歩35 歩25 歩97 歩87 歩67 歩47 歩17',
@@ -498,7 +498,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'bougin', name: '棒銀', short: '棒銀', reading: 'ぼうぎん',
+    id: 'bougin', name: '棒銀', short: '棒銀', reading: 'ぼうぎん', basic: true,
     family: 'ibisha-silver', lead: { piece: '銀', files: [2], square: '26' },
     route: ['39', '38', '27', '26'],
     pieces: '玉78 金68 金58 銀57 銀26 角88 飛28 桂89 桂29 香99 香19 歩96 歩76 歩56 歩46 歩35 歩25 歩87 歩67 歩17',

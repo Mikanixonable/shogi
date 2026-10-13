@@ -71,11 +71,13 @@ header { position:relative; }
 .rail { border-right:1px solid var(--line); }
 .detail { border-left:1px solid var(--line); position:relative; }
 
-/* 中央: 相手の帯 → 盤 → 自分の帯。行は常に3本確保する
-   （相手の表示が OFF でも帯の行は残す。盤の矩形が変わらないようにするための固定。F1） */
+/* 中央: 相手 ON は相手の帯 → 盤 → 自分の帯、OFF は自分の帯 → 盤。
+   3行のトラックは常に確保し、盤の矩形を状態に依存させない（F1） */
 .stage .sideband[data-side="opp"] { order:0; }
 .stage .boardarea { order:1; }
 .stage .sideband[data-side="me"] { order:2; }
+.stage #bandOpp[data-empty="true"] { display:none; }
+.stage #bandOpp[data-empty="true"] ~ #bandMe { order:0; }
 
 /* ===== rail: 左ドック（自分／相手のタブで切り替える1枚の面。DockView が構造を組み立てる。css/dock.css 参照） ===== */
 .rail { display:flex; flex-direction:column; padding:16px 18px; }
@@ -83,7 +85,7 @@ header { position:relative; }
 
 /* ===== stage: 盤を見る ===== */
 /* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。中身がはみ出したら省略・横スクロール。
-   帯の行は常に2本確保する（相手の表示が OFF でも相手の帯の行は残る） */
+   相手 OFF 時も盤の中央トラックと空の下段を確保する */
 .stage { --band-h:56px; display:grid; position:relative;
          grid-template-columns:minmax(0,1fr);
          grid-template-rows:var(--band-h) minmax(0,1fr) var(--band-h);
@@ -113,7 +115,7 @@ header { position:relative; }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
 .handcol { position:absolute; top:22px; bottom:0; width:22px; margin:0 2px;
-           writing-mode:vertical-rl; text-orientation:upright; font:600 12.5px/1.1 var(--font-d);
+           writing-mode:vertical-rl; text-orientation:upright; font:600 19px/1.1 var(--font-d);
            letter-spacing:.16em; color:var(--muted); display:flex; padding:6px 0; user-select:none; }
 #handOpp { right:100%; justify-content:flex-start; }
 #handMe { left:100%; justify-content:flex-end; }

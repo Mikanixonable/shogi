@@ -1,5 +1,5 @@
 // 統合画面の左ドック: 「自分／相手」のタブで切り替える1枚の面。
-// 相手タブから相手の表示を ON にできる。面は戦法／囲い・はずす・絞り込み・一覧からなる。
+// 相手タブから相手の表示を ON にできる。面は囲い／戦法・はずす・絞り込み・一覧からなる。
 // 戦略（居飛車／振り飛車）の絞り込みは一覧の表示を絞るだけで制約にはならない
 // （戦略は選んだ戦法から導く）。見ている側・層は state.selected が持つ。
 // 計画書 S6 で分割: 一覧の中身の構築は dock-grids.js、
@@ -14,6 +14,9 @@ window.Kakoi = window.Kakoi || {};
   const { esc } = K.html;
   const STRATEGY_IDS = ['ibisha', 'furibisha'];
   const castlePos = c => K.Position.fromCastle(c, K.SETUPS[c.setup]);
+  // 一覧の並べ方は表示の好み（盤面の状態ではない）なのでここで localStorage に持つ
+  const PREF = 'shogi-castle:dock';
+  const loadPref = () => { try { return JSON.parse(localStorage.getItem(PREF)) || {}; } catch { return {}; } };
 
   class DockView {
     /**
@@ -21,6 +24,7 @@ window.Kakoi = window.Kakoi || {};
      * @param {{ onSelect:(who:'me'|'opp', kind:string)=>void,
      *   onChoose:(who:'me'|'opp', kind:string, id:string)=>void,
      *   onClear:(who:string)=>void,
+     *   onToggleOpponent:(on:boolean)=>void,
      *   onPreview?:(who:string, kind:string, id:string)=>void,
      *   onPreviewEnd?:()=>void }} handlers
      *   onSelect: 側・層のタブを切り替えたとき（selected を動かす）
@@ -33,29 +37,39 @@ window.Kakoi = window.Kakoi || {};
       this.filter = { me: 'ibisha', opp: 'ibisha' };   // 戦略の絞り込み（側ごと。表示だけの状態）
       this._strat = { me: null, opp: null };           // 絞り込みを最後に合わせた、導出した戦略
       this._last = null;
+      const pref = loadPref();
+      this.sort = K.dockGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
       el.innerHTML =
         `<div class="dk">` +
         `<div class="dk-top">` +
-        `<div class="seg dk-who" role="group" aria-label="側の切り替え">` +
+        `<div class="dk-side-controls"><div class="seg dk-who" role="group" aria-label="側の切り替え">` +
         `<button type="button" data-value="me">自分 ▲</button>` +
         `<button type="button" data-value="opp">相手 △</button></div>` +
+        `<button type="button" class="dk-opp-off" aria-label="相手の表示を OFF にする" title="相手の表示を OFF にする" hidden>OFF</button></div>` +
         // 凡例（U6）: ✕◎△点線の読み方を開く小さな ? ボタン
         `<button type="button" class="dk-legend" aria-expanded="false" ` +
         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
         `<section class="dk-pane">` +
         `<header class="dk-pane-h">` +
-        `<div class="seg dk-tab" role="group" aria-label="一覧（戦法／囲い）">` +
-        `<button type="button" data-value="tactic">戦法</button>` +
-        `<button type="button" data-value="castle">囲い</button></div>` +
+        `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
+        `<button type="button" data-value="castle">囲い</button>` +
+        `<button type="button" data-value="tactic">戦法</button></div>` +
         `<button type="button" class="dk-clear" title="この側の戦法と囲いをはずす">はずす</button></header>` +
         `<div class="seg small wide dk-strategy" role="group" aria-label="戦略で絞り込む">` +
         STRATEGY_IDS.map(id => `<button type="button" data-value="${id}">${esc(K.STRATEGIES[id].label)}</button>`).join('') +
+        `</div>` +
+        // 並べ方（囲いのみ）
+        `<div class="dk-tools">` +
+        `<label class="dk-sort">並べ方<select aria-label="囲いの並べ方">` +
+        K.dockGrids.CASTLE_SORTS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('') +
+        `</select></label>` +
         `</div>` +
         `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
         `</section></div>`;
       this.root = el.firstElementChild;
       this.body = this.root.querySelector('.dk-body');
       this.oppBtn = this.root.querySelector('.dk-who [data-value="opp"]');
+      this.oppOffBtn = this.root.querySelector('.dk-opp-off');
       this.clearBtn = this.root.querySelector('.dk-clear');
       this.whoSeg = new K.Segmented(this.root.querySelector('.dk-who'), v => h.onSelect(v, this.kind));
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
@@ -64,6 +78,15 @@ window.Kakoi = window.Kakoi || {};
         if (this._last) this.update(this._last.state, this._last.S);
       });
       this.clearBtn.addEventListener('click', () => h.onClear(this.who));
+      this.oppOffBtn.addEventListener('click', () => h.onToggleOpponent(false));
+      this.sortSel = this.root.querySelector('.dk-sort select');
+      this.sortWrap = this.root.querySelector('.dk-sort');
+      this.sortSel.value = this.sort;
+      const savePref = () => {
+        try { localStorage.setItem(PREF, JSON.stringify({ sort: this.sort })); } catch { /* 無視 */ }
+        if (this._last) this.update(this._last.state, this._last.S);
+      };
+      this.sortSel.addEventListener('change', () => { this.sort = this.sortSel.value; savePref(); });
       // タイル・チップは roving tabindex（U3）。矢印でフォーカスを移し Enter で選ぶ
       this.roving = K.roving.attach(this.body, '.dk-item');
       this.views = {};   // `${who}:${kind}` → 一覧の中身（構築は1回だけ。update では属性だけを書き換える）
@@ -101,6 +124,8 @@ window.Kakoi = window.Kakoi || {};
           `<li><b>◎</b>相手との相性がよい／<b>△</b>苦手</li>` +
           `<li><b>✕</b>＋点線の枠：いまの組み合わせとは両立しない</li>` +
           `<li><span class="lg-ex lg-imp">名称</span>点線の項目：既定値（未選択のため補った値）</li>` +
+          `<li><span class="lg-ex">↳ 名称</span>派生の戦法</li>` +
+          `<li><span class="lg-ex lg-basic">名称</span>朱の印：基本の形</li>` +
           `</ul>`;
         this.root.appendChild(pop);
         btn.setAttribute('aria-expanded', 'true');
@@ -149,10 +174,10 @@ window.Kakoi = window.Kakoi || {};
 
     // ---------- 一覧の中身（who×kind ごとに構築して保持） ----------
     _mount(who, kind) {
-      const key = `${who}:${kind}`;
+      const key = kind === 'castle' ? `${who}:${kind}:${this.sort}` : `${who}:${kind}`;
       let v = this.views[key];
       if (!v) {
-        v = kind === 'tactic' ? K.dockGrids.tactics(this, who) : K.dockGrids.castles(this, who);
+        v = kind === 'tactic' ? K.dockGrids.tactics(this, who) : K.dockGrids.castles(this, who, this.sort);
         this.views[key] = v;
       }
       if (this.body.firstElementChild !== v.el) this.body.replaceChildren(v.el);
@@ -175,7 +200,9 @@ window.Kakoi = window.Kakoi || {};
       this.whoSeg.setValue(who);
       this.oppBtn.disabled = false;
       this.oppBtn.title = showOpp ? '' : 'クリックすると相手の局面を表示します';
+      this.oppOffBtn.hidden = !showOpp;
       this.tabSeg.setValue(kind);
+      this.sortWrap.hidden = kind !== 'castle';   // 戦法は筋の表のまま（並べ方は囲いだけ）
       const side = state.slots[who];
       this.clearBtn.hidden = KINDS.every(k => side[k] == null);
 
@@ -209,18 +236,13 @@ window.Kakoi = window.Kakoi || {};
         if (tip) it.el.title = tip; else it.el.removeAttribute('title');
       }
 
-      // 選択中の派生を持つ親タイルを強調する（§4-3）。派生が畳まれていれば開く
+      // 選択中の派生を持つ親タイルを強調する（§4-3）
       if (v.tiles) {
         const selVar = st.tacticId;
         const parentId = selVar && (K.TACTICS.find(t => t.id === selVar) || {}).variantOf;
         for (const t of v.tiles) {
           if (parentId && t.dataset.id === parentId) t.dataset.vsel = 'true';
           else delete t.dataset.vsel;
-        }
-        if (parentId && v.el.dataset.vars === 'off') {
-          v.el.dataset.vars = 'on';
-          const sw = v.el.querySelector('.dk-vshow input');
-          if (sw) sw.checked = true;
         }
       }
       // 絞り込んだ戦略に合わない項目だけの行・系統はまるごと隠す。
@@ -230,8 +252,8 @@ window.Kakoi = window.Kakoi || {};
         for (const sec of v.fams) {
           sec.hidden = !sec._sides.has(strat);
           if (!sec.hidden) {
-            const n = sec.querySelector('.n');
-            if (n) n.textContent = sec.querySelectorAll('.dk-item:not([hidden])').length;
+            const el = sec.querySelector('.n');
+            if (el) el.textContent = sec.querySelectorAll('.dk-item:not([hidden])').length;
           }
         }
       }
