@@ -13,7 +13,6 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
-  const { plain } = K.html;
   const { mirrorSq } = K.notation;
   const FIELD = K.constraints.FIELD;
   const { LAYER_JA } = K.lookup;
@@ -95,6 +94,20 @@ window.Kakoi = window.Kakoi || {};
       const x = kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
       return x ? x.name : id;
     }
+    // トースト用の短い名前（short があればそれ。長い正式名で3行以上になるのを防ぐ）
+    _shortOf(kind, id) {
+      if (id == null) return '既定値';
+      if (kind === 'strategy') return (K.STRATEGIES[id] && K.STRATEGIES[id].label) || id;
+      const x = kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
+      return x ? (x.short || x.name) : id;
+    }
+    // 変更1件を「層 前→後」の短い形にする（dropped: 自分=既定値に戻る・相手=外れる）。
+    // 長文にしない・理由は詳細パネルに任せる（トーストは最大2行を目安に）
+    _toastPart(c) {
+      const side = c.who === 'opp' ? '相手の' : '';
+      const to = c.dropped ? (c.who === 'me' ? '既定値' : '外れ') : this._shortOf(c.kind, c.to);
+      return `${side}${LAYER_JA[c.kind]} ${this._shortOf(c.kind, c.from)}→${to}`;
+    }
     _selWho() { return (parseSel(this.store.state.selected) || { who: 'me' }).who; }
 
     // ---------- 制約の操作（すべて apply に通す） ----------
@@ -147,15 +160,11 @@ window.Kakoi = window.Kakoi || {};
         if (marks.length) this.bars[who].markImplied(marks.map(k => ({ who, kind: k })));
       }
       // 明示制約の除去も元に戻せるようにする（実効値は既定値に落ちるだけだが選んだ履歴は消える）。
-      // L7: 除去で連動した制約の差し替え・除去もあわせて通知する（理由は whyOf が正しい層に帰属させる）
+      // L7: 除去で連動した制約の差し替え・除去もあわせて通知する。文言は「層 前→後」の短い形に揃える
       const had = prev.list.find(e => e.who === who && e.kind === kind);
       if (K.Toast && had) {
-        const side = `${who === 'opp' ? '相手' : '自分'}の`;
-        const extra = r.changed.map(c => c.dropped
-          ? `${side}${LAYER_JA[c.kind]}「${this._nameOf(who, c.kind, c.from)}」も外れました（${plain(c.why)}）`
-          : `${side}${LAYER_JA[c.kind]}を「${this._nameOf(who, c.kind, c.from)}」から「${this._nameOf(who, c.kind, c.to)}」へ変えました`
-        ).join('、');
-        K.Toast.show(`${side}${LAYER_JA[kind]}「${this._nameOf(who, kind, had.id)}」を外し、既定値に戻しました${extra ? '。' + extra : ''}`, {
+        const parts = [{ who, kind, from: had.id, dropped: true }, ...r.changed].map(c => this._toastPart(c));
+        K.Toast.show(parts.join('、'), {
           host: this.els.stage,
           action: { label: '元に戻す', fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); } },
         });
@@ -178,7 +187,7 @@ window.Kakoi = window.Kakoi || {};
       }
       this.store.set(patch);
       if (K.Toast && prev.list.length !== list.length) {
-        K.Toast.show(`${who === 'opp' ? '相手' : '自分'}の制約を全部外しました`, {
+        K.Toast.show(`${who === 'opp' ? '相手' : '自分'}の制約を外しました`, {
           host: this.els.stage,
           action: { label: '元に戻す', fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); } },
         });
@@ -193,7 +202,7 @@ window.Kakoi = window.Kakoi || {};
       const prev = { list: s.constraints, sel: s.selected };
       this.store.set({ constraints: [], selected: 'me.castle' });
       if (K.Toast) {
-        K.Toast.show('制約を全部外しました', {
+        K.Toast.show('制約をすべて外しました', {
           host: this.els.stage,
           action: { label: '元に戻す', fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); } },
         });
@@ -253,15 +262,9 @@ window.Kakoi = window.Kakoi || {};
 
     _toastChanged(changed, prev) {
       if (!K.Toast) return;
-      const name = (kind, id) => this._nameOf('me', kind, id);
-      // 文言には必ず側を入れる（U2: 「相手の戦法を…」）。理由は whyOf が
-      // 衝突した層に帰属させるので、戦略のせいに見える言い回しは起きない
-      const msg = changed.map(c => {
-        const side = `${c.who === 'opp' ? '相手' : '自分'}の`;
-        return c.dropped
-          ? `${side}${LAYER_JA[c.kind]}「${name(c.kind, c.from)}」を外しました（${plain(c.why)}）`
-          : `${side}${LAYER_JA[c.kind]}を「${name(c.kind, c.from)}」から「${name(c.kind, c.to)}」へ変更しました`;
-      }).join('、');
+      // 「連動: 層 前→後」の短い形に揃える（相手側は「相手の」を頭に付ける。
+      // 理由の詳細は詳細パネルで読めるのでトーストには畳まない）
+      const msg = `連動: ${changed.map(c => this._toastPart(c)).join('、')}`;
       K.Toast.show(msg, {
         host: this.els.stage,
         action: {
