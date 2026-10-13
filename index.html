@@ -71,14 +71,15 @@
     <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
   </nav>
 
-  <!-- 見る: 盤を挟んで敵（上）・味方（下）の帯。敵なしのときは味方の帯が盤の上に来る（従来どおり） -->
-  <main class="panel glass stage" id="stageMain">
+  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手なしのときは自分の帯が盤の上に来る（従来どおり） -->
+  <main class="panel glass stage" id="stageMain" data-opp="false">
     <div class="view-pane" data-view="board" id="boardPane">
-      <div class="sideband" id="bandOpp" data-side="opp" hidden>
+      <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
         <div class="sband-h">
           <span class="who">相手<small>後手</small></span>
           <div class="ttl"><h3 class="sband-name" id="nameOpp"></h3><div class="rd"><span class="sband-sub" id="subOpp"></span></div></div>
-          <button class="sband-clear" id="clearOpp" type="button" title="相手の制約をすべて外す">相手をはずす</button>
+          <button class="sband-clear" id="addOpp" type="button" title="相手側に制約を足す">＋ 相手を加える</button>
+          <button class="sband-clear" id="clearOpp" type="button" title="相手の制約をすべて外す" hidden>相手をはずす</button>
         </div>
         <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
       </div>
@@ -101,21 +102,24 @@
     <!-- 盤（BoardView / OverlayView は1組だけ） -->
     <div class="view-pane board-pane" data-view="board">
       <div class="boardarea">
-        <!-- 持ち駒は盤の左右に立てる（伝統的な記法。敵=左・味方=右） -->
-        <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
-        <div class="boardwrap" id="boardwrap">
+        <div class="boardwrap" id="boardwrap" data-pt="off">
           <div id="ptable" class="ptable" role="group" aria-label="戦法の周期表（盤の筋とそろえた表）"></div>
           <div class="flabels" id="files"></div><div></div>
-          <div class="board" id="board"></div>
+          <div class="board" id="board" tabindex="0" role="group"
+            aria-label="将棋盤（フォーカス中は矢印キーで選択中の制約が隣の候補に変わる）"></div>
           <div class="rlabels" id="ranks"></div>
+          <!-- 持ち駒は盤の左右に立てる（伝統的な記法。相手=左上・自分=右下） -->
+          <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
+          <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
         </div>
-        <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
       </div>
     </div>
   </main>
 
-  <!-- 読む（右ドック。BoardDetailView が選択中の制約の種類に応じて組み立てる） -->
+  <!-- 読む（右ドック。BoardDetailView が選択中の制約の種類に応じて組み立てる。
+       1180px 以下では右端のドロワーになり、#detailToggle で開閉する） -->
   <aside class="panel glass detail">
+    <button class="ib" id="detailToggle" type="button" aria-expanded="false" aria-label="解説パネルを開閉">解説</button>
     <div class="view-pane" data-view="board">
       <div class="detail-body" id="detail"></div>
     </div>

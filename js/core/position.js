@@ -15,12 +15,14 @@ window.Kakoi = window.Kakoi || {};
     at(f, r) { return this._at.get(key(f, r)); }
     has(f, r) { return this._at.has(key(f, r)); }
 
-    /** 囲いデータから局面を作る。attack を渡すと後手の駒を重ねる */
+    /** 囲いデータから局面を作る。attack を渡すと後手の駒を重ねる。
+     *  castle.rest は core に含まれない守り駒の置き場所（合成・カード図では role 'rest'） */
     static fromCastle(castle, setup, attack = null) {
       const support = [castle.shell, castle.filler].filter(Boolean).join(' ');
       const pieces = [
         ...parsePieces(setup.pieces, { owner: 'sente', role: 'setup' }),
         ...parsePieces(support, { owner: 'sente', role: 'support' }),
+        ...parsePieces(castle.rest || '', { owner: 'sente', role: 'rest' }),
         ...parsePieces(castle.core, { owner: 'sente', role: 'core' }),
         ...(attack ? parsePieces(attack.gote, { owner: 'gote', role: 'attack' }) : []),
       ];

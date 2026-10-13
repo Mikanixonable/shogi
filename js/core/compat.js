@@ -1,19 +1,21 @@
 // 両立判定（対局図用。DOM に依存しない）: 「いまの他の層」と候補を compose して、
 // 盤上の衝突（SQUARE/PAWN/COUNT/CONTACT）と将棋の原則（玉飛接近・同翼・戦略の整合・手数）
-// から3段階（best/ok/ng）で判定する。×を選んだときの自動差し替え resolve もここ。
-// 計画書 §3-2（judge）/ §4-2（resolve）。
+// から3段階（best/ok/ng）で判定する。連動による自動差し替えは constraints.apply が担う
+// （searchAlternative/cleanBase はそのために公開している内部API）。計画書 §3-2 / §4-2。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { parsePieces, parseSquare, label } = Kakoi.notation;
+  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel } = Kakoi.lookup;
 
-  const LAYERS = ['strategy', 'tactic', 'castle'];            // 層の既定順（pick に無い層の並び替え用）
   const FIELD = { strategy: 'strategy', tactic: 'tacticId', castle: 'castleId' };
-  const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT']); // compose の衝突のうち × にするもの
-  const findTactic = id => (Kakoi.TACTICS || []).find(t => t && t.id === id) || null;
-  const findCastle = id => (Kakoi.CASTLES || []).find(c => c && c.id === id) || null;
-  const familyOf = t => t ? (Kakoi.TACTIC_FAMILIES || []).find(f => f && f.id === t.family) || null : null;
-  const strategyLabel = s => (Kakoi.STRATEGIES && Kakoi.STRATEGIES[s] && Kakoi.STRATEGIES[s].label) || s || '';
+  const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT', 'HAND']); // compose の衝突のうち × にするもの
+  // 相性表の overrides では消せない理由（計画書 L2: 戦略の不一致・玉飛接近・同翼は原則なので
+  // データの明示的な上書きの対象から外す）
+  const NO_OVERRIDE = new Set(['SIDE', 'KING_ROOK', 'SAME_WING']);
+  // 端筋（1・9筋）の飛車は玉飛接近・同翼の判定対象外。端に構えた飛車は玉の逃げ道を実質塞がず、
+  // 一間飛車＋美濃・一間飛車穴熊は定番の組み合わせとして成立するため
+  const edgeRook = rf => rf === 1 || rf === 9;
   const normSide = st => ({
     strategy: (st && st.strategy) || null,
     tacticId: (st && st.tacticId) || null,
@@ -22,8 +24,8 @@ window.Kakoi = window.Kakoi || {};
 
   // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則は Kakoi.constraints が唯一の権威
   // （js/core/constraints.js。起動時ではなく判定時に参照するので読み込み順は問わない）
-  const tacticIdOf = st => Kakoi.constraints.tacticIdOf(st);
-  const castleIdOf = (st, opp) => Kakoi.constraints.castleIdOf(st, opp);
+  const tacticIdOf = st => Kakoi.defaults.tacticIdOf(st);
+  const castleIdOf = (st, opp) => Kakoi.defaults.castleIdOf(st, opp);
   const tacticOf = st => findTactic(tacticIdOf(st));
   const castleOf = (st, opp) => findCastle(castleIdOf(st, opp));
 
@@ -45,8 +47,9 @@ window.Kakoi = window.Kakoi || {};
     : null;
 
   // ---------- 盤上の評価: 候補を代入した状態 st を compose し、衝突と原則を集める ----------
-  // ngReasons（×の理由）と notes（○のまま付ける注記）を分けて返す。結果は選択状態をキーにメモ化
-  const evalMemo = new Map();
+  // ngReasons（×の理由）と notes（○のまま付ける注記）を分けて返す。結果は選択状態をキーに
+  // 共有 LRU でメモ化（S4: 長時間のセッションでメモが際限なく増えないよう上限を設ける）
+  const evalMemo = new (Kakoi.LRU || Map)(512);
   function evaluate(st, opp) {
     const k = JSON.stringify([normSide(st), normSide(opp)]);
     if (evalMemo.has(k)) return evalMemo.get(k);
@@ -114,6 +117,13 @@ window.Kakoi = window.Kakoi || {};
             notes.push({ code: 'KING_ROOK_EXEMPT', squares,
               text: `飛車（${rf}筋）と玉（${kf}筋）が近いが、玉を飛車側に囲う意図的な構え（バランスで受ける）` });
           }
+        } else if (edgeRook(rf)) {
+          // 端筋の飛車は玉飛接近・同翼の対象外（一間飛車＋美濃・一間飛車穴熊は定番の形。
+          // 端に構えた飛車は玉の逃げ道を実質塞がない）
+          if (Math.abs(rf - kf) <= 1 || (wing(rf) === wing(kf) && wing(rf) !== 'center')) {
+            notes.push({ code: 'KING_ROOK_EXEMPT', squares,
+              text: `飛車（${rf}筋）と玉（${kf}筋）が近いが、端筋の飛車は玉飛接近・同翼の対象外` });
+          }
         } else if (Math.abs(rf - kf) <= 1) {
           // KING_ROOK: 玉と飛車の筋の差が1以下（玉飛接近すべからず。§1-3）
           ng.push({ code: 'KING_ROOK', squares, text: `飛車（${rf}筋）と玉（${kf}筋）が隣り合う（玉飛接近）` });
@@ -130,12 +140,13 @@ window.Kakoi = window.Kakoi || {};
         notes.push({ code: 'TEMPO', text: '組むのに手数がかかり、急戦の仕掛けに間に合いにくい' });
       }
     }
-    return { ng, notes, moved: composed.moved, composed, tactic, castle };
+    // composed（合成済みの局面）はメモに入れない（S4: 大きいので共有 LRU の枠を食わない）
+    return { ng, notes, moved: composed.moved, tactic, castle };
   }
 
   // ---------- 囲いの対戦相性スコアの上位帯（§3-2: 上位2件 または 最高点−0.5 以内） ----------
   // 両立する候補だけを対象に、全囲いの fitness を (strategy,tacticId,opp) 単位で1回だけ計算する
-  const bandMemo = new Map();
+  const bandMemo = new (Kakoi.LRU || Map)(128);
   function fitnessBand(st, opp) {
     const ctx = { strategy: st.strategy || null, tacticId: st.tacticId || null };
     const k = JSON.stringify([ctx, normSide(opp)]);
@@ -158,7 +169,23 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- judge ----------
-  const judgeMemo = new Map();
+  const judgeMemo = new (Kakoi.LRU || Map)(512);
+  // 同じ内容を別の言い回しで2度言う理由をまとめる（U6: 穴熊の「手数がかかる」が
+  // 自動生成の TEMPO 注記と相性表の why で二重に出ていたのを防ぐ）。
+  // 記号・括弧・空白を除いた正規形で一方が他方を含むとき、情報量の多い側を残す
+  const normTxt = s => String(s || '').replace(/[⚠（）()、。・\s]/g, '');
+  function dedupeReasons(reasons) {
+    const keep = [];
+    for (const r of reasons) {
+      const n = normTxt(r.text);
+      if (!n) { keep.push({ n, r }); continue; }
+      const i = keep.findIndex(k => k.n && (k.n.includes(n) || n.includes(k.n)));
+      if (i < 0) keep.push({ n, r });
+      else if (n.length > keep[i].n.length) keep[i] = { n, r };
+    }
+    return keep.map(k => k.r);
+  }
+
   function judgeFull(me, layer, candidateId, opp) {
     me = me || {};
     const st = { ...me, [FIELD[layer]]: candidateId };
@@ -168,21 +195,23 @@ window.Kakoi = window.Kakoi || {};
     let level = ngAll.length ? 'ng' : 'ok';
     let fitness = null;
     let cappedOk = false;
-    // 相性表（pairings）: 戦法×囲いの関係。strategy 層の判定には適用しない
-    if (layer !== 'strategy' && ev.tactic && ev.castle) {
+    // 相性表（pairings）: 戦法×囲いの関係。全ての層に同じ規則を適用する（L8）
+    if (ev.tactic && ev.castle) {
       const p = pairingOf(ev.tactic, ev.castle.id);
       if (p) {
         reasons.push({ code: 'PAIRING', text: p.why || '相性表の評価' });
         if (p.level === 'ng') {
           const r = { code: 'PAIRING', text: p.why || '相性表で×' };
           ngAll.push(r); level = 'ng';
-        } else if (p.level === 'ok') {
-          cappedOk = true;                    // ○指定は best への昇格を止める
-          if (level === 'ng') {               // 注記つき○は自動判定の×を覆す（中飛車×本美濃など「浮き飛車の形」）
-            level = 'ok'; ngAll.length = 0;   // ng 理由は reasons に残り、注意として表示される
-          }
-        } else if (p.level === 'best' && level !== 'ng') {
-          level = 'best';
+        } else {
+          // ○/◎ が上書きできるのは overrides で宣言した理由だけ（L2）。
+          // SIDE / KING_ROOK / SAME_WING は宣言しても消えない。消した ng の理由は
+          // reasons に残り、注意として表示される（中飛車×本美濃など「浮き飛車の形」）
+          const ov = new Set(Array.isArray(p.overrides) ? p.overrides : []);
+          const keep = ngAll.filter(r => NO_OVERRIDE.has(r.code) || !ov.has(r.code));
+          ngAll.length = 0; ngAll.push(...keep);
+          level = keep.length ? 'ng' : p.level;
+          if (p.level === 'ok') cappedOk = true;   // ○指定は best への昇格を止める
         }
       }
     }
@@ -194,13 +223,13 @@ window.Kakoi = window.Kakoi || {};
         if (band && (band.top2.has(candidateId) || fitness >= band.max - 0.5 - 1e-9)) level = 'best';
       }
     }
-    // 対敵軸（計画書 §3-1）: 層ごとに違う尺度で「相手に対して候補が合うか」を出す。
+    // 相手との相性軸（計画書 §3-1）: 層ごとに違う尺度で「相手に対して候補が合うか」を出す。
     //   castle:   その候補の fitness の帯。上位帯（◎昇格と同じ: 上位2件または最高点−0.5以内）
     //             を good、最高点から1.0以上低いを bad。候補ごとに値が変わる軸になる
     //   strategy: 候補の戦略の実効戦法（既定値）が相手に持つ適性
     //   tactic:   tactic.against[相手の戦略] ＋ againstTactic[相手の実効戦法id]（§6-3）
     // 同じ側の整合（level）とは別の軸なので level には混ぜない
-    // （相性が悪くても選べる・連鎖は起きない＝要件5）。UI の対敵バッジ用に返すだけ
+    // （相性が悪くても選べる・連動は起きない＝要件5）。UI の相手との相性バッジ用に返すだけ
     let vs = null;
     if (opp && Kakoi.matchup) {
       if (layer === 'castle' && ev.castle) {
@@ -230,12 +259,12 @@ window.Kakoi = window.Kakoi || {};
         };
       }
     }
-    return { level, reasons, moved: ev.moved, fitness, vs, _ng: ngAll };
+    return { level, reasons: dedupeReasons(reasons), moved: ev.moved, fitness, vs, _ng: ngAll };
   }
 
   /**
    * 候補と「いまの他の層」の両立判定。
-   * @param {{strategy:string, tacticId?:string|null, castleId?:string|null, pick?:string[]}} me 選択状態
+   * @param {{strategy:string, tacticId?:string|null, castleId?:string|null}} me 選択状態
    * @param {'strategy'|'tactic'|'castle'} layer 候補の層
    * @param {string} candidateId 戦略キー / 戦法id / 囲いid
    * @param {Object|null} [opp] 相手の選択状態（あると fitness と上位帯の ◎ 昇格が働く）
@@ -261,8 +290,8 @@ window.Kakoi = window.Kakoi || {};
     if (L === 'castle') { const c = findCastle(id); return c ? c.family : null; }
     return null; // strategy 層に系統は無い
   }
-  // 戦略テンプレートの既定値（§4-2.3）。解決規則は Kakoi.constraints.defaultIdOf が唯一の権威
-  const defaultOf = (L, strategy, opp) => Kakoi.constraints.defaultIdOf(L, strategy, opp && opp.strategy);
+  // 戦略テンプレートの既定値（§4-2.3）。解決規則は core/defaults.js が唯一の権威
+  const defaultOf = (L, strategy, opp) => Kakoi.defaults.defaultIdOf(L, strategy, opp && opp.strategy);
   // a. 新しい選択との pairings で ◎ の候補（データ順）
   function pairingBestOf(st, L, ok) {
     if (L === 'castle') {
@@ -295,13 +324,18 @@ window.Kakoi = window.Kakoi || {};
     return base;
   }
 
-  // 代替候補を探す（§4-2 の a→b→c→d の順。同点は TACTICS/CASTLES/STRATEGIES のデータ順で決定的）
+  // 代替候補を探す。順番は「戦略の既定値 → 相性表の◎ → fitness → 同じ系統 → 動く駒が最小」
+  // （§4-2 / L12。既定値は最も自然な差し替え先なので最初に試す。
+  //   同点は TACTICS/CASTLES/STRATEGIES のデータ順で決定的）
   function searchAlternative(next, L, cur, others, done, opp) {
     const base = cleanBase(next, L, others, done, opp);
     const ok = candidatesOf(L).filter(c => c !== cur)
       .map(cid => ({ id: cid, j: judgeFull(base, L, cid, opp) }))
       .filter(e => e.j.level !== 'ng');
     if (!ok.length) return null;
+    // 0. 戦略の既定値（L12）
+    const d = defaultOf(L, base.strategy, opp);
+    if (d != null && d !== cur && ok.some(e => e.id === d)) return d;
     // a. pairings で ◎ のもの
     const pa = pairingBestOf(base, L, ok);
     if (pa != null) return pa;
@@ -332,58 +366,9 @@ window.Kakoi = window.Kakoi || {};
     return best;
   }
 
-  /**
-   * 層を選び直したときの自動解決。最後に選んだ層を優先し、両立しない他の層を差し替える。
-   * @param {{strategy:string, tacticId?:string|null, castleId?:string|null, pick?:string[]}} side 選択状態
-   * @param {'strategy'|'tactic'|'castle'} layer いま選んだ層
-   * @param {string} id 新しい値
-   * @param {Object|null} [opp] 相手の選択状態
-   * @returns {{next:Object, changed:Array<{layer:string, from:string, to:string, why:string}>}}
-   */
-  function resolve(side, layer, id, opp = null) {
-    side = side || {};
-    const pick = (Array.isArray(side.pick) ? side.pick : []).filter(l => l !== layer);
-    const next = { ...side, [FIELD[layer]]: id, pick: [...pick, layer] }; // 最後に選んだ層が最優先
-    const changed = [];
-    // 他の層を優先度の低い順（pick の古い順。pick に無い層は最古扱い）に並べる
-    const others = LAYERS.filter(l => l !== layer).sort((a, b) => {
-      const ia = next.pick.indexOf(a), ib = next.pick.indexOf(b);
-      return ia - ib || LAYERS.indexOf(a) - LAYERS.indexOf(b); // pick に無い層（-1）が最古
-    });
-    const done = new Set();
-    for (const L of others) {
-      const cur = next[FIELD[L]];
-      done.add(L);
-      if (cur == null) continue;                    // 未選択の層は差し替え対象にしない
-      const j = judgeFull(next, L, cur, opp);        // いまの値が新しい選択のもとで ng か
-      if (j.level !== 'ng') continue;
-      let rep = null;
-      // 戦略を変えた直後は、まずテンプレートの既定値に戻す（§4-2.3）。
-      // 評価は古い層を清掃したベースで行う（ng の古い値のせいで既定値まで×に見えるのを防ぐ）
-      if (layer === 'strategy') {
-        const d = defaultOf(L, next.strategy, opp);
-        if (d && d !== cur && judgeFull(cleanBase(next, L, others, done, opp), L, d, opp).level !== 'ng') rep = d;
-      }
-      if (rep == null) rep = searchAlternative(next, L, cur, others, done, opp);
-      if (rep != null && rep !== cur) {
-        next[FIELD[L]] = rep;
-        changed.push({
-          layer: L, from: cur, to: rep,
-          why: j._ng.map(r => r.text).join('、') || '新しい選択と両立しない',
-        });
-      } else {
-        // 差し替え先が見つからなかった（全候補 ng）。ng の値はそのまま残るが、
-        // 静かに放置せず通知に載せる（M3「どの順で選んでも ng が残らない」の例外時の表示用）
-        changed.push({ layer: L, from: cur, to: cur, unresolved: true,
-          why: j._ng.map(r => r.text).join('、') || '両立する候補がありません' });
-      }
-    }
-    return { next, changed };
-  }
-
-  // judgeFull / searchAlternative / cleanBase は constraints.apply の連鎖解決が
+  // judgeFull / searchAlternative / cleanBase は constraints.apply の連動解決が
   // 同じ規則を再利用するための内部API（メモ化を通さない生の評価）
-  const api = { judge, resolve, judgeFull, searchAlternative, cleanBase };
+  const api = { judge, judgeFull, searchAlternative, cleanBase };
   Kakoi.compat = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

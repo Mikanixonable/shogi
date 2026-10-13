@@ -1,7 +1,7 @@
 // 戦法: 主役の駒の筋で分類した駒組みの例（先手視点）
 // pieces は先手の盤上の全駒、hand は持ち駒。lead.square に主役の駒が立つ
 // senkei: その戦法が属する・誘導する戦型（kakugawari/aigakari/yokofudori/yagura/gangi）
-// againstTactic: 相手の戦法 id をキーにした相性（good/ok/ng）。against は戦略、こちらは戦法
+// againstTactic: 相手の戦法 id をキーにした相性（good/ok/ng）。against は戦略どうし、こっちは戦法どうし
 // variantOf: 派生戦法の親 id。派生は親と同じ lead.square を持ち、route と essential の差分を持つ
 window.Kakoi = window.Kakoi || {};
 Kakoi.TACTICS = [
@@ -290,7 +290,7 @@ Kakoi.TACTICS = [
     against: { ibisha: 'good' },
     pairings: [
       { castle: 'katamino', level: 'best', why: '中飛車の代表的な囲い（左金を攻めに回せる）[[wj-nakabisha|wj-mino]]', sources: [{ ref: 'wj-nakabisha', for: '組み合わせ' }, { ref: 'wj-mino', for: '組み合わせ' }] },
-      { castle: 'mino', level: 'ok', why: '飛車が5五・5六へ浮いたあとの形（5八の金と5八の飛車が重なる）' },
+      { castle: 'mino', level: 'ok', overrides: ['SQUARE'], why: '飛車が5五・5六へ浮いたあとの形（5八の金と5八の飛車が重なる）' },
       { castle: 'furianaguma', level: 'ok', why: '中飛車穴熊として知られる持久戦の最終形[[wj-furibisha-anaguma]]', sources: [{ ref: 'wj-furibisha-anaguma', for: '組み合わせ' }] },
     ],
     tags: ['破壊力'],
@@ -322,7 +322,7 @@ Kakoi.TACTICS = [
     againstTactic: { bougin: 'good', chousoku37gin: 'ng' },
     pairings: [
       { castle: 'katamino', level: 'ok', why: '中飛車の定番の囲い' },
-      { castle: 'mino', level: 'ok', why: '持久戦に備える形' },
+      { castle: 'mino', level: 'ok', overrides: ['SQUARE'], why: '持久戦に備える形（5八の金と5八の飛車が重なる）' },
     ],
     tags: ['角道', '位取り'],
     context: '対居飛車',
@@ -344,7 +344,7 @@ Kakoi.TACTICS = [
     senkei: [],
     against: { ibisha: 'ok' },
     pairings: [
-      { castle: 'furianaguma', level: 'ok', why: '一間飛車穴熊として知られる組み合わせ（玉と飛車が1筋で隣接するが、低い陣形からカウンターを狙う形）[[wj-ikkenbisha]]', sources: [{ ref: 'wj-ikkenbisha', for: '組み合わせ' }] },
+      { castle: 'furianaguma', level: 'ok', overrides: ['SQUARE'], why: '一間飛車穴熊として知られる組み合わせ（玉と飛車が1筋で隣接するが、低い陣形からカウンターを狙う形）[[wj-ikkenbisha]]', sources: [{ ref: 'wj-ikkenbisha', for: '組み合わせ' }] },
       { castle: 'mino', level: 'ok', why: '美濃囲いを用いる例もある' },
       { castle: 'katamino', level: 'ok', why: '金を節約した片美濃型も使われる' },
     ],
@@ -562,7 +562,7 @@ Kakoi.TACTICS = [
     hand: '歩歩',
     essential: '飛86',
     pace: 'both',
-    senkei: ['aigakari'],
+    senkei: ['aigakari', 'yokofudori'],
     against: { ibisha: 'ok' },
     pairings: [
       { castle: 'kani', level: 'ok', why: '玉を中央に構える駒組みと相性がよい' },
@@ -594,7 +594,7 @@ Kakoi.TACTICS = [
     hand: '歩歩',
     essential: '飛86 歩75',
     pace: 'both',
-    senkei: ['aigakari'],
+    senkei: ['aigakari', 'yokofudori'],
     against: { ibisha: 'ok' },
     pairings: [
       { castle: 'kani', level: 'ok', why: '玉を中央に構える駒組みと相性がよい' },
@@ -701,7 +701,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'ibisha-base', name: '居飛車（2筋）', short: '居飛車', reading: 'いびしゃ',
+    id: 'ibisha-base', name: '居飛車（2筋）', short: '2筋', reading: 'いびしゃ',
     family: 'ibisha-rook', lead: { piece: '飛', files: [2], square: '28' },
     route: ['28'],
     pieces: '玉59 飛28 角88 金69 金49 銀79 銀39 桂89 桂29 香99 香19 歩97 歩87 歩77 歩67 歩57 歩47 歩37 歩27 歩17',
@@ -744,7 +744,7 @@ Kakoi.TACTICS = [
     against: { ibisha: 'ok' },
     pairings: [
       { castle: 'yagura', level: 'best', why: '矢倉戦から生まれた戦法で、矢倉囲いの駒組みのまま使う[[wj-yagura]]', sources: [{ ref: 'wj-yagura', for: '組み合わせ' }] },
-      { castle: 'kabuto', level: 'ok', why: '矢倉系の別の形でも併用できる' },
+      { castle: 'kabuto', level: 'ok', overrides: ['SQUARE', 'HAND'], why: '矢倉系の別の形でも併用できる（兜の持ち駒の角は6八の必須の角なので盤上に残る形）' },
     ],
     tags: ['端攻め', '矢倉'],
     context: '相矢倉（矢倉3七桂型からの端攻め）',
@@ -827,7 +827,7 @@ Kakoi.TACTICS = [
     pieces: '玉69 飛28 角77 金78 金58 銀79 銀39 桂89 桂29 香99 香19 歩96 歩87 歩76 歩67 歩57 歩45 歩37 歩25 歩17',
     essential: '歩45 歩25',
     pace: 'rapid',
-    senkei: ['aigakari'],
+    senkei: ['aigakari', 'yokofudori'],
     against: { ibisha: 'ok' },
     pairings: [
       { castle: 'funa', level: 'ok', why: '相掛かりの駒組みからそのまま使う基本的な囲い' },

@@ -20,5 +20,8 @@ window.Kakoi = window.Kakoi || {};
   /** 7,8 → "７八" */
   const label = (f, r) => ZEN[f] + KAN[r];
 
-  Kakoi.notation = { ZEN, KAN, key, parseSquare, parsePieces, label };
+  /** "78" → "32": マスを後手側へ回転する（compose.mirror と同じ変換） */
+  const mirrorSq = s => `${10 - +s[0]}${10 - +s[1]}`;
+
+  Kakoi.notation = { ZEN, KAN, key, parseSquare, parsePieces, label, mirrorSq };
 })();

@@ -1,36 +1,35 @@
 // 層合成（対局図用。DOM に依存しない）: 戦略テンプレート・戦法・囲いの3層を
-// ロックつきで重ねて一つの局面を作る。combo.js（距離貪欲な置換）の後継。計画書 §3-1。
+// ロックつきで重ねて一つの局面を作る。combo.js（距離貪欲な置換）の後継。計画書 §3-1 / §2 L1・L3。
 //
 // ルールの要点:
 //   - 戦法の essential ∪ 主役（lead）のマスはロック。動かさない・追い出さない・donor にしない
-//   - castle.core → castle.shell の順に置く。filler は比較専用で合成では置かない
-//   - castle.leave は「この囲いではその駒がいない」の宣言（例: 片美濃の金58、兜の角）。
-//     「金58」= そのマス指定（filler → 初期位置 → 持ち駒 へ退かす）、「角」= 盤上全体（持ち駒へ）
-//   - donor は pieceMatch.moveCost で「その駒の動きで実際に行ける」ものに限る
-//     （歩・香は同じ筋の前からだけ → 二歩や横滑りを防ぐ。計画書 §8-C の対策）
+//   - castle.core → castle.rest → castle.shell の順に置く。filler は比較専用で合成では置かない
+//   - castle.rest は core に含まれない守り駒（金・銀など）の置き場所。ロック済みのマスは飛ばし、
+//     置けなくても衝突にしない（囲いが「守り駒すべて」の行き先を決める。計画書 §2 L1）
+//   - どこにも属さない金・銀は空いている初期位置へ戻す（届かなければ持ち駒）
+//   - castle.hand の駒（兜・ボナンザの角など）は、戦法の持ち駒に無ければ盤上から持ち駒へ移す
+//   - 「届くか」は pieceMatch.moveCount（その駒の動きで何手かかるかの BFS）で判定し、
+//     donor の優劣は pieceMatch.moveCost（アニメ用コスト）で決める
 //   - core の目標マスがロック駒に塞がれているときは castle.flex の to へ逃がす（崩し形）
 //   - core の駒が足りないときは、flex.to にいるロック済みの同種の駒が「貸し出し」で兼ねられる
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { key, parsePieces, parseSquare, label } = Kakoi.notation;
+  const { key, parsePieces, parseSquare, label, mirrorSq } = Kakoi.notation;
+  const { findTactic, findCastle } = Kakoi.lookup;
 
-  const findTactic = id => (Kakoi.TACTICS || []).find(t => t.id === id) || null;
-  const findCastle = id => (Kakoi.CASTLES || []).find(c => c.id === id) || null;
   const sq = (f, r) => `${f}${r}`;
-  const mirrorSq = s => `${10 - +s[0]}${10 - +s[1]}`;
-  // leave で退いた駒の戻し先（初期配置。歩は同じ筋の7段目）
-  const INIT_SQ = {
-    玉: ['59'], 飛: ['28'], 角: ['88'], 金: ['49', '69'],
-    銀: ['39', '79'], 桂: ['29', '89'], 香: ['19', '99'],
-  };
-  // その駒の動きで実際に行けるか（アニメーションの規則と共有。null なら行けない）
+  // 金・銀の帰る場所（初期配置のマス。どこにも属さない守り駒はここへ戻す）
+  const HOME = { 金: ['49', '69'], 銀: ['39', '79'] };
+  // アニメ用の滑らせやすさ（donor の優劣付け用。null なら滑らせない＝多手数の移動）
   const canSlide = (p, from, to) => Kakoi.pieceMatch.moveCost(p, from, to);
+  // その駒の動きで何手かかるか（届く判定用。Infinity なら届かない。計画書 L3）
+  const moveCount = (p, from, to) => Kakoi.pieceMatch.moveCount(p, from, to);
 
   // 戦略テンプレートの既定囲い。既定値の解決規則は Kakoi.constraints が唯一の権威
   // （defaultCastle は文字列または {vsIbisha,vsFuribisha}。相手の戦略で振り分け、不明なら vsIbisha）
   function templateCastleOf(strategy, oppStrategy) {
-    const id = Kakoi.constraints.defaultCastleId(strategy, oppStrategy);
+    const id = Kakoi.defaults.defaultCastleId(strategy, oppStrategy);
     return id ? findCastle(id) : null;
   }
 
@@ -61,8 +60,10 @@ window.Kakoi = window.Kakoi || {};
       const tc = templateCastleOf(strategy, oppStrategy);
       base = tc ? Kakoi.Position.fromCastle(tc, Kakoi.SETUPS[tc.setup]) : new Kakoi.Position([], []);
     }
-    // 土台が既定囲いの局面のとき、前の囲いの core role を引きずらないよう support に均す
-    const pieces = base.pieces.map(x => ({ ...x, role: x.role === 'core' ? 'support' : x.role }));
+    // 土台が既定囲いの局面のとき、前の囲いの core/rest role を引きずらないよう support に均す
+    const pieces = base.pieces.map(x => ({
+      ...x, role: x.role === 'core' || x.role === 'rest' ? 'support' : x.role,
+    }));
     const hand = [...(base.hand || [])];
     const baseSq = new Map(pieces.map(x => [x, sq(x.f, x.r)]));  // moved の基準
 
@@ -89,15 +90,19 @@ window.Kakoi = window.Kakoi || {};
     const pawnOnFile = (f, ex) => pieces.some(x => x !== ex && x.owner === 'sente' && x.p === '歩' && x.f === f);
 
     // donor を探す: 盤上の先手駒でロック・主役・確定済み以外の同種の駒。
-    // その駒の動きで (f,r) へ行けるもの（moveCost が非 null）のうち最小コスト。同点は盤上の並び順
+    // 届くかは moveCount（BFSの手数。歩・香・桂の後退・横滑りを防ぐ。計画書 L3）、
+    // 優劣は moveCost（滑らせられるもの優先、なければ手数の少ない順）。同点は盤上の並び順
     function findDonor(p, f, r) {
       const to = sq(f, r);
       let best = null, bestCost = Infinity;
       for (const x of pieces) {
         if (x.p !== p || x.owner !== 'sente') continue;
         if (locked.has(x) || x.role === 'lead' || assigned.has(x)) continue;
-        const c = canSlide(x.p, sq(x.f, x.r), to);
-        if (c == null || c >= bestCost) continue;
+        const n = moveCount(x.p, sq(x.f, x.r), to);
+        if (!isFinite(n)) continue;
+        let c = canSlide(x.p, sq(x.f, x.r), to);
+        if (c == null) c = 9 + n;                    // 滑らせない多手数の移動は後順位
+        if (c >= bestCost) continue;
         best = x; bestCost = c;
       }
       return best;
@@ -214,7 +219,40 @@ window.Kakoi = window.Kakoi || {};
           text: `${t.p}${label(t.f, t.r)}を置く駒が足りない` });
       }
 
-      // 5. castle.shell: 囲いの前線の歩など。ロック済みのマスは戦法の駒を残して飛ばす
+      // 5. castle.rest: core に含まれない守り駒（金・銀など）の置き場所。ロック済みの
+      //    マスは飛ばし、置けなくても衝突にしない。囲いは「守り駒すべて」の行き先を
+      //    core+rest で指定するので、囲い切替の残留駒が残らない（計画書 §2 L1）
+      for (const t of parsePieces(castle.rest || '')) {
+        const on = at(t.f, t.r);
+        if (on && on.p === t.p) {
+          if (locked.has(on) || assigned.has(on)) continue;
+          if (on.role !== 'lead') on.role = 'rest';
+          assigned.add(on);
+          continue;
+        }
+        if (on && (locked.has(on) || assigned.has(on))) continue;
+        if (on) displace(on);
+        const placed = sourcePlace(t.p, t.f, t.r, 'rest');
+        if (placed) assigned.add(placed);
+      }
+
+      // 6. 取り残された金・銀の正規化: 囲い（core/rest）にも戦法（必須・主役）にも
+      //    属さず、初期位置にもいない守り駒は、届くほうの空いた初期位置へ戻す。
+      //    どの初期位置も空いていなければ持ち駒へ（例: 片美濃の5八の金は6九へ戻る）
+      for (const x of [...pieces]) {
+        if (x.owner !== 'sente' || !HOME[x.p]) continue;
+        if (x.role === 'lead' || locked.has(x) || assigned.has(x)) continue;
+        if (HOME[x.p].includes(sq(x.f, x.r))) continue;
+        const home = HOME[x.p].map(parseSquare)
+          .filter(h => !at(h.f, h.r))
+          .map(h => ({ ...h, n: moveCount(x.p, sq(x.f, x.r), sq(h.f, h.r)) }))
+          .filter(h => isFinite(h.n))
+          .sort((a, b) => a.n - b.n)[0];
+        if (home) { x.f = home.f; x.r = home.r; x.role = 'support'; }
+        else displace(x);
+      }
+
+      // 7. castle.shell: 囲いの前線の歩など。ロック済みのマスは戦法の駒を残して飛ばす
       //    （殻は戦法を追い出さない）。filler は置かない
       for (const t of parsePieces(castle.shell)) {
         const on = at(t.f, t.r);
@@ -226,31 +264,23 @@ window.Kakoi = window.Kakoi || {};
         assigned.add(sourcePlace(t.p, t.f, t.r, 'support'));
       }
 
-      // 6. castle.leave: 「この囲いではその駒がいない」の宣言。ロック（戦法の必須・主役）と
-      //    確定済みの駒は去らない。「金58」はマス指定（filler の同種の空きマス → 初期位置
-      //    → 持ち駒 へ退かす）、「角」は駒種指定（盤上に置かないので持ち駒へ）
-      const leaveToks = (castle.leave || '').trim().split(/\s+/).filter(Boolean);
-      const leaveAny = new Set(leaveToks.filter(t => t.length === 1));
-      for (const t of parsePieces(leaveToks.filter(t => t.length !== 1).join(' '))) {
-        const on = at(t.f, t.r);
-        if (!on || on.p !== t.p || on.owner !== 'sente') continue;      // 空き・別種（飛58 など）は無関係
-        if (on.role === 'lead' || locked.has(on) || assigned.has(on)) continue;
-        const home = parsePieces(castle.filler || '')
-          .filter(x => x.p === t.p).map(x => sq(x.f, x.r))
-          .concat(INIT_SQ[t.p] || (t.p === '歩' ? [`${t.f}7`] : []))
-          .map(parseSquare)
-          .find(({ f, r }) => !at(f, r));
-        if (home) { on.f = home.f; on.r = home.r; on.role = 'support'; }
-        else displace(on);
-      }
-      for (const x of [...pieces]) {
-        if (x.owner !== 'sente' || !leaveAny.has(x.p)) continue;
-        if (x.role === 'lead' || locked.has(x) || assigned.has(x)) continue;
-        displace(x);
+      // 8. castle.hand: 囲いが持ち駒にしている駒（兜・ボナンザの角）を盤上から持ち駒へ。
+      //    戦法の持ち駒が既に持っていれば何もしない。必須・確定済みの駒は動かせず、
+      //    そのときは HAND 衝突として記録する
+      for (const p of (castle.hand || '')) {
+        if (hand.includes(p)) continue;
+        const on = pieces.find(x => x.p === p && x.owner === 'sente');
+        if (!on) continue;
+        if (locked.has(on) || assigned.has(on) || on.role === 'lead' || on.fresh) {
+          conflicts.push({ code: 'HAND', squares: [sq(on.f, on.r)],
+            text: `${p}を持ち駒にできない（${label(on.f, on.r)}の駒は戦法の必須）` });
+          continue;
+        }
+        displace(on);
       }
     }
 
-    // 7. 検証: 二歩（同じ筋に先手の歩が2枚）
+    // 9. 検証: 二歩（同じ筋に先手の歩が2枚）
     const pawnFiles = new Map();
     for (const x of pieces) {
       if (x.owner !== 'sente' || x.p !== '歩') continue;
@@ -298,7 +328,7 @@ window.Kakoi = window.Kakoi || {};
    * 自分（先手）と相手（後手）の完成図を一つの盤に重ねる（計画書 §5）。
    * 同じマスに両軍の駒が来たら接触として記録する:
    *   - 歩同士 → あとから選んだ側（late）の歩を自陣へ1段下げる（先手は r+1、後手は r−1）。
-   *     下げ先も塞がっているときは重なったまま 'ng'
+   *     下げ先が塞がっていたらもう一方を試し、それでも駄目なら両方を元の位置へ戻す（'ng'。L10）
    *   - それ以外の重なり → 'ng'
    * @param {Kakoi.Position} mePos 自分の局面（先手の駒）
    * @param {Kakoi.Position} oppPos 相手の局面（後手の駒。mirror 済みのもの）
@@ -325,18 +355,24 @@ window.Kakoi = window.Kakoi || {};
       const f = Math.floor(k / 10), r = k % 10;
       const sqName = sq(f, r);
       if (me.length === 1 && opp.length === 1 && me[0].p === '歩' && opp[0].p === '歩') {
-        const pawn = late === 'me' ? me[0] : opp[0];
-        const nr = pawn.owner === 'sente' ? r + 1 : r - 1;
-        const nk = key(f, nr);
-        if (nr >= 1 && nr <= 9 && !occ.has(nk)) {
-          occ.set(k, xs.filter(x => x !== pawn));
+        // まず「あとから選んだ側（late）」の歩を1段下げる。下げ先が塞がっていたら
+        // もう一方の歩を下げる。それでも駄目なら両方を元の位置へ戻す（ng。計画書 L10）
+        const latePawn = late === 'me' ? me[0] : opp[0];
+        const earlyPawn = late === 'me' ? opp[0] : me[0];
+        const tryDrop = (pawn, other) => {
+          const nr = pawn.owner === 'sente' ? r + 1 : r - 1;
+          const nk = key(f, nr);
+          if (nr < 1 || nr > 9 || occ.has(nk)) return false;
+          occ.set(k, [other]);
           occ.set(nk, [pawn]);
           pawn.r = nr;
           contacts.push({ sq: sqName, kind: 'pawn',
             text: `${label(f, r)}で両軍の歩が接触。${pawn.owner === 'gote' ? '後手' : '先手'}の歩を${label(f, nr)}へ` });
-        } else {
+          return true;
+        };
+        if (!tryDrop(latePawn, earlyPawn) && !tryDrop(earlyPawn, latePawn)) {
           contacts.push({ sq: sqName, kind: 'ng',
-            text: `${label(f, r)}で両軍の歩が接触（下げ先も塞がっている）` });
+            text: `${label(f, r)}で両軍の歩が接触（どちらも下げ先が塞がっている）` });
         }
       } else {
         contacts.push({ sq: sqName, kind: 'ng',

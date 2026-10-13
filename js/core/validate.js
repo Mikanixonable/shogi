@@ -125,12 +125,14 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    // 先手の駒: 想定配置＋囲いの周辺(shell)＋比較用の補完(filler)＋囲い本体(core)
+    // 先手の駒: 想定配置＋囲いの周辺(shell)＋比較用の補完(filler)＋残りの守り駒(rest)＋囲い本体(core)
     const coreList = pieces(c.core, 'core', errors, { owner: 'sente', role: 'core' });
+    const restList = pieces(c.rest, 'rest', errors, { owner: 'sente', role: 'rest' });
     const sente = [
       ...(setup ? pieces(setup.pieces, 'setup.pieces', errors, { owner: 'sente', role: 'setup' }) : []),
       ...pieces(c.shell, 'shell', errors, { owner: 'sente', role: 'shell' }),
       ...pieces(c.filler, 'filler', errors, { owner: 'sente', role: 'filler' }),
+      ...restList,
       ...coreList,
     ];
     const squares = dupAndNifu(sente, '', errors);
@@ -151,24 +153,20 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    // leave: 「この囲いではその駒がいない」の宣言。「金58」= マス指定、「角」= 盤上全体
-    if (c.leave !== undefined) {
-      if (typeof c.leave !== 'string') errors.push('leaveが文字列でない');
+    // rest: core に含まれない守り駒の置き場所（計画書 §2 L1）。囲いは守り駒すべての
+    // 行き先を core+rest で指定する。玉・金・銀・桂・香のみ、マスは core と重複しない
+    if (c.rest !== undefined) {
+      if (typeof c.rest !== 'string') errors.push('restが文字列でない');
       else {
-        const onBoard = new Set(sente.map(x => x.p));
-        for (const t of c.leave.trim().split(/\s+/).filter(Boolean)) {
-          if (t.length === 1) {                          // 駒種指定: 盤上に置かない
-            if (!/^[玉飛角金銀桂香歩]$/.test(t)) errors.push(`leaveの駒表記が不正: ${t}`);
-            else {
-              if (onBoard.has(t)) errors.push(`leaveの「${t}」: その駒種が図（setup/shell/filler/core）の中にある`);
-              if (!(c.hand || '').includes(t)) warnings.push(`leaveの「${t}」は hand にもあるべき`);
-            }
-          } else if (!TOKEN.test(t)) errors.push(`leaveの駒表記が不正: ${t}`);
-          else if (sente.some(x => x.p === t[0] && x.f === +t[1] && x.r === +t[2]))
-            errors.push(`leaveの駒が図（setup/shell/filler/core）の中にある: ${t}`);
+        const coreSq = new Set(coreList.map(x => key(x.f, x.r)));
+        for (const x of restList) {
+          if (!'玉金銀桂香'.includes(x.p)) errors.push(`restに守り駒以外の駒がある: ${x.p}${x.f}${x.r}`);
+          if (coreSq.has(key(x.f, x.r))) errors.push(`restのマスがcoreと重複: ${x.f}${x.r}`);
         }
       }
     }
+    // leave は rest＋castle.hand 処理へ移行した（旧フィールドは残さない）
+    if (c.leave !== undefined) errors.push('leaveはrestへ移行した（旧フィールドは残さない）');
 
     if (!isArr(c.attacks)) errors.push('attacksが配列でない');
     else {
@@ -384,6 +382,16 @@ window.Kakoi = window.Kakoi || {};
         else seenCastles.add(p.castle);
         if (!['best', 'ok', 'ng'].includes(p.level)) errors.push(`pairings[${i}].level不正: ${p.level}`);
         if (p.level === 'best' && !isStr(p.why)) errors.push(`pairings[${i}]（◎）にwhyがない`);
+        // overrides: ○/◎ が上書きできる衝突コードの明示（L2）。
+        // SIDE / KING_ROOK / SAME_WING は原則なので上書き対象から外す
+        if (p.overrides !== undefined) {
+          const OK = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT', 'HAND']);
+          if (!isArr(p.overrides) || !p.overrides.length) errors.push(`pairings[${i}].overridesが空の配列`);
+          else for (const code of p.overrides) {
+            if (!isStr(code) || !OK.has(code)) errors.push(`pairings[${i}].overrides不正: ${code}`);
+          }
+          if (p.level === 'ng') errors.push(`pairings[${i}](×) にoverridesがある（×は上書きしない）`);
+        }
         if (p.sources !== undefined && !isArr(p.sources)) errors.push(`pairings[${i}].sourcesが配列でない`);
         if (p.level === 'best' && !(isArr(p.sources) && p.sources.length > 0)) errors.push(`pairings[${i}]（◎）に出典がない`);
         for (const s of isArr(p.sources) ? p.sources : []) {

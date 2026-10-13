@@ -2,9 +2,17 @@
    「墨と余白」: 罫線と記号で示す。色だけに頼らない（破線・◎・△・要約の文字を併記） */
 
 /* ===== 制約バー: 見出しと盤の間。チップ1つ=制約1つ ===== */
-.cbar { display:flex; flex-wrap:wrap; align-items:center; gap:5px; padding:1px 0 3px; min-height:26px; }
+/* 1行固定（帯の高さを変えない。F1）: はみ出した分は横スクロールし、右端をフェードさせる。
+   構造: .cbar-x（流れるチップ。横スクロール）＋ .cbar-lab（導出ラベル。右端に固定で褪せない） */
+.cbar { display:flex; flex-wrap:nowrap; align-items:center; gap:5px; padding:1px 0 3px; height:26px; min-height:0; overflow:hidden; }
+.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; gap:5px;
+          overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
+          mask-image:linear-gradient(to right, #000 calc(100% - 26px), transparent); }
+.cbar-x::-webkit-scrollbar { display:none; }
+.cbar-lab { display:flex; flex:none; align-items:center; gap:5px; }
+.cbar-lab:empty { display:none; }
 /* チップ: #名称 を枠で囲む。内側の選択・削除は別ボタン（入れ子の button を避けるため span の器） */
-.cchip { display:inline-flex; align-items:stretch; font-size:12px; letter-spacing:.04em;
+.cchip { display:inline-flex; align-items:stretch; flex:none; font-size:12px; letter-spacing:.04em;
          border:1px solid var(--line-2); background:none; color:var(--fg); }
 .cchip .cchip-b { display:inline-flex; align-items:center; gap:6px; padding:3px 4px 3px 10px;
                   border:0; background:none; cursor:pointer; font:inherit; color:inherit; letter-spacing:inherit; }
@@ -15,9 +23,9 @@
 .cchip-x { display:grid; place-items:center; width:20px; margin-left:2px; border:0; border-left:1px solid var(--line);
            background:none; color:var(--muted); cursor:pointer; font-size:12px; }
 .cchip-x:hover { color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); }
-/* 選択中のチップは朱の輪郭 */
-.cchip[data-sel="true"] { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
-.cchip[data-sel="true"] .cchip-nm { color:var(--accent); }
+/* 選択中のチップは朱の下線＋太字（U1: 朱は選択だけ。枠・面・輪は使わない） */
+.cchip[data-sel="true"] { box-shadow:inset 0 -2px 0 var(--accent); }
+.cchip[data-sel="true"] .cchip-nm { color:var(--accent); font-weight:700; }
 /* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
 .cchip[data-implied="true"] { border-style:dashed; border-color:var(--line); opacity:.72; }
 .cchip[data-implied="true"] .cchip-nm { font-weight:400; }
@@ -25,15 +33,11 @@
 /* ホバー予告: 変更される予定のチップを点滅させる（constraint-bar.js の flash()） */
 .cchip[data-flash="true"] { animation:cchipBlink .55s var(--ease) infinite alternate; }
 @keyframes cchipBlink { from { border-color:var(--line-2); } to { border-color:var(--bad); box-shadow:inset 0 0 0 1px var(--bad); } }
-/* 導出ラベル（戦型など）: 右端に寄せる消せない灰色チップ */
-.cchip.cchip-label { border-color:var(--line); color:var(--muted); cursor:default; padding:3px 10px; }
-.cchip.cchip-label .cchip-nm { font-weight:400; }
-.cbar > .cchip-label:first-of-type { margin-left:auto; }
+/* 導出ラベル（戦型など）: .cbar-lab に入る消せない灰色チップ。紙色で固定、褪せない */
+.cchip.cchip-label { border-color:var(--line); color:var(--muted); cursor:default; padding:3px 10px; background:var(--bg); }
+.cchip.cchip-label .cchip-nm { font-weight:400; white-space:nowrap; }
 
-/* 戦略セグのボタンにも2軸バッジの印を付ける（ドックの .dk-strategy も同じ規則） */
-.seg button[data-cascade="true"] { box-shadow:inset 0 0 0 1px var(--line-2); }
-.seg button[data-vs="good"] { color:var(--fg); box-shadow:inset 0 0 0 1px var(--accent); }
-.seg button[data-implied="true"] { font-style:italic; }
+/* 戦略セグのボタンの2軸バッジ印は css/dock.css の .dk-strategy 規則が担う */
 
 /* ===== 右ドック（board-detail-view。U5）: 選択中の制約の説明 ===== */
 /* 先頭: 側の表示名（小）＋項目名（大）。既定値で補った層は破線の「既定」を添える */
@@ -54,8 +58,8 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 #threatWrap[hidden], #playBtn[hidden], #clearAll[hidden] { display:none; }
 
 /* ===== narrow ===== */
-@media (max-width:980px) {
+@media (max-width:979px) {
   #pickRail { padding:12px 14px; }
-  /* ページ全体でスクロールするので内側の枠はスクロールさせない（pane-fill と同じ規則） */
-  .cr-side .cr-list { overflow:visible; }
+  .cbar { height:auto; min-height:26px; flex-wrap:wrap; }
+  .cbar-x { flex-wrap:wrap; overflow:visible; mask-image:none; }
 }

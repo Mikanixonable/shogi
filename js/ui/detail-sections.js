@@ -156,7 +156,7 @@ window.Kakoi = window.Kakoi || {};
    * 相性のよい囲い（pairings の ◎/○。押すとその囲いを制約にする）。
    * @param {Array<{id:string, name:string, familyName:string, level:string,
    *   why?:string, current?:boolean, cascade?:string}>} rows
-   *   current: いまの実効囲い（pressed で示す）。cascade: 選ぶと連鎖する層の予告文（例「→戦法も変わる」）
+   *   current: いまの実効囲い（pressed で示す）。cascade: 選ぶと連動する層の予告文（例「→戦法も変わる」）
    */
   function pairingCastles(rows) {
     if (!rows.length) return '<p class="note">データ上の対応する囲いはありません</p>';
@@ -208,10 +208,10 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 「どちらからの攻めが主になるか」: 玉と敵飛車の筋の差からの説明（§5）
+   * 「どちらからの攻めが主になるか」: 玉と相手の飛車の筋の差からの説明（§5）
    * @param {number|null} distance 筋の差（threat.distance 相当）
    * @param {string} mineLabel 玉の側の呼称（'自分'/'相手'）
-   * @param {string} oppLabel 飛車の側の呼称（'相手'/'こちら'）
+   * @param {string} oppLabel 飛車の側の呼称（'相手'/'自分'）
    */
   function distanceNote(distance, mineLabel, oppLabel) {
     if (distance == null) return '';
@@ -221,16 +221,17 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 対敵の相性（compat.judge の vs 軸: against / againstTactic）。
+   * 相手との相性（compat.judge の vs 軸: against / againstTactic）。
    * 同じ側の整合とは別の軸。苦手でも選べる（要件5）
    * @param {Array<{level:'good'|'neutral'|'bad', text:string}>} rows vsRows() の出力
+   * @param {string} otherLabel 相手側の呼称（'相手'/'自分'）
    */
   function vsSection(rows, otherLabel) {
     const mk = l => l === 'good' ? '◎' : l === 'bad' ? '×' : '△';
     const li = (rows && rows.length ? rows : [{ level: 'neutral', text: 'データ上の得意・苦手はありません' }])
       .map(r => `<li data-level="${r.level === 'bad' ? 'ng' : 'ok'}"><span class="mk"${r.level === 'bad' ? ' data-bad' : ''}>${mk(r.level)}</span>` +
         `<span>${esc(r.text)}</span></li>`).join('');
-    return sec(`対${esc(otherLabel)}の相性`, '自分の側の整合とは別の軸。苦手でも選べます',
+    return sec(`${esc(otherLabel)}との相性`, 'その側の両立とは別の軸。苦手でも選べます',
       `<ul class="mu-reasons">${li}</ul>`);
   }
 
@@ -269,7 +270,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 直近の連鎖の履歴（constraints.apply の changed。§5「共通の末尾」）
+   * 直近の連動の履歴（constraints.apply の changed。§5「共通の末尾」）
    * @param {Array<{who:string, kind:string, from:string, to:string|null, why:string, dropped?:boolean}>} changed
    * @param {(kind:string, id:string)=>string} nameOf id → 表示名
    */
@@ -283,7 +284,7 @@ window.Kakoi = window.Kakoi || {};
         : `${WHO(c.who)}の${LAYER[c.kind] || c.kind}を「${nameOf(c.kind, c.from)}」から「${nameOf(c.kind, c.to)}」へ変更しました`;
       return `<li data-level="${c.dropped ? 'ng' : 'ok'}"><span class="mk">${c.dropped ? '×' : '＋'}</span><span>${esc(text)}</span></li>`;
     }).join('');
-    return sec('直近の連鎖', '選び直しで自動的に変わった層', `<ul class="mu-reasons">${li}</ul>`);
+    return sec('直近の連動', '選び直しで連動して変わった層', `<ul class="mu-reasons">${li}</ul>`);
   }
 
   // 出典: [[ref]] を引いた本文の番号と同じ並びで出す（cited が先・未引用は後ろに連番）

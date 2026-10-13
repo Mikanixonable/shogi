@@ -21,14 +21,13 @@ window.Kakoi = window.Kakoi || {};
   const EDGE_FILES = new Set([1, 9]);       // 端筋（端攻めが効く筋）
   const EDGE_LEADS = new Set(['香', '桂']);  // 経路の終点が玉の筋に迫りやすい主役（端攻めの前兆）
 
-  const findTactic = id => (Kakoi.TACTICS || []).find(t => t.id === id) || null;
-  const findCastle = id => (Kakoi.CASTLES || []).find(c => c.id === id) || null;
+  const { findTactic, findCastle } = Kakoi.lookup;
 
   // その側の戦法を解決する。未選択なら戦略テンプレートの既定戦法
   // （既定値の解決規則は Kakoi.constraints が唯一の権威）
   function _resolveTactic(side) {
     if (side && side.tacticId) return findTactic(side.tacticId);
-    const id = Kakoi.constraints.tacticIdOf(side);
+    const id = Kakoi.defaults.tacticIdOf(side);
     return id ? findTactic(id) : null;
   }
 
@@ -36,7 +35,7 @@ window.Kakoi = window.Kakoi || {};
   // （defaultCastle が {vsIbisha, vsFuribisha} の形なら相手の戦略で選ぶ。相手不明なら vsIbisha）
   function _resolveCastle(me, oppStrategy) {
     if (me && me.castleId) return findCastle(me.castleId);
-    const id = Kakoi.constraints.defaultCastleId(me && me.strategy, oppStrategy);
+    const id = Kakoi.defaults.defaultCastleId(me && me.strategy, oppStrategy);
     return id ? findCastle(id) : null;
   }
 

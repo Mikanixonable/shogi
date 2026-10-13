@@ -24,7 +24,7 @@ window.Kakoi = window.Kakoi || {};
       if (!changed.size) return;
       const prev = this.state;
       this.state = { ...prev, ...patch };
-      this._save();
+      this._save(changed);   // 変わったキーだけを書き出す（S6 の小さな修正）
       for (const fn of this._subs) fn(this.state, changed, prev);
     }
 
@@ -39,8 +39,10 @@ window.Kakoi = window.Kakoi || {};
       return out;
     }
 
-    _save() {
+    /** @param {Set<string>|null} keys 変わったキー。null なら全部（初期の補完用） */
+    _save(keys) {
       for (const k of this._persist) {
+        if (keys && !keys.has(k)) continue;
         try { localStorage.setItem(`${this._ns}:${k}`, JSON.stringify(this.state[k])); } catch { /* 無視 */ }
       }
     }

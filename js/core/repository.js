@@ -47,19 +47,11 @@ window.Kakoi = window.Kakoi || {};
       }));
     }
 
-    /** 囲いと想定配置の出典 */
-    sourcesOf(castle) {
-      return this._resolveSources([...(castle.sources || []), ...(this.setupOf(castle).sources || [])]);
-    }
-
     // ===== 戦法 =====
     tactics() { return this._tactics; }
     tacticById(id) { return this._tacticById.get(id); }
     hasTactic(id) { return this._tacticById.has(id); }
     tacticFamilies() { return this._tacticFamilies; }
-    tacticsOf(familyId) { return this._tactics.filter(t => t.family === familyId); }
-    /** 戦法に合う囲い: pairings のうち ×(ng) 以外を、並び順どおりに囲いオブジェクトで返す */
-    castlesOfTactic(tactic) { return this.pairingsOf(tactic).filter(p => p.level !== 'ng').map(p => p.castle); }
     /** 戦法の相性表（pairings）を返す。castle は囲いオブジェクト、sources は解決済みの出典 */
     pairingsOf(tactic) {
       return (tactic.pairings || [])
@@ -74,9 +66,6 @@ window.Kakoi = window.Kakoi || {};
         ...(castle ? castle.sources || [] : []),
         ...(setup ? setup.sources || [] : []),
       ]);
-    }
-    tacticPositionOf(tactic) {
-      return Kakoi.Position.fromPieces(tactic.pieces, { leadSquare: tactic.lead && tactic.lead.square, hand: tactic.hand });
     }
 
     attackOf(castle, attackId) {

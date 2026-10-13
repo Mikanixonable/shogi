@@ -67,23 +67,5 @@ window.Kakoi = window.Kakoi || {};
     return `<ul class="sources">${li}</ul>`;
   };
 
-  /**
-   * 本文の [n] リンクにホバーしたとき、出典リストの該当行を強調する（.cite-on をトグル）。
-   * コンテナに1回だけ貼る委譲リスナ。描き直し（innerHTML の差し替え）をまたいで有効
-   */
-  const bindCites = container => {
-    const linkOf = t => (t && t.closest) ? t.closest('.cite a[href^="#src-"]') : null;
-    const mark = (a, on) => {
-      if (!a) return;
-      const li = container.querySelector(`#${a.getAttribute('href').slice(1)}`);
-      if (li) li.classList.toggle('cite-on', on);
-    };
-    container.addEventListener('mouseover', e => mark(linkOf(e.target), true));
-    container.addEventListener('mouseout', e => {
-      const a = linkOf(e.target);
-      if (a && !(e.relatedTarget && a.contains(e.relatedTarget))) mark(a, false);
-    });
-  };
-
-  Kakoi.html = { esc, sqAttr, makeCiter, rich, plain, sourcesBlock, bindCites };
+  Kakoi.html = { esc, sqAttr, makeCiter, rich, plain, sourcesBlock };
 })();

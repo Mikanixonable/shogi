@@ -3,43 +3,37 @@
 //   - *.strategy: 戦略の説明（STRATEGIES[].desc）＋その側の戦法・囲いの要約
 //     ＋相手がいれば導出ラベル（戦型）と「どちらからの攻めが主になるか」
 //   - *.tactic: 戦法の詳細（タグ・説明・長所短所・主役の駒の動き）＋派生の切替
-//     ＋相性のよい囲い（◎/○・いまの囲い・連鎖の予告）＋対敵の相性（judge の vs 軸）
+//     ＋相性のよい囲い（◎/○・いまの囲い・連動の予告）＋相手との相性の相性（judge の vs 軸）
 //   - *.castle: 囲いの詳細（ペンタグラム・#タグ・長所短所・攻め筋）。相手がいれば
 //     ペンタグラムに戦型の重みを重ね、fitness と効いている軸を表示する
-//   - 共通の末尾: 両軍の接触 → 直近の連鎖 → 出典
+//   - 共通の末尾: 両軍の接触 → 直近の連動 → 出典
 // render は self-contained: データは Kakoi.*（CASTLES/TACTICS/…）と内部の Repository で
 // 解決し、接触は compose.position/merge をここで引き直す。盤への反映はハンドラ経由。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
-  const { esc, makeCiter, bindCites } = K.html;
+  const { esc, makeCiter } = K.html;
+  const bindCites = (K.cites && K.cites.bind) || (() => {});   // ui/cites.js（S6 で core から移動）
   const Sec = () => K.detailSections; // 読み込み順に依存しないよう呼び出し時に引く
 
   const KINDS = ['strategy', 'tactic', 'castle'];
-  const LAYER_JA = { strategy: '戦略', tactic: '戦法', castle: '囲い' };
-  const WHO_JA = { me: '自分（先手）', opp: '相手（後手）' };
+  const { LAYER_JA, findTactic, findCastle, tacticFamilyOf, castleFamilyOf } = K.lookup;
+  const WHO_JA = { me: '自分（先手・▲）', opp: '相手（後手・△）' };
   const SHORT_WHO = { me: '自分', opp: '相手' };
 
   // ---------- データ参照（Kakoi.* 直読み＋内部 Repository） ----------
-  const findCastle = id => (K.CASTLES || []).find(c => c && c.id === id) || null;
-  const findTactic = id => (K.TACTICS || []).find(t => t && t.id === id) || null;
-  const castleFamilyOf = c => (c && (K.CASTLE_FAMILIES || []).find(f => f.id === c.family)) || null;
   const subtypeOf = c => {
     const f = castleFamilyOf(c);
     return (f && (f.subtypes || []).find(s => s.id === c.subtype)) || null;
   };
-  const tacticFamilyOf = t => (t && (K.TACTIC_FAMILIES || []).find(f => f.id === t.family)) || null;
   const nameOf = (kind, id) => {
     if (id == null) return '（未選択）';
     if (kind === 'strategy') return (K.STRATEGIES[id] && K.STRATEGIES[id].label) || id;
     const x = kind === 'tactic' ? findTactic(id) : findCastle(id);
     return x ? x.name : id;
   };
-  const parseSel = s => {
-    const m = /^(me|opp)\.(strategy|tactic|castle)$/.exec(String(s || ''));
-    return m ? { who: m[1], kind: m[2] } : null;
-  };
+  const parseSel = K.constraints.parseSel;
 
   class BoardDetailView {
     /**
@@ -96,7 +90,7 @@ window.Kakoi = window.Kakoi || {};
      *   sel: 選択中の制約（'who.kind' 文字列も可）
      *   st: その側の constraints.sides() 出力（opp が無いとき null。implied/rank を持つ）
      *   S:  sides() の全体。threat: matchup.threat(S.me, S.opp)（相手がいるとき）
-     *   changed: 直近の apply の changed（連鎖の履歴。無ければ省略）
+     *   changed: 直近の apply の changed（連動の履歴。無ければ省略）
      */
     render(p = {}) {
       if (!Sec()) {
@@ -124,22 +118,17 @@ window.Kakoi = window.Kakoi || {};
           : kind === 'tactic' ? this._tactic(norm, st, S, p.constraints, citer)
           : this._castle(norm, st, S, p.threat, p.attackId, citer);
         parts.push(b.body);
-        // 共通の末尾: 両軍の接触 → 直近の連鎖 → 出典
-        parts.push(Sec().contacts(this._contacts(S, p.constraints), citer));
+        // 共通の末尾: 両軍の接触 → 直近の連動 → 出典。
+        // 接触は呼び出し側の導出（merge 済み）を受け取る。渡されないときだけここで引き直す（S5）
+        parts.push(Sec().contacts(
+          p.contacts !== undefined ? p.contacts : this._contacts(S, p.constraints), citer));
         parts.push(Sec().history(p.changed, nameOf));
         parts.push(Sec().sources(b.sources, citer));
       }
       this.el.innerHTML = parts.filter(Boolean).join('');
     }
 
-    /** 攻め筋の選択状態だけを更新する（再描画を待たずに aria-pressed を直す） */
-    setAttack(attackId) {
-      for (const b of this.el.querySelectorAll('.attack')) {
-        b.setAttribute('aria-pressed', b.dataset.id === attackId);
-      }
-    }
-
-    // ---------- パネル先頭: 側の表示名＋項目名＋暗黙の層の注記 ----------
+    // ---------- パネル先頭: 側の表示名＋項目名＋既定の層の注記 ----------
     _head(sel, name, implied) {
       return `<div class="bd-h"><p class="bd-who">${WHO_JA[sel.who]}の${LAYER_JA[sel.kind]}</p>` +
         `<h2 class="bd-t">${esc(name)}${implied ? ' <small class="bd-imp">既定</small>' : ''}</h2>` +
@@ -165,12 +154,12 @@ window.Kakoi = window.Kakoi || {};
           : '<p class="desc">左の一覧から戦略を選びます。</p>',
         this._sideSummary(st),
         other ? Sec().senkei(labels) : '',
-        th ? Sec().distanceNote(th.distance, mine, sel.who === 'me' ? '相手' : 'こちら') : '',
+        th ? Sec().distanceNote(th.distance, mine, sel.who === 'me' ? '相手' : '自分') : '',
       ].filter(Boolean).join('');
       return { body, sources: this._tacticSources(tactic, castle) };
     }
 
-    // その側の実効値の要約（戦法・囲い。暗黙の層は△＋小さい注記）
+    // その側の実効値の要約（戦法・囲い。既定の層は△＋小さい注記）
     _sideSummary(st) {
       const row = (kind, id, implied) =>
         `<li data-level="ok"><span class="mk">${implied ? '△' : '＋'}</span>` +
@@ -204,7 +193,7 @@ window.Kakoi = window.Kakoi || {};
         const x = findTactic(id);
         return x ? { id, name: x.name, current: id === t.id } : null;
       }).filter(Boolean);
-      // 相性のよい囲い: pairings の ng 以外。いまの囲いと、選ぶと連鎖する層の予告つき
+      // 相性のよい囲い: pairings の ng 以外。いまの囲いと、選ぶと連動する層の予告つき
       const rows = this._pairingsOf(t).filter(pp => pp.level !== 'ng').map(pp => ({
         id: pp.castle.id,
         name: pp.castle.name,
@@ -227,7 +216,7 @@ window.Kakoi = window.Kakoi || {};
         Sec().route(t),
         Sec().variants(variantRows),
         Sec().pairingCastles(rows),
-        other && j && j.vs ? Sec().vsSection(vsRows, other === S.me ? 'こちら（先手）' : '相手（後手）') : '',
+        other && j && j.vs ? Sec().vsSection(vsRows, other === S.me ? '自分' : '相手') : '',
       ].filter(Boolean).join('');
       return { body, sources: this._tacticSources(t, castle) };
     }
@@ -282,24 +271,17 @@ window.Kakoi = window.Kakoi || {};
       return { body, sources };
     }
 
-    // ---------- 共通の末尾: 両軍の接触（compose.merge をここで引き直す） ----------
+    // ---------- 共通の末尾: 両軍の接触（contacts が渡されないときの保険。deriveBoard で引く） ----------
     _contacts(S, constraints) {
-      if (!S || !S.opp || !K.compose) return [];
+      if (!S || !S.opp || !K.deriveBoard) return [];
       try {
-        const me = K.compose.position({
-          strategy: S.me.strategy, tacticId: S.me.tacticId, castleId: S.me.castleId, side: 'sente',
-        });
-        const op = K.compose.position({
-          strategy: S.opp.strategy, tacticId: S.opp.tacticId, castleId: S.opp.castleId, side: 'gote',
-        });
-        const late = K.constraints ? K.constraints.lateOf(constraints || []) : 'opp';
-        return K.compose.merge(me.position, op.position, { late }).contacts;
+        return K.deriveBoard(constraints || []).merged.contacts;
       } catch (e) {
         return [];
       }
     }
 
-    // 「この囲いを制約にする」と連鎖する層の予告（「→戦法も変わる」）
+    // 「この囲いを制約にする」と連動する層の予告（「→戦法も変わる」）
     _cascadeLabel(list, who, kind, id) {
       if (!K.constraints || !Array.isArray(list)) return '';
       const cur = list.find(e => e.who === who && e.kind === kind);
@@ -310,8 +292,9 @@ window.Kakoi = window.Kakoi || {};
       return `→${names}も変わる`;
     }
 
-    // ---------- 出典（内部 Repository。無ければ空） ----------
+    // ---------- 出典（共有 Repository を受け取る。渡されないときだけ内部で持つ） ----------
     _repo() {
+      if (this.h.repo) return this.h.repo;   // S5: 呼び出し側の Repository を使う
       if (!this.__repo && K.Repository && K.CASTLES && K.SETUPS) {
         this.__repo = new K.Repository({
           CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES || {},
