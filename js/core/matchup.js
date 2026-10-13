@@ -160,11 +160,7 @@ window.Kakoi = window.Kakoi || {};
     return v === 'good' || v === 'ok' || v === 'ng' ? v : 'ok';
   }
 
-  const api = {
-    threat, fitness, tacticFit,
-    // compose/compat など他のコアモジュールからも使う内部ヘルパ
-    _resolveKingFile, _oppRookFileAbs,
-  };
+  const api = { threat, fitness, tacticFit };
   Kakoi.matchup = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

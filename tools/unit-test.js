@@ -124,7 +124,8 @@ ok(c2fail.length === 0, `compose:ngでない${c2}組の二歩・主役ずれ0件
 }
 {
   const j = K.compat.judge({ strategy: 'furibisha', tacticId: 'nakabisha' }, 'castle', 'mino');
-  ok(j.level === 'ng', 'expect:nakabisha×mino ng（5八で飛車と金が重なる）', brief(j));
+  // 相性表の注記つき○が自動判定の×を覆す（「飛車が浮いたあとの形」。重なりの理由は notes に残る）
+  ok(j.level === 'ok' && has(j, 'PAIRING') && has(j, 'SQUARE'), 'expect:nakabisha×mino 注記つきok（5八の重なりは注意として残る）', brief(j));
 }
 {
   const j = K.compat.judge({ strategy: 'furibisha', tacticId: 'shikenbisha' }, 'castle', 'mino');

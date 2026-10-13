@@ -59,18 +59,23 @@ window.Kakoi = window.Kakoi || {};
       if (p.has('t')) state.tacticId = p.get('t');
       if (p.has('cf')) state.clusterFamily = p.get('cf');
       const mu = isObj(state.matchup) ? state.matchup : {};
-      const readSide = (s, pre) => {
-        const out = { ...(isObj(s) ? s : {}) };   // ハッシュに無い層は現在値を残す
-        if (p.has(pre + 's')) out.strategy = p.get(pre + 's');
-        if (p.has(pre + 't')) out.tacticId = p.get(pre + 't');
-        if (p.has(pre + 'c')) out.castleId = p.get(pre + 'c');
-        if (p.has(pre + 'p')) out.pick = decodePick(p.get(pre + 'p'));
-        return out;
-      };
-      const show = { ...(isObj(mu.show) ? mu.show : {}) };
-      if (p.get('mo') === '0' || p.get('mo') === '1') show.opp = p.get('mo') === '1';
-      if (p.get('mw') === '0' || p.get('mw') === '1') show.threat = p.get('mw') === '1';
-      state.matchup = { me: readSide(mu.me, 'm'), opp: readSide(mu.opp, 'o'), show };
+      // 対局図のキーが1つでもあれば共有URLと見なす。共有URLは全項目を書き出すので、
+      // 欠けている項目は「保存値を残す」ではなく既定値に戻す（貼った側と同じ状態で開くため）
+      const muTouched = ['s', 't', 'c', 'p'].some(k => p.has('m' + k) || p.has('o' + k)) || p.has('mo') || p.has('mw');
+      if (muTouched) {
+        const readSide = (s, pre) => {
+          const out = { ...(isObj(s) ? s : {}) };
+          if (p.has(pre + 's')) out.strategy = p.get(pre + 's');
+          if (p.has(pre + 't')) out.tacticId = p.get(pre + 't');
+          if (p.has(pre + 'c')) out.castleId = p.get(pre + 'c');
+          out.pick = p.has(pre + 'p') ? decodePick(p.get(pre + 'p')) : [];
+          return out;
+        };
+        const show = { ...(isObj(mu.show) ? mu.show : {}) };
+        show.opp = p.get('mo') !== '0';
+        show.threat = p.get('mw') !== '0';
+        state.matchup = { me: readSide(mu.me, 'm'), opp: readSide(mu.opp, 'o'), show };
+      }
     } catch { /* 壊れたハッシュで起動を止めない */ }
   }
 

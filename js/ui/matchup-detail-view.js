@@ -122,6 +122,7 @@ window.Kakoi = window.Kakoi || {};
       if (d.pairing && d.pairing.why) items.push({ level: d.pairing.level === 'ng' ? 'ng' : 'ok', text: `${d.pairing.why}（相性表）` });
       for (const t of d.trio || []) {
         for (const r of (t.judge ? t.judge.reasons : [])) {
+          if (r.code === 'PAIRING') continue;   // 相性表の文は pairing.why の項目で既に載せる（二重表示を防ぐ）
           items.push({ level: t.judge.level === 'ng' ? 'ng' : 'ok', text: r.text, squares: r.squares });
         }
       }
@@ -131,7 +132,7 @@ window.Kakoi = window.Kakoi || {};
       }
       const seen = new Set();
       const li = items.filter(it => it.text && !seen.has(it.text) && seen.add(it.text))
-        .map(it => `<li data-level="${it.level}"${sqAttr(it.squares)}>` +
+        .map(it => `<li data-level="${it.level}" data-tone="${it.level === 'ng' ? 'bad' : 'focus'}"${sqAttr(it.squares)}>` +
           `<span class="mk">${it.level === 'ng' ? '×' : '＋'}</span><span>${esc(it.text)}</span></li>`).join('');
       return `<div class="sec"><h3>組み合わせの理由<small>点線の項目は盤上に表示</small></h3>` +
         `<ul class="mu-reasons">${li || '<li data-level="ok"><span class="mk">＋</span><span>盤上で両立する組み合わせです</span></li>'}</ul></div>`;

@@ -24,9 +24,10 @@ window.Kakoi = window.Kakoi || {};
     /**
      * @param {HTMLElement} el `#matchupRail`
      * @param {{ onChoose:(side:'me'|'opp', layer:'strategy'|'tactic'|'castle', id:string)=>void,
-     *   onShow:(key:'opp'|'threat', on:boolean)=>void }} handlers
+     *   onShow:(key:'opp'|'threat', on:boolean)=>void,
+     *   onHover?:(squares:string[], tone:string)=>void }} handlers
      */
-    constructor(el, { onChoose, onShow }) {
+    constructor(el, { onChoose, onShow, onHover }) {
       this.el = el;
       el.innerHTML =
         `<section class="mu-side" data-side="me">
@@ -71,6 +72,21 @@ window.Kakoi = window.Kakoi || {};
         const b = e.target.closest('.mu-item');
         if (b) onChoose(b.dataset.side, b.dataset.layer, b.dataset.id);
       });
+      // ×の理由は title に加えて、乗せる・フォーカスするだけで該当のマスが盤で光る（§6）
+      if (onHover) {
+        const light = e => {
+          const b = e.target.closest('.mu-item');
+          if (b) onHover(b.dataset.sq ? b.dataset.sq.split(' ') : [], b.dataset.compat === 'ng' ? 'bad' : 'focus');
+        };
+        el.addEventListener('mouseover', light);
+        el.addEventListener('focusin', light);
+        const unlight = e => {
+          const b = e.target.closest('.mu-item');
+          if (b && !b.contains(e.relatedTarget)) onHover([], null);
+        };
+        el.addEventListener('mouseout', unlight);
+        el.addEventListener('focusout', unlight);
+      }
       el.addEventListener('change', e => {
         const sel = e.target.closest('select[data-layer]');
         if (sel) { onChoose('opp', sel.dataset.layer, sel.value); return; }
@@ -86,13 +102,44 @@ window.Kakoi = window.Kakoi || {};
       this.castlesBySide = Object.fromEntries(SIDES.map(([side]) =>
         [side, K.CASTLE_FAMILIES.flatMap(f => K.CASTLES.filter(c => c.side === side && c.family === f.id))]));
       this.castleFam = new Map(K.CASTLE_FAMILIES.map(f => [f.id, f.name]));
+      this._buildMeLists();
+    }
+
+    // 自分側の行は構造が変わらないので一度だけ作る。update では属性だけを書き換え、
+    // DOM を作り直さない（フォーカスを落とさない・title のツールチップを閉じない。計画書 §6）
+    _buildMeLists() {
+      this.meRows = [];
+      const row = (parent, layer, id, name, sub) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'tr-item mu-item';
+        b.dataset.side = 'me'; b.dataset.layer = layer; b.dataset.id = id;
+        b.innerHTML = `<span class="nm">${esc(name)}</span><span class="fb">${esc(sub)}</span><i class="mu-mark" hidden></i>`;
+        parent.appendChild(b);
+        this.meRows.push({ el: b, layer, id, mark: b.querySelector('.mu-mark') });
+      };
+      for (const { family, tactics } of this.tacticRows) {
+        const sec = document.createElement('section');
+        sec.className = 'tr-row';
+        sec.innerHTML = `<h3><span class="pt-tile">${esc(family.piece)}</span>${esc(family.name)}</h3>`;
+        for (const t of tactics) row(sec, 'tactic', t.id, t.name, K.tacticNav.fileBadge(t));
+        this.els.tMe.appendChild(sec);
+      }
+      for (const [side, lab] of SIDES) {
+        const sec = document.createElement('section');
+        sec.className = 'tr-row';
+        sec.innerHTML = `<h3>${lab}</h3>`;
+        for (const c of this.castlesBySide[side]) row(sec, 'castle', c.id, c.short, this.castleFam.get(c.family) || '');
+        this.els.cMe.appendChild(sec);
+      }
     }
 
     /** 選択状態に合わせて一覧とバッジを描き直す（matchup が変わるたびにモードから呼ばれる） */
     update(state) {
       const m = state.matchup;
       const me = m.me, opp = m.opp;
-      const jMe = (layer, id) => K.compat.judge(me, layer, id, opp);
+      const oppCtx = m.show.opp ? opp : null;          // 相手非表示のときは詳細パネルと同じく相手抜きで判定する
+      const jMe = (layer, id) => K.compat.judge(me, layer, id, oppCtx);
       const jOpp = (layer, id) => K.compat.judge(opp, layer, id, me);
 
       // セグのつまみは表示中の幅で置くので、相手側の開閉は setValue より先に反映する
@@ -107,34 +154,31 @@ window.Kakoi = window.Kakoi || {};
       for (const b of this.seg.opp.el.querySelectorAll('button')) b.dataset.compat = jOpp('strategy', b.dataset.value).level;
 
       const curT = effTacticId(me), curC = effCastleId(me, opp);
-      this.els.tMe.innerHTML = this.tacticRows.map(({ family, tactics }) =>
-        `<section class="tr-row"><h3><span class="pt-tile">${esc(family.piece)}</span>${esc(family.name)}</h3>` +
-        tactics.map(t => this._row('me', 'tactic', t.id, t.name, K.tacticNav.fileBadge(t),
-          jMe('tactic', t.id), t.id === curT, me.tacticId == null)).join('') +
-        '</section>').join('');
-      this.els.cMe.innerHTML = SIDES.map(([side, lab]) =>
-        `<section class="tr-row"><h3>${lab}</h3>` +
-        this.castlesBySide[side].map(c => this._row('me', 'castle', c.id, c.short, this.castleFam.get(c.family) || '',
-          jMe('castle', c.id), c.id === curC, me.castleId == null)).join('') +
-        '</section>').join('');
+      for (const r of this.meRows) {
+        const j = jMe(r.layer, r.id);
+        const el = r.el;
+        el.dataset.compat = j.level;
+        const cur = r.layer === 'tactic' ? r.id === curT : r.id === curC;
+        el.setAttribute('aria-current', cur ? 'true' : 'false');
+        const implied = (r.layer === 'tactic' ? me.tacticId : me.castleId) == null && cur;
+        if (implied) el.dataset.implied = 'true'; else delete el.dataset.implied;
+        const sq = (j.reasons || []).flatMap(x => x.squares || []);
+        if (sq.length) el.dataset.sq = [...new Set(sq)].join(' '); else el.removeAttribute('data-sq');
+        if (j.reasons && j.reasons.length) el.title = j.reasons.map(x => x.text).join('／');
+        else el.removeAttribute('title');
+        r.mark.textContent = MARK[j.level];
+        r.mark.hidden = !MARK[j.level];
+      }
 
       this._fillSelect(this.els.tOpp, 'tactic', opp, me, effTacticId(opp));
       this._fillSelect(this.els.cOpp, 'castle', opp, me, effCastleId(opp, me));
       this._status(m);
     }
 
-    // 選択肢の行: 名前・補足・相性の印。× には理由を title に添える（色だけに頼らない）
-    _row(side, layer, id, name, sub, j, current, implied) {
-      const mark = MARK[j.level] ? `<i class="mu-mark">${MARK[j.level]}</i>` : '';
-      const tip = j.reasons && j.reasons.length
-        ? ` title="${esc(j.reasons.map(r => r.text).join('／'))}"` : '';
-      return `<button class="tr-item mu-item" data-side="${side}" data-layer="${layer}" data-id="${esc(id)}"` +
-        ` data-compat="${j.level}" aria-current="${current}"${implied && current ? ' data-implied="true"' : ''}${tip}>` +
-        `<span class="nm">${esc(name)}</span><span class="fb">${esc(sub)}</span>${mark}</button>`;
-    }
-
-    // 相手の select: 戦型ごとの optgroup。各選択肢に compat.judge の印を付ける
+    // 相手の select: 戦型ごとの optgroup。各選択肢に compat.judge の印を付ける。
+    // 開いている最中に選択肢を作り直すと閉じてしまうので、フォーカス中は書き換えを保留する
     _fillSelect(sel, layer, st, other, cur) {
+      if (document.activeElement === sel) { if (cur) sel.value = cur; return; }
       const lists = layer === 'tactic' ? this.tacticsBySide : this.castlesBySide;
       sel.innerHTML = SIDES.map(([side, lab]) =>
         `<optgroup label="${lab}">` + lists[side].map(x =>

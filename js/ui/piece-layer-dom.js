@@ -90,7 +90,9 @@ window.Kakoi = window.Kakoi || {};
         const nw = after[n], ow = before[o];
         const d = Math.hypot(ow.r.x - nw.r.x, ow.r.y - nw.r.y);
         if (d < 1) continue;
-        nw.el.animate([{ transform: `translate(${ow.r.x - nw.r.x}px,${ow.r.y - nw.r.y}px)` }, { transform: 'none' }],
+        // 後手の駒は rotate(180deg) が剥がれないよう、キーフレームの両端に付けておく
+        const rot = nw.owner === 'gote' ? ' rotate(180deg)' : '';
+        nw.el.animate([{ transform: `translate(${ow.r.x - nw.r.x}px,${ow.r.y - nw.r.y}px)${rot}` }, { transform: rot || 'none' }],
                       { duration: 560, easing: 'cubic-bezier(.2,.8,.2,1)', delay: Math.min(d, 400) * .25 });
       }
       for (const ni of m.appear) {

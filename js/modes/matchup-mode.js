@@ -24,6 +24,7 @@ window.Kakoi = window.Kakoi || {};
       this.rail = new K.MatchupRailView(els.rail, {
         onChoose: (side, layer, id) => this.choose(side, layer, id),
         onShow: (key, on) => this._toggleShow(key, on),
+        onHover: (squares, tone) => this.board.hover(squares, tone),
       });
       this.detail = new K.MatchupDetailView(els.detail, {
         onHover: (squares, tone) => this.board.hover(squares, tone),
@@ -60,10 +61,20 @@ window.Kakoi = window.Kakoi || {};
       const r = K.compat.resolve(prev[side], layer, id, other);
       this.store.set({ matchup: { ...prev, [side]: r.next } });
       if (r.changed.length && K.Toast) {
-        const msg = r.changed.map(c =>
-          `${LAYER_JA[c.layer]}を「${this._nameOf(c.layer, c.from)}」から「${this._nameOf(c.layer, c.to)}」へ`).join('、');
+        const msg = r.changed.map(c => c.unresolved
+          ? `${LAYER_JA[c.layer]}は両立する候補がなく「${this._nameOf(c.layer, c.from)}」のまま`
+          : `${LAYER_JA[c.layer]}を「${this._nameOf(c.layer, c.from)}」から「${this._nameOf(c.layer, c.to)}」へ`).join('、');
         K.Toast.show(`${msg}変更しました`, {
-          action: { label: '元に戻す', fn: () => this.store.set({ matchup: prev }) },
+          // 戻すのは自動差し替えだけ（直前の matchup 全体ではなく、差し替わった層の値と pick 順を復元する）
+          action: {
+            label: '元に戻す',
+            fn: () => {
+              const cur = this.store.state.matchup;
+              const side2 = { ...cur[side], pick: prev[side].pick };
+              for (const c of r.changed) if (!c.unresolved) side2[FIELD[c.layer]] = c.from;
+              this.store.set({ matchup: { ...cur, [side]: side2 } });
+            },
+          },
         });
       }
     }
@@ -90,8 +101,10 @@ window.Kakoi = window.Kakoi || {};
       const m = state.matchup;
       if (!m) return;
       const hard = changed.has('initial') || changed.has('matchup');
+      let d = null;
+      const compute = () => d || (d = this._compute(m));
       if (hard || changed.has('heat') || changed.has('heatScope')) {
-        const d = this._compute(m);
+        d = compute();
         const heat = state.heat
           ? K.attackMap(d.merged.position, x => state.heatScope === 'all' || x.role === 'core')
           : null;
@@ -109,7 +122,7 @@ window.Kakoi = window.Kakoi || {};
       } else if (changed.has('mode')) {
         this.board.setMode(state.mode);
       }
-      if (changed.has('skeleton')) this._skeleton(state, m);
+      if (changed.has('skeleton')) this._skeleton(state, m, compute());
     }
 
     // 両軍の駒組みを合成して一つの盤にする。相手を隠すときは自分だけ（戦型・接触は計算しない）
@@ -145,12 +158,16 @@ window.Kakoi = window.Kakoi || {};
           ? d.merged.contacts.map(c => ({ sq: c.sq, kind: c.kind }))
           : null);
       }
-      this._skeleton(state, m);
+      this._skeleton(state, m, d);
     }
 
-    _skeleton(state, m) {
-      const meCastle = this._castleOf(m.me, m.opp);
-      this.overlay.skeleton(state.skeleton && meCastle ? this.repo.positionOf(meCastle) : null);
+    _skeleton(state, m, d) {
+      // 骨格線は実際の合成局面（flex で崩した形も含む）から描く。同じ形なら再フェードさせない
+      const pos = state.skeleton && d ? d.mePos.position : null;
+      const key = pos ? pos.pieces.filter(x => x.role === 'core').map(x => `${x.p}${x.f}${x.r}`).sort().join(' ') : null;
+      if (key === this._skKey) return;
+      this._skKey = key;
+      this.overlay.skeleton(pos);
     }
 
     _paintStage(m, d) {
@@ -162,8 +179,11 @@ window.Kakoi = window.Kakoi || {};
       e.legend.innerHTML = '<i></i>' + (d.threat
         ? '朱の帯は相手の攻め筋。破線は主役の駒の動き（墨＝自分・朱＝相手）。枠のマスは両軍の接触'
         : '破線は主役の駒の動き');
-      e.hand.textContent = d.merged.position.hand.length
-        ? `持ち駒：${d.merged.position.hand.join('・')}` : '';
+      // 持ち駒は両軍まとめて盤に置けない分。先後を分けて併記する
+      const meH = d.mePos.position.hand || [];
+      const oppH = d.oppPos ? d.oppPos.position.hand || [] : [];
+      e.hand.textContent = meH.length || oppH.length
+        ? `持ち駒：${meH.length ? '▲' + meH.join('・') : ''}${meH.length && oppH.length ? '　' : ''}${oppH.length ? '△' + oppH.join('・') : ''}` : '';
       e.ttl.classList.remove('swap'); void e.ttl.offsetWidth; e.ttl.classList.add('swap');
     }
 
