@@ -20,18 +20,10 @@ window.Kakoi = window.Kakoi || {};
     castleId: (st && st.castleId) || null,
   });
 
-  // 未選択の層は戦略テンプレートの既定値で補う（matchup.js の _resolveTactic/_resolveCastle と同じ規則）
-  const tacticIdOf = st => st.tacticId
-    || (st.strategy && Kakoi.STRATEGIES && Kakoi.STRATEGIES[st.strategy]
-      ? Kakoi.STRATEGIES[st.strategy].defaultTactic : null);
-  function castleIdOf(st, opp) {
-    if (st.castleId) return st.castleId;
-    const s = st.strategy && Kakoi.STRATEGIES && Kakoi.STRATEGIES[st.strategy];
-    const dc = s && s.defaultCastle;
-    if (typeof dc === 'string') return dc;
-    if (dc) return (opp && opp.strategy === 'furibisha') ? dc.vsFuribisha : dc.vsIbisha;
-    return null;
-  }
+  // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則は Kakoi.constraints が唯一の権威
+  // （js/core/constraints.js。起動時ではなく判定時に参照するので読み込み順は問わない）
+  const tacticIdOf = st => Kakoi.constraints.tacticIdOf(st);
+  const castleIdOf = (st, opp) => Kakoi.constraints.castleIdOf(st, opp);
   const tacticOf = st => findTactic(tacticIdOf(st));
   const castleOf = (st, opp) => findCastle(castleIdOf(st, opp));
 
@@ -96,9 +88,17 @@ window.Kakoi = window.Kakoi || {};
         }
       }
     }
-    // SIDE（囲い）: 囲いの side と戦略が食い違う（例外なし）
-    if (castle && st.strategy && castle.side !== st.strategy) {
-      ng.push({ code: 'SIDE', text: `${castle.name}は${strategyLabel(castle.side)}の囲い（戦略は${strategyLabel(st.strategy)}）` });
+    // SIDE（囲い）: 囲いの side と戦略が食い違う。castle.strategies があるときは
+    // そのリストだけを見る（相振り用の囲いなど側を限定するデータ。§6-3）
+    if (castle && st.strategy) {
+      const okSide = Array.isArray(castle.strategies)
+        ? castle.strategies.includes(st.strategy)
+        : castle.side === st.strategy;
+      if (!okSide) {
+        const names = Array.isArray(castle.strategies)
+          ? castle.strategies.map(strategyLabel).join('・') : strategyLabel(castle.side);
+        ng.push({ code: 'SIDE', text: `${castle.name}は${names}の囲い（戦略は${strategyLabel(st.strategy)}）` });
+      }
     }
     if (tactic && castle) {
       const rp = rookPiece(tactic), kp = kingPiece(castle);
@@ -106,8 +106,16 @@ window.Kakoi = window.Kakoi || {};
       const kf = kp ? kp.f : null;
       if (rf != null && kf != null) {
         const squares = [rp && `${rp.f}${rp.r}`, kp && `${kp.f}${kp.r}`].filter(Boolean);
-        // KING_ROOK: 玉と飛車の筋の差が1以下（玉飛接近すべからず。§1-3）
-        if (Math.abs(rf - kf) <= 1) {
+        if (castle.kingWing === 'rook') {
+          // 右玉など玉を飛車側に囲う意図的な構え: SAME_WING / KING_ROOK は判定せず注記だけ（§6-3）
+          const close = Math.abs(rf - kf) <= 1;
+          const sameWing = wing(rf) === wing(kf) && wing(rf) !== 'center';
+          if (close || sameWing) {
+            notes.push({ code: 'KING_ROOK_EXEMPT', squares,
+              text: `飛車（${rf}筋）と玉（${kf}筋）が近いが、玉を飛車側に囲う意図的な構え（バランスで受ける）` });
+          }
+        } else if (Math.abs(rf - kf) <= 1) {
+          // KING_ROOK: 玉と飛車の筋の差が1以下（玉飛接近すべからず。§1-3）
           ng.push({ code: 'KING_ROOK', squares, text: `飛車（${rf}筋）と玉（${kf}筋）が隣り合う（玉飛接近）` });
         } else {
           // SAME_WING: 玉と飛車が同じ翼にいる。中央（4〜6筋）は中飛車・右玉の例外で対象外
@@ -186,7 +194,28 @@ window.Kakoi = window.Kakoi || {};
         if (band && (band.top2.has(candidateId) || fitness >= band.max - 0.5 - 1e-9)) level = 'best';
       }
     }
-    return { level, reasons, moved: ev.moved, fitness, _ng: ngAll };
+    // 対敵軸（計画書 §3-1）: 自分の実効戦法が相手に対して持つ適性。
+    //   strategy: tactic.against[相手の戦略]（従来データ）
+    //   tactic:   tactic.againstTactic[相手の実効戦法id]（§6-3 の新フィールド。{tacticId: 'good'|'ok'|'ng'}）
+    // 同じ側の整合（level）とは別の軸なので level には混ぜない
+    // （相性が悪くても選べる・連鎖は起きない＝要件5）。UI の対敵バッジ用に返すだけ
+    let vs = null;
+    if (opp && ev.tactic && Kakoi.matchup) {
+      const oppT = tacticOf(opp);   // 相手の実効戦法（未選択なら戦略既定値）
+      const g = Kakoi.matchup.tacticFit(ev.tactic, opp.strategy || null);  // 'good'|'ok'|'ng'
+      const at = oppT && ev.tactic.againstTactic ? ev.tactic.againstTactic[oppT.id] : null;
+      const vReasons = [];
+      const gp = g === 'good' ? 'good' : g === 'ng' ? 'bad' : 'neutral';
+      const ap = at === 'best' || at === 'good' ? 'good' : at === 'ng' ? 'bad' : at === 'ok' ? 'neutral' : null;
+      if (g !== 'ok') vReasons.push({ code: 'AGAINST', text: `対${strategyLabel(opp.strategy)}は${g === 'good' ? '得意' : '苦手'}` });
+      if (ap != null && at) vReasons.push({ code: 'AGAINST_TACTIC', text: `対${oppT.name}は${ap === 'good' ? '得意' : ap === 'bad' ? '苦手' : '五分'}` });
+      vs = {
+        strategy: g, tactic: at || null,
+        level: (gp === 'bad' || ap === 'bad') ? 'bad' : (gp === 'good' || ap === 'good') ? 'good' : 'neutral',
+        reasons: vReasons,
+      };
+    }
+    return { level, reasons, moved: ev.moved, fitness, vs, _ng: ngAll };
   }
 
   /**
@@ -201,7 +230,7 @@ window.Kakoi = window.Kakoi || {};
     const k = JSON.stringify([normSide(me), layer, candidateId, normSide(opp)]);
     if (judgeMemo.has(k)) return judgeMemo.get(k);
     const f = judgeFull(me, layer, candidateId, opp);
-    const out = { level: f.level, reasons: f.reasons, moved: f.moved, fitness: f.fitness };
+    const out = { level: f.level, reasons: f.reasons, moved: f.moved, fitness: f.fitness, vs: f.vs };
     judgeMemo.set(k, out);
     return out;
   }
@@ -217,18 +246,8 @@ window.Kakoi = window.Kakoi || {};
     if (L === 'castle') { const c = findCastle(id); return c ? c.family : null; }
     return null; // strategy 層に系統は無い
   }
-  // 戦略テンプレートの既定値（§4-2.3）。defaultCastle は {vsIbisha,vsFuribisha} を相手の戦略で振り分ける
-  function defaultOf(L, strategy, opp) {
-    const s = strategy && Kakoi.STRATEGIES && Kakoi.STRATEGIES[strategy];
-    if (!s) return null;
-    if (L === 'tactic') return s.defaultTactic || null;
-    if (L === 'castle') {
-      const dc = s.defaultCastle;
-      if (typeof dc === 'string') return dc;
-      if (dc) return (opp && opp.strategy === 'furibisha') ? dc.vsFuribisha : dc.vsIbisha;
-    }
-    return null;
-  }
+  // 戦略テンプレートの既定値（§4-2.3）。解決規則は Kakoi.constraints.defaultIdOf が唯一の権威
+  const defaultOf = (L, strategy, opp) => Kakoi.constraints.defaultIdOf(L, strategy, opp && opp.strategy);
   // a. 新しい選択との pairings で ◎ の候補（データ順）
   function pairingBestOf(st, L, ok) {
     if (L === 'castle') {
@@ -347,7 +366,9 @@ window.Kakoi = window.Kakoi || {};
     return { next, changed };
   }
 
-  const api = { judge, resolve };
+  // judgeFull / searchAlternative / cleanBase は constraints.apply の連鎖解決が
+  // 同じ規則を再利用するための内部API（メモ化を通さない生の評価）
+  const api = { judge, resolve, judgeFull, searchAlternative, cleanBase };
   Kakoi.compat = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

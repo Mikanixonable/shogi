@@ -25,22 +25,18 @@ window.Kakoi = window.Kakoi || {};
   const findCastle = id => (Kakoi.CASTLES || []).find(c => c.id === id) || null;
 
   // その側の戦法を解決する。未選択なら戦略テンプレートの既定戦法
+  // （既定値の解決規則は Kakoi.constraints が唯一の権威）
   function _resolveTactic(side) {
     if (side && side.tacticId) return findTactic(side.tacticId);
-    const s = side && Kakoi.STRATEGIES && Kakoi.STRATEGIES[side.strategy];
-    return s ? findTactic(s.defaultTactic) : null;
+    const id = Kakoi.constraints.tacticIdOf(side);
+    return id ? findTactic(id) : null;
   }
 
   // その側の囲いを解決する。未選択なら戦略テンプレートの既定囲い
   // （defaultCastle が {vsIbisha, vsFuribisha} の形なら相手の戦略で選ぶ。相手不明なら vsIbisha）
   function _resolveCastle(me, oppStrategy) {
     if (me && me.castleId) return findCastle(me.castleId);
-    const s = me && Kakoi.STRATEGIES && Kakoi.STRATEGIES[me.strategy];
-    if (!s) return null;
-    const dc = s.defaultCastle;
-    const id = typeof dc === 'string' ? dc
-      : dc ? (oppStrategy === 'furibisha' ? dc.vsFuribisha : dc.vsIbisha)
-      : null;
+    const id = Kakoi.constraints.defaultCastleId(me && me.strategy, oppStrategy);
     return id ? findCastle(id) : null;
   }
 

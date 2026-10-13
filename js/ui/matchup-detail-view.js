@@ -4,7 +4,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
-  const { esc, sqAttr } = K.html;
+  const { esc, sqAttr, rich, makeCiter, sourcesBlock, bindCites } = K.html;
   const { label } = K.notation;
 
   // 強みの5軸（detail-view.js と同じ順・同じ頂点配置）
@@ -45,6 +45,7 @@ window.Kakoi = window.Kakoi || {};
         const t = e.target.closest('[data-sq]');
         if (t && !t.contains(e.relatedTarget)) onHover([], null);
       });
+      bindCites(el); // 本文の [n] ホバーで出典リストの行を強調
     }
 
     /**
@@ -54,12 +55,13 @@ window.Kakoi = window.Kakoi || {};
      *   flexed:Array, sources:Array }} d モードが組み立てた表示用データ
      */
     render(d) {
+      const citer = makeCiter(); // このパネル内で出現順の番号を振る
       this.el.innerHTML = [
         this._head(d),
         d.show.opp && d.threat ? this._weights(d) : '',
         d.show.opp && d.fit != null ? this._fitness(d) : '',
-        this._reasons(d),
-        this._sources(d),
+        this._reasons(d, citer),
+        this._sources(d, citer),
       ].filter(Boolean).join('');
     }
 
@@ -117,7 +119,7 @@ window.Kakoi = window.Kakoi || {};
 
     // 組み合わせの理由: 相性表の説明・現在の3層の compat.judge の理由・両軍の接触。
     // 同じ文は重複させない。マスのある理由は乗せると盤で光る
-    _reasons(d) {
+    _reasons(d, citer) {
       const items = [];
       if (d.pairing && d.pairing.why) items.push({ level: d.pairing.level === 'ng' ? 'ng' : 'ok', text: `${d.pairing.why}（相性表）` });
       for (const t of d.trio || []) {
@@ -133,16 +135,14 @@ window.Kakoi = window.Kakoi || {};
       const seen = new Set();
       const li = items.filter(it => it.text && !seen.has(it.text) && seen.add(it.text))
         .map(it => `<li data-level="${it.level}" data-tone="${it.level === 'ng' ? 'bad' : 'focus'}"${sqAttr(it.squares)}>` +
-          `<span class="mk">${it.level === 'ng' ? '×' : '＋'}</span><span>${esc(it.text)}</span></li>`).join('');
+          `<span class="mk">${it.level === 'ng' ? '×' : '＋'}</span><span>${rich(it.text, citer)}</span></li>`).join('');
       return `<div class="sec"><h3>組み合わせの理由<small>点線の項目は盤上に表示</small></h3>` +
         `<ul class="mu-reasons">${li || '<li data-level="ok"><span class="mk">＋</span><span>盤上で両立する組み合わせです</span></li>'}</ul></div>`;
     }
 
-    _sources(d) {
+    _sources(d, citer) {
       if (!d.sources || !d.sources.length) return '';
-      const li = d.sources.map(s =>
-        `<li><span class="cv">${esc(s.for)}</span><span><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>（${esc(s.publisher)}）</span></li>`).join('');
-      return `<div class="sec"><h3>出典<small>組み合わせ</small></h3><ul class="sources">${li}</ul></div>`;
+      return `<div class="sec"><h3>出典<small>組み合わせ</small></h3>${sourcesBlock(d.sources, citer)}</div>`;
     }
   }
 

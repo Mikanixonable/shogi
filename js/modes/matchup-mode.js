@@ -32,15 +32,13 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    // 未選択の層は戦略テンプレートの既定値で読み替える（compat.js と同じ規則）
+    // 未選択の層は戦略テンプレートの既定値で読み替える（既定値の解決は Kakoi.constraints が唯一の権威）
     _tacticOf(st) {
-      const id = (st && st.tacticId) || (st && K.STRATEGIES[st.strategy] ? K.STRATEGIES[st.strategy].defaultTactic : null);
+      const id = K.constraints.tacticIdOf(st);
       return id ? this.repo.tacticById(id) : null;
     }
     _castleOf(st, opp) {
-      if (st && st.castleId) return this.repo.byId(st.castleId);
-      const dc = st && K.STRATEGIES[st.strategy] ? K.STRATEGIES[st.strategy].defaultCastle : null;
-      const id = typeof dc === 'string' ? dc : dc ? ((opp && opp.strategy === 'furibisha') ? dc.vsFuribisha : dc.vsIbisha) : null;
+      const id = K.constraints.castleIdOf(st, opp);
       return id ? this.repo.byId(id) : null;
     }
     _nameOf(layer, id) {

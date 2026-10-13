@@ -20,14 +20,10 @@ window.Kakoi = window.Kakoi || {};
   // その駒の動きで実際に行けるか（アニメーションの規則と共有。null なら行けない）
   const canSlide = (p, from, to) => Kakoi.pieceMatch.moveCost(p, from, to);
 
-  // 戦略テンプレートの既定囲い。defaultCastle は文字列または {vsIbisha, vsFuribisha}。
-  // 相手の戦略が分かるときはそれで振り分け、不明なら vsIbisha を中立の既定とする
+  // 戦略テンプレートの既定囲い。既定値の解決規則は Kakoi.constraints が唯一の権威
+  // （defaultCastle は文字列または {vsIbisha,vsFuribisha}。相手の戦略で振り分け、不明なら vsIbisha）
   function templateCastleOf(strategy, oppStrategy) {
-    const s = strategy && Kakoi.STRATEGIES && Kakoi.STRATEGIES[strategy];
-    const dc = s && s.defaultCastle;
-    const id = typeof dc === 'string' ? dc
-      : dc ? ((oppStrategy === 'furibisha' ? dc.vsFuribisha : dc.vsIbisha) || dc.vsIbisha || dc.vsFuribisha || null)
-      : null;
+    const id = Kakoi.constraints.defaultCastleId(strategy, oppStrategy);
     return id ? findCastle(id) : null;
   }
 
