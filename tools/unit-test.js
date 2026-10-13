@@ -29,7 +29,7 @@ for (const f of ['js/core/compose.js', 'js/core/compat.js']) {
   if (fs.existsSync(path.join(ROOT, f))) load(f);
 }
 // hash-link は ui 配属だが parseHash/buildQuery は DOM 非依存なので単体でも試す。
-// tactic-nav（placeTactics）と mini-board（miniCropBox）も DOM 非依存の純関数なので試す（§5）
+// tactic-nav（placeTactics）と mini-board（miniWindow）も DOM 非依存の純関数なので試す（§5）
 ctx.URLSearchParams = URLSearchParams;
 load('js/ui/hash-link.js');
 load('js/ui/tactic-nav.js');
@@ -706,7 +706,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
   }
 }
 
-// ---------- 8. §5 追加: placeTactics / miniCropBox / evaluate のメモ ----------
+// ---------- 8. §5 追加: placeTactics / miniWindow / evaluate のメモ ----------
 {
   // placeTactics（S6 の共有純関数）: 列の規則・束ね・衝突処理・ドット
   {
@@ -734,20 +734,32 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
       'placeTactics:空き筋にドット', jstr(a.dots));
   }
 
-  // miniCropBox（F3）: 玉・金・銀（core）の外接矩形。flip は座標を反転
+  // miniWindow（サムネイルの固定窓）: 玉側の隅の 6筋×4段。中央寄りの囲いはずらす。flip は対角へ
   {
-    const mino = K.CASTLES.find(x => x.id === 'mino');
-    const pos = K.Position.fromCastle(mino, K.SETUPS[mino.setup]);
-    const b = K.miniCropBox(pos);
-    ok(b && b.cols === b.f1 - b.f0 + 1 && b.rows === b.r1 - b.r0 + 1,
-      'miniCropBox:外接矩形の大きさが一貫', jstr(b));
-    const core = pos.pieces.filter(x => x.role === 'core' && ['玉', '金', '銀'].includes(x.p));
-    ok(core.length && core.every(x => x.f >= b.f0 && x.f <= b.f1 && x.r >= b.r0 && x.r <= b.r1),
-      'miniCropBox:全ての玉・金・銀を含む', `f${b.f0}-${b.f1} r${b.r0}-${b.r1}`);
-    const bf = K.miniCropBox(pos, true);
-    ok(bf && bf.f0 === 10 - b.f1 && bf.f1 === 10 - b.f0 && bf.r0 === 10 - b.r1 && bf.r1 === 10 - b.r0,
-      'miniCropBox:flip は筋・段を反転', jstr(bf));
-    ok(K.miniCropBox(new K.Position([], [])) === null, 'miniCropBox:対象駒が無ければ null', '');
+    const anaguma = K.CASTLES.find(x => x.id === 'anaguma');
+    const pos = K.Position.fromCastle(anaguma, K.SETUPS[anaguma.setup]);
+    const w = K.miniWindow(pos, 'ibisha');
+    ok(w.f0 === 4 && w.f1 === 9 && w.r0 === 6 && w.r1 === 9,
+      'miniWindow:居飛車は4-9筋×6-9段の固定窓', jstr(w));
+    const wf = K.miniWindow(pos, 'ibisha', true);
+    ok(wf.f0 === 1 && wf.f1 === 6 && wf.r0 === 1 && wf.r1 === 4,
+      'miniWindow:flip は対角の隅', jstr(wf));
+    // 全囲い: core 駒は全て窓の中に収まる（右玉・中住まいのようにずれる場合を含む）
+    let allIn = true, detail = '';
+    for (const c of K.CASTLES) {
+      const p = K.Position.fromCastle(c, K.SETUPS[c.setup]);
+      for (const flip of [false, true]) {
+        const w2 = K.miniWindow(p, c.side, flip);
+        const out = p.pieces.filter(x => x.role === 'core')
+          .map(x => (flip ? { f: 10 - x.f, r: 10 - x.r } : x))
+          .filter(x => x.f < w2.f0 || x.f > w2.f1 || x.r < w2.r0 || x.r > w2.r1);
+        if (out.length) { allIn = false; detail = `${c.id}${flip ? '(flip)' : ''}: ${out.map(x => x.f + ',' + x.r).join(' ')}`; break; }
+      }
+      if (!allIn) break;
+    }
+    ok(allIn, 'miniWindow:全囲いのcore駒が窓に収まる（flip含む）', detail);
+    const wsl = K.miniWindow(K.Position.fromCastle(K.CASTLES.find(x => x.id === 'migigyoku'), K.SETUPS.ibisha), 'ibisha');
+    ok(wsl.f0 === 3 && wsl.f1 === 8, 'miniWindow:右玉は窓が1筋分ずれる', jstr(wsl));
   }
 
   // evaluate のメモ（S3/S4・R5 完了条件）: 同じ引数では judge の新規計算が0回
