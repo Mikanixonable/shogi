@@ -47,6 +47,7 @@
   );
   const viewSeg = new K.Segmented($('viewSeg'), view => store.set({ view }));
   new K.ThemeToggle($('themeToggle'));
+  new K.ToolsToggle($('toolsToggle'), $('tools'));
 
   const common = { repo, store, board, overlay };
   const modes = {
