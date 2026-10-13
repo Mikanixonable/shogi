@@ -59,10 +59,19 @@ window.Kakoi = window.Kakoi || {};
       for (const rt of list) {
         const squares = rt && rt.squares;
         if (!squares || squares.length < 2) continue;
-        const pts = squares.map(center).map(c => `${c.x},${c.y}`).join(' ');
+        const pts = squares.map(center);
+        const end = pts[pts.length - 1], prev = pts[pts.length - 2];
+        const dx = end.x - prev.x, dy = end.y - prev.y;
+        const length = Math.hypot(dx, dy);
+        if (length) {
+          const inset = Math.min(.42, length * .45);
+          end.x -= dx / length * inset;
+          end.y -= dy / length * inset;
+        }
+        const points = pts.map(c => `${c.x},${c.y}`).join(' ');
         const cls = rt.tone === 'good' ? ' rt-good' : rt.tone === 'bad' ? ' rt-bad' : rt.tone === 'ink' ? ' rt-ink' : '';
         const mk = rt.tone === 'good' ? 'rtHeadGood' : rt.tone === 'bad' ? 'rtHeadBad' : rt.tone === 'ink' ? 'rtHeadInk' : 'rtHead';
-        html += `<polyline class="rt rt-line${cls}" points="${pts}" marker-end="url(#${mk})"/>`;
+        html += `<polyline class="rt rt-line${cls}" points="${points}" marker-end="url(#${mk})"/>`;
       }
       this.routeLayer.innerHTML = html;
     }

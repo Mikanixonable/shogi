@@ -87,11 +87,11 @@ header { position:relative; }
 
 /* ===== stage: 盤を見る ===== */
 /* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。相手 OFF 時もトラックを確保する */
-.stage { --band-h:188px; display:grid; position:relative;
+.stage { --band-h:100px; display:grid; position:relative;
          grid-template-columns:minmax(0,1fr);
          grid-template-rows:var(--band-h) minmax(0,1fr) var(--band-h);
          padding:40px 26px; gap:10px; }
-/* 状態の帯（sideband）: 盤の上=相手・下=自分。側の印と説明つきの制約カプセルを並べる */
+/* 状態の帯（sideband）: 盤の上=相手・下=自分。側の印と制約カプセルを並べる */
 .sideband { display:flex; flex-direction:column; gap:4px; min-width:0; min-height:0; overflow:hidden; }
 .sideband[hidden] { display:none; }
 .sband-h { display:flex; align-items:center; gap:12px; height:26px; flex:none; flex-wrap:nowrap; }

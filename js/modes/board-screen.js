@@ -8,9 +8,8 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { parsePieces, KAN, mirrorSq } = K.notation;
   const parseSel = K.constraints.parseSel;
-  // 主役が飛車ではなく筋道（経路が2マス以上）のある戦法だけ矢印を引く。
-  // 飛車の経路は盤の筋そのものなので矢印が冗長（駒の移動アニメ trace は残す）
-  const hasArrow = t => !!(t && t.route && t.route.length > 1 && t.lead && t.lead.piece !== '飛');
+  // 主役の駒の筋道（経路が2マス以上）がある戦法は矢印で示す。
+  const hasArrow = t => !!(t && t.route && t.route.length > 1 && t.lead);
 
   class BoardScreen {
     /**

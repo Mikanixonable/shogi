@@ -38,12 +38,12 @@
                                    border-top:7px solid var(--accent); border-right:7px solid transparent; }
 .dk-pane { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; min-height:0; }
 
-.dk-pane-h { flex:none; display:flex; align-items:center; justify-content:space-between; gap:4px 10px; flex-wrap:wrap; padding-bottom:8px; }
-/* 層（囲い／戦法）: 塗りの大きな2択。選んでいる層は墨で塗る（つまみは使わない） */
-.dk-tab { display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; }
+.dk-pane-h { flex:none; display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap; padding-bottom:6px; }
+/* 層（囲い／戦型）: 塗りの大きな2択。選んでいる層は墨で塗る（つまみは使わない） */
+.dk-tab { display:grid; grid-template-columns:1fr 1fr; flex:1 1 100%; min-width:0; gap:6px; width:100%; }
 .dk-tab .knob, .dk-strategy .knob, .dk-sort-seg .knob { display:none; }
 .dk-tab button { display:flex; align-items:center; justify-content:center; gap:7px; padding:7px 0;
-                 border:1.5px solid var(--line-2); border-bottom:0;
+                 border:1.5px solid var(--line-2);
                  font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted);
                  transition:background .2s, color .2s, border-color .2s; }
 .dk-tab button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
@@ -55,14 +55,14 @@
 .dk-clear[hidden] { display:none; }
 /* 戦略（居飛車／振り飛車）: 「居／振」の丸印を添えた朱のピル */
 .dk-filter-row { flex:none; display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
-.dk-strategy { flex:1 1 150px; min-width:0; display:flex; margin:0; padding:2px; border:1.5px solid var(--line-2); border-radius:999px; }
+.dk-strategy { flex:1 1 auto; min-width:0; display:flex; margin:0; padding:2px; border:1.5px solid var(--line-2); border-radius:999px; }
 .dk-strategy button { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 0; border-radius:999px;
                       font:700 13px/1 var(--font-b); letter-spacing:.06em; color:var(--muted); transition:background .2s, color .2s; }
 .dk-strategy button b { display:grid; place-items:center; width:19px; height:19px; border:1px solid currentColor; border-radius:50%;
                         font:800 11px/1 var(--font-d); letter-spacing:0; }
 .dk-strategy button:hover { color:var(--fg); }
 .dk-strategy button[aria-pressed="true"] { background:var(--accent); color:#fbf6ea; font-weight:700; }
-.dk-tools { flex:none; display:flex; align-items:center; }
+.dk-tools { flex:none; display:flex; align-items:center; margin:0 0 8px; }
 .dk-tools[hidden] { display:none; }
 .dk-sort-seg { flex:none; display:flex; border:1px solid var(--line-2); }
 .dk-sort-seg button { flex:none; width:30px; height:28px; padding:0; font-size:13px; color:var(--muted); letter-spacing:0; }
@@ -212,7 +212,7 @@
 .dk-pc { position:absolute; right:0; width:40px; height:min(150px,28vh); padding:0; border:0; background:none;
          cursor:pointer; pointer-events:auto; color:var(--muted); transition:color .2s, right .2s var(--ease), width .2s var(--ease); }
 .dk-pc[data-who="opp"] { top:30px; }
-.dk-pc[data-who="me"] { bottom:30px; }
+.dk-pc[data-who="me"] { top:calc(30px + min(150px,28vh)); }
 .dk-pc .body { position:absolute; inset:0; background:var(--line-2); transition:background .2s;
                clip-path:polygon(50% 0, 100% 12%, 100% 100%, 0 100%, 0 12%); }
 .dk-pc .body::after { content:""; position:absolute; inset:1px; background:var(--bg); transition:background .2s;
