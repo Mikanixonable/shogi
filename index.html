@@ -31,6 +31,8 @@
 <header class="glass">
   <div class="brand"><a class="mark" href="index.html" title="トップへ" aria-label="将棋の囲い図鑑 トップへ">玉</a><h1>将棋の囲い図鑑</h1><span class="sub">先手の囲いを盤面で見比べる</span><button class="about" id="aboutOpen" type="button">このサイトについて</button></div>
   <div class="seg nav" id="viewSeg" role="group" aria-label="画面の切り替え">
+    <button data-value="castle">囲い</button>
+    <button data-value="tactic">戦法</button>
     <button data-value="board">対局図</button>
     <button data-value="cluster">分類マップ</button>
   </div>
@@ -64,10 +66,20 @@
   </button>
 </header>
 
-<!-- 各パネルは view-pane を画面ごとに持つ。画面は「対局図（board）」と「分類マップ（cluster）」の2つ -->
+<!-- 各パネルは view-pane を画面ごとに持つ。画面は「囲い（castle）」「戦法（tactic）」「対局図（board）」「分類マップ（cluster）」の4つ -->
 <div class="app">
-  <!-- 選ぶ（左ドック: 上下2面の分割ペイン。各面は who×tab の対象切替＋タイル一覧。DockView） -->
+  <!-- 選ぶ（左ドック。board は上下2面の分割ペイン（DockView）。castle は系統チップ＋カード一覧、tactic は系統別一覧） -->
   <nav class="panel glass rail" aria-label="一覧">
+    <div class="view-pane" data-view="castle">
+      <div class="seg wide" id="castleSideSeg">
+        <button data-value="ibisha">居飛車</button>
+        <button data-value="furibisha">振り飛車</button>
+      </div>
+      <div class="fchips" id="familyChips" role="group" aria-label="系統で絞り込む"></div>
+      <div class="rail-h"><span class="count" id="railCount"></span><span class="keys"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動</span></div>
+      <div class="cards" id="cards"></div>
+    </div>
+    <div class="view-pane pane-fill" data-view="tactic" id="tacticRail"></div>
     <div class="view-pane pane-fill" data-view="board" id="pickRail"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
   </nav>
@@ -98,11 +110,22 @@
         <button class="play-btn" id="playBtn" type="button">順に再生</button>
       </div>
     </div>
+    <div class="view-pane" data-view="castle">
+      <div class="stage-h">
+        <div class="ttl" id="castleTtl"><h2 id="castleTitle"></h2><div class="rd"><span id="castleReading"></span><span class="setup" id="castleSetup"></span></div></div>
+      </div>
+      <div class="stage-f">
+        <span class="legend" id="castleLegend"></span>
+        <span class="hand" id="castleHand"></span>
+      </div>
+    </div>
+    <div class="view-pane" data-view="tactic" id="tacticStage"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterStage"></div>
-    <!-- 盤（BoardView / OverlayView は1組だけ） -->
-    <div class="view-pane board-pane" data-view="board">
+    <!-- 盤（BoardView / OverlayView は1組だけ。囲い・戦法・対局図で共有） -->
+    <div class="view-pane board-pane" data-view="board castle tactic">
       <div class="boardarea">
         <div class="boardwrap" id="boardwrap">
+          <div id="ptable" class="ptable" role="group" aria-label="戦法の周期表（盤の筋とそろえた表）"></div>
           <div class="flabels" id="files"></div><div></div>
           <div class="board" id="board" tabindex="0" role="group"
             aria-label="将棋盤（フォーカス中は矢印キーで選択中の制約が隣の候補に変わる）"></div>
@@ -122,6 +145,8 @@
     <div class="view-pane" data-view="board">
       <div class="detail-body" id="detail"></div>
     </div>
+    <div class="view-pane detail-body" data-view="castle" id="castleDetail"></div>
+    <div class="view-pane pane-fill detail-body" data-view="tactic" id="tacticDetail"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterDetail"></div>
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>
