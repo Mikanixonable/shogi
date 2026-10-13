@@ -39,6 +39,8 @@
     ['view', 'castleId', 'mode', 'heat', 'skeleton', 'heatScope', 'lastBySide', 'familyFilter', 'tacticId', 'clusterFamily', 'matchup'],
     'shogi-castle',
   );
+  // URLハッシュを保存値に重ねる（正規化より先。貼られたURLが最優先）
+  K.hashLink.read(store.state);
   // 保存値の検証（囲い固有のものは CastleMode が行う）
   if (!VIEWS.includes(store.state.view)) store.state.view = 'castle';
   if (!repo.hasTactic(store.state.tacticId)) store.state.tacticId = repo.tactics()[0]?.id ?? null;
@@ -102,6 +104,7 @@
     viewSeg.setValue(state.view);
     toolbar.render(state);
   });
+  K.hashLink.sync(store);   // 状態の変化を location.hash へ映す
 
   document.body.dataset.view = store.state.view;
   modes[store.state.view].enter(store.state);
