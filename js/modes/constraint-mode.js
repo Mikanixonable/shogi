@@ -104,13 +104,13 @@ window.Kakoi = window.Kakoi || {};
       this.store.set({ slots: K.constraints.setSlot(this.store.state.slots, who, kind, null) });
     }
 
-    /** ドックの「はずす」: 見ている側の戦法・囲いを両方外す。履歴に積むので「戻る」で元に戻せる */
+    /** 制約バーの「リセット」: 見ている側の戦法・囲いを両方外す。履歴に積むので「戻る」で元に戻せる */
     _clearSide(who) {
       const s = this.store.state;
       const slots = K.constraints.clearSide(s.slots, who);
       if (slots === s.slots) return;
       this.store.set({ slots });
-      this._toastUndo(`${who === 'opp' ? '相手' : '自分'}の戦法・囲いを外しました`);
+      this._toastUndo(`${who === 'opp' ? '相手' : '自分'}の戦法・囲いをリセットしました`);
     }
 
     /** 相手の表示 ON/OFF（スロットは消さない）。OFF にしたとき選択が相手側なら自分側へ戻す */

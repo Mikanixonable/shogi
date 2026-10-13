@@ -163,6 +163,10 @@ async function sweepBoard(page, expect) {
   r.rects.push(r.t1.rect);
   r.added = !!r.t1.slots.me.castle && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い')
     && r.t1.chips.some(c => c.who === 'me' && c.kind === 'castle' && !c.implied && c.text.includes('#'));
+  r.resetInMeBar = await page.evaluate(() => {
+    const btn = document.querySelector('#cbarMe .dk-clear');
+    return !!btn && btn.textContent === 'リセット' && !document.querySelector('#pickRail .dk-clear');
+  });
   r.pushed = /k=mc:/.test(r.t1.hash) && r.t1.hist === r.t0.hist + 1;
 
   // 戦法を選ぶ: 戦法タブに切り替えてからタイルを押す → selected=me.tactic・詳細が戦法
@@ -303,6 +307,7 @@ async function sweepBoard(page, expect) {
   r.t5b = await snap(page);
   r.rects.push(r.t5b.rect);
   r.oppSel = !!r.t5b.slots.opp.tactic && r.t5b.selected === 'opp.tactic';
+  r.resetInOppBar = await page.evaluate(() => document.querySelector('#cbarOpp .dk-clear')?.textContent === 'リセット');
   await page.click(`${DOCK} .dk-pc-x`);
   r.oppOffAnimation = await page.evaluate(() => document.querySelector('#bandMe').getAnimations()
     .some(animation => animation.playState === 'running'));
@@ -362,9 +367,9 @@ async function sweepBoard(page, expect) {
     && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
     && JSON.stringify(r.t8.slots.opp) === oppSlots;
 
-  // 「はずす」（ドックの面ごとに1つ）: 見ている側の戦法・囲いを両方外し、トーストの「元に戻す」で戻る
+  // 制約バーの「リセット」: 見ている側の戦法・囲いを両方外し、トーストの「元に戻す」で戻る
   const preClear = JSON.stringify((await snap(page)).slots);
-  await page.click(`${DOCK} .dk-clear`); await wait(400);
+  await page.click('#cbarMe .dk-clear'); await wait(400);
   r.t9 = await snap(page);
   r.cleared = !r.t9.slots.me.tactic && !r.t9.slots.me.castle && JSON.stringify(r.t9.slots.opp) === oppSlots
     && !!(await page.$('.toast.on .toast-act'));
@@ -579,6 +584,7 @@ async function main() {
       ok(b.collapse, '系統ブロックを折りたためる', '');
       ok(b.tabSwitch, '面のタブ切替（囲い→戦法）で選択も戦法になる', '');
       ok(b.added, '囲いを選ぶ→スロットとチップが増え、詳細が囲いになる', JSON.stringify(b.t1 && b.t1.slots));
+      ok(b.resetInMeBar, '「リセット」は自分の制約バー右端に表示される', '');
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
       ok(b.dockPick, 'ドックの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
@@ -595,6 +601,7 @@ async function main() {
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
       ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
+      ok(b.resetInOppBar, '相手を選択中は相手の制約バー右端に「リセット」が表示される', '');
       ok(b.oppDockOff && b.oppDockOn && b.oppOnAnimation && b.oppOffAnimation,
         '左ドックの ON/OFF で表示位置がアニメーションし、再表示もできる', '');
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
@@ -602,7 +609,7 @@ async function main() {
       ok(b.threatOff && b.threatPref, '脅威の帯は表示設定のスイッチ（localStorage の好み。URL には載らない）', `${b.t6 && b.t6.threats}本`);
       ok(b.removed !== false, '×でスロットを外せる', '');
       ok(b.oppOff, '相手を OFF → 後手の駒・帯が退き、相手タブは有効のまま、相手のスロットは残る', JSON.stringify(b.t8 && b.t8.slots));
-      ok(b.cleared && b.undoClear, 'ドックの「はずす」で見ている側を外し、トーストの「元に戻す」で戻る', JSON.stringify(b.t9 && b.t9.slots));
+      ok(b.cleared && b.undoClear, '制約バーの「リセット」で見ている側を初期化し、トーストの「元に戻す」で戻る', JSON.stringify(b.t9 && b.t9.slots));
       ok(b.keyNav, '矢印キーで戦法を送れる', '');
       ok(b.focusBoard && b.focusChip !== false, '矢印キーでフォーカスが保たれる（U3）',
         `盤=${b.focusBoard} チップ=${b.focusChip}`);
