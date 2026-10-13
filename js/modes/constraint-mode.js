@@ -1,4 +1,4 @@
-// 制約モード（統合画面「盤」）のコントローラ（計画書 S6 の ConstraintController）:
+// 制約モード（統合画面「対局図」）のコントローラ（計画書 S6 の ConstraintController）:
 // コマンド（制約の選択・除去・元に戻す）とホバー予告、トーストを持つ。
 // 描画は board-screen.js の BoardScreen、盤上の矢印は keyboard-nav.js、
 // 再生は tactic-playback.js（store.play）へ分けた。
