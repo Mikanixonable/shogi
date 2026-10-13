@@ -56,14 +56,6 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
 
 /* ===== 右: 戦型と理由 ===== */
 #matchupDetail { padding:16px 22px 18px; }
-/* 自動差し替えの記録: パネルの先頭に残る帯。トーストと同じ朱の筋で、消えるまで「元に戻す」を置く */
-.mu-note { display:flex; align-items:center; gap:12px; padding:9px 12px 9px 11px;
-           border:1px solid var(--line); border-left:3px solid var(--accent);
-           font-size:12px; line-height:1.7; }
-.mu-note-t { flex:1; min-width:0; }
-.mu-undo { flex:none; cursor:pointer; border:1px solid var(--line); background:none; color:var(--fg);
-           padding:3px 12px; font-size:11.5px; letter-spacing:.06em; transition:border-color .2s, color .2s; }
-.mu-undo:hover { border-color:var(--accent); color:var(--accent); }
 .mu-kind { margin:0; font:800 26px/1.3 var(--font-d); letter-spacing:.12em; }
 .mu-kind-sub { margin:4px 0 0; font-size:12px; color:var(--muted); letter-spacing:.04em; }
 .mu-kind-sub .x { color:var(--muted); }
@@ -85,8 +77,8 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
 .mu-open:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 .tc-castle[data-compat="best"] { box-shadow:inset 2px 0 0 var(--accent); }
 
-/* ===== トースト: 墨の帯に朱の筋。画面の下中央に短く出る ===== */
-.toast { position:fixed; left:50%; bottom:22px; z-index:60; transform:translateX(-50%) translateY(8px);
+/* ===== トースト: 墨の帯に朱の筋。画面の上中央に短く出る ===== */
+.toast { position:fixed; left:50%; top:22px; z-index:60; transform:translateX(-50%) translateY(-8px);
          display:flex; align-items:center; gap:14px; max-width:min(560px, calc(100vw - 32px));
          padding:10px 16px 10px 14px; background:var(--fg); color:var(--bg);
          border-left:3px solid var(--accent); font-size:12.5px; line-height:1.6;
@@ -102,6 +94,6 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
   /* ページ全体でスクロールするので内側の枠はスクロールさせない（pane-fill と同じ規則） */
   .mu-side[data-side="me"] { overflow:visible; }
   .mu-sel select { width:100%; }
-  .toast { left:12px; right:12px; max-width:none; transform:translateY(8px); }
+  .toast { top:12px; left:12px; right:12px; max-width:none; transform:translateY(-8px); }
   .toast.on { transform:translateY(0); }
 }
