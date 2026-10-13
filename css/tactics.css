@@ -1,18 +1,20 @@
 /* 戦法の画面: 盤と筋をそろえた周期表、左の一覧、中央の見出しと再生、右の解説
    「墨と余白」: 角丸とガラス面を捨て、罫線と下線で組む */
 
-/* ===== 周期表（盤の外枠 .boardwrap の最初の行。戦法の画面だけ表示） ===== */
+/* ===== 周期表（盤の外枠 .boardwrap の最初の行。選択中の制約が戦法のときだけ表示） ===== */
 .ptable { display:none; }
-body[data-view="tactic"] .boardwrap {
+body[data-view="board"] .boardwrap[data-pt="on"] {
   --pt-rows:3; --pt-row:28px; --pt-gap:3px; --pt-pad:6px;
   --ptable-h:calc(var(--pt-rows) * var(--pt-row) + (var(--pt-rows) - 1) * var(--pt-gap) + var(--pt-pad));
   grid-template-rows:auto 22px auto;
 }
 /* 列は盤の９つの筋と同じ幅（左の9列＝盤、右の22px＝駒のタイル）。列の隙間は作らず、マスの内側の余白で見せる */
-body[data-view="tactic"] .ptable {
+body[data-view="board"] .boardwrap[data-pt="on"] .ptable {
   display:grid; grid-column:1 / -1; grid-template-columns:repeat(9, minmax(0,1fr)) 22px; grid-auto-rows:var(--pt-row);
   row-gap:var(--pt-gap); padding-bottom:var(--pt-pad); height:var(--ptable-h);
 }
+/* 相手の戦法を選んでいるときは、筋を盤の絶対座標に合わせて反転してある目印 */
+body[data-view="board"] .ptable[data-side="opp"] { outline:1px dashed var(--line-2); outline-offset:3px; }
 .pt-cell, .pt-empty { min-width:0; margin:0 2px; display:flex; align-items:center; justify-content:center; text-align:center; }
 .pt-empty { color:var(--muted); opacity:.4; font:10px/1 var(--font-n); border:1px solid var(--line); }
 .pt-cell { container-type:inline-size; padding:0; cursor:pointer; border:1px solid var(--line); background:none;
@@ -29,11 +31,10 @@ body[data-view="tactic"] .ptable {
            clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
 
 /* ===== 盤: 主役の駒の経路は、駒が滑り終わってから現れる（--rt-d は盤側が経路の長さに合わせて決める） ===== */
-body[data-view="tactic"] .overlay .rt-line { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
-body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
+body[data-view="board"] .overlay .rt-line { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
+body[data-view="board"] .overlay .rt-head { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
 
-/* ===== 左: 戦法の一覧 ===== */
-#tacticRail { padding:16px 18px; gap:12px; }
+/* ===== 左: 戦法の一覧（統合画面の左ドックでも .tr-row / .tr-item を使う） ===== */
 .tr-row { display:flex; flex-direction:column; gap:4px; }
 .tr-row h3 { display:flex; align-items:center; gap:10px; margin:0 0 4px; font-size:11px; letter-spacing:.18em; color:var(--muted); font-weight:600; }
 .tr-row h3::after { content:""; flex:1; height:1px; background:var(--line); }
@@ -55,7 +56,6 @@ body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) var(
 .play-btn[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
 /* ===== 右: 解説 ===== */
-#tacticDetail { padding:16px 22px 18px; }
 .rt-steps { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 4px; font-size:13px; }
 .rt-step { padding:3px 10px; background:none; border:1px solid var(--line); cursor:default; transition:border-color .2s; }
 .rt-step:hover { border-color:var(--accent); }
@@ -76,7 +76,5 @@ body[data-view="tactic"] .overlay .rt-head { animation:skIn .4s var(--ease) var(
          font-size:13px; cursor:pointer; transition:color .2s, border-color .2s, background .2s; }
 .tc-go:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
 .tc-desc { margin-top:8px; }
-/* 文脈が長くても見出しを1行に保つ（盤の高さを奪わない） */
-#tacticStage .stage-h .rd { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* 「戦法 × 囲い」の併記の×を薄く */
-#tacticStage h2 .x { color:var(--muted); font-weight:400; padding:0 .2em; }
+.stage-h h2 .x { color:var(--muted); font-weight:400; padding:0 .2em; }

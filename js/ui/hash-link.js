@@ -1,47 +1,142 @@
-// URLハッシュ共有: いまの画面と選択を location.hash に映し、URLを貼れば同じ状態で開ける。
-// 形式は `#` + URLSearchParams。表示の好み（mode/heat/skeleton など）は共有しない。
-// pick は層名の頭文字で圧縮する: ['strategy','tactic','castle'] → 'stc'
-// mo/mw（相手・脅威の表示）は既定 true なので、'0'（非表示）のときだけ書き出してURLを短く保つ
+// URLハッシュ共有: 制約リストと選択状態を location.hash に映し、URLを貼れば同じ状態で開ける。
+// 新形式: `#v=board&k=os:furibisha,ot:shikenbisha,mc:funa&sel=mc`
+//   - `k=` の並び順が優先度（先頭ほど古い）。側は m=自分/o=相手、層は s/t/c
+//   - `sel=` は選択中の制約（例: mc = me.castle）
+// 旧形式（v=/c=/t=/ms=…mw=）は読み取り時に制約リストへ変換する。書き出しは新形式のみ。
+// 表示の好み（mode/heat/skeleton/dock）はこれまでどおり URL に載せない。
+// parseHash / buildQuery は location に触れない純粋関数（unit-test からも使う）。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  // pick の短縮表記 ⇔ 層名
-  const PICK_CHAR = { s: 'strategy', t: 'tactic', c: 'castle' };
-  const PICK_LETTER = { strategy: 's', tactic: 't', castle: 'c' };
+  const LAYER_CHAR = { s: 'strategy', t: 'tactic', c: 'castle' };
+  const LAYER_LETTER = { strategy: 's', tactic: 't', castle: 'c' };
+  const WHO_CHAR = { m: 'me', o: 'opp' };
+  const WHO_LETTER = { me: 'm', opp: 'o' };
+  const LAYERS = ['strategy', 'tactic', 'castle'];
 
+  const encodeSel = sel => {
+    const [who, kind] = String(sel || '').split('.');
+    return WHO_LETTER[who] && LAYER_LETTER[kind] ? WHO_LETTER[who] + LAYER_LETTER[kind] : '';
+  };
+  const decodeSel = s => {
+    const m = /^([mo])([stc])$/.exec(String(s || ''));
+    return m ? `${WHO_CHAR[m[1]]}.${LAYER_CHAR[m[2]]}` : null;
+  };
+
+  // 旧形式の pick 圧縮表記（'stc'）→ 層名の列
   const decodePick = s => {
     const out = [];
     for (const ch of String(s || '')) {
-      const l = PICK_CHAR[ch];
+      const l = LAYER_CHAR[ch];
       if (l && !out.includes(l)) out.push(l);
     }
     return out;
   };
-  const encodePick = pick => (Array.isArray(pick) ? pick : []).map(l => PICK_LETTER[l] || '').join('');
 
-  const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
-
-  /** state からハッシュのクエリ部分（先頭の # を含まない）を作る。read と対称 */
+  /** state からハッシュのクエリ部分（先頭の # を含まない）を作る。parseHash と対称 */
   function buildQuery(state) {
     const p = new URLSearchParams();
     const put = (k, v) => { if (v !== null && v !== undefined && v !== '') p.set(k, v); };
     put('v', state.view);
-    put('c', state.castleId);
-    put('t', state.tacticId);
-    put('cf', state.clusterFamily);
-    const mu = isObj(state.matchup) ? state.matchup : {};
-    for (const [side, pre] of [['me', 'm'], ['opp', 'o']]) {
-      const s = isObj(mu[side]) ? mu[side] : {};
-      put(pre + 's', s.strategy);
-      put(pre + 't', s.tacticId);
-      put(pre + 'c', s.castleId);
-      put(pre + 'p', encodePick(s.pick));
+    const list = Array.isArray(state.constraints) ? state.constraints : [];
+    if (list.length) {
+      p.set('k', list
+        .filter(e => WHO_LETTER[e.who] && LAYER_LETTER[e.kind])
+        .map(e => `${WHO_LETTER[e.who]}${LAYER_LETTER[e.kind]}:${e.id}`)
+        .join(','));
     }
-    const sh = isObj(mu.show) ? mu.show : {};
-    if (sh.opp === false) p.set('mo', '0');
-    if (sh.threat === false) p.set('mw', '0');
-    return p.toString();
+    put('sel', encodeSel(state.selected));
+    put('cf', state.clusterFamily);
+    if (state.showThreat === false) put('mw', '0'); // 脅威の帯スイッチ（旧形式と同じキー。消しているときだけ書く）
+    // id は ASCII なので %2C→, %3A→: に戻して読みやすい形にする
+    return p.toString().replace(/%2C/g, ',').replace(/%3A/g, ':');
+  }
+
+  // 旧形式の対局図（ms/mt/mc/mp/os/ot/oc/op/mo）→ 制約リスト。
+  // 各側の制約は pick の順（空なら strategy,tactic,castle）に並べる。mo=0 は相手を全部取り除く
+  function legacyMatchup(p) {
+    const side = (pre, who) => {
+      const vals = { strategy: p.get(pre + 's'), tactic: p.get(pre + 't'), castle: p.get(pre + 'c') };
+      const pick = decodePick(p.get(pre + 'p'));
+      const order = pick.length ? [...pick, ...LAYERS.filter(l => !pick.includes(l))] : LAYERS;
+      return order.filter(l => vals[l] != null && vals[l] !== '')
+        .map(l => ({ who, kind: l, id: vals[l] }));
+    };
+    const opp = p.get('mo') === '0' ? [] : side('o', 'opp');
+    return [...side('m', 'me'), ...opp];
+  }
+
+  /**
+   * ハッシュ文字列（先頭の # を含まない）を解析し、state への差分を返す純粋関数。
+   * `k=` があれば新形式、無ければ旧形式を移行規則（計画書 §2）に従って変換する。
+   * @returns {{view?:string, constraints?:Array, selected?:string|null,
+   *   showThreat?:boolean, clusterFamily?:string|null}}
+   */
+  function parseHash(h) {
+    const out = {};
+    const p = new URLSearchParams(String(h || ''));
+    if (p.has('cf')) out.clusterFamily = p.get('cf') || null;
+
+    // 新形式
+    if (p.has('k')) {
+      const list = [];
+      for (const tok of String(p.get('k')).split(',')) {
+        const m = /^([mo])([stc]):(.+)$/.exec(tok.trim());
+        if (m) list.push({ who: WHO_CHAR[m[1]], kind: LAYER_CHAR[m[2]], id: m[3] });
+      }
+      out.constraints = list;
+      out.view = p.get('v') === 'cluster' ? 'cluster' : 'board';
+      if (p.has('sel')) {
+        const sel = decodeSel(p.get('sel'));
+        if (sel) out.selected = sel;
+      }
+      if (p.get('mw') === '0') out.showThreat = false;
+      return out;
+    }
+
+    // 旧形式: v= が書き出し側の権威（旧 buildQuery は全キーを常に書いていた）
+    const v = p.get('v');
+    if (v === 'cluster') { out.view = 'cluster'; return out; }
+    if (v === 'castle') {
+      out.view = 'board';
+      const list = [];
+      if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
+      out.constraints = list;
+      out.selected = 'me.castle';
+      return out;
+    }
+    if (v === 'tactic') {
+      out.view = 'board';
+      const list = [];
+      if (p.has('t')) list.push({ who: 'me', kind: 'tactic', id: p.get('t') });
+      // 旧戦法画面で囲いが別途保持されていた場合（tc= / 後方互換の保険）
+      if (p.has('tc')) list.push({ who: 'me', kind: 'castle', id: p.get('tc') });
+      out.constraints = list;
+      out.selected = 'me.tactic';
+      return out;
+    }
+    const hasMu = v === 'matchup'
+      || ['s', 't', 'c', 'p'].some(k => p.has('m' + k) || p.has('o' + k)) || p.has('mo') || p.has('mw');
+    if (hasMu) {
+      out.view = 'board';
+      out.constraints = legacyMatchup(p);
+      const lastMe = [...out.constraints].reverse().find(e => e.who === 'me');
+      if (lastMe) out.selected = `me.${lastMe.kind}`;
+      if (p.get('mw') === '0') out.showThreat = false;
+      return out;
+    }
+    if (p.has('c') || p.has('t')) {
+      // v= の無い旧形式の断片: 囲いか戦法を me の制約として拾う
+      out.view = 'board';
+      const list = [];
+      if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
+      else if (p.has('t')) list.push({ who: 'me', kind: 'tactic', id: p.get('t') });
+      out.constraints = list;
+      return out;
+    }
+    if (v === 'board') out.view = 'board';
+    return out;
   }
 
   /**
@@ -53,28 +148,9 @@ window.Kakoi = window.Kakoi || {};
     try {
       const h = location.hash.replace(/^#/, '');
       if (!h) return;
-      const p = new URLSearchParams(h);
-      if (p.has('v')) state.view = p.get('v');
-      if (p.has('c')) state.castleId = p.get('c');
-      if (p.has('t')) state.tacticId = p.get('t');
-      if (p.has('cf')) state.clusterFamily = p.get('cf');
-      const mu = isObj(state.matchup) ? state.matchup : {};
-      // 対局図のキーが1つでもあれば共有URLと見なす。共有URLは全項目を書き出すので、
-      // 欠けている項目は「保存値を残す」ではなく既定値に戻す（貼った側と同じ状態で開くため）
-      const muTouched = ['s', 't', 'c', 'p'].some(k => p.has('m' + k) || p.has('o' + k)) || p.has('mo') || p.has('mw');
-      if (muTouched) {
-        const readSide = (s, pre) => {
-          const out = { ...(isObj(s) ? s : {}) };
-          if (p.has(pre + 's')) out.strategy = p.get(pre + 's');
-          if (p.has(pre + 't')) out.tacticId = p.get(pre + 't');
-          if (p.has(pre + 'c')) out.castleId = p.get(pre + 'c');
-          out.pick = p.has(pre + 'p') ? decodePick(p.get(pre + 'p')) : [];
-          return out;
-        };
-        const show = { ...(isObj(mu.show) ? mu.show : {}) };
-        show.opp = p.get('mo') !== '0';
-        show.threat = p.get('mw') !== '0';
-        state.matchup = { me: readSide(mu.me, 'm'), opp: readSide(mu.opp, 'o'), show };
+      const patch = parseHash(h);
+      for (const k of ['view', 'constraints', 'selected', 'showThreat', 'clusterFamily']) {
+        if (patch[k] !== undefined) state[k] = patch[k];
       }
     } catch { /* 壊れたハッシュで起動を止めない */ }
   }
@@ -87,5 +163,6 @@ window.Kakoi = window.Kakoi || {};
     });
   }
 
-  Kakoi.hashLink = { read, sync };
+  Kakoi.hashLink = { read, sync, buildQuery, parseHash };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Kakoi.hashLink; // unit-test 用
 })();

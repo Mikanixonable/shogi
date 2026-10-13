@@ -7,7 +7,7 @@ window.Kakoi = window.Kakoi || {};
 
   class TacticDetailView {
     /**
-     * @param {HTMLElement} el `#tacticDetail`（.detail-body）
+     * @param {HTMLElement} el 戦法の詳細パネル（#detail 内の .dsec）
      * @param {{ onHover:(squares:string[], tone:?string)=>void,
      *   onCastle:(id:string)=>void, onMatchup:(id:string)=>void }} handlers
      *   onMatchup: その囲いとの組み合わせを対局図で開く。onCastle: 「→」で囲いの画面へ移る
@@ -75,16 +75,16 @@ window.Kakoi = window.Kakoi || {};
         (/推定/.test(t.note || '') ? '<p class="note">経路の途中のマスは推定です。</p>' : '');
     }
 
-    // 囲い名を押すとその組み合わせを対局図で開く。横の「→」で囲いの画面へ移る
+    // 囲い名・横の「→」を押すとその囲いを制約にして選択する（旧: 対局図/囲い画面への遷移）
     _castles(castles) {
       if (!castles.length) return '<p class="note">データ上の対応する囲いはありません</p>';
       const rows = castles.map(c =>
         `<div class="tc-row"><button class="tc-castle" data-act="matchup" data-id="${esc(c.id)}" data-compat="${esc(c.level || 'ok')}"` +
           `${c.why ? ` title="${esc(plain(c.why))}"` : ''}>` +
           `<b>${esc(c.name)}</b><span>${esc(c.familyName)}</span></button>` +
-          `<button class="tc-go" data-id="${esc(c.id)}" title="${esc(c.name)}を囲いの画面で見る" aria-label="${esc(c.name)}を囲いの画面で見る">→</button></div>`
+          `<button class="tc-go" data-id="${esc(c.id)}" title="${esc(c.name)}を制約にして選択" aria-label="${esc(c.name)}を制約にして選択">→</button></div>`
       ).join('');
-      return `<div class="sec"><h3>相性のよい囲い<small>押すと対局図で開く。「→」は囲いの画面へ</small></h3><div class="tc-castles">${rows}</div></div>`;
+      return `<div class="sec"><h3>相性のよい囲い<small>押すとこの囲いを制約にする</small></h3><div class="tc-castles">${rows}</div></div>`;
     }
 
     _sources(sources, citer) {

@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="css/tactics.css">
 <link rel="stylesheet" href="css/clusters.css">
 <link rel="stylesheet" href="css/matchup.css">
+<link rel="stylesheet" href="css/constraint.css">
 </head>
 <body>
 <div class="atmo" aria-hidden="true"></div>
@@ -29,9 +30,7 @@
 <header class="glass">
   <div class="brand"><span class="mark" aria-hidden="true">玉</span><h1>将棋の囲い図鑑</h1><span class="sub">先手の囲いを盤面で見比べる</span></div>
   <div class="seg nav" id="viewSeg" role="group" aria-label="画面の切り替え">
-    <button data-value="castle">囲い</button>
-    <button data-value="tactic">戦法</button>
-    <button data-value="matchup">対局図</button>
+    <button data-value="board">盤</button>
     <button data-value="cluster">分類マップ</button>
   </div>
   <div class="tools" id="tools">
@@ -63,50 +62,34 @@
   </button>
 </header>
 
-<!-- 各パネルは view-pane を画面ごとに持つ。盤（boardarea）だけは囲い・戦法で共有する -->
+<!-- 各パネルは view-pane を画面ごとに持つ。画面は「盤（board）」と「分類マップ（cluster）」の2つ -->
 <div class="app">
-  <!-- 選ぶ -->
+  <!-- 選ぶ（左ドック。暫定: 相手／自分の2ブロック。タイル化・上下分割は U4） -->
   <nav class="panel glass rail" aria-label="一覧">
-    <div class="view-pane" data-view="castle">
-      <div class="seg wide" id="sideSeg">
-        <button data-value="ibisha">居飛車</button>
-        <button data-value="furibisha">振り飛車</button>
-      </div>
-      <div class="fchips" id="familyChips" role="group" aria-label="系統で絞り込む"></div>
-      <div class="rail-h"><span class="count" id="railCount"></span><span class="keys"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動</span></div>
-      <div class="cards" id="cards"></div>
-    </div>
-    <div class="view-pane pane-fill" data-view="tactic" id="tacticRail"></div>
-    <div class="view-pane pane-fill" data-view="matchup" id="matchupRail"></div>
+    <div class="view-pane pane-fill" data-view="board" id="pickRail"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
   </nav>
 
   <!-- 見る -->
   <main class="panel glass stage">
-    <div class="view-pane" data-view="castle">
-      <div class="stage-h">
+    <div class="view-pane" data-view="board" id="boardPane">
+      <div class="stage-h" id="stageH">
         <div class="ttl" id="ttl"><h2 id="title"></h2><div class="rd"><span id="reading"></span><span class="setup" id="setup"></span></div></div>
       </div>
+      <!-- 制約バー: チップ1つ=制約1つ。自分側→相手側の順。右端は導出ラベル（戦型） -->
+      <div class="cbar" id="constraintBar" role="group" aria-label="制約条件"></div>
       <div class="stage-f">
         <span class="legend" id="legend"></span>
+        <label class="switch" id="threatWrap" title="相手の飛車の筋・主役の経路の終点の筋"><input type="checkbox" id="threatSw"> 脅威の帯</label>
         <span class="hand" id="hand"></span>
-      </div>
-    </div>
-    <div class="view-pane" data-view="tactic" id="tacticStage"></div>
-    <div class="view-pane" data-view="matchup" id="matchupStage">
-      <div class="stage-h">
-        <div class="ttl"><h2>対局図</h2><div class="rd"><span class="rdg">たいきょくず</span><span class="setup"></span></div></div>
-      </div>
-      <div class="stage-f">
-        <span class="legend"></span>
-        <span class="hand"></span>
+        <button class="play-btn" id="playBtn" type="button">順に再生</button>
       </div>
     </div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterStage"></div>
-    <!-- 盤: 囲い・戦法・対局図で共有（BoardView / OverlayView は1組だけ） -->
-    <div class="view-pane board-pane" data-view="castle tactic matchup">
+    <!-- 盤（BoardView / OverlayView は1組だけ） -->
+    <div class="view-pane board-pane" data-view="board">
       <div class="boardarea">
-        <div class="boardwrap">
+        <div class="boardwrap" id="boardwrap">
           <div id="ptable" class="ptable" role="group" aria-label="戦法の周期表（盤の筋とそろえた表）"></div>
           <div class="flabels" id="files"></div><div></div>
           <div class="board" id="board"></div>
@@ -116,13 +99,15 @@
     </div>
   </main>
 
-  <!-- 読む -->
+  <!-- 読む（右ドック。暫定: 選択中の制約の種類ごとに既存の詳細ビューを使い回す。本格化は U5） -->
   <aside class="panel glass detail">
-    <div class="view-pane" data-view="castle">
-      <div class="detail-body" id="detail"></div>
+    <div class="view-pane" data-view="board">
+      <div class="detail-body" id="detail">
+        <div class="dsec" id="detailCastle" hidden></div>
+        <div class="dsec" id="detailTactic" hidden></div>
+        <div class="dsec" id="detailMisc" hidden></div>
+      </div>
     </div>
-    <div class="view-pane pane-fill detail-body" data-view="tactic" id="tacticDetail"></div>
-    <div class="view-pane pane-fill detail-body" data-view="matchup" id="matchupDetail"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterDetail"></div>
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>

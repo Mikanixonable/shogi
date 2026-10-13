@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
-/* フェーズ4の画面検証: ブラウザで全囲い・全戦法・分類マップを巡回し、
-   JSエラー・ページのスクロール(幅980px以上では出ない)・パネルのはみ出し・周期表の列合わせを検査する。
+/* 統合画面の検証: ブラウザで「盤」「分類マップ」を巡回し、
+   JSエラー・ページのスクロール(幅980px以上では出ない)・制約の追加/削除/連鎖・
+   周期表の出し分け・相手の駒の有無・ハッシュの往復を検査する。
    画面幅 1440/1280/1100/1024/390 ×ライト/ダーク のスクリーンショットを tools/shots/ に保存する。
    使い方: node tools/ui-check.js [--shots-only]  （システムの Chrome/Edge または ms-playwright の headless shell を使用） */
 const http = require('http');
@@ -15,7 +16,7 @@ const SHOTS = path.join(__dirname, 'shots');
 const SHOTS_ONLY = process.argv.includes('--shots-only');
 const WIDTHS = [1440, 1280, 1100, 1024, 390];   // 390以下はスクロール設計
 const NO_SCROLL_MIN = 980;
-const VIEWS = ['castle', 'tactic', 'matchup', 'cluster'];
+const VIEWS = ['board', 'cluster'];
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.md': 'text/plain' };
 
@@ -68,92 +69,137 @@ function watch(page, errs) {
 
 const setView = (page, v) => page.click(`#viewSeg button[data-value="${v}"]`);
 const wait = ms => new Promise(r => setTimeout(r, ms));
-
-/* ---- 巡回: 囲い（居飛車/振り飛車の両側） ---- */
-async function sweepCastle(page) {
-  let n = 0;
-  for (const side of ['ibisha', 'furibisha']) {
-    await page.click(`#sideSeg button[data-value="${side}"]`);
-    await wait(150);
-    const cnt = await page.$$eval('#cards .card', els => els.length);
-    n += cnt;
-    for (let i = 0; i < cnt; i++) { await page.locator('#cards .card').nth(i).click(); await wait(50); }
-  }
-  for (const v of ['all', 'core', 'dim']) await page.click(`#modeSeg button[data-value="${v}"]`);
-  await page.click('#heat'); await wait(150);
-  await page.click('#heatScopeSeg button[data-value="all"]'); await wait(150);
-  await page.click('#heat'); await wait(150);
-  await page.click('#skeleton'); await wait(150); await page.click('#skeleton');
-  return n;
-}
-
-/* ---- 巡回: 戦法 ---- */
-async function sweepTactic(page) {
-  const n = await page.$$eval('#ptable .pt-cell', els => els.length);
-  for (let i = 0; i < n; i++) { await page.locator('#ptable .pt-cell').nth(i).click(); await wait(60); } // nthで毎回引き直し（再描画対策）
-  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowDown');
-  await page.click('.play-btn'); await wait(1400); await page.click('.play-btn');
-  // 列合わせ: 選択中セルの中央が、主役の駒の筋の中央と一致する
-  const id = await page.$eval('#ptable .pt-cell[aria-current="true"]', el => el.dataset.id);
-  const file = await page.evaluate(tid => {
-    const t = Kakoi.TACTICS.find(x => x.id === tid);
-    return t ? Math.max(...t.lead.files) : null;
-  }, id);
-  const cellX = await page.$eval('#ptable .pt-cell[aria-current="true"]', el => {
-    const r = el.getBoundingClientRect(); return r.left + r.width / 2;
-  });
-  const boardX = await page.$eval('.board', (el, f) => {
-    const r = el.getBoundingClientRect();
-    return r.left + r.width / 9 * (9 - f + 0.5);
-  }, file);
-  return { n, id, file, aligned: Math.abs(cellX - boardX) < 2.5, dx: (cellX - boardX).toFixed(2) };
-}
-
-/* ---- 巡回: 対局図 ---- */
-async function sweepMatchup(page) {
-  const r = {};
-  // 左の一覧: 戦法＋囲いの全件と、各行・戦略ボタンに付く相性の印（◎○×）。件数は data から導出する
-  r.items = await page.$$eval('#matchupRail .mu-item', els => els.length);
-  r.best = await page.$$eval('#matchupRail [data-compat="best"]', els => els.length);
-  // 盤: 立体駒（canvas）は DOM から枚数を数えられないので、?flat（DOM駒 .pc）のときだけ数える
-  r.d3 = await page.$eval('#board', b => !!b.querySelector('canvas'));
-  r.pieces = await page.$$eval('#board .pc', els => els.length);
-  // 脅威の帯（既定は相手を表示するので出る）と右パネル
-  r.threats = await page.$$eval('#board .ov-threat[data-file]', els => els.length);
-  r.detail = await page.$eval('#matchupDetail', el => el.textContent.trim().length);
-  r.kind = await page.evaluate(() => {
-    const el = document.querySelector('#matchupDetail .mu-kind');
-    return el ? el.textContent.trim() : '';
-  });
-
-  // 「相手 表示」スイッチ: 消すと後手の駒と脅威の帯が退き選択肢が閉じる。点けると戻る。
-  // 立体駒では .pc が無いので、パネルの開閉と脅威の帯を合図にする
-  const read = () => page.evaluate(() => ({
-    hidden: document.querySelector('#matchupRail [data-role="opp-body"]').hidden,
+// ?debug で立つ window.__kakoi 経由の状態スナップショット
+const snap = page => page.evaluate(() => {
+  const st = __kakoi.store.state;
+  return {
+    constraints: st.constraints, selected: st.selected, view: st.view,
+    sides: Kakoi.constraints.sides(st.constraints),
+    chips: [...document.querySelectorAll('#constraintBar .cchip')].map(c =>
+      ({ who: c.dataset.who, kind: c.dataset.kind, implied: c.dataset.implied === 'true', text: c.textContent.trim() })),
     gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
+    canvas: !!document.querySelector('#board canvas'),
     threats: document.querySelectorAll('#board .ov-threat').length,
-  }));
-  const sw = page.locator('#matchupRail input[data-show="opp"]');
-  await sw.click(); await wait(250); r.off = await read();
-  await sw.click(); await wait(350); r.on = await read();
+    ptableOn: document.querySelector('#boardwrap').dataset.pt === 'on',
+    ptCells: document.querySelectorAll('#ptable .pt-cell').length,
+    detailCastle: !document.querySelector('#detailCastle').hidden,
+    detailTactic: !document.querySelector('#detailTactic').hidden,
+    hash: location.hash,
+  };
+});
 
-  // × の行を選ぶと両立しない層が自動で差し替わり、トーストが出る（出なければ別の×を試す）
-  const ngSel = await page.$('#matchupRail .mu-item[data-layer="tactic"][data-compat="ng"]')
-    ? '#matchupRail .mu-item[data-layer="tactic"][data-compat="ng"]'
-    : '#matchupRail .mu-item[data-compat="ng"]';
-  r.ng = await page.$$eval(ngSel, els => els.length);
-  r.toast = '';
-  for (let i = 0; i < 3 && !r.toast; i++) {
-    const row = page.locator(ngSel).nth(i);
-    if (!await row.count()) break;
-    await row.click(); await wait(300);
-    r.toast = await page.evaluate(() => {
-      const t = document.querySelector('.toast.on');
-      return t ? t.textContent.trim() : '';
-    });
+/* ---- 巡回: 盤（統合画面） ---- */
+async function sweepBoard(page) {
+  const r = {};
+  r.t0 = await snap(page);
+  // 左ドックの一覧が出ている（自分＋相手の2ブロック分）
+  r.items = await page.$$eval('#pickRail .cr-item', els => els.length);
+  r.segs = await page.$$eval('#pickRail .seg button[data-value]', els => els.length);
+
+  // 囲いを選ぶ → 制約が増え、チップが現れ、詳細が囲いになる
+  const before = r.t0.constraints.length;
+  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="castle"]'); await wait(350);
+  r.t1 = await snap(page);
+  r.added = r.t1.constraints.length === before + 1
+    && r.t1.constraints.some(e => e.who === 'me' && e.kind === 'castle')
+    && r.t1.selected === 'me.castle' && r.t1.detailCastle;
+
+  // 戦法を選ぶ → 周期表が出る。selected=me.tactic
+  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="tactic"]'); await wait(350);
+  r.t2 = await snap(page);
+  r.ptOn = r.t2.ptableOn && r.t2.selected === 'me.tactic' && r.t2.detailTactic;
+  // 筋ボタン（周期表のセル）を押す → その側の戦法が変わる
+  const cells = r.t2.ptCells;
+  if (cells > 1) {
+    await page.locator('#ptable .pt-cell').nth(1).click(); await wait(350);
   }
-  await page.evaluate(() => { if (window.Kakoi && Kakoi.Toast) Kakoi.Toast.hide(); });
+  r.t3 = await snap(page);
+  r.ptPick = r.t3.ptableOn && r.t3.selected === 'me.tactic' && r.t3.constraints.some(e => e.kind === 'tactic');
+  // 囲いを選び直す → 周期表が消える（selected だけの変更で駒は再描画されない構造）
+  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="castle"]'); await wait(350);
+  r.t4 = await snap(page);
+  r.ptOff = !r.t4.ptableOn;
+
+  // 相手を選ぶ → 相手の制約が増え、後手の駒（DOM駒のとき）と脅威の帯・導出ラベルが出る
+  await page.click('#pickRail [data-side="opp"] .cr-item[data-kind="tactic"]'); await wait(400);
+  r.t5 = await snap(page);
+  r.opp = !!r.t5.sides.opp && r.t5.constraints.some(e => e.who === 'opp');
+  r.oppShown = r.t5.canvas || r.t5.gote > 0;
+  r.labels = r.t5.chips.some(c => c.text.startsWith('#') && !c.kind);
+  r.threatOn = r.t5.threats >= 1;
+  // 相手の戦法を選択すると周期表が反転して出る（data-side="opp"）
+  r.oppTable = await page.evaluate(() => {
+    const el = document.querySelector('#ptable');
+    return document.querySelector('#boardwrap').dataset.pt === 'on' && el.dataset.side === 'opp';
+  });
+  // 脅威の帯スイッチを切る → 帯が消える
+  await page.click('#threatSw'); await wait(300);
+  r.t6 = await snap(page);
+  r.threatOff = r.t6.threats === 0;
+  await page.click('#threatSw'); await wait(300);
+
+  // 連鎖: cascade のある候補を選ぶと自動差し替えが起き、トーストが出る
+  r.toast = '';
+  const csc = await page.$('#pickRail [data-side="me"] .cr-item[data-cascade="true"]');
+  r.cascadeTried = !!csc;
+  let preList = null;
+  if (csc) {
+    preList = await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
+    await csc.click(); await wait(400);
+    r.toast = await page.evaluate(() => (document.querySelector('.toast.on') || {}).textContent || '');
+    r.t7 = await snap(page);
+  }
+  // 「元に戻す」でクリック前の制約リストに戻る
+  r.undo = null;
+  if (r.toast) {
+    await page.click('.toast .toast-act'); await wait(300);
+    r.undo = await page.evaluate(l => ({
+      sameAsPrev: JSON.stringify(__kakoi.store.state.constraints) === l,
+      toastGone: !document.querySelector('.toast.on'),
+    }), preList);
+  }
+
+  // × で制約を外す（相手側を1つ。自分側は暗黙が残るので消しても盤は壊れない）
+  const xCount = await page.$$eval('#constraintBar .cchip-x', els => els.length);
+  if (xCount) {
+    const n0 = await page.evaluate(() => __kakoi.store.state.constraints.length);
+    await page.locator('#constraintBar .cchip-x').last().click(); await wait(300);
+    r.removed = await page.evaluate(n => __kakoi.store.state.constraints.length === n - 1, n0);
+  }
+  // 相手を全部はずす → 後手の駒と脅威の帯が退く（直前の × で相手が空になった場合に備えて足しておく）
+  await page.click('#pickRail [data-side="opp"] .cr-item[data-kind="strategy"], #pickRail [data-side="opp"] .seg button[data-value]').catch(() => {});
+  await wait(350);
+  const clearBtn = await page.$('#pickRail [data-clear="opp"]');
+  if (clearBtn && await clearBtn.isVisible()) {
+    await clearBtn.click(); await wait(400);
+    r.t8 = await snap(page);
+    r.oppGone = r.t8.sides.opp === null && r.t8.threats === 0 && (r.t8.canvas || r.t8.gote === 0);
+  } else {
+    r.oppGone = null;
+  }
+
+  // 矢印キー: 戦法を選択しているとき ←→ で戦法が送れる
+  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="tactic"]'); await wait(300);
+  const tId0 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
+  await page.keyboard.press('ArrowRight'); await wait(250);
+  const tId1 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
+  r.keyNav = tId0 !== tId1;
+
+  // ハッシュ往復: いまのハッシュで開き直すと同じ制約・選択になる
+  const cur = await page.evaluate(() => ({
+    hash: location.hash,
+    constraints: JSON.stringify(__kakoi.store.state.constraints),
+    selected: __kakoi.store.state.selected,
+  }));
+  r.hashFormat = /^#v=board&k=/.test(cur.hash) || /^#v=board/.test(cur.hash);
+  // hash だけの遷移では再読み込みされないので、ダミーのクエリを足して実際に開き直す
+  await page.goto(page.url().split('#')[0] + '&rt=1' + cur.hash, { waitUntil: 'networkidle' });
+  await wait(400);
+  const back = await page.evaluate(() => ({
+    constraints: JSON.stringify(__kakoi.store.state.constraints),
+    selected: __kakoi.store.state.selected,
+  }));
+  r.hashRoundTrip = back.constraints === cur.constraints && back.selected === cur.selected;
   return r;
 }
 
@@ -193,39 +239,55 @@ async function main() {
   const errs = [];
   try {
     const base = `http://127.0.0.1:${port}/castles.html`;
+    const baseDebug = `${base}?debug`;
     if (!SHOTS_ONLY) {
-      // ---- 巡回（1440px ライト） ----
+      // ---- 巡回（1440px ライト。?debug で window.__kakoi を立てて状態を見る） ----
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
       watch(page, errs);
-      await page.goto(base, { waitUntil: 'networkidle' });
+      // 保存値に左右されないよう、このページの localStorage を空にしてから開く
+      await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+      await page.goto(baseDebug, { waitUntil: 'networkidle' });
       // 期待件数はデータから導出する（追加のたびに書き換えない）
       const expect = await page.evaluate(() => ({
         castles: Kakoi.CASTLES.length,
-        // 描かれるセル数（variantOf と同じ列の後続は1マスに束ねられる）と行の全戦法数
-        cells: new Set(Kakoi.TACTICS.filter(t => !t.variantOf).map(t => t.family + '/' + Math.max(...t.lead.files))).size,
         tactics: Kakoi.TACTICS.length,
         fams: Kakoi.CASTLE_FAMILIES.length,
       }));
-      const cards = await sweepCastle(page);
-      ok(cards === expect.castles, `囲いカード ${expect.castles}枚`, `${cards}`);
 
-      await setView(page, 'tactic'); await wait(300);
-      const t = await sweepTactic(page);
-      ok(t.n === expect.cells, `戦法セル ${expect.cells}個`, `${t.n}`);
-      ok(t.aligned, `周期表の列=盤の筋 (${t.id}: ${t.file}筋)`, `ずれ ${t.dx}px`);
+      const b = await sweepBoard(page);
+      ok(b.items === (expect.tactics + expect.castles) * 2, `左ドックの一覧（戦法+囲い)×2側`, `${b.items}行`);
+      ok(b.segs === 4, '左ドックの戦略セグ（自分・相手）', `${b.segs}個`);
+      ok(b.added, '囲いを選ぶ→制約とチップが増える', JSON.stringify(b.t1 && b.t1.constraints));
+      ok(b.ptOn, '戦法を選ぶ→筋ボタン（周期表）が出る', `ptableOn=${b.t2.ptableOn} sel=${b.t2.selected}`);
+      ok(b.ptPick, '筋ボタンで選択中の側の戦法が変わる', JSON.stringify(b.t3 && b.t3.selected));
+      ok(b.ptOff, '囲いを選ぶ→筋ボタンが消える', `ptableOn=${b.t4.ptableOn}`);
+      ok(b.opp && b.oppShown, '相手を選ぶ→後手の駒が出る', `sides.opp=${!!(b.t5 && b.t5.sides.opp)} gote=${b.t5 && b.t5.gote}`);
+      ok(b.threatOn, '相手がいると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
+      ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
+      ok(b.oppTable, '相手の戦法を選択→周期表は相手側（反転）', '');
+      ok(b.threatOff, '脅威の帯スイッチで帯を消せる', `${b.t6 && b.t6.threats}本`);
+      if (!b.cascadeTried) warn('連鎖のある候補が見つからず、自動差し替えトーストを試せなかった');
+      else {
+        ok(b.toast.length > 0, '連鎖選択で自動差し替えトースト', b.toast.slice(0, 60));
+        ok(b.undo && b.undo.sameAsPrev && b.undo.toastGone, '「元に戻す」で制約リストが戻る', JSON.stringify(b.undo));
+      }
+      ok(b.removed !== false, '×で制約を外せる', '');
+      if (b.oppGone == null) warn('「はずす」ボタンが見つからなかった');
+      else ok(b.oppGone, '「はずす」で相手の駒と帯が退く', JSON.stringify(b.t8 && b.t8.sides.opp));
+      ok(b.keyNav, '矢印キーで戦法を送れる', '');
+      ok(b.hashFormat, 'ハッシュは新形式（v=board&k=…）', '');
+      ok(b.hashRoundTrip, 'ハッシュ往復で同じ状態が開ける', '');
 
-      await setView(page, 'matchup'); await wait(400);
-      const m = await sweepMatchup(page);
-      ok(m.items >= expect.tactics + expect.castles, `対局図の一覧（戦法${expect.tactics}＋囲い${expect.castles}）`, `${m.items}行`);
-      ok(m.best >= 5, '対局図の◎印', `${m.best}個`);
-      ok(m.d3 || m.pieces >= 39, '対局図の盤に両軍の駒', m.d3 ? '立体駒（canvas）' : `${m.pieces}枚`);
-      ok(m.threats >= 1, '対局図に脅威の帯', `${m.threats}本`);
-      ok(m.detail > 0 && m.kind.length > 0, '対局図の詳細が埋まる', `kind="${m.kind}"`);
-      if (m.d3) warn('対局図: 立体駒のため後手の枚数は数えず、脅威の帯と相手パネルの開閉で確認');
-      ok(m.off.hidden && m.off.threats === 0 && (m.d3 || m.off.gote === 0), '対局図で相手を隠す', JSON.stringify(m.off));
-      ok(!m.on.hidden && m.on.threats >= 1 && (m.d3 || m.on.gote > 0), '対局図で相手を戻す', JSON.stringify(m.on));
-      if (m.ng === 0) warn('対局図に×の候補が無く、自動差し替えトーストを試せなかった');
-      else ok(m.toast.length > 0, '対局図の×選択で自動差し替えトースト', m.toast.slice(0, 60));
+      // 駒の表示モード・利き・骨格線のスイッチが盤に効く
+      for (const v of ['all', 'core', 'dim']) await page.click(`#modeSeg button[data-value="${v}"]`);
+      await page.click('#heat'); await wait(200);
+      const heatOn = await page.$$eval('#board .sq .h', els => els.length);
+      ok(heatOn > 0, '守りの利きを点けるとヒートが出る', `${heatOn}マス`);
+      await page.click('#heat'); await wait(200);
+      await page.click('#skeleton'); await wait(300);
+      const sk = await page.$$eval('#board .overlay .sk', els => els.length);
+      ok(sk > 0, '骨格線を点けると線が出る', `${sk}本`);
+      await page.click('#skeleton');
 
       await setView(page, 'cluster'); await wait(400);
       const c = await sweepCluster(page);

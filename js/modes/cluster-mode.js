@@ -48,16 +48,13 @@ window.Kakoi = window.Kakoi || {};
       this._render();
     }
 
-    /** 「囲い図鑑で開く」。前の画面の攻め筋・系統の絞り込みが残ると別囲いに誤適用されるので補正する */
+    /** 「盤で開く」: この囲いを自分の制約にして盤の画面へ移る（攻め筋は別囲いに誤適用されないようリセット） */
     _openCastle(id) {
       const castle = this.repo.byId(id);
       if (!castle) return;
       const s = this.store.state;
-      this.store.set({
-        view: 'castle', castleId: id, attackId: null,
-        familyFilter: s.familyFilter === castle.family ? s.familyFilter : null,
-        lastBySide: { ...s.lastBySide, [castle.side]: id },
-      });
+      const r = K.constraints.apply(s.constraints || [], { type: 'set', who: 'me', kind: 'castle', id });
+      this.store.set({ view: 'board', constraints: r.list, selected: 'me.castle', attackId: null });
     }
 
     _render() {
