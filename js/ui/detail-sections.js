@@ -160,7 +160,7 @@ window.Kakoi = window.Kakoi || {};
     const last = tactic.route[tactic.route.length - 1];
     const text = tactic.route.length > 1
       ? `主役の${tactic.lead.piece}は、最終的に${sq(last)}に立ちます。`
-      : `主役の${tactic.lead.piece}は、初期位置の${sq(last)}のまま動きません。`;
+      : `主役の${tactic.lead.piece}は${sq(last)}に立ちます（経路は1マスのみ）。`;
     return sec('主役の駒の動き', 'マスに乗せると盤で光る', `<ol class="rt-steps">${steps}</ol>`) +
       `<p class="desc">${esc(text)}</p>` +
       (/推定/.test(tactic.note || '') ? '<p class="note">経路の途中のマスは推定です。</p>' : '');
@@ -291,7 +291,7 @@ window.Kakoi = window.Kakoi || {};
   function history(changed, nameOf) {
     if (!changed || !changed.length) return '';
     const WHO = w => (w === 'opp' ? '相手' : '自分');
-    const LAYER = { strategy: '戦略', tactic: '戦法', castle: '囲い' };
+    const LAYER = K.lookup.LAYER_JA;
     const li = changed.slice(-8).map(c => {
       const text = c.dropped
         ? `${WHO(c.who)}の${LAYER[c.kind] || c.kind}「${nameOf(c.kind, c.from)}」を外しました（${plain(c.why || '')}）`

@@ -31,7 +31,7 @@ Kakoi.SOURCES = {
   'sj-kani': { title: 'カニ囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/kani_kakoi/' },
   'sj-kabuto': { title: 'カブト囲い（兜矢倉）', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/kabuto_yagura/' },
   'sj-gangi': { title: '雁木囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/gangi/' },
-  'sj-bonanza': { title: 'ボナンザ囲い', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/i-oth/bonanza.html' },
+  'sj-bonanza': { title: 'ボナンザ囲い', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/bonanza/' },
   'sj-hidarimino': { title: '左美濃囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/hidari_mino/' },
   'mynavi-elmo': { title: 'ここがすごいぞ「エルモ囲い」', publisher: 'マイナビニュース（将棋情報局）', url: 'https://news.mynavi.jp/article/20200403-1010036/' },
   'jsf-kakoi37': { title: '6筋位取り【玉の囲い方 第37回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2018/06/post_397.html' },

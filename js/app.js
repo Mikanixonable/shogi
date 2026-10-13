@@ -165,7 +165,6 @@
         stage: $('stageMain'), bandOpp: $('bandOpp'), bandMe: $('bandMe'),
         barOpp: $('cbarOpp'), barMe: $('cbarMe'),
         nameOpp: $('nameOpp'), subOpp: $('subOpp'), nameMe: $('nameMe'), subMe: $('subMe'),
-        stageH: $('stageH'),
         legend: $('legend'), handOpp: $('handOpp'), handMe: $('handMe'),
         playBtn: $('playBtn'),
         addOpp: $('addOpp'),

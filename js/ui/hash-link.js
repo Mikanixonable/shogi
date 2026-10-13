@@ -172,7 +172,7 @@ window.Kakoi = window.Kakoi || {};
 
   // ハッシュ由来の差分を、起動時と同じ規則で正規化する（L4/L5 と同じ経路:
   // 制約は先頭から apply(set) で再生し、存在しない側を指す selected は握り直す）
-  function normalize(patch) {
+  function normalize(patch, currentSelected) {
     const out = {};
     if (patch.constraints !== undefined) {
       out.constraints = Kakoi.constraints.normalizeList(patch.constraints);
@@ -184,6 +184,9 @@ window.Kakoi = window.Kakoi || {};
     if (patch.showThreat !== undefined) out.showThreat = patch.showThreat;
     if (patch.selected !== undefined) {
       out.selected = Kakoi.constraints.normalizeSelected(out.constraints || [], patch.selected);
+    } else if (patch.constraints !== undefined && currentSelected !== undefined) {
+      // sel= が無くても制約が変われば選択は握り直す（opp.* が残るのを防ぐ）
+      out.selected = Kakoi.constraints.normalizeSelected(out.constraints, currentSelected);
     }
     return out;
   }
@@ -201,7 +204,7 @@ window.Kakoi = window.Kakoi || {};
       const h = location.hash.replace(/^#/, '');
       if (!h) return;
       const patch = parseHash(h);
-      const next = normalize(patch);
+      const next = normalize(patch, store.state.selected);
       if (Object.keys(next).length) store.set(next);
     };
     addEventListener('hashchange', onChange);

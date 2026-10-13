@@ -22,7 +22,7 @@ window.Kakoi = window.Kakoi || {};
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe, stageH,
+     *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe,
      *        legend, handOpp, handMe, playBtn,
      *        addOpp, clearOpp, clearMe, clearAll, boardwrap, rail, detail
      */
@@ -96,7 +96,6 @@ window.Kakoi = window.Kakoi || {};
       const to = c.dropped ? (c.who === 'me' ? '既定値' : '外れ') : this._shortOf(c.kind, c.to);
       return `${side}${LAYER_JA[c.kind]} ${this._shortOf(c.kind, c.from)}→${to}`;
     }
-    _selWho() { return (parseSel(this.store.state.selected) || { who: 'me' }).who; }
 
     // ---------- 制約の操作（すべて apply に通す） ----------
     _set(who, kind, id) {
@@ -227,13 +226,15 @@ window.Kakoi = window.Kakoi || {};
       const { pv, j } = K.constraints.evaluate(s.constraints, who, kind, id);
       this._flash(pv.changed.map(c => ({ who: c.who, kind: c.kind })));
       const Sp = K.constraints.sides(pv.list);
-      const sq = new Set((j.reasons || []).flatMap(x => x.squares || []));
+      const mir = who === 'opp';
+      // 理由マスは sente 座標で返るので、相手側は絶対座標に反転する（駒差分と同じ扱い）
+      const sq = new Set((j.reasons || []).flatMap(x => x.squares || [])
+        .map(s => mir ? mirrorSq(s) : s));
       // 動く予定の駒のマス（§3-3）: いまの実効局面と候補の合成局面を比べて、
       // core/lead の駒が増減・移動するマスを拾う（相手側は絶対座標に反転する）
       const S = K.constraints.sides(s.constraints);
       const cur = S[who];
       if (cur && Sp[who]) {
-        const mir = who === 'opp';
         const posOf = x => K.compose.position({
           strategy: x.strategy, tacticId: x.tacticId, castleId: x.castleId, side: 'sente',
         }).position;

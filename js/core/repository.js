@@ -18,7 +18,6 @@ window.Kakoi = window.Kakoi || {};
     }
 
     castles() { return this._castles; }
-    has(id) { return this._byId.has(id); }
     byId(id) { return this._byId.get(id); }
     ofSide(side) { return this._castles.filter(c => c.side === side); }
     /** 発展の前後: from（発展元）と、この囲いを from に持つ囲いの一覧 */
@@ -59,7 +58,6 @@ window.Kakoi = window.Kakoi || {};
     // ===== 戦法 =====
     tactics() { return this._tactics; }
     tacticById(id) { return this._tacticById.get(id); }
-    hasTactic(id) { return this._tacticById.has(id); }
     tacticFamilies() { return this._tacticFamilies; }
     /** 戦法だけの局面（囲いの合成なし。戦法タブが盤に出すもの） */
     tacticPositionOf(tactic) {

@@ -154,6 +154,7 @@ window.Kakoi = window.Kakoi || {};
       // 差し替え・削除で既定の層（推論戦略・既定値）が変わりうるので実効値を取り直す
       S = sides(work);
       st = S[who];
+      if (!st) return; // 削除でこの側の制約が空になった
       eff = { strategy: st.strategy, tacticId: st.tacticId, castleId: st.castleId };
       opp = S[other];
     }
@@ -162,6 +163,7 @@ window.Kakoi = window.Kakoi || {};
     for (let guard = 0; guard < 8; guard++) {
       const S2 = sides(work);
       const st2 = S2[who], opp2 = S2[other];
+      if (!st2) break; // この側の制約が残っていない
       const eff2 = { strategy: st2.strategy, tacticId: st2.tacticId, castleId: st2.castleId };
       const isNg = k => Kakoi.compat.judgeFull(eff2, k, eff2[FIELD[k]], opp2).level === 'ng';
       let target = null, targetIdx = -1;

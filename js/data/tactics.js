@@ -57,7 +57,7 @@ Kakoi.TACTICS = [
     ],
     tags: ['逆襲', '飛車交換'],
     context: '対居飛車',
-    desc: '飛車を8筋に振り、相手の飛車先(居飛車の2筋)と正面から向き合う振り飛車[[wj-mukaibisha|wj-furibisha]]。飛車交換を迫る逆襲が骨子で、攻撃力は振り飛車の中で最も高いとされる[[wj-mukaibisha|we-ranging-rook]]。玉は主に美濃囲いに囲うが左金は攻めの駒として左翼に残すことが多い[[wj-mukaibisha]]。',
+    desc: '飛車を8筋に振り、相手の飛車先（居飛車なら8筋）と正面から向き合う振り飛車[[wj-mukaibisha|wj-furibisha]]。飛車交換を迫る逆襲が骨子で、攻撃力は振り飛車の中で最も高いとされる[[wj-mukaibisha|we-ranging-rook]]。玉は主に美濃囲いに囲うが左金は攻めの駒として左翼に残すことが多い[[wj-mukaibisha]]。',
     pros: [
       { t: '攻撃力が高く、居飛車に飛車交換を迫れる[[wj-mukaibisha]]' },
       { t: '角道を止めても居飛車穴熊と互角以上に戦える[[wj-mukaibisha]]' },
@@ -149,7 +149,7 @@ Kakoi.TACTICS = [
     pairings: [],
     tags: ['急戦', 'ハメ手'],
     context: '対居飛車（三間飛車からの急戦）',
-    desc: '石田流の急戦型[[wj-sankenbisha]]。玉を4八に一部寄せただけで囲わず、▲7四歩からの早い仕掛けと角交換を絡めた両取り・王手飛車を狙う[[wj-furibisha]]。ハメ手とされ防御策が定跡化されてからはプロでは指されなくなった[[wj-furibisha]]。',
+    desc: '石田流の急戦型[[wj-sankenbisha]]。玉を4八に寄せただけで囲わず、▲7四歩からの早い仕掛けと角交換を絡めた両取り・王手飛車を狙う[[wj-furibisha]]。ハメ手とされ防御策が定跡化されてからはプロでは指されなくなった[[wj-furibisha]]。',
     pros: [{ t: '仕掛けが早く、不意を突ければ破壊力が高い' }],
     cons: [{ t: '玉が薄く、受け切られると不利になりやすい' }],
     sources: [
@@ -209,7 +209,7 @@ Kakoi.TACTICS = [
     pace: 'both',
     senkei: [],
     against: { ibisha: 'good' },
-    againstTactic: { bougin: 'ok' },
+    againstTactic: { bougin: 'ng' },
     pairings: [
       { castle: 'mino', level: 'best', why: '四間飛車の基本の囲い[[wj-shikenbisha|wj-mino]]', sources: [{ ref: 'wj-shikenbisha', for: '組み合わせ' }, { ref: 'wj-mino', for: '組み合わせ' }] },
       { castle: 'takamino', level: 'best', why: '急戦に備えて上部を厚くする定番形[[wj-shikenbisha]]', sources: [{ ref: 'wj-shikenbisha', for: '組み合わせ' }] },
@@ -805,7 +805,7 @@ Kakoi.TACTICS = [
     ],
     tags: ['奇襲', '角換わり'],
     context: '角換わり（角交換後に筋違いの地点へ打つ）',
-    desc: '角換わりの序盤で角交換後に▲4五角と、初期位置の筋（8八-22筋）では届かない「筋違い」のマスに角を打つ戦法[[wj-ibisha|wj-shogi-yogo]]。▲6三角成と3四の歩取りの両狙いをかけ、独特の将棋になる[[wj-ibisha]]。向かい飛車・四間飛車への転用形もある[[wj-ibisha]]。',
+    desc: '角換わりの序盤で角交換後に▲4五角と、初期位置の筋（8八-2二筋）では届かない「筋違い」のマスに角を打つ戦法[[wj-ibisha|wj-shogi-yogo]]。▲6三角成と3四の歩取りの両狙いをかけ、独特の将棋になる[[wj-ibisha]]。向かい飛車・四間飛車への転用形もある[[wj-ibisha]]。',
     pros: [
       { t: '6三への成り込みと3四歩取りの両取りを一度に見せられる' },
       { t: '相手の想定外の展開に誘いやすい' },

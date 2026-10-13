@@ -163,7 +163,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'ginkananaguma', name: '銀冠穴熊', short: '銀冠穴熊', reading: 'ぎんかんあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha',
+    id: 'ginkananaguma', name: '銀冠穴熊', short: '銀冠穴熊', reading: 'ぎんかんあなぐま', side: 'furibisha', from: 'furianaguma', family: 'anaguma', setup: 'furibisha',
     core: '玉19 香18 桂29 銀27 金38 金47',
     shell: '歩17 歩26 歩37 歩46',
     rest: '銀67',

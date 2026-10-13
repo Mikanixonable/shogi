@@ -93,7 +93,6 @@ window.Kakoi = window.Kakoi || {};
       document.addEventListener('pointerdown', e => {
         if (pop && !e.target.closest('.dk-legend-pop') && !e.target.closest('.dk-legend')) close();
       });
-      this._closeLegend = close;
     }
 
     _setPane(who, patch) {

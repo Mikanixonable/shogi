@@ -33,8 +33,12 @@ window.Kakoi = window.Kakoi || {};
         const n = xs[(i + d + xs.length) % xs.length];
         if (n) { n.focus(); onSelect(n.dataset.value); }
       });
-      addEventListener('resize', () => this._placeKnob());
+      this._ac = new AbortController();
+      addEventListener('resize', () => this._placeKnob(), { signal: this._ac.signal });
     }
+
+    /** グローバルの resize 監視を外す */
+    dispose() { this._ac.abort(); }
 
     setValue(value) {
       for (const b of this.el.querySelectorAll('button[data-value]')) {
