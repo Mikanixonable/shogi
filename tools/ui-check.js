@@ -128,7 +128,7 @@ async function sweepBoard(page, expect) {
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
   r.layerTabs = await page.$$eval(`${DOCK} .dk-tab button`, els => els.map(el => el.textContent.trim()));
-  r.oppTabEnabled = await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled);
+  r.oppTabEnabled = await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled);
   r.noOldUi = await page.evaluate(() => !document.querySelector('#viewSeg, [data-view], #addOpp, #clearAll, #clearMe, #clearOpp, #skeleton, #heatScopeSeg, .dk-sep, .dk-fold, .dk-addopp, .dk-threat'));
   r.noClusterCss = await page.evaluate(() => ![...document.styleSheets].some(s => /clusters\.css/.test(s.href || '')));
   r.hashEmpty0 = r.t0.hash === '' || r.t0.hash === '#';
@@ -270,9 +270,10 @@ async function sweepBoard(page, expect) {
     && !r.t4b.chips.some(c => c.ng);
   await mark();
 
-  // 「相手 △」を押して、相手の表示 ON と相手側への選択を同時に行う
-  r.oppOffInit = await page.evaluate(() => !document.querySelector('#showOpp').checked);
-  await page.click(`${DOCK} .dk-who [data-value="opp"]`); await wait(450);
+  // 相手の駒の見出しを押して、相手の表示 ON と相手側への選択を同時に行う
+  r.oppOffInit = await page.evaluate(() => !__kakoi.store.state.showOpp
+    && document.querySelector('#pickRail .dk-binder').dataset.show === 'false');
+  await page.click(`${DOCK} .dk-pc[data-who="opp"]`); await wait(450);
   r.t5 = await snap(page);
   r.rects.push(r.t5.rect);
   r.boardOrderOppOn = await page.evaluate(() => {
@@ -282,7 +283,7 @@ async function sweepBoard(page, expect) {
     return opp.bottom <= board.top && board.bottom <= me.top;
   });
   r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && !r.t5.bandOppEmpty
-    && await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled)
+    && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
     && r.t5.selected.startsWith('opp.') && /opp=1/.test(r.t5.hash);
   r.threatOn = r.t5.threats >= 1;
   r.labels = r.t5.chips.length > 0 && await page.$$eval('#cbarMe .cchip-label', els => els.length > 0);
@@ -299,14 +300,14 @@ async function sweepBoard(page, expect) {
   r.t5b = await snap(page);
   r.rects.push(r.t5b.rect);
   r.oppSel = !!r.t5b.slots.opp.tactic && r.t5b.selected === 'opp.tactic';
-  await page.click(`${DOCK} .dk-opp-off`); await wait(350);
+  await page.click(`${DOCK} .dk-pc-x`); await wait(350);
   r.oppDockOff = await page.evaluate(() => {
     const st = __kakoi.store.state;
     return !st.showOpp && !st.selected.startsWith('opp.')
-      && document.querySelector('#showOpp').checked === false
-      && document.querySelector('.dk-opp-off').hidden;
+      && document.querySelector('#pickRail .dk-binder').dataset.show === 'false'
+      && document.querySelector('.dk-pc-x').hidden;
   });
-  await page.click(`${DOCK} .dk-who [data-value="opp"]`); await wait(350);
+  await page.click(`${DOCK} .dk-pc[data-who="opp"]`); await wait(350);
   r.oppDockOn = await page.evaluate(() => __kakoi.store.state.showOpp
     && __kakoi.store.state.selected.startsWith('opp.'));
   // 表示設定のポップオーバー: 脅威の帯を切ると帯が消える（盤の状態には載らない）
@@ -347,12 +348,12 @@ async function sweepBoard(page, expect) {
 
   // 相手の表示を OFF → 後手の駒・脅威の帯が退き、相手タブは有効のまま、選択は自分側へ戻る
   const oppSlots = JSON.stringify((await snap(page)).slots.opp);
-  await page.click('#showOpp'); await wait(400);
+  await page.click(`${DOCK} .dk-pc-x`); await wait(400);
   r.t8 = await snap(page);
   r.rects.push(r.t8.rect);
   r.oppOff = !r.t8.showOpp && r.t8.threats === 0 && (r.t8.canvas || r.t8.gote === 0)
     && r.t8.bandOppEmpty && r.t8.selected.startsWith('me.')
-    && await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled)
+    && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
     && JSON.stringify(r.t8.slots.opp) === oppSlots;
 
   // 「はずす」（ドックの面ごとに1つ）: 見ている側の戦法・囲いを両方外し、トーストの「元に戻す」で戻る

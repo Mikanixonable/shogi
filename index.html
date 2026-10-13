@@ -54,18 +54,17 @@
 
 <!-- 画面は1つ（対局図）: 選ぶ（左ドック）・見る（中央）・読む（右ドック） -->
 <div class="app">
-  <!-- 選ぶ（左ドック。DockView が「自分／相手」のタブで切り替える1枚の面を組み立てる） -->
+  <!-- 選ぶ（左ドック。DockView が右端の駒の見出しで「自分／相手」を切り替える1枚の面を組み立てる） -->
   <nav class="panel glass rail" aria-label="一覧">
     <div class="pane-fill" id="pickRail"></div>
   </nav>
 
-  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手は表示 ON/OFF（OFF のときも帯の行は残す） -->
+  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手の表示 ON/OFF は左ドックの駒の見出し（OFF のときも帯の行は残す） -->
   <main class="panel glass stage" id="stageMain">
     <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
       <div class="sband-h">
         <span class="who">相手<small>後手</small></span>
         <div class="ttl"><h3 class="sband-name" id="nameOpp"></h3><div class="rd"><span class="sband-sub" id="subOpp"></span></div></div>
-        <label class="switch sband-sw" title="相手の局面を盤に表示する"><input type="checkbox" id="showOpp"> 表示</label>
       </div>
       <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
     </div>

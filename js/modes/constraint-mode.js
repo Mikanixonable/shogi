@@ -21,7 +21,7 @@ window.Kakoi = window.Kakoi || {};
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
      *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe,
-     *        legend, handOpp, handMe, showOpp, boardwrap, rail, detail
+     *        legend, handOpp, handMe, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
       Object.assign(this, { repo, store, board, overlay, els });
@@ -66,7 +66,6 @@ window.Kakoi = window.Kakoi || {};
         repo, rows: this.rows,
         nameOf: (w, k, id) => K.lookup.nameOf(k, id),
       });
-      els.showOpp.addEventListener('change', () => this._setShowOpp(els.showOpp.checked));
       document.addEventListener('keydown', e => this._onKey(e));
     }
 

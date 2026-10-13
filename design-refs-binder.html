@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>左ドック バインダー案</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* 左ドックの「自分／相手」切り替えを、ドック右端のバインダー（見出し）に移す案。
+   トークンは css/theme.css「墨と余白」と同じ。下=自分・上=相手（盤の向きと揃える）。
+   相手の表示 ON/OFF もバインダーに含める。各案はクリックで動く */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17;
+  --gote-ink:#33507a; --gote-soft:rgba(51,80,122,.05);
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17;
+  --gote-ink:#8ea6cf; --gote-soft:rgba(142,166,207,.07);
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); }
+body { margin:0; font:14px/1.7 var(--font-b); color:var(--fg); background:var(--bg); }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+
+/* ===== ページの枠 ===== */
+.top { position:sticky; top:0; z-index:20; display:flex; gap:6px 14px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 12px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 10px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.top button { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; }
+.intro { max-width:960px; margin:24px auto 0; padding:0 16px; color:var(--fg2); font-size:13.5px; }
+.intro ul { margin:6px 0 0; padding-left:1.3em; }
+section.plan { max-width:960px; margin:40px auto 0; padding:0 16px 32px; border-bottom:1px solid var(--line); }
+section.plan h2 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:700 22px/1.3 var(--font-d); letter-spacing:.06em; }
+section.plan h2 .no { font:600 30px/1 var(--font-n); color:var(--accent); }
+section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; }
+.stage { display:grid; grid-template-columns:300px minmax(0,1fr); column-gap:56px; align-items:start; }
+.notes { display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; margin-top:18px; font-size:12.5px; color:var(--fg2); }
+.notes h4 { margin:0; font-size:12px; letter-spacing:.14em; color:var(--muted); }
+.notes ul { margin:0; padding-left:1.2em; }
+
+/* ===== 共通: ドックの中身（モック） ===== */
+.dock { position:relative; height:460px; }
+.page { position:relative; z-index:2; height:100%; display:flex; flex-direction:column; gap:8px; padding:12px 14px;
+        background:var(--bg); border-right:1px solid var(--line-2); }
+.pg-h { display:flex; align-items:baseline; gap:8px; padding-bottom:4px; border-bottom:1px solid var(--line); }
+.pg-h b { font:700 15px/1.2 var(--font-d); letter-spacing:.12em; }
+.pg-h small { color:var(--muted); font-size:11px; letter-spacing:.08em; }
+.pg-h .sp { flex:1; }
+.pg-h .q { width:18px; height:18px; border:1px solid var(--line-2); border-radius:50%; display:grid; place-items:center;
+           color:var(--muted); font:600 11px/1 var(--font-n); }
+.mseg { display:flex; gap:2px; font-size:13px; }
+.mseg span { padding:2px 10px; color:var(--muted); }
+.mseg span.on { color:var(--fg); font-weight:600; box-shadow:inset 0 -2px 0 var(--accent); }
+.mseg.wide span { flex:1; text-align:center; letter-spacing:.12em; }
+.cards { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; overflow:hidden; }
+.card { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 3px; border:1px solid var(--line); font-size:11.5px; }
+.card .th { width:52px; height:34px; background:
+  linear-gradient(var(--line) 1px, transparent 1px) 0 0/10.4px 11.3px,
+  linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/10.4px 11.3px; position:relative; }
+.card .th i { position:absolute; width:8px; height:8px; background:var(--fg2); clip-path:polygon(50% 0,90% 20%,100% 100%,0 100%,10% 20%); }
+.card.sel { box-shadow:inset 0 -2px 0 var(--accent); font-weight:700; }
+.card.basic { border-color:var(--fg); }
+/* 相手のページは藍に寄せる（自分=墨） */
+.dock[data-who="opp"] .pg-h b { color:var(--gote-ink); }
+.dock[data-who="opp"] .page { background:linear-gradient(var(--gote-soft),var(--gote-soft)), var(--bg); }
+.dock[data-who="opp"] .card .th i { background:var(--gote-ink); transform:rotate(180deg); }
+.page .flip { animation:flip .28s var(--ease); }
+@keyframes flip { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:none; } }
+
+/* 見出しの縦書き（コンテナは横書きのまま。縦書きの中で flex の向きが変わるのを避ける） */
+.v { writing-mode:vertical-rl; display:flex; align-items:center; gap:6px; }
+.pE .pc .tx .v { gap:6px; }
+
+/* ===== 共通: 盤の切れ端（上=相手・下=自分の対応を見せる） ===== */
+.board { position:relative; width:min(100%,420px); aspect-ratio:1/1.08; margin-top:14px;
+         background:linear-gradient(135deg,var(--wood-1),var(--wood-2)); box-shadow:inset 0 0 0 1px var(--wood-line); }
+.board .grid { position:absolute; inset:4%; display:grid; grid-template:repeat(9,1fr)/repeat(9,1fr);
+               border-top:1px solid var(--wood-line); border-left:1px solid var(--wood-line); }
+.board .grid span { border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line); display:grid; place-items:center;
+                    font:700 clamp(9px,2.4vw,17px)/1 var(--font-d); color:var(--ink); }
+.board .grid span.p { background:radial-gradient(circle,var(--piece-1) 55%,transparent 56%); }
+.board .grid span.g { transform:rotate(180deg); color:#33507a; }
+.board .half { position:absolute; left:4%; right:4%; height:46%; pointer-events:none; transition:opacity .25s, box-shadow .25s; }
+.board .half.o { top:4%; } .board .half.m { bottom:4%; }
+.board[data-who="me"] .half.m { box-shadow:inset 0 0 0 2px var(--fg); }
+.board[data-who="opp"] .half.o { box-shadow:inset 0 0 0 2px var(--gote-ink); }
+.board[data-show="false"] .g { opacity:0; }
+.board .off { position:absolute; top:22%; left:50%; transform:translateX(-50%); padding:2px 10px; font-size:12px; color:var(--fg2);
+              background:var(--bg); border:1px dashed var(--line-2); letter-spacing:.08em; white-space:nowrap; }
+.board[data-show="true"] .off { display:none; }
+
+/* ============================================================
+   A. インデックス付箋 — ページの右端から紙の見出しが2枚出る。
+   ============================================================ */
+.pA .tab { position:absolute; right:-34px; z-index:1; width:35px; display:flex; flex-direction:column; align-items:center;
+           gap:6px; padding:12px 0 10px 1px; border:1px solid var(--line-2); border-left:0; background:var(--bg); cursor:pointer;
+           font:700 14px/1 var(--font-d); letter-spacing:.3em; color:var(--muted);
+           transition:color .2s, background .2s, right .2s var(--ease); }
+.pA .tab small { font:500 10px/1 var(--font-b); letter-spacing:.1em; }
+.pA .tab.opp { top:28px; height:178px; }
+.pA .tab.me  { bottom:28px; height:178px; }
+.pA .tab:hover { color:var(--fg); }
+/* 開いている見出しはページと一続き（境の罫を消す）＋外側に朱の縁 */
+.pA .tab[aria-selected="true"] { z-index:3; right:-35px; color:var(--fg); box-shadow:inset -2px 0 0 var(--accent); }
+.pA .tab.opp[aria-selected="true"] { color:var(--gote-ink); background:linear-gradient(var(--gote-soft),var(--gote-soft)),var(--bg); }
+.pA .eye { width:22px; height:22px; margin-top:auto; display:grid; place-items:center;
+           border:1px solid var(--line-2); border-radius:50%; background:var(--bg); cursor:pointer; padding:0; }
+.pA .eye svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.6; }
+.pA .eye:hover { border-color:var(--fg); }
+/* 相手 OFF: 見出しは引っ込んで破線、「＋ 相手」 */
+.pA .tab.opp[data-show="false"] { height:150px; border-style:dashed; color:var(--muted); background:none; }
+.pA .tab.opp[data-show="false"] .eye { border-style:dashed; }
+
+/* ============================================================
+   B. 背表紙スプリット — ドックの全高の背を上下に割る。境目＝盤の河にトグル。
+   ============================================================ */
+.pB .spine { position:absolute; top:0; bottom:0; right:-38px; width:38px; display:flex; flex-direction:column; }
+.pB .seg { position:relative; flex:1 1 0; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+           gap:6px; border:1px solid var(--line-2); border-left:0; background:none; cursor:pointer; padding:0;
+           font:700 14px/1 var(--font-d); letter-spacing:.32em; color:var(--muted);
+           transition:flex-grow .35s var(--ease), background .2s, color .2s; overflow:hidden; }
+.pB .seg small { font:500 10px/1 var(--font-b); letter-spacing:.1em; }
+.pB .seg:hover { color:var(--fg); }
+/* 綴じ穴（背の左に3つずつ） */
+.pB .seg::before { content:""; position:absolute; left:5px; top:12%; bottom:12%; width:6px;
+                   background:radial-gradient(circle,var(--bg) 2.2px,var(--line-2) 2.4px,var(--line-2) 3px,transparent 3.2px) 0 0/6px 33% repeat-y; }
+.pB .seg.me[aria-selected="true"] { background:var(--fg); color:var(--bg); }
+.pB .seg.opp[aria-selected="true"] { background:var(--gote-ink); color:var(--bg); }
+.pB .seg[aria-selected="true"]::before { background:radial-gradient(circle,var(--bg) 2.2px,transparent 2.6px) 0 0/6px 33% repeat-y; }
+.pB .seg.opp { border-bottom:0; }
+/* 河: 背の上下の境にある円いトグル */
+.pB .river { position:relative; flex:none; height:0; z-index:4; }
+.pB .river button { position:absolute; left:50%; top:0; transform:translate(-50%,-50%); width:26px; height:26px; padding:0; border-radius:50%;
+                    border:1px solid var(--line-2); background:var(--bg); cursor:pointer; display:grid; place-items:center;
+                    font:600 13px/1 var(--font-b); color:var(--muted); }
+.pB .river button:hover { color:var(--fg); border-color:var(--fg); }
+/* 相手 OFF: 相手の背は細い帽子に畳まれる（自分が全高に近づく） */
+.pB .spine[data-show="false"] .seg.opp { flex-grow:.16; border-style:dashed; color:var(--muted); letter-spacing:.1em; }
+.pB .spine[data-show="false"] .seg.opp .lbl, .pB .spine[data-show="false"] .seg.opp small { display:none; }
+.pB .seg .plus { display:none; font:500 15px/1 var(--font-b); }
+.pB .spine[data-show="false"] .seg.opp .plus { display:block; }
+
+/* ============================================================
+   C. 和綴じと栞 — 四つ目綴じの背に題簽を貼る。相手の題簽から栞紐が下がり、紐を引くと伏せる。
+   ============================================================ */
+.pC .page { border-right:0; }
+.pC .bind { position:absolute; z-index:3; top:0; bottom:0; right:-22px; width:22px; border:1px solid var(--line-2); border-left:0;
+            background:var(--faint); }
+/* 綴じ糸: 4つの穴から右端へ巻く糸 */
+.pC .bind i { position:absolute; left:6px; width:5px; height:5px; border-radius:50%; background:var(--fg2); }
+.pC .bind i::after { content:""; position:absolute; left:2px; top:2px; width:15px; height:1px; background:var(--fg2); }
+.pC .label { position:absolute; z-index:4; right:-44px; width:34px; padding:12px 0; display:flex; flex-direction:column; align-items:center; gap:8px;
+             background:var(--piece-1); border:1px solid var(--line-2); cursor:pointer;
+             font:700 15px/1 var(--font-d); letter-spacing:.34em; color:var(--muted); transition:color .2s, border-color .2s, transform .2s var(--ease); }
+:root[data-theme="dark"] .pC .label { color:#8a8478; }
+.pC .label small { font:500 10px/1 var(--font-b); letter-spacing:.08em; }
+.pC .label.opp { top:36px; } .pC .label.me { bottom:36px; }
+.pC .label:hover { color:var(--ink); }
+.pC .label[aria-selected="true"] { color:var(--ink); border-color:var(--ink); transform:translateX(4px); }
+.pC .label.opp[aria-selected="true"] { color:#33507a; border-color:#33507a; }
+/* 落款: 選んでいる題簽の下に朱の角印 */
+.pC .label .seal { width:14px; height:14px; background:var(--accent); color:#fbf6ea;
+                   font:700 9px/14px var(--font-d); text-align:center; letter-spacing:0; visibility:hidden; }
+.pC .label[aria-selected="true"] .seal { visibility:visible; }
+/* 栞紐: 相手の題簽の下端から垂れる。表示中は朱の紐、伏せると短く巻き上がる */
+.pC .cord { position:absolute; z-index:5; right:-31px; top:198px; width:12px; height:74px; padding:0; border:0; background:none; cursor:pointer;
+            transition:height .3s var(--ease); }
+.pC .cord::before { content:""; position:absolute; left:5px; top:0; bottom:10px; width:2px; background:var(--accent); }
+.pC .cord::after { content:""; position:absolute; left:1px; bottom:0; width:10px; height:12px; background:var(--accent);
+                   clip-path:polygon(50% 0,100% 30%,85% 100%,50% 80%,15% 100%,0 30%); }
+.pC .cord:hover::before { width:3px; }
+.pC[data-show="false"] .cord { height:22px; }
+.pC[data-show="false"] .cord::before, .pC[data-show="false"] .cord::after { background:var(--muted); }
+.pC[data-show="false"] .label.opp { opacity:.55; border-style:dashed; background:none; color:var(--muted); }
+.pC .cord .tip { position:absolute; left:16px; bottom:0; white-space:nowrap; font-size:10.5px; color:var(--muted); 
+                 opacity:0; transition:opacity .2s; pointer-events:none; }
+.pC .cord:hover .tip, .pC .cord:focus-visible .tip { opacity:1; }
+
+/* ============================================================
+   D. 色の仕切り＋スイッチ — 自分=墨・相手=藍の仕切り板。相手の板にスイッチを埋め込む。
+   ============================================================ */
+.pD .page { border-right:3px solid var(--fg); transition:border-color .25s; }
+.pD .dock[data-who="opp"] .page { border-right-color:var(--gote-ink); }
+.pD .div { position:absolute; right:-40px; width:40px; display:flex; flex-direction:column; align-items:center; gap:8px;
+           padding:12px 0; border:0; cursor:pointer; color:var(--bg);
+           font:700 14px/1 var(--font-b); letter-spacing:.3em; transition:right .2s var(--ease), opacity .2s, width .2s; }
+.pD .div.me  { bottom:22px; height:188px; background:var(--fg); }
+.pD .div.opp { top:22px; height:188px; background:var(--gote-ink); }
+.pD .div small { font:500 10px/1 var(--font-b); letter-spacing:.08em; opacity:.8; }
+.pD .div[aria-selected="false"] { right:-32px; width:32px; opacity:.45; }
+.pD .div[aria-selected="false"]:hover { opacity:.75; }
+/* 縦のミニスイッチ（相手の板の下端） */
+.pD .sw { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:3px;
+          font:500 9.5px/1 var(--font-b); letter-spacing:.06em; border:0; background:none; color:inherit; padding:0; cursor:pointer; }
+.pD .sw .tr { position:relative; width:14px; height:26px; border-radius:7px; border:1.5px solid currentColor; }
+.pD .sw .tr::after { content:""; position:absolute; left:1.5px; width:8px; height:8px; border-radius:50%; background:currentColor;
+                     top:1.5px; transition:top .2s var(--ease); }
+.pD .sw[aria-pressed="false"] .tr::after { top:13px; }
+/* 相手 OFF: 板は破線の枠だけになり、スイッチだけが生きている */
+.pD .div.opp[data-show="false"] { background:none; color:var(--gote-ink); box-shadow:inset 0 0 0 1px var(--gote-ink); opacity:.8;
+                                 height:150px; right:-40px; width:40px; }
+.pD .div.opp[data-show="false"] .lbl, .pD .div.opp[data-show="false"] small { opacity:.5; }
+
+/* ============================================================
+   E. 駒の見出し — 見出しが駒の形。相手は盤と同じく逆さ向き。OFFのときは「駒台に下げた」影。
+   ============================================================ */
+.pE .pc { position:absolute; right:-42px; width:40px; height:150px; padding:0; border:0; background:none; cursor:pointer;
+          filter:drop-shadow(0 0 0 transparent); transition:right .2s var(--ease); }
+.pE .pc .body { position:absolute; inset:0; background:var(--line-2); transition:background .2s;
+                clip-path:polygon(50% 0, 100% 12%, 100% 100%, 0 100%, 0 12%); }
+.pE .pc .body::after { content:""; position:absolute; inset:1px; background:var(--bg);
+                       clip-path:polygon(50% 0, 100% 12%, 100% 100%, 0 100%, 0 12%); }
+.pE .pc .tx { position:absolute; inset:14px 0 0; display:flex; align-items:center; justify-content:center;
+              font:700 15px/1 var(--font-d); letter-spacing:.3em; color:var(--muted); }
+.pE .pc .tx small { font:500 10px/1 var(--font-b); letter-spacing:.08em; }
+.pE .pc.opp { top:30px; } .pE .pc.me { bottom:30px; }
+/* 相手の駒は先を下に向ける（盤の後手の駒と同じく逆さ）。字は読みやすさを優先して正立 */
+.pE .pc.opp .body { transform:scaleY(-1); }
+.pE .pc.opp .tx { inset:0 0 14px; }
+.pE .pc[aria-selected="true"] { right:-45px; width:46px; }
+.pE .pc[aria-selected="true"] .body { background:var(--piece-edge); }
+.pE .pc[aria-selected="true"] .body::after { background:var(--piece-1); }
+.pE .pc[aria-selected="true"] .tx { color:var(--ink); }
+.pE .pc.opp[aria-selected="true"] .tx { color:#33507a; }
+.pE .pc:hover .tx { color:var(--fg); }
+.pE .pc[aria-selected="true"]:hover .tx { color:var(--ink); }
+/* 相手の駒の角にある取り外し（×）/ OFF では駒の影＋「＋」 */
+.pE .x { position:absolute; right:-52px; top:20px; z-index:3; width:20px; height:20px; padding:0; border-radius:50%;
+         border:1px solid var(--line-2); background:var(--bg); color:var(--muted); cursor:pointer; font:500 12px/1 var(--font-b); }
+.pE .x:hover { color:var(--accent); border-color:var(--accent); }
+.pE[data-show="false"] .pc.opp .body { background:none; outline:0; }
+.pE[data-show="false"] .pc.opp .body::after { background:var(--faint); }
+.pE[data-show="false"] .pc.opp { opacity:.75; }
+.pE[data-show="false"] .pc.opp .tx { color:var(--muted); }
+.pE[data-show="false"] .x { display:none; }
+.pE .ghost { position:absolute; right:-42px; top:30px; width:40px; height:150px; pointer-events:none;
+             border:1px dashed var(--line-2); border-right:0; display:none; }
+.pE[data-show="false"] .ghost { display:block; }
+
+/* ===== narrow ===== */
+@media (max-width:760px) {
+  .stage { grid-template-columns:minmax(0,1fr); }
+  .dock { margin-right:52px; }
+  .board { display:none; }
+  .notes { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>左ドック バインダー案</h1>
+  <nav><a href="#A">A 付箋</a><a href="#B">B 背表紙</a><a href="#C">C 和綴じ</a><a href="#D">D 仕切り</a><a href="#E">E 駒</a></nav>
+  <span class="sp"></span>
+  <button type="button" id="theme">ライト／ダーク</button>
+</header>
+
+<div class="intro">
+  <p>いまの「自分 ▲／相手 △」のタブと「OFF」ボタンを、左ドックの右端（盤との境）にあるバインダーの見出しにまとめる案です。どの案も同じ約束で動きます（クリックで試せます）。</p>
+  <ul>
+    <li><b>下が自分・上が相手</b>。盤の向き（相手が上）と同じ位置にあるので、見出しと盤の半分が目で結びつく。選んでいる側の盤の半分に枠を出す。</li>
+    <li>相手が OFF のときに相手の見出しを押すと、<b>相手を表示して相手のページを開く</b>（いまの挙動と同じ）。</li>
+    <li>相手の見出しの中のトグルで OFF にすると、<b>自分のページに戻る</b>。いまの「OFF」ボタンと盤の帯の「表示」スイッチはこれに置き換える。</li>
+    <li>ページの中身（囲い／戦法・絞り込み・一覧）は今のままで、見出しの位置とページの色（自分=墨、相手=藍）だけが変わる。</li>
+  </ul>
+</div>
+
+<main id="plans"></main>
+
+<script>
+(() => {
+  'use strict';
+  const root = document.documentElement;
+  document.getElementById('theme').addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('shogi-theme', root.dataset.theme); } catch (e) {}
+  });
+
+  const eyeOn = '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeOff = '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><path d="M4 4l16 16"/></svg>';
+
+  // 各案: id・名前・リード・見出し（バインダー）の組み立て・長所短所
+  const PLANS = [
+    { id:'A', name:'インデックス付箋', lead:'ページの右端から紙の見出しが2枚飛び出す、手帳のインデックスそのもの。開いている見出しはページと罫が切れずに一続きになる。相手の見出しの下端に目のアイコン（表示 ON/OFF）。',
+      binder: s => `
+        <button class="tab opp" role="tab" data-act="opp" data-show="${s.show}" aria-selected="${s.who === 'opp'}"
+          title="${s.show ? '相手のページを開く' : '相手を表示して開く'}"><span class="v">${s.show ? '相手' : '＋相手'}<small>後手 △</small></span>
+          <span class="eye" role="button" tabindex="0" data-act="toggle" aria-pressed="${s.show}"
+            aria-label="相手の表示を${s.show ? 'OFF' : 'ON'}にする" title="相手の表示 ${s.show ? 'ON' : 'OFF'}">${s.show ? eyeOn : eyeOff}</span></button>
+        <button class="tab me" role="tab" data-act="me" aria-selected="${s.who === 'me'}"><span class="v">自分<small>先手 ▲</small></span></button>`,
+      pros:['見た目から「タブ」と分かる（説明が要らない）','既存の墨と余白のトーンを崩さない（罫と朱の縁だけ）'],
+      cons:['目のアイコンは小さい（22px）。タブ押下と誤爆しないよう押せる範囲を分ける必要','見出しが盤側へ35px食い込む'] },
+
+    { id:'B', name:'背表紙スプリット', lead:'ドックの全高に1本の背表紙を通し、上半分=相手・下半分=自分に割る。境目は盤の「河」で、そこに相手の表示トグル（○）。相手を OFF にすると相手の背が細い帽子に畳まれ、自分の背が伸びる。',
+      binder: s => `
+        <div class="spine" data-show="${s.show}">
+          <button class="seg opp" role="tab" data-act="opp" aria-selected="${s.who === 'opp'}" title="${s.show ? '相手のページを開く' : '相手を表示して開く'}">
+            <span class="v"><span class="plus">＋</span><span class="lbl">相手</span><small>後手 △</small></span></button>
+          <div class="river"><button type="button" data-act="toggle" aria-pressed="${s.show}"
+            aria-label="相手の表示を${s.show ? 'OFF' : 'ON'}にする" title="相手の表示 ${s.show ? 'ON → OFF' : 'OFF → ON'}">${s.show ? '−' : '＋'}</button></div>
+          <button class="seg me" role="tab" data-act="me" aria-selected="${s.who === 'me'}"><span class="v"><span class="lbl">自分</span><small>先手 ▲</small></span></button>
+        </div>`,
+      pros:['盤の上下と背の上下が完全に対応（高さの比まで）','押せる面が大きい（背の半分全体）','OFF の状態が背の長さで一目で分かる'],
+      cons:['塗りつぶしの面ができる（墨と余白の「面を持たない」原則からは外れる）','河のトグルは位置が動く（OFFで上へ移る）'] },
+
+    { id:'C', name:'和綴じと栞', lead:'右端を四つ目綴じの背にし、そこへ題簽（縦長の紙片）を2枚貼る。相手の題簽からは朱の栞紐が下がっていて、紐を引く（押す）と相手を伏せる（OFF）。伏せると紐は巻き上がって灰色になる。',
+      binder: s => `
+        <div class="bind" aria-hidden="true">${[10,32,68,90].map(p => `<i style="top:${p}%"></i>`).join('')}</div>
+        <button class="label opp" role="tab" data-act="opp" aria-selected="${s.who === 'opp'}" title="${s.show ? '相手のページを開く' : '相手を表示して開く'}"><span class="v">相手<small>後手</small></span><span class="seal">相</span></button>
+        <button class="cord" type="button" data-act="toggle" aria-pressed="${s.show}" aria-label="相手の表示を${s.show ? 'OFF' : 'ON'}にする">
+          <span class="tip">${s.show ? '引くと相手を伏せる' : '引くと相手を表示'}</span></button>
+        <button class="label me" role="tab" data-act="me" aria-selected="${s.who === 'me'}"><span class="v">自分<small>先手</small></span><span class="seal">自</span></button>`,
+      pros:['サイトの和の世界観と一番よく合う（題簽・落款・栞）','栞紐＝「挟んでおく／外す」で ON/OFF の比喩が通る'],
+      cons:['栞紐がトグルだと気づかれにくい（ホバーの説明に頼る）','装飾が多く、細い画面では見出しの幅を食う'] },
+
+    { id:'D', name:'色の仕切り＋スイッチ', lead:'ルーズリーフの色付き仕切り板。自分=墨、相手=藍で塗り分け、開いている側の色がページの右の縁にも通る。相手の板の下端には縦のミニスイッチ（表示）を埋め込み、OFF では板が枠だけになってスイッチだけが残る。',
+      binder: s => `
+        <button class="div opp" role="tab" data-act="opp" data-show="${s.show}" aria-selected="${s.show && s.who === 'opp'}"
+          title="${s.show ? '相手のページを開く' : '相手を表示して開く'}"><span class="v"><span class="lbl">相手</span><small>後手</small></span>
+          <span class="sw" role="switch" tabindex="0" data-act="toggle" aria-checked="${s.show}" aria-pressed="${s.show}" aria-label="相手を表示">
+            <span class="tr"></span>表示</span></button>
+        <button class="div me" role="tab" data-act="me" aria-selected="${s.who === 'me'}"><span class="v"><span class="lbl">自分</span><small>先手</small></span></button>`,
+      pros:['スイッチが「スイッチの形」なので ON/OFF がいちばん明快','色（墨／藍）で側を覚えられ、盤の後手の駒色とも揃う'],
+      cons:['色面が強い（ドックの中で最も目立つ要素になる）','スイッチが板の中にあるので押せる範囲がやや狭い'] },
+
+    { id:'E', name:'駒の見出し', lead:'見出しそのものを駒の形にする。盤と同じく自分の駒は先が上、相手の駒は先が下を向き、2枚の先が真ん中（河）で向き合う（字は読みやすさを優先して正立）。相手の駒の角の × で駒台に下げる（OFF）と、点線の影だけが残り、押すと戻る。',
+      binder: s => `
+        <span class="ghost" aria-hidden="true"></span>
+        <button class="pc opp" role="tab" data-act="opp" aria-selected="${s.who === 'opp'}" title="${s.show ? '相手のページを開く' : '相手を表示して開く'}">
+          <span class="body"></span><span class="tx"><span class="v">${s.show ? '相手' : '＋相手'}<small>後手</small></span></span></button>
+        <button class="x" type="button" data-act="toggle" aria-label="相手の表示を OFF にする" title="相手を盤から下げる（OFF）">×</button>
+        <button class="pc me" role="tab" data-act="me" aria-selected="${s.who === 'me'}">
+          <span class="body"></span><span class="tx"><span class="v">自分<small>先手</small></span></span></button>`,
+      pros:['将棋のサイトだと一目で分かる遊び','「駒を下げる／戻す」で ON/OFF の比喩が自然'],
+      cons:['駒の形は角が多く、ドックの罫線と並べると少しうるさい','× が小さく、OFF にする操作を探しにくい'] },
+  ];
+
+  const ME = ['美濃囲い','高美濃','銀冠','舟囲い','左美濃','穴熊','矢倉','雁木','ミレニアム'];
+  const OPP = ['美濃囲い','高美濃','銀冠','片美濃','木村美濃','振り穴','金無双','右矢倉','銀冠穴熊'];
+  const thumb = i => `<span class="th">${[[1,2],[2,1],[3,2],[2,3],[4,3]].slice(0, 3 + i % 3).map(([x,y]) => `<i style="left:${x*10.4+1}px;top:${y*11.3-9}px"></i>`).join('')}</span>`;
+  const page = s => {
+    const opp = s.who === 'opp';
+    const list = opp ? OPP : ME;
+    return `<div class="page" role="tabpanel"><div class="flip" style="display:flex;flex-direction:column;gap:8px">
+      <div class="pg-h"><b>${opp ? '相手' : '自分'}</b><small>${opp ? '後手 △' : '先手 ▲'}</small><span class="sp"></span><span class="q">?</span></div>
+      <div class="mseg"><span class="on">囲い</span><span>戦法</span><span class="sp" style="flex:1"></span><span style="font-size:12px">はずす</span></div>
+      <div class="mseg wide" style="font-size:13px"><span class="${opp ? '' : 'on'}">居飛車</span><span class="${opp ? 'on' : ''}">振り飛車</span></div>
+      <div class="cards">${list.map((n, i) => `<div class="card${i === (opp ? 0 : 3) ? ' sel' : ''}${i % 4 === 0 ? ' basic' : ''}">${thumb(i)}<span>${n}</span></div>`).join('')}</div>
+    </div></div>`;
+  };
+  // 盤: 自分（下）に舟囲い風、相手（上）に美濃風の駒
+  const ME_P = { '7-8':'玉','6-8':'金','5-8':'金','7-7':'銀','7-6':'歩','6-6':'歩','8-9':'香','8-7':'角','2-8':'飛' };
+  const OPP_P = { '1-1':'香','2-1':'桂','2-2':'玉','3-2':'銀','4-1':'金','5-2':'金','1-3':'歩','2-3':'歩','3-3':'歩','8-2':'飛' };
+  const board = s => {
+    let cells = '';
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      const k = `${c}-${r}`;
+      if (ME_P[k]) cells += `<span><b>${ME_P[k]}</b></span>`;
+      else if (OPP_P[k]) cells += `<span><b class="g">${OPP_P[k]}</b></span>`;
+      else cells += '<span></span>';
+    }
+    return `<div class="board" data-who="${s.who}" data-show="${s.show}" aria-hidden="true">
+      <div class="grid">${cells}</div><div class="half o"></div><div class="half m"></div><div class="off">相手 非表示</div></div>`;
+  };
+
+  const host = document.getElementById('plans');
+  for (const p of PLANS) {
+    const s = { who:'me', show:true };
+    const sec = document.createElement('section');
+    sec.className = 'plan';
+    sec.id = p.id;
+    sec.innerHTML = `<h2><span class="no">${p.id}</span>${p.name}</h2><p class="lead">${p.lead}</p>
+      <div class="stage p${p.id}"><div class="dock" role="tablist" aria-orientation="vertical" aria-label="自分／相手"></div><div class="bd"></div></div>
+      <div class="notes"><div><h4>よいところ</h4><ul>${p.pros.map(x => `<li>${x}</li>`).join('')}</ul></div>
+      <div><h4>気になるところ</h4><ul>${p.cons.map(x => `<li>${x}</li>`).join('')}</ul></div></div>`;
+    host.appendChild(sec);
+    const stage = sec.querySelector('.stage'), dock = sec.querySelector('.dock'), bd = sec.querySelector('.bd');
+    const render = () => {
+      stage.dataset.show = s.show;
+      dock.dataset.who = s.who;
+      dock.innerHTML = page(s) + p.binder(s);
+      bd.innerHTML = board(s);
+    };
+    const act = a => {
+      if (a === 'me') s.who = 'me';
+      else if (a === 'opp') { s.show = true; s.who = 'opp'; }
+      else if (a === 'toggle') { s.show = !s.show; s.who = s.show ? 'opp' : 'me'; }
+      render();
+      const f = dock.querySelector(`[data-act="${a}"]`);
+      if (f) f.focus({ preventScroll:true });
+    };
+    dock.addEventListener('click', e => {
+      const t = e.target.closest('[data-act]');
+      if (!t) return;
+      e.stopPropagation();
+      act(t.dataset.act);
+    });
+    dock.addEventListener('keydown', e => {
+      const t = e.target.closest('[data-act]');
+      if (!t) return;
+      if ((e.key === 'Enter' || e.key === ' ') && t.tagName !== 'BUTTON') { e.preventDefault(); e.stopPropagation(); act(t.dataset.act); }
+      // 縦のタブなので ↑=相手・↓=自分
+      if (e.key === 'ArrowUp') { e.preventDefault(); act('opp'); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); act('me'); }
+    });
+    render();
+  }
+})();
+</script>
+</body>
+</html>
