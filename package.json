@@ -3,7 +3,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test": "node tools/validate-castles.js && node tools/ui-check.js",
+    "test": "node tools/validate-castles.js && node tools/unit-test.js && node tools/ui-check.js",
     "check": "node tools/ui-check.js",
     "shots": "node tools/ui-check.js --shots-only"
   },

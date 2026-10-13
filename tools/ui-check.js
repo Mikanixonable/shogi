@@ -15,7 +15,7 @@ const SHOTS = path.join(__dirname, 'shots');
 const SHOTS_ONLY = process.argv.includes('--shots-only');
 const WIDTHS = [1440, 1280, 1100, 1024, 390];   // 390以下はスクロール設計
 const NO_SCROLL_MIN = 980;
-const VIEWS = ['castle', 'tactic', 'cluster'];
+const VIEWS = ['castle', 'tactic', 'matchup', 'cluster'];
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.md': 'text/plain' };
 
@@ -110,6 +110,53 @@ async function sweepTactic(page) {
   return { n, id, file, aligned: Math.abs(cellX - boardX) < 2.5, dx: (cellX - boardX).toFixed(2) };
 }
 
+/* ---- 巡回: 対局図 ---- */
+async function sweepMatchup(page) {
+  const r = {};
+  // 左の一覧: 戦法12＋囲い18の行と、各行・戦略ボタンに付く相性の印（◎○×）
+  r.items = await page.$$eval('#matchupRail .mu-item', els => els.length);
+  r.best = await page.$$eval('#matchupRail [data-compat="best"]', els => els.length);
+  // 盤: 立体駒（canvas）は DOM から枚数を数えられないので、?flat（DOM駒 .pc）のときだけ数える
+  r.d3 = await page.$eval('#board', b => !!b.querySelector('canvas'));
+  r.pieces = await page.$$eval('#board .pc', els => els.length);
+  // 脅威の帯（既定は相手を表示するので出る）と右パネル
+  r.threats = await page.$$eval('#board .ov-threat[data-file]', els => els.length);
+  r.detail = await page.$eval('#matchupDetail', el => el.textContent.trim().length);
+  r.kind = await page.evaluate(() => {
+    const el = document.querySelector('#matchupDetail .mu-kind');
+    return el ? el.textContent.trim() : '';
+  });
+
+  // 「相手 表示」スイッチ: 消すと後手の駒と脅威の帯が退き選択肢が閉じる。点けると戻る。
+  // 立体駒では .pc が無いので、パネルの開閉と脅威の帯を合図にする
+  const read = () => page.evaluate(() => ({
+    hidden: document.querySelector('#matchupRail [data-role="opp-body"]').hidden,
+    gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
+    threats: document.querySelectorAll('#board .ov-threat').length,
+  }));
+  const sw = page.locator('#matchupRail input[data-show="opp"]');
+  await sw.click(); await wait(250); r.off = await read();
+  await sw.click(); await wait(350); r.on = await read();
+
+  // × の行を選ぶと両立しない層が自動で差し替わり、トーストが出る（出なければ別の×を試す）
+  const ngSel = await page.$('#matchupRail .mu-item[data-layer="tactic"][data-compat="ng"]')
+    ? '#matchupRail .mu-item[data-layer="tactic"][data-compat="ng"]'
+    : '#matchupRail .mu-item[data-compat="ng"]';
+  r.ng = await page.$$eval(ngSel, els => els.length);
+  r.toast = '';
+  for (let i = 0; i < 3 && !r.toast; i++) {
+    const row = page.locator(ngSel).nth(i);
+    if (!await row.count()) break;
+    await row.click(); await wait(300);
+    r.toast = await page.evaluate(() => {
+      const t = document.querySelector('.toast.on');
+      return t ? t.textContent.trim() : '';
+    });
+  }
+  await page.evaluate(() => { if (window.Kakoi && Kakoi.Toast) Kakoi.Toast.hide(); });
+  return r;
+}
+
 /* ---- 巡回: 分類マップ ---- */
 async function sweepCluster(page) {
   const dotCount = await page.$$eval('.cl-svg .pt .dot', els => els.length);   // 木の図の葉（.pt .dot）
@@ -158,6 +205,19 @@ async function main() {
       const t = await sweepTactic(page);
       ok(t.n === 12, '戦法セル 12個', `${t.n}`);
       ok(t.aligned, `周期表の列=盤の筋 (${t.id}: ${t.file}筋)`, `ずれ ${t.dx}px`);
+
+      await setView(page, 'matchup'); await wait(400);
+      const m = await sweepMatchup(page);
+      ok(m.items >= 30, '対局図の一覧（戦法12＋囲い18）', `${m.items}行`);
+      ok(m.best >= 5, '対局図の◎印', `${m.best}個`);
+      ok(m.d3 || m.pieces >= 39, '対局図の盤に両軍の駒', m.d3 ? '立体駒（canvas）' : `${m.pieces}枚`);
+      ok(m.threats >= 1, '対局図に脅威の帯', `${m.threats}本`);
+      ok(m.detail > 0 && m.kind.length > 0, '対局図の詳細が埋まる', `kind="${m.kind}"`);
+      if (m.d3) warn('対局図: 立体駒のため後手の枚数は数えず、脅威の帯と相手パネルの開閉で確認');
+      ok(m.off.hidden && m.off.threats === 0 && (m.d3 || m.off.gote === 0), '対局図で相手を隠す', JSON.stringify(m.off));
+      ok(!m.on.hidden && m.on.threats >= 1 && (m.d3 || m.on.gote > 0), '対局図で相手を戻す', JSON.stringify(m.on));
+      if (m.ng === 0) warn('対局図に×の候補が無く、自動差し替えトーストを試せなかった');
+      else ok(m.toast.length > 0, '対局図の×選択で自動差し替えトースト', m.toast.slice(0, 60));
 
       await setView(page, 'cluster'); await wait(400);
       const c = await sweepCluster(page);

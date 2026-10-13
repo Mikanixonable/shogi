@@ -11,7 +11,7 @@ Kakoi.MANIFEST = (() => {
     'js/ui/rail-view.js', 'js/ui/toolbar-view.js', 'js/ui/stage-view.js', 'js/ui/detail-view.js',
     'js/ui/tactic-nav.js', 'js/ui/tactic-player.js', 'js/ui/tactic-table-view.js', 'js/ui/tactic-rail-view.js', 'js/ui/tactic-stage-view.js', 'js/ui/tactic-detail-view.js',
     'js/ui/cluster-tree-view.js', 'js/ui/cluster-stage-view.js', 'js/ui/cluster-rail-view.js', 'js/ui/cluster-detail-view.js',
-    'js/ui/theme-toggle.js', 'js/ui/tools-toggle.js', 'js/ui/toast.js',
+    'js/ui/theme-toggle.js', 'js/ui/tools-toggle.js', 'js/ui/toast.js', 'js/ui/hash-link.js',
     'js/ui/matchup-rail-view.js', 'js/ui/matchup-detail-view.js',
   ];
   const modes = ['js/modes/castle-mode.js', 'js/modes/tactic-mode.js', 'js/modes/cluster-mode.js', 'js/modes/matchup-mode.js'];
