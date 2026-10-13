@@ -161,123 +161,142 @@ window.Kakoi = window.Kakoi || {};
 
     if (castle) {
       const countFailed = [];
-      // 3. castle.core を core の記述順に置く
-      for (const t of parsePieces(castle.core)) {
-        const S = sq(t.f, t.r);
-        const on = at(t.f, t.r);
-        if (on && on.p === t.p) {                      // 同種がいる: 囲いの駒として採用
-          if (on.role !== 'lead') on.role = 'core';
-          assigned.add(on);
-          continue;
-        }
-        if (on && locked.has(on)) {                    // ロック駒（essential/主役）と衝突
-          if (castleWins) {
-            // 囲いを優先: ロック駒は持ち駒へ。衝突の事実は SQUARE として記録する
-            conflicts.push({ code: 'SQUARE', squares: [S],
-              text: `${label(t.f, t.r)}で${on.p}（戦法の必須）と${t.p}が重なり囲いを優先` });
-            displace(on);
-            const placed = sourcePlace(t.p, t.f, t.r, 'core');
-            if (placed) assigned.add(placed); else countFailed.push(t);
+      const placeCore = () => {
+        // 3. castle.core を core の記述順に置く
+        for (const t of parsePieces(castle.core)) {
+          const S = sq(t.f, t.r);
+          const on = at(t.f, t.r);
+          if (on && on.p === t.p) {                      // 同種がいる: 囲いの駒として採用
+            if (on.role !== 'lead') on.role = 'core';
+            assigned.add(on);
             continue;
           }
-          if (!tryFlex(t, t.f, t.r)) {
+          if (on && locked.has(on)) {                    // ロック駒（essential/主役）と衝突
+            if (castleWins) {
+              // 囲いを優先: ロック駒は持ち駒へ。衝突の事実は SQUARE として記録する
+              conflicts.push({ code: 'SQUARE', squares: [S],
+                text: `${label(t.f, t.r)}で${on.p}（戦法の必須）と${t.p}が重なり囲いを優先` });
+              displace(on);
+              const placed = sourcePlace(t.p, t.f, t.r, 'core');
+              if (placed) assigned.add(placed); else countFailed.push(t);
+              continue;
+            }
+            if (!tryFlex(t, t.f, t.r)) {
+              conflicts.push({ code: 'SQUARE', squares: [S],
+                text: `${label(t.f, t.r)}で${on.p}と${t.p}が重なる` });
+            }
+            continue;
+          }
+          if (on && assigned.has(on)) {                  // 先に確定した囲いの駒と衝突
             conflicts.push({ code: 'SQUARE', squares: [S],
               text: `${label(t.f, t.r)}で${on.p}と${t.p}が重なる` });
+            continue;
           }
-          continue;
+          if (on) displace(on);                          // 別種の駒は持ち駒へ
+          const placed = sourcePlace(t.p, t.f, t.r, 'core');
+          if (placed) { assigned.add(placed); continue; }
+          countFailed.push(t);                           // donor も持ち駒も無い → 4 で貸し出しを試す
         }
-        if (on && assigned.has(on)) {                  // 先に確定した囲いの駒と衝突
-          conflicts.push({ code: 'SQUARE', squares: [S],
-            text: `${label(t.f, t.r)}で${on.p}と${t.p}が重なる` });
-          continue;
-        }
-        if (on) displace(on);                          // 別種の駒は持ち駒へ
-        const placed = sourcePlace(t.p, t.f, t.r, 'core');
-        if (placed) { assigned.add(placed); continue; }
-        countFailed.push(t);                           // donor も持ち駒も無い → 4 で貸し出しを試す
-      }
+      };
 
-      // 4. essential の貸し出し: flex.to にいるロック済みの同種の駒が core を兼ねる。
-      //    兼ねられれば目標は果たした扱い（COUNT にしない）
-      for (const t of countFailed) {
-        const fx = flexOf(sq(t.f, t.r));
-        let shared = null;
-        if (fx) {
-          for (const to of fx.to || []) {
-            const { f: tf, r: tr } = parseSquare(to);
-            const x = at(tf, tr);
-            if (x && x.p === t.p && locked.has(x)) { shared = { x, to }; break; }
+      const lendMissingCore = () => {
+        // 4. essential の貸し出し: flex.to にいるロック済みの同種の駒が core を兼ねる。
+        //    兼ねられれば目標は果たした扱い（COUNT にしない）
+        for (const t of countFailed) {
+          const fx = flexOf(sq(t.f, t.r));
+          let shared = null;
+          if (fx) {
+            for (const to of fx.to || []) {
+              const { f: tf, r: tr } = parseSquare(to);
+              const x = at(tf, tr);
+              if (x && x.p === t.p && locked.has(x)) { shared = { x, to }; break; }
+            }
           }
+          if (shared) {
+            if (shared.x.role !== 'lead') shared.x.role = 'core';
+            assigned.add(shared.x);
+            flexed.push({ piece: t.p, from: sq(t.f, t.r), to: shared.to });
+            continue;
+          }
+          conflicts.push({ code: 'COUNT', squares: [sq(t.f, t.r)],
+            text: `${t.p}${label(t.f, t.r)}を置く駒が足りない` });
         }
-        if (shared) {
-          if (shared.x.role !== 'lead') shared.x.role = 'core';
-          assigned.add(shared.x);
-          flexed.push({ piece: t.p, from: sq(t.f, t.r), to: shared.to });
-          continue;
+      };
+
+      const placeRest = () => {
+        // 5. castle.rest: core に含まれない守り駒（金・銀など）の置き場所。ロック済みの
+        //    マスは飛ばし、置けなくても衝突にしない。囲いは「守り駒すべて」の行き先を
+        //    core+rest で指定するので、囲い切替の残留駒が残らない（計画書 §2 L1）
+        for (const t of parsePieces(castle.rest || '')) {
+          const on = at(t.f, t.r);
+          if (on && on.p === t.p) {
+            if (locked.has(on) || assigned.has(on)) continue;
+            if (on.role !== 'lead') on.role = 'rest';
+            assigned.add(on);
+            continue;
+          }
+          if (on && (locked.has(on) || assigned.has(on))) continue;
+          if (on) displace(on);
+          const placed = sourcePlace(t.p, t.f, t.r, 'rest');
+          if (placed) assigned.add(placed);
         }
-        conflicts.push({ code: 'COUNT', squares: [sq(t.f, t.r)],
-          text: `${t.p}${label(t.f, t.r)}を置く駒が足りない` });
-      }
+      };
 
-      // 5. castle.rest: core に含まれない守り駒（金・銀など）の置き場所。ロック済みの
-      //    マスは飛ばし、置けなくても衝突にしない。囲いは「守り駒すべて」の行き先を
-      //    core+rest で指定するので、囲い切替の残留駒が残らない（計画書 §2 L1）
-      for (const t of parsePieces(castle.rest || '')) {
-        const on = at(t.f, t.r);
-        if (on && on.p === t.p) {
-          if (locked.has(on) || assigned.has(on)) continue;
-          if (on.role !== 'lead') on.role = 'rest';
-          assigned.add(on);
-          continue;
+      const normalizeGuardPieces = () => {
+        // 6. 取り残された金・銀の正規化: 囲い（core/rest）にも戦法（必須・主役）にも
+        //    属さず、初期位置にもいない守り駒は、届くほうの空いた初期位置へ戻す。
+        //    どの初期位置も空いていなければ持ち駒へ（例: 片美濃の5八の金は6九へ戻る）
+        for (const x of [...pieces]) {
+          if (x.owner !== 'sente' || !HOME[x.p]) continue;
+          if (x.role === 'lead' || locked.has(x) || assigned.has(x)) continue;
+          if (HOME[x.p].includes(sq(x.f, x.r))) continue;
+          const home = HOME[x.p].map(parseSquare)
+            .filter(h => !at(h.f, h.r))
+            .map(h => ({ ...h, n: moveCount(x.p, sq(x.f, x.r), sq(h.f, h.r)) }))
+            .filter(h => isFinite(h.n))
+            .sort((a, b) => a.n - b.n)[0];
+          if (home) { x.f = home.f; x.r = home.r; x.role = 'support'; }
+          else displace(x);
         }
-        if (on && (locked.has(on) || assigned.has(on))) continue;
-        if (on) displace(on);
-        const placed = sourcePlace(t.p, t.f, t.r, 'rest');
-        if (placed) assigned.add(placed);
-      }
+      };
 
-      // 6. 取り残された金・銀の正規化: 囲い（core/rest）にも戦法（必須・主役）にも
-      //    属さず、初期位置にもいない守り駒は、届くほうの空いた初期位置へ戻す。
-      //    どの初期位置も空いていなければ持ち駒へ（例: 片美濃の5八の金は6九へ戻る）
-      for (const x of [...pieces]) {
-        if (x.owner !== 'sente' || !HOME[x.p]) continue;
-        if (x.role === 'lead' || locked.has(x) || assigned.has(x)) continue;
-        if (HOME[x.p].includes(sq(x.f, x.r))) continue;
-        const home = HOME[x.p].map(parseSquare)
-          .filter(h => !at(h.f, h.r))
-          .map(h => ({ ...h, n: moveCount(x.p, sq(x.f, x.r), sq(h.f, h.r)) }))
-          .filter(h => isFinite(h.n))
-          .sort((a, b) => a.n - b.n)[0];
-        if (home) { x.f = home.f; x.r = home.r; x.role = 'support'; }
-        else displace(x);
-      }
-
-      // 7. castle.shell: 囲いの前線の歩など。ロック済みのマスは戦法の駒を残して飛ばす
-      //    （殻は戦法を追い出さない）。filler は置かない
-      for (const t of parsePieces(castle.shell)) {
-        const on = at(t.f, t.r);
-        if (on && locked.has(on)) continue;
-        if (on && on.p === t.p) { assigned.add(on); continue; } // role はそのまま
-        if (on && assigned.has(on)) continue;                    // 確定済みの core は動かせない
-        if (!canSource(t.p, t.f, t.r, on)) continue;             // 置けない殻はあきらめる
-        if (on) displace(on);
-        assigned.add(sourcePlace(t.p, t.f, t.r, 'support'));
-      }
-
-      // 8. castle.hand: 囲いが持ち駒にしている駒（兜・ボナンザの角）を盤上から持ち駒へ。
-      //    戦法の持ち駒が既に持っていれば何もしない。必須・確定済みの駒は動かせず、
-      //    そのときは HAND 衝突として記録する
-      for (const p of (castle.hand || '')) {
-        if (hand.includes(p)) continue;
-        const on = pieces.find(x => x.p === p && x.owner === 'sente');
-        if (!on) continue;
-        if (locked.has(on) || assigned.has(on) || on.role === 'lead') {
-          conflicts.push({ code: 'HAND', squares: [sq(on.f, on.r)],
-            text: `${p}を持ち駒にできない（${label(on.f, on.r)}の駒は戦法の必須）` });
-          continue;
+      const placeShell = () => {
+        // 7. castle.shell: 囲いの前線の歩など。ロック済みのマスは戦法の駒を残して飛ばす
+        //    （殻は戦法を追い出さない）。filler は置かない
+        for (const t of parsePieces(castle.shell)) {
+          const on = at(t.f, t.r);
+          if (on && locked.has(on)) continue;
+          if (on && on.p === t.p) { assigned.add(on); continue; } // role はそのまま
+          if (on && assigned.has(on)) continue;                    // 確定済みの core は動かせない
+          if (!canSource(t.p, t.f, t.r, on)) continue;             // 置けない殻はあきらめる
+          if (on) displace(on);
+          assigned.add(sourcePlace(t.p, t.f, t.r, 'support'));
         }
-        displace(on);
-      }
+      };
+
+      const applyCastleHand = () => {
+        // 8. castle.hand: 囲いが持ち駒にしている駒（兜・ボナンザの角）を盤上から持ち駒へ。
+        //    戦法の持ち駒が既に持っていれば何もしない。必須・確定済みの駒は動かせず、
+        //    そのときは HAND 衝突として記録する
+        for (const p of (castle.hand || '')) {
+          if (hand.includes(p)) continue;
+          const on = pieces.find(x => x.p === p && x.owner === 'sente');
+          if (!on) continue;
+          if (locked.has(on) || assigned.has(on) || on.role === 'lead') {
+            conflicts.push({ code: 'HAND', squares: [sq(on.f, on.r)],
+              text: `${p}を持ち駒にできない（${label(on.f, on.r)}の駒は戦法の必須）` });
+            continue;
+          }
+          displace(on);
+        }
+      };
+
+      placeCore();
+      lendMissingCore();
+      placeRest();
+      normalizeGuardPieces();
+      placeShell();
+      applyCastleHand();
     }
 
     // 9. 検証: 二歩（同じ筋に先手の歩が2枚）

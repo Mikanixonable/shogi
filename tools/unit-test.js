@@ -769,6 +769,13 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
     K.compat.judge = orig;
     ok(r0 === r1 && n === 0, 'constraints:evaluate は同じ引数でキャッシュを返し judge を再計算しない', `judge ${n}回`);
   }
+  {
+    const cache = new K.LRU(2);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    ok(cache.delete('a') && !cache.has('a') && cache.delete('missing') === false,
+      'LRU:delete は削除結果を返す');
+  }
 }
 
 console.log(`---\n${pass + fail} tests, ${pass} pass, ${fail} fail`);

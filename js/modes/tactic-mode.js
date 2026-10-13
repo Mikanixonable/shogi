@@ -118,6 +118,7 @@ window.Kakoi = window.Kakoi || {};
     // 矢印キー: ←→ 同じ行で前後、↑↓ 隣の行
     _onKey(e) {
       if (document.body.dataset.view !== 'tactic') return;
+      if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea/i.test(e.target.tagName)) return;
       if (!e.key.startsWith('Arrow')) return;
       e.preventDefault();

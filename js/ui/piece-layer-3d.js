@@ -391,7 +391,14 @@ window.Kakoi = window.Kakoi || {};
       const c = this.camera;
       c.left = -w / 2; c.right = w / 2; c.top = h / 2; c.bottom = -h / 2;
       c.updateProjectionMatrix();
-      for (const pc of this.cur) { pc.group.scale.set(this._sqW, this._sqH, this._sqW); this._place(pc); }
+      for (const pc of this.cur) {
+        this._clearTweens(pc);
+        pc.group.scale.set(this._sqW, this._sqH, this._sqW);
+        this._resetPose(pc);
+        this._place(pc);
+        this._applyMode(pc, false);
+      }
+      this.board.style.removeProperty('--rt-d');
       this._draw();
     }
 
