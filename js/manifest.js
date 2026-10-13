@@ -4,7 +4,7 @@ Kakoi.MANIFEST = (() => {
   const core = ['js/core/notation.js'];
   const data = ['js/data/sources.js', 'js/data/taxonomy.js', 'js/data/setups.js', 'js/data/strategies.js', 'js/data/castles-ibisha.js', 'js/data/castles-furibisha.js', 'js/data/tactic-families.js', 'js/data/tactics.js'];
   const vendor = ['js/vendor/three.min.js']; // 立体駒用。UMD（file:// でも読める）を内蔵
-  const logic = ['js/core/html.js', 'js/core/position.js', 'js/core/combo.js', 'js/core/matchup.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/shape.js', 'js/core/cluster-model.js', 'js/core/validate.js', 'js/core/piece-match.js'];
+  const logic = ['js/core/html.js', 'js/core/position.js', 'js/core/combo.js', 'js/core/matchup.js', 'js/core/compose.js', 'js/core/compat.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/shape.js', 'js/core/cluster-model.js', 'js/core/validate.js', 'js/core/piece-match.js'];
   const ui = [
     'js/ui/store.js', 'js/ui/segmented.js', 'js/ui/mini-board.js', 'js/ui/family-glyph.js',
     'js/ui/piece-layer-dom.js', 'js/ui/piece-layer-3d.js', 'js/ui/board-view.js', 'js/ui/overlay-view.js',
