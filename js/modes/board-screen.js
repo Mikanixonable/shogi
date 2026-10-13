@@ -210,14 +210,6 @@ window.Kakoi = window.Kakoi || {};
         (who === 'me' ? e.bandMe : e.bandOpp).dataset.sel = sel && sel.who === who ? 'true' : 'false';
       }
 
-      // 凡例は1行に縮める（F4）: 色見本＋短い名札だけにして全文は title に持つ。
-      // 盤に出ている要素だけを説明する（飛車が主役の戦法では矢印を引かないので言及もしない）
-      const arrow = hasArrow(this.repo.tacticById(S.me.tacticId))
-        || (hasOpp ? hasArrow(this.repo.tacticById(S.opp.tacticId)) : false);
-      e.legend.innerHTML = '<i></i><span class="lg-t">図の見方</span>';
-      e.legend.title = d.threat
-        ? `朱の帯は相手の攻め筋。${arrow ? '破線は主役の駒の動き（墨＝自分・朱＝相手）。' : ''}枠のマスは両軍の接触`
-        : `朱色は囲いの駒と主役の駒${arrow ? '。破線は主役の駒の動き' : ''}`;
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
