@@ -25,7 +25,7 @@
 
   const repo = new K.Repository(DATA);
 
-  const DOCK_DEFAULT = { split: 0.5, opp: { tab: 'tactic', open: true }, me: { tab: 'castle', open: true } };
+  const DOCK_DEFAULT = { split: K.lookup.DOCK.SPLIT_DEFAULT, opp: { tab: 'tactic', open: true }, me: { tab: 'castle', open: true } };
 
   const store = new K.Store(
     {
@@ -52,7 +52,7 @@
     } catch { return undefined; }
   };
   const validId = (kind, id) =>
-    kind === 'strategy' ? !!K.STRATEGIES[id]
+    kind === 'strategy' ? Object.hasOwn(K.STRATEGIES, id)
       : kind === 'tactic' ? repo.hasTactic(id)
       : kind === 'castle' ? repo.has(id) : false;
   {
@@ -85,7 +85,7 @@
         const sideOf = (s, who) => {
           s = s && typeof s === 'object' ? s : {};
           const pick = Array.isArray(s.pick) ? s.pick.filter(l => LAYERS.includes(l)) : [];
-          const order = pick.length ? [...pick, ...LAYERS.filter(l => !pick.includes(l))] : LAYERS;
+          const order = pick.length ? [...LAYERS.filter(l => !pick.includes(l)), ...pick] : LAYERS;
           return order.map(k => {
             const id = k === 'strategy' ? s.strategy : k === 'tactic' ? s.tacticId : s.castleId;
             return validId(k, id) ? { who, kind: k, id } : null;
@@ -109,13 +109,16 @@
   {
     const st = store.state;
     if (!VIEWS.includes(st.view)) st.view = 'board';
-    // 制約: 形と id の正当性を確かめ、(who,kind) の重複は末尾優先で整理する
+    // 制約: 形と id の正当性を確かめ、先頭から順に apply(set) し直す。
+    // 重複の整理だけでなく連動による解決まで起動時に済ませる（計画書 L4。
+    // 旧形式からの変換もこの同じ経路を通る）
     const valid = e => e && (e.who === 'me' || e.who === 'opp')
       && K.constraints.KINDS.includes(e.kind) && validId(e.kind, e.id);
-    st.constraints = K.constraints.apply(
-      (Array.isArray(st.constraints) ? st.constraints : []).filter(valid),
-      { type: 'remove' },
-    ).list;
+    st.constraints = (Array.isArray(st.constraints) ? st.constraints : [])
+      .filter(valid)
+      .reduce((acc, e) => K.constraints.apply(acc, {
+        type: 'set', who: e.who, kind: e.kind, id: e.id,
+      }).list, []);
     // dock: 上=相手・下=自分の固定2面（面ごとに tab と開閉）。旧 {top,bottom}.{who,tab} は tab だけ引き継ぐ
     const dk = st.dock && typeof st.dock === 'object' ? st.dock : {};
     const dkPane = (p, oldP, fb) => {
@@ -127,7 +130,8 @@
       };
     };
     st.dock = {
-      split: typeof dk.split === 'number' ? Math.min(.8, Math.max(.2, dk.split)) : DOCK_DEFAULT.split,
+      split: typeof dk.split === 'number'
+        ? Math.min(K.lookup.DOCK.SPLIT_MAX, Math.max(K.lookup.DOCK.SPLIT_MIN, dk.split)) : DOCK_DEFAULT.split,
       opp: dkPane(dk.opp, dk.top, DOCK_DEFAULT.opp),
       me: dkPane(dk.me, dk.bottom, DOCK_DEFAULT.me),
     };
@@ -144,6 +148,15 @@
     if (!repo.families().some(f => f.id === st.clusterFamily)) st.clusterFamily = null;
   }
 
+  // 旧形式のハッシュで開いたときは、起動時に新形式へ書き換える（U9。
+  // k= が無い＝旧形式。replaceState なので履歴と hashchange は汚さない）
+  {
+    const h = location.hash.replace(/^#/, '');
+    if (h && !new URLSearchParams(h).has('k')) {
+      history.replaceState(null, '', '#' + K.hashLink.buildQuery(store.state));
+    }
+  }
+
   // 共有の部品: 盤と重ね表示は1組を使い回す
   const board = new K.BoardView({ board: $('board'), files: $('files'), ranks: $('ranks') });
   const overlay = new K.OverlayView($('board'));
@@ -156,6 +169,16 @@
   const viewSeg = new K.Segmented($('viewSeg'), view => store.set({ view }));
   new K.ThemeToggle($('themeToggle'));
   new K.ToolsToggle($('toolsToggle'), $('tools'));
+  // 中くらいの幅（≤1180px）で右ドックはドロワー。タブで開閉する（§4-6）
+  {
+    const t = $('detailToggle');
+    const sync = () => t.setAttribute('aria-expanded', String(document.body.dataset.drawer === 'open'));
+    t.addEventListener('click', () => {
+      document.body.dataset.drawer = document.body.dataset.drawer === 'open' ? '' : 'open';
+      sync();
+    });
+    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-drawer'] });
+  }
 
   const common = { repo, store, board, overlay };
   const modes = {
@@ -168,6 +191,7 @@
         stageH: $('stageH'),
         legend: $('legend'), handOpp: $('handOpp'), handMe: $('handMe'),
         threatWrap: $('threatWrap'), threatSw: $('threatSw'), playBtn: $('playBtn'),
+        addOpp: $('addOpp'),
         clearOpp: $('clearOpp'), clearMe: $('clearMe'), clearAll: $('clearAll'),
         ptable: $('ptable'), boardwrap: $('boardwrap'), rail: $('pickRail'),
         detail: $('detail'),
@@ -187,7 +211,8 @@
     viewSeg.setValue(state.view);
     toolbar.render(state);
   });
-  K.hashLink.sync(store);   // 状態の変化を location.hash へ映す
+  K.hashLink.attach(store); // 状態の変化を location.hash へ映し、アドレスバーの編集も受け取る（U9）
+  new K.UndoHistory(store); // 元に戻す履歴（U2: Ctrl/⌘+Z、Shift+⌘+Z。最大50件）
 
   document.body.dataset.view = store.state.view;
   modes[store.state.view].enter(store.state);

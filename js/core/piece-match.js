@@ -50,6 +50,69 @@ window.Kakoi = window.Kakoi || {};
     return c <= MAX_COST ? c : null;
   };
 
+  // ---------- moveCount: 「その駒の動きで何手かかるか」（合成の届く判定用。計画書 L3） ----------
+  // 盤上の障害物を無視した BFS。先手視点（段が減る向きが前）。上限8手、届かなければ Infinity。
+  // moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、届くかどうかは自分で判定する
+  const STEP = {
+    歩: [[0, -1]],
+    香: [[0, -1]],   // 前へしか進めない（RAY との組み合わせで同じ筋の前方へ滑走。GOLD_STEP への
+                     // フォールバックを防ぐ＝横・後退・斜めに「届く」と誤判定しない）
+    桂: [[-1, -2], [1, -2]],
+    銀: [[0, -1], [-1, -1], [1, -1], [-1, 1], [1, 1]],
+    角: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
+    飛: [[0, -1], [0, 1], [-1, 0], [1, 0]],
+  };
+  const GOLD_STEP = [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]];
+  const RAY = { 香: 1, 角: 1, 飛: 1 };
+  const stepOf = p => STEP[p] || GOLD_STEP;   // 玉・金（・未登録の駒）は金の動き
+  const MAX_PLY = 8;
+  const mcMemo = new Map();                    // `${p}:${from}` → Map(toKey → 手数)
+  function bfsCount(p, from) {
+    const steps = stepOf(p), ray = !!RAY[p];
+    const out = new Map();
+    let frontier = [[+from[0], +from[1]]];
+    for (let d = 1; d <= MAX_PLY && frontier.length; d++) {
+      const next = [];
+      for (const [f, r] of frontier) {
+        for (const [df, dr] of steps) {
+          let nf = f + df, nr = r + dr;
+          if (ray) {
+            while (nf >= 1 && nf <= 9 && nr >= 1 && nr <= 9) {
+              const k = nf * 10 + nr;
+              if (!out.has(k)) { out.set(k, d); next.push([nf, nr]); }
+              nf += df; nr += dr;
+            }
+          } else {
+            if (nf < 1 || nf > 9 || nr < 1 || nr > 9) continue;
+            const k = nf * 10 + nr;
+            if (out.has(k)) continue;
+            out.set(k, d);
+            next.push([nf, nr]);
+          }
+        }
+      }
+      frontier = next;
+    }
+    return out;
+  }
+  /**
+   * 駒 p が from → to へ自分の動きだけで行く最小手数（障害物無視。上限8手）。
+   * 届かなければ Infinity。歩・香は前進のみ、桂は前方のみになる（二歩・横歩・桂の後退を防ぐ）
+   * @param {string} p 駒の字 @param {string} from 例 '39' @param {string} to 例 '79'
+   * @returns {number}
+   */
+  function moveCount(p, from, to) {
+    if (from === to) return 0;
+    const ck = `${p}:${from}`;
+    let m = mcMemo.get(ck);
+    if (!m) {
+      m = bfsCount(p, from);
+      if (mcMemo.size > 400) mcMemo.delete(mcMemo.keys().next().value); // 簡易上限
+      mcMemo.set(ck, m);
+    }
+    return m.has(+to[0] * 10 + +to[1]) ? m.get(+to[0] * 10 + +to[1]) : Infinity;
+  }
+
   /**
    * before → after の駒の対応づけ。
    * 要素は { p:string, sq:string, owner:'sente'|'gote', skip?:any }。先に自由な付随データを持たせてよい。
@@ -85,5 +148,5 @@ window.Kakoi = window.Kakoi || {};
     return { pairs, gone, appear };
   }
 
-  Kakoi.pieceMatch = { MAX_COST, moveCost, pair };
+  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, pair };
 })();

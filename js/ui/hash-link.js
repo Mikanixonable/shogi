@@ -54,12 +54,13 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // 旧形式の対局図（ms/mt/mc/mp/os/ot/oc/op/mo）→ 制約リスト。
-  // 各側の制約は pick の順（空なら strategy,tactic,castle）に並べる。mo=0 は相手を全部取り除く
+  // 各側の制約は「pick に無い層が先頭（最も古い）、pick の順が末尾（新しい）」（L5）。
+  // mo=0 は相手を全部取り除く
   function legacyMatchup(p) {
     const side = (pre, who) => {
       const vals = { strategy: p.get(pre + 's'), tactic: p.get(pre + 't'), castle: p.get(pre + 'c') };
       const pick = decodePick(p.get(pre + 'p'));
-      const order = pick.length ? [...pick, ...LAYERS.filter(l => !pick.includes(l))] : LAYERS;
+      const order = pick.length ? [...LAYERS.filter(l => !pick.includes(l)), ...pick] : LAYERS;
       return order.filter(l => vals[l] != null && vals[l] !== '')
         .map(l => ({ who, kind: l, id: vals[l] }));
     };
@@ -70,6 +71,8 @@ window.Kakoi = window.Kakoi || {};
   /**
    * ハッシュ文字列（先頭の # を含まない）を解析し、state への差分を返す純粋関数。
    * `k=` があれば新形式、無ければ旧形式を移行規則（計画書 §2）に従って変換する。
+   * ハッシュが認識できたとき、脅威の帯は `mw` の指定だけを見る（U9: mw が無いときは
+   * 保存値を持ち越さず既定値＝表示する に戻す。mw=0 のときだけ非表示）
    * @returns {{view?:string, constraints?:Array, selected?:string|null,
    *   showThreat?:boolean, clusterFamily?:string|null}}
    */
@@ -77,6 +80,7 @@ window.Kakoi = window.Kakoi || {};
     const out = {};
     const p = new URLSearchParams(String(h || ''));
     if (p.has('cf')) out.clusterFamily = p.get('cf') || null;
+    const mw = () => p.get('mw') !== '0';   // 既定値は表示する
 
     // 新形式
     if (p.has('k')) {
@@ -91,20 +95,20 @@ window.Kakoi = window.Kakoi || {};
         const sel = decodeSel(p.get('sel'));
         if (sel) out.selected = sel;
       }
-      if (p.get('mw') === '0') out.showThreat = false;
+      out.showThreat = mw();
       return out;
     }
 
     // 旧形式: v= が書き出し側の権威（旧 buildQuery は全キーを常に書いていた）
     const v = p.get('v');
-    if (v === 'cluster') { out.view = 'cluster'; return out; }
+    if (v === 'cluster') { out.view = 'cluster'; out.showThreat = mw(); return out; }
     if (v === 'castle') {
       out.view = 'board';
       const list = [];
       if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
       out.constraints = list;
       out.selected = 'me.castle';
-      if (p.get('mw') === '0') out.showThreat = false;
+      out.showThreat = mw();
       return out;
     }
     if (v === 'tactic') {
@@ -115,7 +119,7 @@ window.Kakoi = window.Kakoi || {};
       if (p.has('tc')) list.push({ who: 'me', kind: 'castle', id: p.get('tc') });
       out.constraints = list;
       out.selected = 'me.tactic';
-      if (p.get('mw') === '0') out.showThreat = false;
+      out.showThreat = mw();
       return out;
     }
     const hasMu = v === 'matchup'
@@ -125,7 +129,7 @@ window.Kakoi = window.Kakoi || {};
       out.constraints = legacyMatchup(p);
       const lastMe = [...out.constraints].reverse().find(e => e.who === 'me');
       if (lastMe) out.selected = `me.${lastMe.kind}`;
-      if (p.get('mw') === '0') out.showThreat = false;
+      out.showThreat = mw();
       return out;
     }
     if (p.has('c') || p.has('t')) {
@@ -135,9 +139,10 @@ window.Kakoi = window.Kakoi || {};
       if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
       else if (p.has('t')) list.push({ who: 'me', kind: 'tactic', id: p.get('t') });
       out.constraints = list;
+      out.showThreat = mw();
       return out;
     }
-    if (v === 'board') out.view = 'board';
+    if (v === 'board') { out.view = 'board'; out.showThreat = mw(); }
     return out;
   }
 
@@ -166,6 +171,57 @@ window.Kakoi = window.Kakoi || {};
     });
   }
 
-  Kakoi.hashLink = { read, sync, buildQuery, parseHash };
+  // ハッシュ由来の差分を、起動時と同じ規則で正規化する（L4/L5 と同じ経路:
+  // 制約は先頭から apply(set) で再生し、存在しない側を指す selected は握り直す）
+  function normalize(patch) {
+    const out = {};
+    if (patch.constraints !== undefined) {
+      const valid = e => e && (e.who === 'me' || e.who === 'opp')
+        && Kakoi.constraints.KINDS.includes(e.kind)
+        && (e.kind === 'strategy' ? Object.hasOwn(Kakoi.STRATEGIES || {}, e.id)
+          : e.kind === 'tactic' ? !!Kakoi.lookup.findTactic(e.id)
+          : !!Kakoi.lookup.findCastle(e.id));
+      out.constraints = (patch.constraints || []).filter(valid)
+        .reduce((acc, e) => Kakoi.constraints.apply(acc, {
+          type: 'set', who: e.who, kind: e.kind, id: e.id,
+        }).list, []);
+    }
+    if (patch.view !== undefined) out.view = patch.view;
+    if (patch.clusterFamily !== undefined) out.clusterFamily = patch.clusterFamily;
+    if (patch.showThreat !== undefined) out.showThreat = patch.showThreat;
+    if (patch.selected !== undefined) {
+      const sel = Kakoi.constraints.parseSel(patch.selected);
+      const list = out.constraints || [];
+      out.selected = sel && !(sel.who === 'opp' && !list.some(e => e.who === 'opp'))
+        ? patch.selected : null;
+      if (out.selected == null) {
+        const last = [...list].reverse().find(e => e.who === 'me') || list[list.length - 1];
+        out.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
+      }
+    }
+    return out;
+  }
+
+  /**
+   * store との双方向の接続（U9）:
+   *   - 状態の変化を replaceState でハッシュへ映す（sync と同じ）
+   *   - hashchange を購読し、アドレスバーの直接編集も状態に反映する
+   *     （自分の書き込みは replaceState なので hashchange を発火しない＝二重適用にならない）
+   * @returns {{ stop:()=>void }}
+   */
+  function attach(store) {
+    sync(store);
+    const onChange = () => {
+      const h = location.hash.replace(/^#/, '');
+      if (!h) return;
+      const patch = parseHash(h);
+      const next = normalize(patch);
+      if (Object.keys(next).length) store.set(next);
+    };
+    addEventListener('hashchange', onChange);
+    return { stop: () => removeEventListener('hashchange', onChange) };
+  }
+
+  Kakoi.hashLink = { read, sync, attach, normalize, buildQuery, parseHash };
   if (typeof module !== 'undefined' && module.exports) module.exports = Kakoi.hashLink; // unit-test 用
 })();

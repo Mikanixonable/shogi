@@ -69,9 +69,17 @@ function watch(page, errs) {
 
 const setView = (page, v) => page.click(`#viewSeg button[data-value="${v}"]`);
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// 盤の矩形（F1 の不変条件: 状態に依らず ±0.5px 以内）
+const boardRect = page => page.evaluate(() => {
+  const b = document.querySelector('#board').getBoundingClientRect();
+  return { x: b.x, y: b.y, w: b.width, h: b.height };
+});
+const rectsEqual = (a, b) => a && b && Math.abs(a.x - b.x) <= .5 && Math.abs(a.y - b.y) <= .5
+  && Math.abs(a.w - b.w) <= .5 && Math.abs(a.h - b.h) <= .5;
 // ?debug で立つ window.__kakoi 経由の状態スナップショット
 const snap = page => page.evaluate(() => {
   const st = __kakoi.store.state;
+  const b = document.querySelector('#board').getBoundingClientRect();
   return {
     constraints: st.constraints, selected: st.selected, view: st.view,
     sides: Kakoi.constraints.sides(st.constraints),
@@ -82,6 +90,8 @@ const snap = page => page.evaluate(() => {
     threats: document.querySelectorAll('#board .ov-threat').length,
     ptableOn: document.querySelector('#boardwrap').dataset.pt === 'on',
     ptCells: document.querySelectorAll('#ptable .pt-cell').length,
+    bandOppEmpty: document.querySelector('#bandOpp').dataset.empty === 'true',
+    rect: { x: b.x, y: b.y, w: b.width, h: b.height },
     // 右ドックは BoardDetailView が .bd-h/.bd-who に「自分（先手）の囲い」のように出す
     detailKind: (document.querySelector('#detail .bd-who') || {}).textContent || '',
     hash: location.hash,
@@ -91,37 +101,59 @@ const snap = page => page.evaluate(() => {
 /* ---- 巡回: 盤（統合画面） ---- */
 async function sweepBoard(page) {
   const r = {};
+  r.rects = [];
+  const mark = async () => r.rects.push(await boardRect(page));
   r.t0 = await snap(page);
+  r.rects.push(r.t0.rect);
   // 左ドック: 上=相手（いない時は追加ボタンのみ）・下=自分（既定は囲いタブ）
   r.panes = await page.$$eval('#pickRail .dk-pane', els => els.length);
   r.oppEmpty = await page.$eval('#pickRail .dk-pane[data-who="opp"]', el => el.dataset.empty === 'true');
+  r.bandGhost0 = r.t0.bandOppEmpty;
   r.sepHidden0 = await page.$eval('#pickRail .dk-sep', el => el.hidden);
   r.cards = await page.$$eval('#pickRail .dk-pane[data-who="me"] .dk-card', els => els.length);
   r.fams = await page.$$eval('#pickRail .dk-pane[data-who="me"] .dk-fam', els => els.length);
   r.segs = await page.$$eval('#pickRail .dk-strategy button[data-value]', els => els.length);
   // 系統ブロックの折りたたみ
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
+  await mark();
   r.collapse = await page.$eval('#pickRail .dk-pane[data-who="me"] .dk-fam',
     el => el.dataset.closed === 'true' && el.querySelector('.dk-fam-h').getAttribute('aria-expanded') === 'false');
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
+  await mark();
   // アコーディオン: 自分の面を畳む→ヘッダだけ（closed）。開き直す
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-fold'); await wait(200);
   r.foldMe = await page.evaluate(() =>
     document.querySelector('#pickRail .dk-pane[data-who="me"]').dataset.closed === 'true'
     && __kakoi.store.state.dock.me.open === false);
+  await mark();
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-fold'); await wait(200);
   r.unfoldMe = await page.evaluate(() =>
     document.querySelector('#pickRail .dk-pane[data-who="me"]').dataset.closed === 'false');
+  await mark();
 
   // 「相手を加える」→ 相手の制約が増え、上の面が開いて戦法タイルが出る
   await page.click('#pickRail .dk-addopp'); await wait(400);
   r.t5 = await snap(page);
+  r.rects.push(r.t5.rect);
   r.opp = !!r.t5.sides.opp && r.t5.constraints.some(e => e.who === 'opp');
   r.oppShown = r.t5.canvas || r.t5.gote > 0;
   r.oppPaneOpen = await page.$eval('#pickRail .dk-pane[data-who="opp"]', el => el.dataset.closed === 'false');
   r.items = await page.$$eval('#pickRail .dk-item', els => els.length);
   r.tiles = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-tile', els => els.length);
   r.vars = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-var', els => els.length);
+  // F3: サムネイルの字は実効 12px 以上（SVG の表示倍率 × font-size）
+  r.thumbMinPx = await page.evaluate(() => {
+    let m = Infinity;
+    for (const sc of document.querySelectorAll('.dk-card .thumb .sc')) {
+      const svg = sc.querySelector('svg'); const t = svg && svg.querySelector('.mini-pc');
+      if (!t) continue;
+      const vb = svg.viewBox.baseVal.width, vh = svg.viewBox.baseVal.height;
+      const rc = svg.getBoundingClientRect();
+      const eff = parseFloat(getComputedStyle(t).fontSize) * Math.min(rc.width / vb, rc.height / vh);
+      if (eff < m) m = eff;
+    }
+    return m;
+  });
   // 相手の面は筋が反転: 四間飛車（先手6筋の戦法）は盤の4筋=グリッド列6に置かれる
   r.flipCol = await page.evaluate(() => {
     const t = document.querySelector('#pickRail .dk-pane[data-who="opp"] .dk-tile[data-id="shikenbisha"]');
@@ -137,24 +169,29 @@ async function sweepBoard(page) {
   const sp0 = await page.evaluate(() => __kakoi.store.state.dock.split);
   await page.keyboard.press('ArrowDown'); await wait(150);
   r.splitKey = await page.evaluate(s => Math.abs(__kakoi.store.state.dock.split - (s + .05)) < 1e-6, sp0);
+  await mark();
   await page.keyboard.press('ArrowUp'); await wait(150);
   r.splitBack = await page.evaluate(s => Math.abs(__kakoi.store.state.dock.split - s) < 1e-6, sp0);
+  await mark();
 
   // 囲いを選ぶ → 制約が増え、チップが現れ、詳細が囲いになる
   const before = await page.evaluate(() => __kakoi.store.state.constraints.length);
   await page.click('#pickRail .dk-item[data-who="me"][data-kind="castle"]'); await wait(350);
   r.t1 = await snap(page);
+  r.rects.push(r.t1.rect);
   r.added = r.t1.constraints.length === before + 1
     && r.t1.constraints.some(e => e.who === 'me' && e.kind === 'castle')
     && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い');
 
   // 戦法を選ぶ: 下面を戦法タブに切り替えてからタイルを押す → 周期表が出る。selected=me.tactic
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-tab button[data-value="tactic"]'); await wait(250);
+  await mark();
   r.tabSwitch = await page.evaluate(() =>
     document.querySelector('#pickRail .dk-pane[data-who="me"]').dataset.tab === 'tactic'
     && document.querySelectorAll('#pickRail .dk-pane[data-who="me"] .dk-tile').length > 0);
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-tile[data-who="me"]'); await wait(350);
   r.t2 = await snap(page);
+  r.rects.push(r.t2.rect);
   r.ptOn = r.t2.ptableOn && r.t2.selected === 'me.tactic' && r.t2.detailKind.includes('戦法');
   // 筋ボタン（周期表のセル）を押す → その側の戦法が変わる
   const cells = r.t2.ptCells;
@@ -162,16 +199,29 @@ async function sweepBoard(page) {
     await page.locator('#ptable .pt-cell').nth(1).click(); await wait(350);
   }
   r.t3 = await snap(page);
+  r.rects.push(r.t3.rect);
   r.ptPick = r.t3.ptableOn && r.t3.selected === 'me.tactic' && r.t3.constraints.some(e => e.kind === 'tactic');
+  // 「もう一方」のポップオーバーが開いても盤は動かない（F1）
+  const foldBtn = await page.$('#ptable .pt-fold');
+  if (foldBtn) {
+    await foldBtn.click(); await wait(200);
+    r.ptPop = await page.evaluate(() => !!document.querySelector('#ptable .pt-pop'));
+    await mark();
+    await foldBtn.click(); await wait(150);
+    await mark();
+  } else r.ptPop = null;
   // 囲いを選び直す → 周期表が消える（selected だけの変更で駒は再描画されない構造）
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-tab button[data-value="castle"]'); await wait(250);
+  await mark();
   await page.click('#pickRail .dk-pane[data-who="me"] .dk-card[data-who="me"]'); await wait(350);
   r.t4 = await snap(page);
+  r.rects.push(r.t4.rect);
   r.ptOff = !r.t4.ptableOn;
 
   // 相手の戦法タイルを押す → 相手の戦法制約＋導出ラベル・脅威の帯が出る
   await page.click('#pickRail .dk-pane[data-who="opp"] .dk-tile'); await wait(400);
   r.t5b = await snap(page);
+  r.rects.push(r.t5b.rect);
   r.labels = r.t5b.chips.some(c => c.text.startsWith('#') && !c.kind);
   r.threatOn = r.t5b.threats >= 1;
   // 相手の戦法を選択すると周期表が反転して出る（data-side="opp"）
@@ -182,8 +232,10 @@ async function sweepBoard(page) {
   // 脅威の帯スイッチを切る → 帯が消える
   await page.click('#threatSw'); await wait(300);
   r.t6 = await snap(page);
+  r.rects.push(r.t6.rect);
   r.threatOff = r.t6.threats === 0;
   await page.click('#threatSw'); await wait(300);
+  await mark();
 
   // 連鎖: cascade のある候補を選ぶと自動差し替えが起き、トーストが出る
   r.toast = '';
@@ -195,8 +247,17 @@ async function sweepBoard(page) {
   if (csc) {
     preList = await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
     await csc.click(); await wait(400);
-    r.toast = await page.evaluate(() => (document.querySelector('.toast.on') || {}).textContent || '');
+    const tv = await page.evaluate(() => {
+      const t = document.querySelector('.toast.on');
+      if (!t) return null;
+      return { text: t.textContent, pos: getComputedStyle(t).position,
+               host: t.parentElement && t.parentElement.id };
+    });
+    r.toast = tv ? tv.text : '';
+    r.toastOverlay = tv && tv.pos === 'absolute' && tv.host === 'stageMain';   // 帯・盤を押し下げない（F1）
     r.t7 = await snap(page);
+    r.rects.push(r.t7.rect);
+    await mark();
   }
   // 「元に戻す」でクリック前の制約リストに戻る
   r.undo = null;
@@ -206,6 +267,7 @@ async function sweepBoard(page) {
       sameAsPrev: JSON.stringify(__kakoi.store.state.constraints) === l,
       toastGone: !document.querySelector('.toast.on'),
     }), preList);
+    await mark();
   }
 
   // × で制約を外す（相手のバーの1つ。自分側は暗黙が残るので消しても盤は壊れない）
@@ -214,15 +276,19 @@ async function sweepBoard(page) {
     const n0 = await page.evaluate(() => __kakoi.store.state.constraints.length);
     await page.locator('#cbarOpp .cchip-x').last().click(); await wait(300);
     r.removed = await page.evaluate(n => __kakoi.store.state.constraints.length === n - 1, n0);
+    await mark();
   }
-  // 相手を全部はずす → 後手の駒と脅威の帯が退く（直前の × で相手が空になった場合に備えて足しておく）
+  // 相手を全部はずす → 後手の駒と脅威の帯が退き、相手の帯は幽霊行に戻る（盤は動かない）
   await page.click('#pickRail .dk-pane[data-who="opp"] .dk-strategy button[data-value]').catch(() => {});
   await wait(350);
+  await mark();
   const clearBtn = await page.$('#pickRail [data-clear="opp"]');
   if (clearBtn && await clearBtn.isVisible()) {
     await clearBtn.click(); await wait(400);
     r.t8 = await snap(page);
+    r.rects.push(r.t8.rect);
     r.oppGone = r.t8.sides.opp === null && r.t8.threats === 0 && (r.t8.canvas || r.t8.gote === 0);
+    r.bandGhost1 = r.t8.bandOppEmpty;
   } else {
     r.oppGone = null;
   }
@@ -236,10 +302,41 @@ async function sweepBoard(page) {
     await page.click('#pickRail .dk-pane[data-who="me"] .dk-item[data-who="me"][data-kind="tactic"]');
   }
   await wait(300);
+  await mark();
   const tId0 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
   await page.keyboard.press('ArrowRight'); await wait(250);
   const tId1 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
   r.keyNav = tId0 !== tId1;
+  await mark();
+
+  // U3: 矢印キーでフォーカスが失われない。
+  //   - 盤（中央）では矢印は選択を動かし、フォーカスは盤に残る
+  await page.focus('#board');
+  await page.keyboard.press('ArrowRight'); await wait(200);
+  r.focusBoard = await page.evaluate(() => document.activeElement && document.activeElement.id === 'board');
+  await mark();
+  //   - 制約チップでは矢印は roving がフォーカスだけを動かす（選択は変えず、body にも逃がさない）
+  const chip = await page.$('#cbarMe .cchip-b');
+  if (chip) {
+    await chip.focus();
+    await page.keyboard.press('ArrowRight'); await wait(200);
+    r.focusChip = await page.evaluate(() => {
+      const a = document.activeElement;
+      return !!a && a.classList.contains('cchip-b');
+    });
+  } else r.focusChip = null;
+  await mark();
+
+  // U2: Ctrl+Z（UndoHistory）で直前の制約変更だけが戻る（トーストの「元に戻す」とは別系統）
+  {
+    const pre = await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
+    await page.click('#pickRail .dk-pane[data-who="me"] .dk-item[data-who="me"]'); await wait(350);
+    const mid = await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
+    await mark();
+    await page.keyboard.press('Control+z'); await wait(250);
+    r.ctrlZ = await page.evaluate(p => JSON.stringify(__kakoi.store.state.constraints) === p, pre) && mid !== pre;
+    await mark();
+  }
 
   // ハッシュ往復: いまのハッシュで開き直すと同じ制約・選択になる
   const cur = await page.evaluate(() => ({
@@ -256,6 +353,29 @@ async function sweepBoard(page) {
     selected: __kakoi.store.state.selected,
   }));
   r.hashRoundTrip = back.constraints === cur.constraints && back.selected === cur.selected;
+
+  // U9: アドレスバーの書き換え（hashchange）が状態へ届く。明示制約を含む既知のハッシュを書く
+  {
+    const before2 = await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
+    await page.evaluate(() => { location.hash = 'v=board&k=os:furibisha,mc:yagura&sel=mc&mw=0'; });
+    await wait(400);
+    r.hashChange = await page.evaluate(() => {
+      const st = __kakoi.store.state;
+      return st.constraints.length === 2
+        && st.constraints.some(e => e.who === 'opp' && e.kind === 'strategy' && e.id === 'furibisha')
+        && st.constraints.some(e => e.who === 'me' && e.kind === 'castle' && e.id === 'yagura')
+        && st.selected === 'me.castle' && st.showThreat === false;
+    }) && before2 !== await page.evaluate(() => JSON.stringify(__kakoi.store.state.constraints));
+    await mark();
+    // mw=0 で消した脅威の帯はスイッチを戻すと出る（hashchange がスイッチにも届く）
+    await page.evaluate(() => { document.getElementById('threatSw').checked = true;
+      document.getElementById('threatSw').dispatchEvent(new Event('change')); });
+    await wait(250);
+    await mark();
+  }
+  // F1: 巡回の全ステップで盤の矩形が変わらない（±0.5px）
+  const baseR = r.rects[0];
+  r.rectDrift = r.rects.map(x => rectsEqual(x, baseR)).indexOf(false);   // -1 なら全一致
   return r;
 }
 
@@ -278,7 +398,9 @@ async function checkFit(page, width) {
     const d = document.documentElement;
     const panes = [...document.querySelectorAll('.panel')].map(el => {
       const b = el.getBoundingClientRect();
-      return { cls: el.className, out: b.top < -1 || b.left < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1 };
+      // ≤1180px の右ドロワーは閉じると translateX(100%) で画面外に待機する（正常）
+      const tucked = getComputedStyle(el).transform !== 'none' && el.classList.contains('detail');
+      return { cls: el.className, out: !tucked && (b.top < -1 || b.left < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1) };
     });
     return { sw: d.scrollWidth, sh: d.scrollHeight, iw: innerWidth, ih: innerHeight,
              overflowX: d.scrollWidth > innerWidth + 1, overflowY: d.scrollHeight > innerHeight + 1, panes };
@@ -316,7 +438,9 @@ async function main() {
       const b = await sweepBoard(page);
       ok(b.panes === 2, '左ドックは上下2面（上=相手・下=自分）', `${b.panes}面`);
       ok(b.oppEmpty, '相手がいないとき上の面は選択UIを出さない', '');
+      ok(b.bandGhost0 && b.bandGhost1, '相手なしの間・はずした後は相手の帯が幽霊行', `初期=${b.bandGhost0} 後=${b.bandGhost1}`);
       ok(b.sepHidden0, '片方だけの時はスプリッタを出さない', '');
+      ok(b.rectDrift === -1, '盤の矩形は全ステップで不変（F1 ±0.5px）', `ずれたステップ=${b.rectDrift}`);
       ok(b.foldMe && b.unfoldMe, '面を畳んで開き直せる（アコーディオン）', `fold=${b.foldMe} unfold=${b.unfoldMe}`);
       // 上下に積む面の区切りバーは横方向の separator（ARIA の separator は自身の向きを示す）
       ok(b.sep && b.sep.orient === 'horizontal' && b.sep.tab === 0 && b.sep.now >= 20 && b.sep.now <= 80,
@@ -344,14 +468,22 @@ async function main() {
       if (!b.cascadeTried) warn('連鎖のある候補が見つからず、自動差し替えトーストを試せなかった');
       else {
         ok(b.toast.length > 0, '連鎖選択で自動差し替えトースト', b.toast.slice(0, 60));
+        ok(b.toastOverlay === true, 'トーストは盤に重なるオーバーレイ（absolute）', JSON.stringify(b.toastOverlay));
         ok(b.undo && b.undo.sameAsPrev && b.undo.toastGone, '「元に戻す」で制約リストが戻る', JSON.stringify(b.undo));
       }
+      if (b.ptPop === null) warn('「もう一方」のポップオーバーを試せなかった（pt-fold なし）');
+      else ok(b.ptPop, '周期表の「もう一方」はポップオーバー', '');
       ok(b.removed !== false, '×で制約を外せる', '');
       if (b.oppGone == null) warn('「はずす」ボタンが見つからなかった');
       else ok(b.oppGone, '「はずす」で相手の駒と帯が退く', JSON.stringify(b.t8 && b.t8.sides.opp));
       ok(b.keyNav, '矢印キーで戦法を送れる', '');
+      ok(b.focusBoard && b.focusChip !== false, '矢印キーでフォーカスが保たれる（U3）',
+        `盤=${b.focusBoard} チップ=${b.focusChip}`);
+      ok(b.ctrlZ, 'Ctrl+Z で直前の制約が戻る（U2）', '');
+      ok(b.thumbMinPx >= 12, 'サムネイルの字は12px以上（F3）', `${b.thumbMinPx}px`);
       ok(b.hashFormat, 'ハッシュは新形式（v=board&k=…）', '');
       ok(b.hashRoundTrip, 'ハッシュ往復で同じ状態が開ける', '');
+      ok(b.hashChange, 'アドレスバーの書き換え（hashchange）が状態に届く（U9）', '');
 
       // 駒の表示モード・利き・骨格線のスイッチが盤に効く
       for (const v of ['all', 'core', 'dim']) await page.click(`#modeSeg button[data-value="${v}"]`);
@@ -378,6 +510,35 @@ async function main() {
           ok(r.sw <= r.iw + 1 && r.sh <= r.ih + 1, `${pv} ページスクロールなし`, `${r.sw}x${r.sh} > ${r.iw}x${r.ih}`);
         }
       }
+
+      // ---- w=1100: 右ドックはドロワー（§4-6）。タブ＋制約選択で開き、閉じても横スクロールしない ----
+      await page.setViewportSize({ width: 1100, height: 900 });
+      await setView(page, 'board'); await wait(400);
+      const dw0 = await page.evaluate(() => ({
+        toggleShown: getComputedStyle(document.querySelector('#detailToggle')).display !== 'none',
+        open: document.body.dataset.drawer === 'open',
+        sw: document.documentElement.scrollWidth, iw: innerWidth,
+      }));
+      await page.click('#detailToggle'); await wait(350);
+      const dw1 = await page.evaluate(() => {
+        const b = document.querySelector('.detail').getBoundingClientRect();
+        return { open: document.body.dataset.drawer === 'open',
+                 onscreen: b.left < innerWidth && b.right <= innerWidth + 1,
+                 aria: document.querySelector('#detailToggle').getAttribute('aria-expanded') };
+      });
+      ok(dw0.toggleShown && !dw0.open && dw0.sw <= dw0.iw + 1,
+        'w=1100 ドロワーは閉じて待機（タブのみ・横スクロールなし）', JSON.stringify(dw0));
+      ok(dw1.open && dw1.onscreen && dw1.aria === 'true', 'w=1100 タブでドロワーが開く', JSON.stringify(dw1));
+      // 制約チップを選ぶとドロワーが開く（§4-6）
+      await page.click('#detailToggle'); await wait(350);
+      await page.click('#pickRail .dk-pane[data-who="me"] .dk-card[data-who="me"]'); await wait(400);
+      const dw2 = await page.evaluate(() => ({
+        open: document.body.dataset.drawer === 'open',
+        sw: document.documentElement.scrollWidth, iw: innerWidth,
+      }));
+      ok(dw2.open && dw2.sw <= dw2.iw + 1, 'w=1100 制約を選ぶとドロワーが開く（開いても横スクロールなし）', JSON.stringify(dw2));
+      await page.evaluate(() => { delete document.body.dataset.drawer; });
+      await page.setViewportSize({ width: 1440, height: 900 }); await wait(250);
       await page.setViewportSize({ width: 390, height: 844 });
       // モバイル: 各画面で横スクロールなし＋盤は幅いっぱい（戦法の周期表があっても潰れない）
       for (const v of VIEWS) {
