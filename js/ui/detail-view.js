@@ -33,11 +33,14 @@ window.Kakoi = window.Kakoi || {};
   class DetailView {
     /**
      * @param {HTMLElement} el `#detail`（.detail-body）
-     * @param {{ onHover:(squares:string[], tone:string)=>void, onAttack:(id:string|null)=>void }} handlers
+     * @param {{ onHover:(squares:string[], tone:string)=>void, onAttack:(id:string|null)=>void,
+     *   onMatchup?:(id:string)=>void }} handlers
+     *   onMatchup: 「対局図で開く」でこの囲いを自分側にセットして対局図へ移る
      */
     constructor(el, handlers) {
       this.el = el;
       this.handlers = handlers;
+      this._id = null;
       el.addEventListener('mouseover', e => {
         const t = e.target.closest('[data-sq]');
         if (t) handlers.onHover(t.dataset.sq.split(' '), t.dataset.tone || 'focus');
@@ -47,13 +50,17 @@ window.Kakoi = window.Kakoi || {};
         if (t && !t.contains(e.relatedTarget)) handlers.onHover([], null);
       });
       el.addEventListener('click', e => {
+        const mu = e.target.closest('[data-act="matchup"]');
+        if (mu) { if (handlers.onMatchup && this._id) handlers.onMatchup(this._id); return; }
         const b = e.target.closest('.attack');
         if (b) handlers.onAttack(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.id);
       });
     }
 
     render(castle, { attackId, sources, family, subtype }) {
+      this._id = castle.id;
       this.el.innerHTML = [
+        `<button class="mu-open" data-act="matchup">対局図で開く</button>`,
         this._ratings(castle.ratings),
         this._tags(castle, family, subtype),
         castle.refFamily ? `<p class="note">文献上の分類：${esc(castle.refFamily)}</p>` : '',

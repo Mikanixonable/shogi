@@ -39,7 +39,6 @@ window.Kakoi = window.Kakoi || {};
         el.innerHTML = `<i><span>${x.p}</span></i>`;
         sq.appendChild(el);
       }
-      this._settleGote(before);
       // アニメなしの描き直しでは後手の入場（goteIn）も抑える（立体版は即表示なので挙動を揃える）
       if (!animate) for (const el of this.squares.querySelectorAll('.pc.gote')) el.classList.add('no-enter');
       if (animate) this._flip(before, trace);
@@ -70,28 +69,23 @@ window.Kakoi = window.Kakoi || {};
       }));
     }
 
-    // 描き直し前から同じマスにいた後手の駒は、入場アニメ（goteIn）を再生しない
-    _settleGote(before) {
-      const prev = new Set(before.filter(x => x.owner === 'gote').map(x => x.sq));
-      for (const el of this.squares.querySelectorAll('.pc.gote')) {
-        const sq = el.closest('.sq');
-        if (sq && prev.has(sq.dataset.sq)) el.classList.add('no-enter');
-      }
-    }
-
     // 同じ種類の駒を、駒の動きとして自然な組み合わせ（pieceMatch.pair）で対応づけ、
     // 元の位置から新しいマスへ滑らせる。対応しない駒は出現・消滅で切り替える
     _flip(before, trace) {
       const after = [...this.squares.querySelectorAll('.sq > .pc')]
         .map(el => ({
           el, p: el.dataset.p, owner: el.dataset.owner, sq: el.parentElement.dataset.sq,
-          r: el.getBoundingClientRect(), skip: el.dataset.owner === 'gote',
+          r: el.getBoundingClientRect(),
         }));
       // 戦法の主役の駒は筋道をたどる専用の動きにするので、通常の対応づけからは外す
       const lead = trace && trace.path && trace.path.length > 1
-        ? after.find(n => !n.skip && n.sq === trace.square && n.p === trace.piece) : null;
+        ? after.find(n => n.owner === 'sente' && n.sq === trace.square && n.p === trace.piece) : null;
       if (lead) lead.skip = 'lead';
       const m = Kakoi.pieceMatch.pair(before, after);
+      // 後手の入場演出（goteIn）は新しく現れた駒だけにする。
+      // 対応づいて滑る駒・同じマスに居続ける駒は入場しない（以前は全後手が毎回入場していた）
+      const appearing = new Set(m.appear);
+      after.forEach((n, ni) => { if (n.owner === 'gote' && !appearing.has(ni)) n.el.classList.add('no-enter'); });
       for (const { o, n } of m.pairs) {
         const nw = after[n], ow = before[o];
         const d = Math.hypot(ow.r.x - nw.r.x, ow.r.y - nw.r.y);
@@ -101,7 +95,8 @@ window.Kakoi = window.Kakoi || {};
       }
       for (const ni of m.appear) {
         const n = after[ni];
-        if (!n.skip)
+        // 後手の出現は CSS の goteIn（回りながら沈み込む）に任せ、先手は縮小フェードにする
+        if (!n.skip && n.owner !== 'gote')
           n.el.animate([{ opacity: 0, transform: 'scale(.7)' }, {}], { duration: 380, easing: 'ease-out' });
       }
       for (const oi of m.gone) this._ghost(before[oi]);

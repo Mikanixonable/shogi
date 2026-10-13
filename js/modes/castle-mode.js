@@ -36,6 +36,7 @@ window.Kakoi = window.Kakoi || {};
       this.detail = new K.DetailView(els.detailBody, {
         onHover: (squares, tone) => this.board.hover(squares, tone),
         onAttack: attackId => this.store.set({ attackId }),
+        onMatchup: id => this._openMatchup(id),
       });
     }
 
@@ -74,6 +75,25 @@ window.Kakoi = window.Kakoi || {};
       if (!this.repo.has(id)) return;
       const c = this.repo.byId(id);
       this.store.set({ castleId: id, attackId: null, lastBySide: { ...this.store.state.lastBySide, [c.side]: id } });
+    }
+
+    /** 「対局図で開く」: この囲いと、その戦型の既定戦法を自分側にセットして対局図へ移る */
+    _openMatchup(id) {
+      const castle = this.repo.byId(id);
+      if (!castle) return;
+      const s = this.store.state;
+      this.store.set({
+        view: 'matchup',
+        matchup: {
+          ...s.matchup,
+          me: {
+            strategy: castle.side,
+            tacticId: K.STRATEGIES[castle.side].defaultTactic,
+            castleId: id,
+            pick: ['strategy', 'tactic', 'castle'],
+          },
+        },
+      });
     }
 
     /** 入るたびに盤も含めて全部描き直す（アニメーションなし） */
