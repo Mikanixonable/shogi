@@ -149,7 +149,7 @@ Kakoi.TACTICS = [
     pairings: [],
     tags: ['急戦', 'ハメ手'],
     context: '対居飛車（三間飛車からの急戦）',
-    desc: '石田流の急戦型[[wj-sankenbisha]]。玉を4八に寄せただけで囲わず、▲7四歩からの早い仕掛けと角交換を絡めた両取り・王手飛車を狙う[[wj-furibisha]]。ハメ手とされ防御策が定跡化されてからはプロでは指されなくなった[[wj-furibisha]]。',
+    desc: '石田流の急戦型[[wj-sankenbisha]]。玉を4八に寄せただけで囲わず、▲7四歩からの早い仕掛けと角交換を絡めた両取りや王手飛車取りを狙う[[wj-furibisha]]。ハメ手とされ防御策が定跡化されてからはプロでは指されなくなった[[wj-furibisha]]。',
     pros: [{ t: '仕掛けが早く、不意を突ければ破壊力が高い' }],
     cons: [{ t: '玉が薄く、受け切られると不利になりやすい' }],
     sources: [
@@ -192,7 +192,7 @@ Kakoi.TACTICS = [
     ],
     tags: ['角道', '位取り'],
     context: '対居飛車（四間飛車からの変化。居飛車穴熊対策として知られる）',
-    desc: 'アマ強豪の立石勝己が考案した四間飛車の手法[[wj-shikenbisha]]。▲6八飛と四間に振ってから6五歩・7五歩と位を取り、飛車を▲6六飛→▲7六飛と回して石田流に落ち着く「石田流第二のルート」[[wj-shikenbisha|wj-sankenbisha]]。居飛車側の陣形が整わない隙に飛車交換を目指す[[wj-shikenbisha]]。',
+    desc: 'アマ強豪の立石勝己が考案した四間飛車の手法[[wj-shikenbisha]]。▲6八飛と四間に振ってから▲6五歩・▲7五歩と位を取り、飛車を▲6六飛→▲7六飛と回して石田流に落ち着く「石田流第二のルート」[[wj-shikenbisha|wj-sankenbisha]]。居飛車側の陣形が整わない隙に飛車交換を目指す[[wj-shikenbisha]]。',
     pros: [{ t: '居飛車穴熊志向の相手に有効で、四間飛車から無理なく移行できる' }],
     cons: [{ t: 'いつでも角交換される覚悟が必要で、一段金などの対策で発展が限られる' }],
     sources: [
@@ -450,7 +450,7 @@ Kakoi.TACTICS = [
     ],
   },
   {
-    id: 'gin46-hidari', name: '4六銀左', short: '46銀左', reading: 'よんろくぎんひだり', variantOf: 'hayakurigin',
+    id: 'gin46-hidari', name: '4六銀左', short: '4六銀左', reading: 'よんろくぎんひだり', variantOf: 'hayakurigin',
     aliases: ['4六銀左戦法'],
     family: 'ibisha-silver', lead: { piece: '銀', files: [4, 3], square: '46' },
     route: ['79', '68', '57', '46'],
@@ -776,7 +776,7 @@ Kakoi.TACTICS = [
     ],
     tags: ['奇襲'],
     context: '対居飛車（奇襲）',
-    desc: '先手の奇襲戦法[[wj-ibisha]]。▲7六歩△8四歩▲7七桂から桂馬をいきなり6五へ高跳びさせ、▲5五角や7三地点の突破など早石田の変化（両取り・王手飛車）を取り込んだ狙いを持つ[[wj-ibisha]]。縁台将棋で流行した[[wj-shogi-yogo]]。',
+    desc: '先手の奇襲戦法[[wj-ibisha]]。▲7六歩△8四歩▲7七桂から桂馬をいきなり6五へ高跳びさせ、▲5五角や7三地点の突破など早石田の変化（両取りや王手飛車取り）を取り込んだ狙いを持つ[[wj-ibisha]]。縁台将棋で流行した[[wj-shogi-yogo]]。',
     pros: [
       { t: '序盤早々に桂を跳ねるため初見では対応が難しい' },
       { t: '仕掛けまでが速い' },
