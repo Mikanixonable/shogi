@@ -9,9 +9,7 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const KIND_JA = Kakoi.lookup.LAYER_JA;
-  const KINDS = ['strategy', 'tactic', 'castle'];
-  const FIELD = { strategy: 'strategy', tactic: 'tacticId', castle: 'castleId' };
+  const { LAYER_JA: KIND_JA, KINDS, FIELD } = Kakoi.lookup;
   const CHIP_SEL = '.cchip-b, .cchip-label';
 
   class ConstraintBar {

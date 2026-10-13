@@ -7,8 +7,8 @@
 //   - *.castle: 囲いの詳細（ペンタグラム・#タグ・発展・長所短所・攻め筋）。相手がいれば
 //     ペンタグラムに戦型の重みを重ね、fitness と効いている軸を表示する
 //   - 共通の末尾: 両軍の接触 → 直近の連動 → 出典
-// render は self-contained: データは Kakoi.*（CASTLES/TACTICS/…）と内部の Repository で
-// 解決し、接触は compose.position/merge をここで引き直す。盤への反映はハンドラ経由。
+// render は self-contained: データは Kakoi.*（CASTLES/TACTICS/…）と呼び出し側の共有
+// Repository で解決する。盤への反映はハンドラ経由。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -17,21 +17,14 @@ window.Kakoi = window.Kakoi || {};
   const bindCites = (K.cites && K.cites.bind) || (() => {});   // ui/cites.js（S6 で core から移動）
   const Sec = () => K.detailSections; // 読み込み順に依存しないよう呼び出し時に引く
 
-  const KINDS = ['strategy', 'tactic', 'castle'];
-  const { LAYER_JA, findTactic, findCastle, tacticFamilyOf, castleFamilyOf } = K.lookup;
+  const { LAYER_JA, findTactic, findCastle, tacticFamilyOf, castleFamilyOf, KINDS, nameOf } = K.lookup;
   const WHO_JA = { me: '自分（先手・▲）', opp: '相手（後手・△）' };
   const SHORT_WHO = { me: '自分', opp: '相手' };
 
-  // ---------- データ参照（Kakoi.* 直読み＋内部 Repository） ----------
+  // ---------- データ参照（Kakoi.* 直読み＋共有 Repository） ----------
   const subtypeOf = c => {
     const f = castleFamilyOf(c);
     return (f && (f.subtypes || []).find(s => s.id === c.subtype)) || null;
-  };
-  const nameOf = (kind, id) => {
-    if (id == null) return '（未選択）';
-    if (kind === 'strategy') return (K.STRATEGIES[id] && K.STRATEGIES[id].label) || id;
-    const x = kind === 'tactic' ? findTactic(id) : findCastle(id);
-    return x ? x.name : id;
   };
   const parseSel = K.constraints.parseSel;
 
@@ -50,7 +43,6 @@ window.Kakoi = window.Kakoi || {};
       this.el = el;
       this.h = handlers;
       this._sel = { who: 'me', kind: 'castle' };
-      this.__repo = null;
       el.addEventListener('mouseover', e => {
         const t = e.target.closest('[data-sq]');
         if (t && handlers.onHover) handlers.onHover(t.dataset.sq.split(' '), t.dataset.tone || 'focus');
@@ -294,17 +286,8 @@ window.Kakoi = window.Kakoi || {};
       return `→${names}も変わる`;
     }
 
-    // ---------- 出典（共有 Repository を受け取る。渡されないときだけ内部で持つ） ----------
-    _repo() {
-      if (this.h.repo) return this.h.repo;   // S5: 呼び出し側の Repository を使う
-      if (!this.__repo && K.Repository && K.CASTLES && K.SETUPS) {
-        this.__repo = new K.Repository({
-          CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES || {},
-          CASTLE_FAMILIES: K.CASTLE_FAMILIES || [], TACTICS: K.TACTICS || [], TACTIC_FAMILIES: K.TACTIC_FAMILIES || [],
-        });
-      }
-      return this.__repo;
-    }
+    // ---------- 出典（呼び出し側の共有 Repository。無いときは出典を出さない） ----------
+    _repo() { return this.h.repo || null; }
     // 生の sources 宣言（{ref,for}）を複数束ねて解決する（同じ ref は for を「・」で連結）
     _mergedSources(...lists) {
       const r = this._repo();

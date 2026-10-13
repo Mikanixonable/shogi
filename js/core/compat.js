@@ -6,9 +6,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { parsePieces, parseSquare, label } = Kakoi.notation;
-  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel } = Kakoi.lookup;
-
-  const FIELD = { strategy: 'strategy', tactic: 'tacticId', castle: 'castleId' };
+  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel, FIELD } = Kakoi.lookup;
   const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT', 'HAND']); // compose の衝突のうち × にするもの
   // 相性表の overrides では消せない理由（計画書 L2: 戦略の不一致・玉飛接近・同翼は原則なので
   // データの明示的な上書きの対象から外す）
@@ -22,8 +20,8 @@ window.Kakoi = window.Kakoi || {};
     castleId: (st && st.castleId) || null,
   });
 
-  // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則は Kakoi.constraints が唯一の権威
-  // （js/core/constraints.js。起動時ではなく判定時に参照するので読み込み順は問わない）
+  // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則の権威は Kakoi.defaults
+  // （js/core/defaults.js。起動時ではなく判定時に参照するので読み込み順は問わない）
   const tacticIdOf = st => Kakoi.defaults.tacticIdOf(st);
   const castleIdOf = (st, opp) => Kakoi.defaults.castleIdOf(st, opp);
   const tacticOf = st => findTactic(tacticIdOf(st));
