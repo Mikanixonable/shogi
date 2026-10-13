@@ -400,7 +400,7 @@ window.Kakoi = window.Kakoi || {};
     // ---- 駒面テクスチャ（字×色のタイルを1枚の canvas に焼く） ----
 
     _readColors() {
-      const cs = getComputedStyle(document.documentElement);
+      const cs = getComputedStyle(this.board);
       const v = (n, d) => cs.getPropertyValue(n).trim() || d;
       this._fontFamily = v('--font-d', '"Shippori Mincho B1",serif');
       this._colors = {
@@ -434,9 +434,30 @@ window.Kakoi = window.Kakoi || {};
         const tx = (i % cols) * tile, ty = Math.floor(i / cols) * tile;
         this._tiles.set(key, { u: tx / cv.width, v: ty / cv.height, w: tile / cv.width, h: tile / cv.height });
         const [p, cls] = key.split(':');
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(tx, ty, tile, tile);
+        ctx.clip();
+        ctx.fillStyle = this._colors.piece;
+        ctx.fillRect(tx, ty, tile, tile);
+        for (let strand = 0; strand < 24; strand++) {
+          const x = tx + 6 + ((strand * 37 + i * 19) % (tile - 12));
+          const bend = ((strand % 5) - 2) * 1.6;
+          ctx.beginPath();
+          ctx.moveTo(x, ty);
+          ctx.bezierCurveTo(x + bend, ty + 48, x - bend, ty + 112, x + bend * .4, ty + tile);
+          ctx.strokeStyle = strand % 4 === 0 ? 'rgba(255,250,232,.34)' : 'rgba(111,72,28,.16)';
+          ctx.lineWidth = strand % 4 === 0 ? 1.8 : 1.2;
+          ctx.stroke();
+        }
         ctx.fillStyle = cls === 'c' ? this._colors.core : cls === 'g' ? this._colors.goteInk : this._colors.ink;
         ctx.font = `800 ${Math.round(tile * .62)}px ${this._fontFamily}`;
+        ctx.shadowColor = 'rgba(47,28,8,.5)';
+        ctx.shadowBlur = 1;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
         ctx.fillText(p, tx + tile / 2, ty + tile * .58); // 駒は字をやや下に置く（.pc i span の padding-top と同じ）
+        ctx.restore();
       });
       for (const [key, tex] of this._tex) {
         const t = this._tiles.get(key);

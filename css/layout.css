@@ -115,7 +115,7 @@ header { position:relative; }
 @media (prefers-reduced-motion:reduce) { .stage #bandOpp { transition:none; } }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
-.handcol { position:absolute; top:22px; bottom:0; width:22px; margin:0 2px;
+.handcol { position:absolute; top:calc(var(--coord-h) + var(--coord-gap)); bottom:0; width:22px; margin:0 2px;
            writing-mode:vertical-rl; text-orientation:upright; font:600 19px/1.1 var(--font-d);
            letter-spacing:.16em; color:var(--muted); display:flex; padding:6px 0; user-select:none; }
 #handOpp { right:100%; justify-content:flex-start; }
