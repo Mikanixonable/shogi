@@ -71,18 +71,29 @@
     <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
   </nav>
 
-  <!-- 見る -->
-  <main class="panel glass stage">
+  <!-- 見る: 盤を挟んで敵（上）・味方（下）の帯。敵なしのときは味方の帯が盤の上に来る（従来どおり） -->
+  <main class="panel glass stage" id="stageMain">
     <div class="view-pane" data-view="board" id="boardPane">
-      <div class="stage-h" id="stageH">
-        <div class="ttl" id="ttl"><h2 id="title"></h2><div class="rd"><span id="reading"></span><span class="setup" id="setup"></span></div></div>
+      <div class="sideband" id="bandOpp" data-side="opp" hidden>
+        <div class="sband-h">
+          <span class="who">相手<small>後手</small></span>
+          <div class="ttl"><h3 class="sband-name" id="nameOpp"></h3><div class="rd"><span class="sband-sub" id="subOpp"></span></div></div>
+          <button class="sband-clear" id="clearOpp" type="button" title="相手の制約をすべて外す">相手をはずす</button>
+        </div>
+        <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
       </div>
-      <!-- 制約バー: チップ1つ=制約1つ。自分側→相手側の順。右端は導出ラベル（戦型） -->
-      <div class="cbar" id="constraintBar" role="group" aria-label="制約条件"></div>
-      <div class="stage-f">
+      <div class="sideband" id="bandMe" data-side="me">
+        <div class="sband-h" id="stageH">
+          <span class="who">自分<small>先手</small></span>
+          <div class="ttl" id="ttl"><h3 class="sband-name" id="nameMe"></h3><div class="rd"><span class="sband-sub" id="subMe"></span></div></div>
+          <button class="sband-clear" id="clearMe" type="button" title="自分の制約をすべて外す">自分をはずす</button>
+        </div>
+        <div class="cbar" id="cbarMe" role="group" aria-label="自分の制約条件"></div>
+      </div>
+      <div class="stage-f" id="stageF">
         <span class="legend" id="legend"></span>
         <label class="switch" id="threatWrap" title="相手の飛車の筋・主役の経路の終点の筋"><input type="checkbox" id="threatSw"> 脅威の帯</label>
-        <span class="hand" id="hand"></span>
+        <button class="sband-clear" id="clearAll" type="button" title="両側の制約をすべて外す">すべてはずす</button>
         <button class="play-btn" id="playBtn" type="button">順に再生</button>
       </div>
     </div>
@@ -90,12 +101,15 @@
     <!-- 盤（BoardView / OverlayView は1組だけ） -->
     <div class="view-pane board-pane" data-view="board">
       <div class="boardarea">
+        <!-- 持ち駒は盤の左右に立てる（伝統的な記法。敵=左・味方=右） -->
+        <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
         <div class="boardwrap" id="boardwrap">
           <div id="ptable" class="ptable" role="group" aria-label="戦法の周期表（盤の筋とそろえた表）"></div>
           <div class="flabels" id="files"></div><div></div>
           <div class="board" id="board"></div>
           <div class="rlabels" id="ranks"></div>
         </div>
+        <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
       </div>
     </div>
   </main>

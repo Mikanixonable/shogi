@@ -75,7 +75,7 @@ const snap = page => page.evaluate(() => {
   return {
     constraints: st.constraints, selected: st.selected, view: st.view,
     sides: Kakoi.constraints.sides(st.constraints),
-    chips: [...document.querySelectorAll('#constraintBar .cchip')].map(c =>
+    chips: [...document.querySelectorAll('#cbarOpp .cchip, #cbarMe .cchip')].map(c =>
       ({ who: c.dataset.who, kind: c.dataset.kind, implied: c.dataset.implied === 'true', text: c.textContent.trim() })),
     gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
     canvas: !!document.querySelector('#board canvas'),
@@ -92,30 +92,47 @@ const snap = page => page.evaluate(() => {
 async function sweepBoard(page) {
   const r = {};
   r.t0 = await snap(page);
-  // 左ドック（U4）: 上下2面・separator・タイル・クラスタ見出しが出ている
+  // 左ドック: 上=相手（いない時は追加ボタンのみ）・下=自分（既定は囲いタブ）
   r.panes = await page.$$eval('#pickRail .dk-pane', els => els.length);
-  r.sep = await page.evaluate(() => {
-    const s = document.querySelector('#pickRail [role="separator"]');
-    return s ? { orient: s.getAttribute('aria-orientation'), now: +s.getAttribute('aria-valuenow'), tab: s.tabIndex } : null;
-  });
-  r.items = await page.$$eval('#pickRail .dk-item', els => els.length);
-  r.tiles = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-tile', els => els.length);
-  r.vars = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-var', els => els.length);
+  r.oppEmpty = await page.$eval('#pickRail .dk-pane[data-who="opp"]', el => el.dataset.empty === 'true');
+  r.sepHidden0 = await page.$eval('#pickRail .dk-sep', el => el.hidden);
   r.cards = await page.$$eval('#pickRail .dk-pane[data-who="me"] .dk-card', els => els.length);
   r.fams = await page.$$eval('#pickRail .dk-pane[data-who="me"] .dk-fam', els => els.length);
   r.segs = await page.$$eval('#pickRail .dk-strategy button[data-value]', els => els.length);
+  // 系統ブロックの折りたたみ
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
+  r.collapse = await page.$eval('#pickRail .dk-pane[data-who="me"] .dk-fam',
+    el => el.dataset.closed === 'true' && el.querySelector('.dk-fam-h').getAttribute('aria-expanded') === 'false');
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
+  // アコーディオン: 自分の面を畳む→ヘッダだけ（closed）。開き直す
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fold'); await wait(200);
+  r.foldMe = await page.evaluate(() =>
+    document.querySelector('#pickRail .dk-pane[data-who="me"]').dataset.closed === 'true'
+    && __kakoi.store.state.dock.me.open === false);
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fold'); await wait(200);
+  r.unfoldMe = await page.evaluate(() =>
+    document.querySelector('#pickRail .dk-pane[data-who="me"]').dataset.closed === 'false');
+
+  // 「相手を加える」→ 相手の制約が増え、上の面が開いて戦法タイルが出る
+  await page.click('#pickRail .dk-addopp'); await wait(400);
+  r.t5 = await snap(page);
+  r.opp = !!r.t5.sides.opp && r.t5.constraints.some(e => e.who === 'opp');
+  r.oppShown = r.t5.canvas || r.t5.gote > 0;
+  r.oppPaneOpen = await page.$eval('#pickRail .dk-pane[data-who="opp"]', el => el.dataset.closed === 'false');
+  r.items = await page.$$eval('#pickRail .dk-item', els => els.length);
+  r.tiles = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-tile', els => els.length);
+  r.vars = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-var', els => els.length);
   // 相手の面は筋が反転: 四間飛車（先手6筋の戦法）は盤の4筋=グリッド列6に置かれる
   r.flipCol = await page.evaluate(() => {
     const t = document.querySelector('#pickRail .dk-pane[data-who="opp"] .dk-tile[data-id="shikenbisha"]');
     const cell = t && t.closest('.dk-cell');
     return cell ? getComputedStyle(cell).gridColumnStart : null;
   });
-  // 系統ブロックの折りたたみ
-  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
-  r.collapse = await page.$eval('#pickRail .dk-pane[data-who="me"] .dk-fam',
-    el => el.dataset.closed === 'true' && el.querySelector('.dk-fam-h').getAttribute('aria-expanded') === 'false');
-  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
-  // スプリッタ: ↑↓キーで比率が5%刻みで動く
+  // スプリッタ（両面が開いている時だけ出る）: ↑↓キーで比率が5%刻みで動く
+  r.sep = await page.evaluate(() => {
+    const s = document.querySelector('#pickRail [role="separator"]');
+    return s && !s.hidden ? { orient: s.getAttribute('aria-orientation'), now: +s.getAttribute('aria-valuenow'), tab: s.tabIndex } : null;
+  });
   await page.focus('#pickRail .dk-sep');
   const sp0 = await page.evaluate(() => __kakoi.store.state.dock.split);
   await page.keyboard.press('ArrowDown'); await wait(150);
@@ -124,7 +141,7 @@ async function sweepBoard(page) {
   r.splitBack = await page.evaluate(s => Math.abs(__kakoi.store.state.dock.split - s) < 1e-6, sp0);
 
   // 囲いを選ぶ → 制約が増え、チップが現れ、詳細が囲いになる
-  const before = r.t0.constraints.length;
+  const before = await page.evaluate(() => __kakoi.store.state.constraints.length);
   await page.click('#pickRail .dk-item[data-who="me"][data-kind="castle"]'); await wait(350);
   r.t1 = await snap(page);
   r.added = r.t1.constraints.length === before + 1
@@ -132,11 +149,11 @@ async function sweepBoard(page) {
     && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い');
 
   // 戦法を選ぶ: 下面を戦法タブに切り替えてからタイルを押す → 周期表が出る。selected=me.tactic
-  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tab button[data-value="tactic"]'); await wait(250);
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-tab button[data-value="tactic"]'); await wait(250);
   r.tabSwitch = await page.evaluate(() =>
-    document.querySelector('#pickRail .dk-pane[data-pane="bottom"]').dataset.tab === 'tactic'
-    && document.querySelectorAll('#pickRail .dk-pane[data-pane="bottom"] .dk-tile').length > 0);
-  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tile[data-who="me"]'); await wait(350);
+    document.querySelector('#pickRail .dk-pane[data-who="me"]').dataset.tab === 'tactic'
+    && document.querySelectorAll('#pickRail .dk-pane[data-who="me"] .dk-tile').length > 0);
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-tile[data-who="me"]'); await wait(350);
   r.t2 = await snap(page);
   r.ptOn = r.t2.ptableOn && r.t2.selected === 'me.tactic' && r.t2.detailKind.includes('戦法');
   // 筋ボタン（周期表のセル）を押す → その側の戦法が変わる
@@ -147,18 +164,16 @@ async function sweepBoard(page) {
   r.t3 = await snap(page);
   r.ptPick = r.t3.ptableOn && r.t3.selected === 'me.tactic' && r.t3.constraints.some(e => e.kind === 'tactic');
   // 囲いを選び直す → 周期表が消える（selected だけの変更で駒は再描画されない構造）
-  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tab button[data-value="castle"]'); await wait(250);
-  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-card[data-who="me"]'); await wait(350);
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-tab button[data-value="castle"]'); await wait(250);
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-card[data-who="me"]'); await wait(350);
   r.t4 = await snap(page);
   r.ptOff = !r.t4.ptableOn;
 
-  // 相手を選ぶ → 相手の制約が増え、後手の駒（DOM駒のとき）と脅威の帯・導出ラベルが出る
+  // 相手の戦法タイルを押す → 相手の戦法制約＋導出ラベル・脅威の帯が出る
   await page.click('#pickRail .dk-pane[data-who="opp"] .dk-tile'); await wait(400);
-  r.t5 = await snap(page);
-  r.opp = !!r.t5.sides.opp && r.t5.constraints.some(e => e.who === 'opp');
-  r.oppShown = r.t5.canvas || r.t5.gote > 0;
-  r.labels = r.t5.chips.some(c => c.text.startsWith('#') && !c.kind);
-  r.threatOn = r.t5.threats >= 1;
+  r.t5b = await snap(page);
+  r.labels = r.t5b.chips.some(c => c.text.startsWith('#') && !c.kind);
+  r.threatOn = r.t5b.threats >= 1;
   // 相手の戦法を選択すると周期表が反転して出る（data-side="opp"）
   r.oppTable = await page.evaluate(() => {
     const el = document.querySelector('#ptable');
@@ -193,11 +208,11 @@ async function sweepBoard(page) {
     }), preList);
   }
 
-  // × で制約を外す（相手側を1つ。自分側は暗黙が残るので消しても盤は壊れない）
-  const xCount = await page.$$eval('#constraintBar .cchip-x', els => els.length);
+  // × で制約を外す（相手のバーの1つ。自分側は暗黙が残るので消しても盤は壊れない）
+  const xCount = await page.$$eval('#cbarOpp .cchip-x', els => els.length);
   if (xCount) {
     const n0 = await page.evaluate(() => __kakoi.store.state.constraints.length);
-    await page.locator('#constraintBar .cchip-x').last().click(); await wait(300);
+    await page.locator('#cbarOpp .cchip-x').last().click(); await wait(300);
     r.removed = await page.evaluate(n => __kakoi.store.state.constraints.length === n - 1, n0);
   }
   // 相手を全部はずす → 後手の駒と脅威の帯が退く（直前の × で相手が空になった場合に備えて足しておく）
@@ -213,12 +228,12 @@ async function sweepBoard(page) {
   }
 
   // 矢印キー: 戦法を選択しているとき ←→ で戦法が送れる（制約バーのチップで selected を戦法にする）
-  const meTacticChip = await page.$('#constraintBar .cchip-b[data-who="me"][data-kind="tactic"]');
+  const meTacticChip = await page.$('#cbarMe .cchip-b[data-who="me"][data-kind="tactic"]');
   if (meTacticChip) {
     await meTacticChip.click();
   } else {
-    await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tab button[data-value="tactic"]'); await wait(200);
-    await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-item[data-who="me"][data-kind="tactic"]');
+    await page.click('#pickRail .dk-pane[data-who="me"] .dk-tab button[data-value="tactic"]'); await wait(200);
+    await page.click('#pickRail .dk-pane[data-who="me"] .dk-item[data-who="me"][data-kind="tactic"]');
   }
   await wait(300);
   const tId0 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
@@ -299,7 +314,10 @@ async function main() {
       }));
 
       const b = await sweepBoard(page);
-      ok(b.panes === 2, '左ドックは上下2面', `${b.panes}面`);
+      ok(b.panes === 2, '左ドックは上下2面（上=相手・下=自分）', `${b.panes}面`);
+      ok(b.oppEmpty, '相手がいないとき上の面は選択UIを出さない', '');
+      ok(b.sepHidden0, '片方だけの時はスプリッタを出さない', '');
+      ok(b.foldMe && b.unfoldMe, '面を畳んで開き直せる（アコーディオン）', `fold=${b.foldMe} unfold=${b.unfoldMe}`);
       // 上下に積む面の区切りバーは横方向の separator（ARIA の separator は自身の向きを示す）
       ok(b.sep && b.sep.orient === 'horizontal' && b.sep.tab === 0 && b.sep.now >= 20 && b.sep.now <= 80,
         'ドックのスプリッタ（role=separator + aria）', JSON.stringify(b.sep));
@@ -317,9 +335,9 @@ async function main() {
       ok(b.ptOn, '戦法を選ぶ→筋ボタン（周期表）が出る', `ptableOn=${b.t2.ptableOn} sel=${b.t2.selected}`);
       ok(b.ptPick, '筋ボタンで選択中の側の戦法が変わる', JSON.stringify(b.t3 && b.t3.selected));
       ok(b.ptOff, '囲いを選ぶ→筋ボタンが消える', `ptableOn=${b.t4.ptableOn}`);
-      ok(b.opp && b.oppShown, '相手を選ぶ→後手の駒が出る', `sides.opp=${!!(b.t5 && b.t5.sides.opp)} gote=${b.t5 && b.t5.gote}`);
-      ok(b.threatOn, '相手がいると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
-      ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
+      ok(b.opp && b.oppShown && b.oppPaneOpen, '「相手を加える」→後手の駒と相手の面が出る', `sides.opp=${!!(b.t5 && b.t5.sides.opp)} gote=${b.t5 && b.t5.gote} open=${b.oppPaneOpen}`);
+      ok(b.threatOn, '相手がいると脅威の帯が出る', `${b.t5b && b.t5b.threats}本`);
+      ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5b && b.t5b.chips.filter(c => !c.kind)));
       ok(b.oppTable, '相手の戦法を選択→周期表は相手側（反転）', '');
       ok(b.badges > 0, 'タイルに2軸バッジ（cascade か ◎/△）が出る', `${b.badges}件`);
       ok(b.threatOff, '脅威の帯スイッチで帯を消せる', `${b.t6 && b.t6.threats}本`);

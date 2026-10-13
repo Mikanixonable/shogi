@@ -51,11 +51,11 @@ window.Kakoi = window.Kakoi || {};
       this.h = h;
       el.innerHTML =
         `<div class="dk" style="--dock-split:.5">` +
-        this._paneHtml('top', true) +
+        this._paneHtml('opp') +
         `<div class="dk-sep" role="separator" tabindex="0" aria-orientation="horizontal" ` +
         `aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" ` +
         `aria-label="上下の面の高さ（↑↓キーで調節・ダブルクリックで半分に戻す）"></div>` +
-        this._paneHtml('bottom', false) +
+        this._paneHtml('me') +
         `</div>`;
       this.root = el.firstElementChild;
       this.sep = this.root.querySelector('.dk-sep');
@@ -78,33 +78,30 @@ window.Kakoi = window.Kakoi || {};
       }
 
       this.panes = {
-        top: this._initPane(this.root.querySelector('[data-pane="top"]'), 'top'),
-        bottom: this._initPane(this.root.querySelector('[data-pane="bottom"]'), 'bottom'),
-      };
-      this.els = {
-        threat: this.root.querySelector('[data-show="threat"]'),
-        clearOpp: this.root.querySelector('[data-clear="opp"]'),
+        opp: this._initPane(this.root.querySelector('[data-who="opp"]'), 'opp'),
+        me: this._initPane(this.root.querySelector('[data-who="me"]'), 'me'),
       };
       this._bindEvents();
       this._bindSplit();
     }
 
     // ---------- 構造 ----------
-    _paneHtml(key, tools) {
-      return `<section class="dk-pane" data-pane="${key}">
+    // 面は who 固定（上=相手・下=自分）。fold でアコーディオン式に畳める。
+    // 相手がいない間、上の面は「＋ 相手を加える」だけを出す（選択UIは出さない）
+    _paneHtml(who) {
+      return `<section class="dk-pane" data-who="${who}">
         <header class="dk-pane-h">
-          <div class="seg dk-who" role="group" aria-label="対象（相手／自分）">
-            <button type="button" data-value="opp">相手</button><button type="button" data-value="me">自分</button>
-          </div>
+          <button type="button" class="dk-fold" aria-expanded="true"
+            title="${who === 'me' ? '自分' : '相手'}の面を畳む／開く"><i class="caret" aria-hidden="true"></i></button>
+          <span class="dk-who-l">${who === 'me' ? '自分 ▲' : '相手 △'}</span>
           <div class="seg dk-tab" role="group" aria-label="一覧（戦法／囲い）">
             <button type="button" data-value="tactic">戦法</button><button type="button" data-value="castle">囲い</button>
           </div>
-          ${tools ? `<span class="dk-tools">
-            <label class="switch" title="相手の飛車の筋・主役の経路の終点の筋"><input type="checkbox" data-show="threat"> 脅威の帯</label>
-            <button type="button" class="dk-clear" data-clear="opp" title="相手の制約をすべて外す">はずす</button>
-          </span>` : ''}
+          ${who === 'opp' ? '<button type="button" class="dk-addopp">＋ 相手を加える</button>' : ''}
+          <button type="button" class="dk-clear" data-clear="${who}"
+            title="${who === 'me' ? '自分' : '相手'}の制約をすべて外す">はずす</button>
         </header>
-        <div class="seg small wide dk-strategy" role="group" aria-label="戦略">
+        <div class="seg small wide dk-strategy" role="group" aria-label="${who === 'me' ? '自分' : '相手'}の戦略">
           ${STRATEGY_IDS.map(id =>
             `<button type="button" data-value="${id}" data-kind="strategy" data-id="${id}">${esc(K.STRATEGIES[id].label)}</button>`).join('')}
         </div>
@@ -112,19 +109,26 @@ window.Kakoi = window.Kakoi || {};
       </section>`;
     }
 
-    _initPane(el, key) {
-      const pane = { key, el, body: el.querySelector('.dk-body'), views: {}, cur: null, cfgKey: null };
-      pane.segWho = new K.Segmented(el.querySelector('.dk-who'), v => this._setPane(key, { who: v }));
-      pane.segTab = new K.Segmented(el.querySelector('.dk-tab'), v => this._setPane(key, { tab: v }));
-      // 戦略の選択は、その時点で面が指している側の制約になる
+    _initPane(el, who) {
+      const pane = {
+        who, el, body: el.querySelector('.dk-body'), views: {}, cur: null, cfgKey: null,
+        fold: el.querySelector('.dk-fold'), strategySeg: el.querySelector('.dk-strategy'),
+        addopp: el.querySelector('.dk-addopp'), clear: el.querySelector('.dk-clear'),
+      };
+      pane.segTab = new K.Segmented(el.querySelector('.dk-tab'), v => this._setPane(who, { tab: v }));
       pane.segStrategy = new K.Segmented(el.querySelector('.dk-strategy'),
-        v => this.h.onChoose((this.h.store.state.dock[key] || {}).who || 'me', 'strategy', v));
+        v => this.h.onChoose(who, 'strategy', v));
+      pane.fold.addEventListener('click', () => {
+        const cfg = (this.h.store.state.dock || {})[who] || {};
+        this._setPane(who, { open: cfg.open === false }); // 既定は開。閉じている時だけ true
+      });
+      if (pane.addopp) pane.addopp.addEventListener('click', () => this.h.onAddOpponent && this.h.onAddOpponent());
       return pane;
     }
 
-    _setPane(key, patch) {
+    _setPane(who, patch) {
       const d = this.h.store.state.dock;
-      this.h.store.set({ dock: { ...d, [key]: { ...d[key], ...patch } } });
+      this.h.store.set({ dock: { ...d, [who]: { ...d[who], ...patch } } });
     }
 
     // ---------- スプリッタ（§4-2） ----------
@@ -192,10 +196,6 @@ window.Kakoi = window.Kakoi || {};
         const it = e.target.closest('.dk-item');
         if (it) this.h.onChoose(it.dataset.who, it.dataset.kind, it.dataset.id);
       });
-      this.el.addEventListener('change', e => {
-        const sw = e.target.closest('input[data-show]');
-        if (sw) this.h.store.set({ showThreat: sw.checked });
-      });
       // ホバー予告（§3-3）: タイル・派生チップ・戦略ボタンに乗ると親へ知らせる
       const candOf = t => t && t.closest ? t.closest('.dk-item, .dk-strategy button[data-id]') : null;
       const light = e => {
@@ -221,13 +221,6 @@ window.Kakoi = window.Kakoi || {};
       let v = pane.views[key];
       if (!v) {
         v = tab === 'tactic' ? this._buildTactics(who) : this._buildCastles(who);
-        if (who === 'opp') {
-          const note = document.createElement('p');
-          note.className = 'dk-empty';
-          note.textContent = '選ぶと相手の駒組みが盤に現れます';
-          v.el.prepend(note);
-          v.emptyNote = note;
-        }
         pane.views[key] = v;
       }
       if (pane.body.firstElementChild !== v.el) pane.body.replaceChildren(v.el);
@@ -383,7 +376,7 @@ window.Kakoi = window.Kakoi || {};
 
     // ---------- 更新（属性の書き換えだけ。構造は who/tab が変わったときだけ作り直す） ----------
     /**
-     * @param {object} state store.state（dock.split / dock.{top,bottom}.{who,tab} を読む）
+     * @param {object} state store.state（dock.split / dock.{opp,me}.{tab,open} を読む）
      * @param {{ me:object, opp:object|null }} S constraints.sides() の出力
      */
     update(state, S) {
@@ -393,25 +386,31 @@ window.Kakoi = window.Kakoi || {};
       this.sep.setAttribute('aria-valuenow', String(Math.round(split * 100)));
       this.sep.setAttribute('aria-valuetext', `上 ${Math.round(split * 100)}パーセント、下 ${Math.round(100 - split * 100)}パーセント`);
       const list = Array.isArray(state.constraints) ? state.constraints : [];
-      for (const key of ['top', 'bottom']) {
-        const pane = this.panes[key];
-        const cfg = dock[key] || {};
-        const who = cfg.who === 'me' ? 'me' : 'opp';
-        const tab = cfg.tab === 'castle' ? 'castle' : 'tactic';
-        pane.el.dataset.who = who;
+      for (const who of ['opp', 'me']) {
+        const pane = this.panes[who];
+        const cfg = dock[who] || {};
+        const tab = cfg.tab === 'tactic' ? 'tactic' : 'castle';
+        const empty = who === 'opp' && !S.opp;          // 相手がいない → 選択UIを出さない
+        const open = !empty && cfg.open !== false;      // 畳む＝ヘッダだけ残す
         pane.el.dataset.tab = tab;
-        const ck = `${who}:${tab}`;
-        if (pane.cfgKey !== ck) {
-          pane.cfgKey = ck;
-          pane.segWho.setValue(who);
-          pane.segTab.setValue(tab);
-          this._mount(pane, who, tab);
+        pane.el.dataset.closed = open ? 'false' : 'true';
+        pane.el.dataset.empty = empty ? 'true' : 'false';
+        pane.fold.setAttribute('aria-expanded', open ? 'true' : 'false');
+        pane.fold.disabled = empty;
+        pane.clear.hidden = empty;
+        if (pane.addopp) pane.addopp.hidden = !empty;
+        if (open) {
+          const ck = `${who}:${tab}`;
+          if (pane.cfgKey !== ck) {
+            pane.cfgKey = ck;
+            pane.segTab.setValue(tab);
+            this._mount(pane, who, tab);
+          }
+          this._updatePane(pane, S, list, who);
         }
-        this._updatePane(pane, S, list, who);
       }
-      this.els.threat.checked = state.showThreat !== false;
-      this.els.threat.disabled = !S.opp;
-      this.els.clearOpp.hidden = !S.opp;
+      // 仕切りは両面が開いている時だけ有効
+      this.sep.hidden = !(this.panes.opp.el.dataset.closed === 'false' && this.panes.me.el.dataset.closed === 'false');
     }
 
     _updatePane(pane, S, list, who) {
@@ -486,7 +485,6 @@ window.Kakoi = window.Kakoi || {};
           sec.dataset.offside = st && !sec._sides.has(st.strategy) ? 'true' : 'false';
         }
       }
-      if (pane.cur.emptyNote) pane.cur.emptyNote.hidden = !!S.opp;
     }
 
     _badge(b, changed, j, implied) {

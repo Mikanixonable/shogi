@@ -30,38 +30,7 @@
 .cchip.cchip-label .cchip-nm { font-weight:400; }
 .cbar > .cchip-label:first-of-type { margin-left:auto; }
 
-/* ===== 左ドック（暫定）: 相手／自分の2ブロック。タイル化・上下分割は U4 ===== */
-#pickRail { padding:16px 18px; gap:12px; }
-.cr-side { display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 0; }
-.cr-side[data-side="opp"] { padding-bottom:10px; border-bottom:1px solid var(--line); }
-/* 各ブロック内の一覧は内部スクロール（両側が同時に半分ずつ見える暫定の分割） */
-.cr-side .cr-list { flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; padding-right:2px; }
-.cr-h { margin:0; font-size:11px; letter-spacing:.2em; color:var(--muted); font-weight:600;
-        display:flex; align-items:center; gap:10px; }
-.cr-h::after { content:""; flex:1; height:1px; background:var(--line); }
-.cr-h small { font-weight:400; letter-spacing:.1em; }
-.cr-h .switch { order:3; letter-spacing:.06em; }
-.cr-clear { flex:none; order:3; border:1px solid var(--line); background:none; padding:2px 9px;
-            font-size:11px; color:var(--muted); cursor:pointer; letter-spacing:.06em; }
-.cr-clear:hover { color:var(--bad); border-color:var(--bad); }
-.cr-empty { font-size:11.5px; color:var(--muted); padding:4px 2px; }
-.cr-sub { margin:6px 0 0; font-size:11px; letter-spacing:.16em; color:var(--muted); font-weight:600; }
-.cr-list { display:flex; flex-direction:column; gap:8px; }
-.cr-list .tr-row h3 { font-size:10.5px; }
-
-/* 選択肢の2軸バッジ（計画書 §3-1）:
-   整合: cascade（他の層が変わる）は破線の枠＋右肩の「→要約」。対敵: ◎=朱の左帯、△=title の理由 */
-.cr-item { position:relative; }
-.cr-item .cr-csc { flex:none; font:500 10.5px/1 var(--font-n); letter-spacing:.04em; color:var(--muted); white-space:nowrap; }
-.cr-item .cr-csc:empty { display:none; }
-.cr-item .cr-marks { display:flex; align-items:center; gap:6px; flex:none; }
-.cr-item .cr-vs { font-style:normal; font-size:11px; width:12px; text-align:center; }
-.cr-item[data-cascade="true"] { border-style:dashed; }
-.cr-item[data-vs="good"] { box-shadow:inset 2px 0 0 var(--accent); }
-.cr-item[data-vs="good"] .cr-vs { color:var(--accent); font-weight:700; }
-.cr-item[data-vs="bad"] .cr-vs { color:var(--bad); font-weight:700; }
-.cr-item[data-implied="true"] .nm::after { content:"（既定）"; font-size:10px; color:var(--muted); margin-left:4px; }
-/* 戦略セグのボタンにも同じ印を */
+/* 戦略セグのボタンにも2軸バッジの印を付ける（ドックの .dk-strategy も同じ規則） */
 .seg button[data-cascade="true"] { box-shadow:inset 0 0 0 1px var(--line-2); }
 .seg button[data-vs="good"] { color:var(--fg); box-shadow:inset 0 0 0 1px var(--accent); }
 .seg button[data-implied="true"] { font-style:italic; }
@@ -80,10 +49,9 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 .vchip:hover { border-color:var(--accent); color:var(--accent); }
 .vchip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
-/* ===== 中央: 制約バーの下の凡例行（脅威の帯・再生ボタンの調整） ===== */
-#boardPane .stage-h { flex-wrap:wrap; row-gap:6px; }   /* 狭い幅では通知を見出しの下に落とす */
+/* ===== 中央: 帯の下の凡例行（脅威の帯・再生ボタンの調整） ===== */
 #boardPane .stage-f .legend i { background:var(--bad); }
-#threatWrap[hidden], #playBtn[hidden] { display:none; }
+#threatWrap[hidden], #playBtn[hidden], #clearAll[hidden] { display:none; }
 
 /* ===== narrow ===== */
 @media (max-width:980px) {
