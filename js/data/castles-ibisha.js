@@ -11,7 +11,7 @@ window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
 Kakoi.CASTLES.push(
   {
-    id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', from: 'funa', family: 'anaguma', setup: 'ibisha',
+    id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', from: 'funa', family: 'anaguma', setup: 'ibisha', basic: true,
     core: '玉99 香98 桂89 銀88 金79 金78',
     shell: '歩97 歩87 歩76',
     rest: '銀26',
@@ -38,7 +38,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa', name: '舟囲い（7九銀型）', short: '舟囲い 7九銀', reading: 'ふながこい', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha',
+    id: 'funa', name: '舟囲い（7九銀型）', short: '舟囲い 7九銀', reading: 'ふながこい', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha', basic: true,
     core: '玉78 銀79 金69 金58',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀26',
@@ -148,7 +148,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'yagura', name: '矢倉囲い（金矢倉）', short: '金矢倉', reading: 'やぐらがこい', side: 'ibisha', family: 'yagura', subtype: 'kin', setup: 'ibisha',
+    id: 'yagura', name: '矢倉囲い（金矢倉）', short: '金矢倉', reading: 'やぐらがこい', side: 'ibisha', family: 'yagura', subtype: 'kin', setup: 'ibisha', basic: true,
     core: '玉88 銀77 金78 金67',
     shell: '歩97 歩87 歩76 歩66',
     rest: '銀26',
@@ -316,7 +316,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'hidarimino', name: '左美濃', short: '左美濃', reading: 'ひだりみの', side: 'ibisha', family: 'mino', subtype: 'hon', refFamily: '文献では左美濃系統（居飛車側の美濃）', setup: 'ibisha',
+    id: 'hidarimino', name: '左美濃', short: '左美濃', reading: 'ひだりみの', side: 'ibisha', family: 'mino', subtype: 'hon', refFamily: '文献では左美濃系統（居飛車側の美濃）', setup: 'ibisha', basic: true,
     core: '玉88 銀78 金69 金58',
     shell: '歩96 歩87 歩76 歩66 歩56',
     rest: '銀26',
@@ -474,7 +474,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'yagura-anaguma', name: '矢倉穴熊', short: '矢倉穴熊', reading: 'やぐらあなぐま', side: 'ibisha', family: 'anaguma', setup: 'ibisha',
+    id: 'yagura-anaguma', name: '矢倉穴熊', short: '矢倉穴熊', reading: 'やぐらあなぐま', side: 'ibisha', from: 'yagura', family: 'anaguma', setup: 'ibisha',
     core: '玉99 香98 桂89 銀77 金78 金67',
     shell: '歩97 歩87 歩76 歩66',
     rest: '銀26',
@@ -500,7 +500,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'matsuo-anaguma', name: '松尾流穴熊', short: '松尾流穴熊', reading: 'まつおりゅうあなぐま', side: 'ibisha', family: 'anaguma', setup: 'ibisha',
+    id: 'matsuo-anaguma', name: '松尾流穴熊', short: '松尾流穴熊', reading: 'まつおりゅうあなぐま', side: 'ibisha', from: 'anaguma', family: 'anaguma', setup: 'ibisha',
     core: '玉99 香98 桂89 銀88 銀79 金78 金67',
     shell: '歩97 歩87 歩76',
     filler: '角77 歩66 歩56 歩47 歩37',

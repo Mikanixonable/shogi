@@ -43,6 +43,7 @@ window.Kakoi = window.Kakoi || {};
         onSelect: (w, k) => this._select(w, k),
         onChoose: (w, k, id) => this._set(w, k, id),
         onClear: w => this._clearSide(w),
+        onToggleOpponent: on => this._setShowOpp(on),
         onPreview: (w, k, id) => this._preview(w, k, id),
         onPreviewEnd: () => {
           this._pvKey = null;

@@ -10,7 +10,7 @@ window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
 Kakoi.CASTLES.push(
   {
-    id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', from: 'katamino', family: 'mino', subtype: 'hon', setup: 'furibisha',
+    id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', from: 'katamino', family: 'mino', subtype: 'hon', setup: 'furibisha', basic: true,
     core: '玉28 銀38 金49 金58',
     shell: '歩16 歩27 歩37 歩47',
     rest: '銀67',
@@ -137,7 +137,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha',
+    id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha', basic: true,
     core: '玉19 香18 桂29 銀28 金39 金38',
     shell: '歩17 歩27 歩37',
     rest: '銀67',
@@ -214,7 +214,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'kinmusou', name: '金無双', short: '金無双', reading: 'きんむそう', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', strategies: ['furibisha'],
+    id: 'kinmusou', name: '金無双', short: '金無双', reading: 'きんむそう', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', strategies: ['furibisha'], basic: true,
     core: '玉38 銀28 金48 金58',
     shell: '歩16 歩27 歩37 歩47',
     rest: '銀67',
