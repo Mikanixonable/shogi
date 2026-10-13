@@ -98,6 +98,12 @@ window.Kakoi = window.Kakoi || {};
     else if (c.subtype !== undefined && !(isArr(fam.subtypes) && fam.subtypes.some(s => s && s.id === c.subtype)))
       errors.push(`subtype未登録: ${c.subtype}`);
     if (c.refFamily !== undefined && !isStr(c.refFamily)) errors.push('refFamilyが空文字または文字列でない');
+    if (c.from !== undefined) {
+      const src = isArr(ctx.CASTLES) && isStr(c.from) ? ctx.CASTLES.find(x => x && x.id === c.from) : undefined;
+      if (!src) errors.push(`from未登録: ${c.from}`);
+      else if (src.id === c.id) errors.push('fromが自分自身');
+      else if (src.side !== c.side) errors.push(`fromの戦型が異なる: ${c.from}`);
+    }
     // 追加の任意フィールド（§6-3）: aliases / note / kingWing / strategies
     if (c.aliases !== undefined && !(isArr(c.aliases) && c.aliases.every(isStr))) errors.push('aliasesが文字列の配列でない');
     if (c.note !== undefined) {
@@ -230,7 +236,7 @@ window.Kakoi = window.Kakoi || {};
     return r;
   }
 
-  /** 囲い1件の検査。ctx = { SETUPS, SOURCES, CASTLE_FAMILIES } */
+  /** 囲い1件の検査。ctx = { SETUPS, SOURCES, CASTLE_FAMILIES, CASTLES? }（CASTLES は from の参照先） */
   function castle(c, ctx) {
     const r = result();
     try {
@@ -269,6 +275,7 @@ window.Kakoi = window.Kakoi || {};
       if (miss.length) r.errors.push(`必須項目なし: ${miss.join(', ')}`);
       if (!['ibisha', 'furibisha'].includes(f.side)) r.errors.push(`side不正: ${f.side}`);
       if (!(isStr(f.piece) && f.piece.length === 1 && PIECE_CHARS.includes(f.piece))) r.errors.push(`piece不正: ${f.piece}`);
+      if (f.note !== undefined && !isStr(f.note)) r.errors.push('noteが空文字または文字列でない');
     } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
     return r;
   }

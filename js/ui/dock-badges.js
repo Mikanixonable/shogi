@@ -1,9 +1,8 @@
-// 左ドックのバッジと「もう一方」の振り分け（計画書 S6 の badges / U4）:
+// 左ドックのバッジと「採用中の戦略に合わない項目」の判定（計画書 S6 の badges）:
 //   - バッジ2軸（§3-1/U1）: 連動=preview で他層が変わる → data-cascade（灰色の破線枠）＋⇄。
 //     相手との相性=compat.judge().vs → ◎/△ の文字だけ（朱の線は引かない）。相手が無いときは非表示
-//   - 薄く表示するかは系統ではなく項目ごとに判定する（U4: 片側限定の項目が
-//     両側の項目を含む系統にいても正しく薄くなる）。合わない項目だけの行・系統は
-//     折りたたみの「もう一方」グループへ移す
+//   - 戦略に合うかは系統ではなく項目ごとに判定する（片側限定の項目が両側の項目を
+//     含む系統にいても正しく隠れる）。合わない項目は dock-view が hidden にする
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -50,7 +49,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 項目ごとの「もう一方」判定（U4）
+   * 項目ごとの「採用中の戦略に合わない」判定（隠す対象。分類は戦略だけ）
    * @param {{kind:string, id:string}} it items() の1項目
    * @param {Object|null} st その側の実効状態（sides() の1側。null 可）
    */
@@ -64,28 +63,5 @@ window.Kakoi = window.Kakoi || {};
     return c ? !sidesOf(c).includes(st.strategy) : false;
   }
 
-  /**
-   * 行・系統ブロックを「採用中の戦略」（.dk-on）と「もう一方」（.dk-off 本文）に振り分ける。
-   * @param {{cur:{on:Element, offBody:Element, off:Element, offH:Element}}} pane
-   * @param {HTMLElement[]} secs 行・系統の section 要素
-   * @param {(sec:HTMLElement)=>boolean} onsideOf 採用中の戦略に合うか
-   * @param {string} kindLabel '戦法'/'囲い'（summary の文言用）
-   * @param {string|null} otherStrat もう一方の戦略 id（summary の文言用）
-   */
-  function group(pane, secs, onsideOf, kindLabel, otherStrat) {
-    let offN = 0;
-    for (const sec of secs) {
-      const on = onsideOf(sec);
-      const host = on ? pane.cur.on : pane.cur.offBody;
-      if (sec.parentElement !== host) host.appendChild(sec);
-      if (!on) offN++;
-    }
-    pane.cur.off.hidden = !offN;
-    if (offN && otherStrat) {
-      const l = (K.STRATEGIES[otherStrat] && K.STRATEGIES[otherStrat].label) || '';
-      pane.cur.offH.textContent = `${l}の${kindLabel}（選ぶと戦略が${l}に変わります）`;
-    }
-  }
-
-  K.dockBadges = { badge, tip, offItem, group, nameOf, sidesOf };
+  K.dockBadges = { badge, tip, offItem, nameOf, sidesOf };
 })();

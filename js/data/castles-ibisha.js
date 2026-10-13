@@ -4,13 +4,14 @@
 //   rest:  core に含まれない守り駒（金・銀）の置き場所。合成のとき優先して置く
 //   filler: 比較用に揃えた駒（初期位置の角・香・桂、遠側の歩）。合成のときは置かない
 // hand: 囲いが持ち駒にしている駒（兜・ボナンザの角）。合成のとき盤上から持ち駒へ移す
+// from: 発展元の囲い（この囲いはそこから駒を動かして組む）。詳細に「発展元・発展先」として出す
 // flex: 戦法に貸し出せる core の駒と行き先（崩し形になる。例: 雁木の右銀→腰掛け銀）
 // pros・cons の sq は盤上で示すマス、attacks の gote は後手の駒、target は狙われるマス
 window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
 Kakoi.CASTLES.push(
   {
-    id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', family: 'anaguma', setup: 'ibisha',
+    id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', from: 'funa', family: 'anaguma', setup: 'ibisha',
     core: '玉99 香98 桂89 銀88 金79 金78',
     shell: '歩97 歩87 歩76',
     rest: '銀26',
@@ -66,7 +67,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa68gin', name: '舟囲い（6八銀型）', short: '舟囲い 6八銀', reading: 'ふながこい ろくはちぎんがた', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha',
+    id: 'funa68gin', name: '舟囲い（6八銀型）', short: '舟囲い 6八銀', reading: 'ふながこい ろくはちぎんがた', side: 'ibisha', from: 'funa', family: 'funa', subtype: 'base', setup: 'ibisha',
     core: '玉78 銀68 金69 金58',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀26',
@@ -92,13 +93,14 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'elmo', name: 'エルモ囲い（舟囲い7九金型）', short: 'エルモ囲い', reading: 'えるもがこい', side: 'ibisha', family: 'funa', subtype: 'kin79', setup: 'ibisha',
+    id: 'elmo', name: 'エルモ囲い（舟囲い7九金型）', short: 'エルモ囲い', reading: 'えるもがこい', side: 'ibisha', from: 'funa68gin', family: 'funa', subtype: 'kin79', setup: 'ibisha',
     core: '玉78 銀68 金79 金59',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀26',
     filler: '角88 香99 桂89 歩96 歩47 歩36',
     tags: ['対振り飛車', '急戦', 'コンピュータ発'],
     desc: '将棋ソフト「elmo」が多用して広まった形[[wj-elmo|mynavi-elmo]]。舟囲いの6九金を7九へ寄せて6八銀と組み合わせ、右金は5九に置く[[wj-elmo|sj-elmo|we-castle]]。玉の真下の7九金が銀とつながるのが要[[mynavi-elmo|jsf-kakoi63]]。',
+    note: '見方を変えると、雁木の金銀を下段（7九・6八）まで下ろした形とも言える。右金は5八ではなく一つ飛ばした5九に置く。',
     ratings: { hard: 3, wide: 2, top: 2, side: 4, quick: 4 },
     pros: [
       { t: '金銀の連結がよく、舟囲いの6九金の弱点が解消される[[wj-elmo|mynavi-elmo]]', sq: ['79', '68'] },
@@ -120,7 +122,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', aliases: ['居飛車金無双'], side: 'ibisha', family: 'funa', subtype: 'kin68', setup: 'ibisha',
+    id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', aliases: ['居飛車金無双'], side: 'ibisha', from: 'funa', family: 'funa', subtype: 'kin68', setup: 'ibisha',
     core: '玉78 金68 金58',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀57 銀26',

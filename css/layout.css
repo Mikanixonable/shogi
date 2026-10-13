@@ -4,11 +4,24 @@
 /* ===== header: 全体の表示設定のみ ===== */
 header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-bottom:1px solid var(--fg); flex-wrap:wrap; }
 .brand { display:flex; align-items:center; gap:12px; }
-/* 朱印の印面 */
+/* 朱印の印面（トップへのリンク。ホバーで揺れて持ち上がり、押すと沈み、再読込で押し直される） */
 .brand .mark { width:26px; height:26px; display:grid; place-items:center; font:700 14px/1 var(--font-d); color:#fbf6ea;
-               background:var(--accent); transform:rotate(-3deg); animation:stamp .55s cubic-bezier(.2,.9,.3,1.3) .3s backwards; }
+               background:var(--accent); transform:rotate(-3deg); animation:stamp .55s cubic-bezier(.2,.9,.3,1.3) .3s backwards;
+               text-decoration:none; cursor:pointer; transition:transform .18s var(--ease); }
+.brand .mark:hover { transform:rotate(0deg) scale(1.08); animation:mark-hover .5s var(--ease); }
+.brand .mark:active { transform:rotate(-7deg) scale(.82); transition-duration:.06s; }
 @keyframes stamp { from { opacity:0; transform:scale(1.7) rotate(-10deg); }
                    60% { opacity:1; transform:scale(.94) rotate(-3deg); } to { opacity:.95; transform:scale(1) rotate(-3deg); } }
+/* ホバー: 印面が持ち上がるとき、行き過ぎて反対に傾き、揺れて静止位置に収まる */
+@keyframes mark-hover { 0% { transform:rotate(-3deg) scale(1); }
+                        45% { transform:rotate(3deg) scale(1.14); }
+                        75% { transform:rotate(-1.5deg) scale(1.05); }
+                        100% { transform:rotate(0deg) scale(1.08); } }
+/* about: ロゴ横の小さな導線。文字だけのボタン、下に細い罫線 */
+.brand .about { font-size:11px; letter-spacing:.12em; color:var(--muted); background:none; border:0;
+                border-bottom:1px solid var(--line-2); padding:1px 0 2px; margin-left:4px; cursor:pointer;
+                transition:color .2s, border-color .2s; }
+.brand .about:hover { color:var(--fg); border-bottom-color:var(--accent); }
 .brand h1 { margin:0; font:800 20px/1 var(--font-d); letter-spacing:.22em; }
 .brand .sub { font:500 11px/1.6 var(--font-d); color:var(--muted); letter-spacing:.18em; }
 .setting { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
@@ -51,6 +64,8 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
       background:none; border:1px solid var(--line); color:var(--muted); transition:color .2s, border-color .2s; }
 .ib:hover { color:var(--fg); border-color:var(--line-2); }
 .ib svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+/* 文字入りの .ib（表示設定のリセットなど） */
+.ib.txt { width:auto; padding:0 10px; font-size:12px; letter-spacing:.06em; }
 .ib .i-sun { display:none; }
 :root[data-theme="dark"] .ib .i-moon { display:none; }
 :root[data-theme="dark"] .ib .i-sun { display:block; }
@@ -117,7 +132,7 @@ body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:f
 @keyframes swap { from { opacity:0; transform:translateY(4px); } }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
-.handcol { position:absolute; top:calc(var(--pt-h) + 22px); bottom:0; width:22px; margin:0 2px;
+.handcol { position:absolute; top:22px; bottom:0; width:22px; margin:0 2px;
            writing-mode:vertical-rl; text-orientation:upright; font:600 12.5px/1.1 var(--font-d);
            letter-spacing:.16em; color:var(--muted); display:flex; padding:6px 0; user-select:none; }
 #handOpp { right:100%; justify-content:flex-start; }
@@ -193,6 +208,18 @@ body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:f
 sup.cite { font-size:.75em; line-height:0; letter-spacing:.02em; }
 sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
 sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+
+/* ===== about モーダル: 和紙の地に罫線だけ。開くときは他の要素と同じく下から静かに立ち上がる ===== */
+.about-dlg { width:min(560px, calc(100vw - 48px)); padding:0; border:1px solid var(--fg);
+             background:var(--bg); color:var(--fg); }
+.about-dlg::backdrop { background:rgba(27,26,23,.35); }
+:root[data-theme="dark"] .about-dlg::backdrop { background:rgba(0,0,0,.55); }
+.about-dlg[open] { animation:swap .45s var(--ease); }
+.about-dlg .about-head { display:flex; align-items:center; justify-content:space-between; gap:14px;
+                         padding:14px 20px; border-bottom:1px solid var(--line); }
+.about-dlg h2 { margin:0; font:700 15px/1.5 var(--font-d); letter-spacing:.16em; }
+.about-dlg .about-body { padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px; }
+.about-dlg p { margin:0; font-size:13px; line-height:2; }
 
 /* ===== 1180px 以下: 右ドックは右端から開くドロワー（計画書 §4-6。制約チップを選ぶと開く） ===== */
 #detailToggle { display:none; }   /* ドロワー幅以外は常駐しない */

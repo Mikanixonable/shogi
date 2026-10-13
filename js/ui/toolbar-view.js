@@ -5,15 +5,17 @@ window.Kakoi = window.Kakoi || {};
 
   class ToolbarView {
     /**
-     * @param {{ mode:HTMLElement, heat:HTMLInputElement, skeleton:HTMLInputElement, heatScope:HTMLElement, heatScopeWrap:HTMLElement }} els
+     * @param {{ mode:HTMLElement, heat:HTMLInputElement, skeleton:HTMLInputElement, heatScope:HTMLElement, heatScopeWrap:HTMLElement, reset?:HTMLButtonElement }} els
      * @param {(patch:object) => void} onChange
+     * @param {(() => void)|null} onReset リセットボタンの処理
      */
-    constructor(els, onChange) {
+    constructor(els, onChange, onReset = null) {
       this.els = els;
       this.mode = new Kakoi.Segmented(els.mode, v => onChange({ mode: v }));
       this.heatScope = new Kakoi.Segmented(els.heatScope, v => onChange({ heatScope: v }));
       els.heat.addEventListener('change', () => onChange({ heat: els.heat.checked }));
       els.skeleton.addEventListener('change', () => onChange({ skeleton: els.skeleton.checked }));
+      if (els.reset) els.reset.addEventListener('click', () => { if (onReset) onReset(); });
     }
 
     render(state) {

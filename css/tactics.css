@@ -1,54 +1,6 @@
-/* 戦法の画面: 盤と筋をそろえた周期表、左の一覧、中央の見出しと再生、右の解説
+/* 戦法まわり: 盤に重ねる主役の駒の経路・中央の再生・右の解説（駒と併せる囲い）。
+   戦法の一覧は左ドックの筋タイル（dock.css の .dk-tgrid）。周期表は廃止した
    「墨と余白」: 角丸とガラス面を捨て、罫線と下線で組む */
-
-/* ===== 周期表（盤の外枠 .boardwrap の最初の行 --pt-h は常に確保。選択中の制約が戦法のとき中身を出す） ===== */
-.ptable { position:relative; grid-row:1; grid-column:1 / -1; min-height:0; }
-/* 空のときは薄い案内を出す（枠は常に確保して盤の大きさを保つ。F1） */
-body[data-view="board"] .boardwrap[data-pt="off"] .ptable::before {
-  content:"戦法の制約を選ぶと、筋とそろえた表が出ます"; position:absolute; inset:0;
-  display:grid; place-items:center; font-size:11px; color:var(--muted); opacity:.55; letter-spacing:.14em;
-}
-/* 列は盤の９つの筋と同じ幅（左の9列＝盤、右の22px＝駒のタイル）。列の隙間は作らず、マスの内側の余白で見せる */
-body[data-view="board"] .boardwrap[data-pt="on"] .ptable {
-  display:grid; grid-template-columns:repeat(9, minmax(0,1fr)) 22px; grid-auto-rows:var(--pt-row);
-  row-gap:var(--pt-gap); padding-bottom:var(--pt-pad);
-}
-/* 相手の戦法を選んでいるときは、筋を盤の絶対座標に合わせて反転してある目印 */
-body[data-view="board"] .ptable[data-side="opp"] { outline:1px dashed var(--line-2); outline-offset:3px; }
-/* 見出し（側の明示）。もう一方の戦略への切替は同じ行の右端に畳む（F1/F4） */
-.pt-cap { display:flex; align-items:center; gap:10px; margin:0 2px; min-width:0;
-          font-size:10px; letter-spacing:.14em; color:var(--muted); font-weight:600;
-          white-space:nowrap; overflow:hidden; }
-.pt-cap::after { content:""; flex:1; height:1px; background:var(--line); }
-.pt-cap small { letter-spacing:.04em; font-weight:400; overflow:hidden; text-overflow:ellipsis; }
-.pt-fold { cursor:pointer; margin:0 2px; border:1px dashed var(--line); background:none; align-self:center;
-           font-size:10px; color:var(--muted); letter-spacing:.04em; white-space:nowrap;
-           transition:color .2s, border-color .2s; }
-.pt-fold:hover { color:var(--fg); border-color:var(--line-2); }
-.pt-fold[aria-expanded="true"] { border-style:solid; color:var(--fg); }
-/* 「もう一方の戦略」の行は表の下に重ねるポップオーバー（F1: 行数を盤の大きさから切り離す） */
-.pt-pop { position:absolute; left:0; right:0; top:calc(100% + 3px); z-index:7;
-          display:grid; grid-template-columns:repeat(9, minmax(0,1fr)) 22px; grid-auto-rows:var(--pt-row);
-          row-gap:var(--pt-gap); padding:6px 0 8px; background:var(--bg);
-          border:1px solid var(--line-2); box-shadow:0 10px 24px rgba(24,18,8,.14); }
-/* ポップオーバーの「もう一方の戦略」の行は cascade 見た目（選ぶと戦略が連鎖する） */
-.pt-cell.pt-off, .pt-empty.pt-off, .pt-tile.pt-off { opacity:.55; }
-.pt-cell.pt-off { border-style:dashed; }
-.pt-cell, .pt-empty { min-width:0; margin:0 2px; display:flex; align-items:center; justify-content:center; text-align:center; }
-.pt-empty { color:var(--muted); opacity:.4; font:10px/1 var(--font-n); border:1px solid var(--line); }
-.pt-cell { container-type:inline-size; padding:0; cursor:pointer; border:1px solid var(--line); background:none;
-           transition:border-color .2s, background .2s, color .2s; }
-.pt-cell:hover { border-color:var(--line-2); color:var(--fg); }
-.pt-cell span { font-weight:600; line-height:1.1; letter-spacing:.04em; padding:0 1px;
-                font-size:max(9px, min(12px, calc(94cqw / var(--n)))); }
-.pt-cell[data-rare="true"] { color:var(--muted); font-style:italic; border-style:dashed; }
-/* 選択中は朱の下線＋太字（U1: 朱は選択だけ） */
-.pt-cell[aria-current="true"] { box-shadow:inset 0 -2px 0 var(--accent); color:var(--accent); }
-.pt-cell[aria-current="true"] span { font-weight:700; }
-.pt-tile { align-self:center; justify-self:center; width:20px; height:22px; display:grid; place-items:center; padding-top:3px;
-           font:700 11px var(--font-d); color:var(--core); cursor:default;
-           background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
-           clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
 
 /* ===== 盤: 主役の駒の経路は、駒が滑り終わってから現れる（--rt-d は盤側が経路の長さに合わせて決める） ===== */
 body[data-view="board"] .overlay .rt-line { animation:skIn .4s var(--ease) var(--rt-d, .55s) backwards; }
@@ -78,6 +30,10 @@ body[data-view="board"] .overlay .rt-head { animation:skIn .4s var(--ease) var(-
 .tc-castle:hover { border-color:var(--accent); background:var(--accent-soft); }
 .tc-castle[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); }
 .tc-castle[aria-pressed="true"] b { color:var(--accent); }
+/* 囲いの詳細「発展」: 発展元・発展先の行。ボタンは .tc-castle を流用 */
+.ln-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.ln-lbl { flex:none; width:3.6em; font-size:11px; color:var(--muted); }
+.ln-row .tc-castle { padding:5px 12px; }
 .tc-go { flex:none; border:1px solid transparent; background:none; padding:0 9px; color:var(--muted);
          font-size:13px; cursor:pointer; transition:color .2s, border-color .2s, background .2s; }
 .tc-go:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
