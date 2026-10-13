@@ -80,7 +80,12 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _select(who, kind) {
-      this.store.set({ selected: `${who}.${kind}`, dockTab: kind });
+      const before = this.store.state;
+      this.store.set({
+        selected: `${who}.${kind}`,
+        dockTab: kind,
+        ...(who === 'opp' && !before.showOpp ? { showOpp: true } : {}),
+      });
       // 中くらいの幅では右ドックはドロワー。制約チップを選んだら開く（§4-6）
       this._openDrawer();
       // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る）

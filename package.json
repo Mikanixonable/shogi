@@ -1,6 +1,7 @@
 {
   "name": "shogi-castle-viewer",
   "private": true,
+  "license": "CC0-1.0",
   "type": "commonjs",
   "scripts": {
     "test": "node tools/validate-castles.js && node tools/unit-test.js && node tools/ui-check.js",
