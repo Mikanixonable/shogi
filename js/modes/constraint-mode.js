@@ -1,8 +1,8 @@
 // 制約モード（統合画面「盤」）: 囲い図鑑・戦法周期表・対局図を、制約リストで描く1つの画面にまとめたもの。
 //   - 盤: constraints.sides() の両側を compose.position/merge で合成。相手の制約が無いときは後手を描かない
 //   - 制約バー: 制約チップ（×で削除・クリックで選択）＋暗黙の層＋導出ラベル（戦型）
-//   - 左ドック（暫定）: 相手／自分の戦略・戦法・囲いの一覧。選択はすべて constraints.apply に通す
-//   - 右ドック（暫定）: selected の種類ごとに DetailView / TacticDetailView / 簡易ブロックを出す
+//   - 左ドック（U4）: 上下2面の DockView。各面は who×tab を独立に切り替え、選択はすべて constraints.apply に通す
+//   - 右ドック（U5）: BoardDetailView が selected の {who,kind} に応じて detail-sections の部品を組み立てる
 //   - 筋ボタン（周期表）: selected が *.tactic のときだけ。相手側は列を反転して「相手の戦法」と出す
 //   - state.selected だけの変更では盤の駒を再描画しない（オーバーレイ・周期表・詳細だけ更新）
 // 計画書 §1-3/§3-3/§4-5/§5
@@ -10,7 +10,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
-  const { esc, plain, rich, makeCiter, sourcesBlock } = K.html;
+  const { plain } = K.html;
   const { parsePieces } = K.notation;
   const FIELD = K.constraints.FIELD;
   const LAYER_JA = { strategy: '戦略', tactic: '戦法', castle: '囲い' };
@@ -25,7 +25,7 @@ window.Kakoi = window.Kakoi || {};
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
      *   els: bar, stageH, title, titleWrap, reading, setup, legend, hand,
-     *        threatWrap, threatSw, playBtn, ptable, boardwrap, rail, detail{castle,tactic,misc}
+     *        threatWrap, threatSw, playBtn, ptable, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
       Object.assign(this, { repo, store, board, overlay, els });
@@ -33,28 +33,27 @@ window.Kakoi = window.Kakoi || {};
       this._renderKey = null;
       this._ptKey = null;
       this._meTactic = null;
+      this._lastChanged = null;
 
       this.bar = new K.ConstraintBar(els.bar, {
         onSelect: (w, k) => this._select(w, k),
         onRemove: (w, k) => this._remove(w, k),
       });
       this.table = new K.TacticTableView(els.ptable, { onSelect: id => this._set(this._selWho(), 'tactic', id) });
-      this.rail = new K.ConstraintRailView(els.rail, {
+      // 左ドック: 上下2面の分割ペイン（U4）。面の {who,tab} と分割比は dock が store に書く
+      this.dock = new K.DockView(els.rail /* #pickRail */, {
+        store,
         onChoose: (w, k, id) => this._set(w, k, id),
         onRemoveSide: w => this._removeSide(w),
-        onShow: (key, on) => this.store.set({ showThreat: on }),
         onPreview: (w, k, id) => this._preview(w, k, id),
         onPreviewEnd: () => { this.bar.flash(null); this.board.hover([], null); },
       });
-      this.castleDetail = new K.DetailView(els.detail.castle, {
+      // 右ドック（U5）: selected の種類に応じて部品を組み立てる自己完結ビュー
+      this.detail = new K.BoardDetailView(els.detail, {
         onHover: (sqs, tone) => this.board.hover(sqs, tone),
         onAttack: attackId => this.store.set({ attackId }),
-        onMatchup: () => this._addOpponent(),   // 「対局図で開く」→「相手を加える」に意味を変える
-      });
-      this.tacticDetail = new K.TacticDetailView(els.detail.tactic, {
-        onHover: (sqs, tone) => this.board.hover(sqs, tone),
-        onCastle: id => this._set(this._selWho(), 'castle', id),   // 「→」: その囲いを制約にして選択
-        onMatchup: id => this._set(this._selWho(), 'castle', id),  // 「相性のよい囲い」: 同じく制約にして選択
+        onSetConstraint: (w, k, id) => this._set(w, k, id),
+        onAddOpponent: () => this._addOpponent(),
       });
       els.threatSw.addEventListener('change', () => this.store.set({ showThreat: els.threatSw.checked }));
       els.playBtn.addEventListener('click', () => this._onPlay());
@@ -80,6 +79,7 @@ window.Kakoi = window.Kakoi || {};
       const s = this.store.state;
       const prev = { list: s.constraints, sel: s.selected };
       const r = K.constraints.apply(s.constraints, { type: 'set', who, kind, id });
+      this._lastChanged = r.changed;
       this.store.set({ constraints: r.list, selected: `${who}.${kind}` });
       if (r.changed.length) this._toastChanged(r.changed, prev);
     }
@@ -88,6 +88,7 @@ window.Kakoi = window.Kakoi || {};
 
     _remove(who, kind) {
       const r = K.constraints.apply(this.store.state.constraints, { type: 'remove', who, kind });
+      this._lastChanged = r.changed;
       const patch = { constraints: r.list };
       // selected は据え置く: 消えた層の暗黙値が同じ (who,kind) のチップとして選択を引き継ぐ。
       // ただし相手側の制約がこれで全部消えたときは、存在しない側を指さないよう握り直す
@@ -100,6 +101,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     _removeSide(who) {
+      this._lastChanged = null;
       let list = this.store.state.constraints;
       for (const kind of ['strategy', 'tactic', 'castle']) {
         list = K.constraints.apply(list, { type: 'remove', who, kind }).list;
@@ -121,6 +123,7 @@ window.Kakoi = window.Kakoi || {};
       const strategy = S.me.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
       const prev = { list: s.constraints, sel: s.selected };
       const r = K.constraints.apply(s.constraints, { type: 'set', who: 'opp', kind: 'strategy', id: strategy });
+      this._lastChanged = r.changed;
       this.store.set({ constraints: r.list, selected: 'opp.strategy' });
       if (r.changed.length) this._toastChanged(r.changed, prev);
     }
@@ -237,7 +240,7 @@ window.Kakoi = window.Kakoi || {};
         this._paintTable(state, d);
         this._renderDetail(state, d);
       }
-      if (hard || changed.has('constraints') || changed.has('showThreat')) this.rail.update(state, d.S);
+      if (hard || changed.has('constraints') || changed.has('showThreat') || changed.has('dock')) this.dock.update(state, d.S);
     }
 
     // 盤の駒レイヤ＋重ね表示。selected のみの更新では来ない
@@ -361,70 +364,20 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    // ---------- 右ドック（暫定。種類ごとの組み立ては U5 で本格化） ----------
+    // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------
     _renderDetail(state, d) {
-      const { S } = d;
       const sel = parseSel(state.selected) || { who: 'me', kind: 'castle' };
-      const st = S[sel.who] || (sel.who === 'opp' ? null : S.me);
-      const els = this.els.detail;
-      els.castle.hidden = sel.kind !== 'castle';
-      els.tactic.hidden = sel.kind !== 'tactic';
-      els.misc.hidden = sel.kind !== 'strategy';
-      if (sel.kind === 'castle') {
-        const c = st && st.castleId ? this.repo.byId(st.castleId) : null;
-        if (!c) { els.misc.hidden = false; els.misc.innerHTML = '<p class="note">囲いが選ばれていません。</p>'; return; }
-        const fit = sel.who === 'me' && d.threat ? K.matchup.fitness(c, d.threat) : null;
-        this.castleDetail.render(c, {
-          attackId: state.attackId,
-          sources: this.repo.sourcesOf(c),
-          family: this.repo.familyOf(c),
-          subtype: this.repo.subtypeOf(c),
-          // 相手がいないときは「対局図で開く」を「相手を加える」に変えて出す
-          matchup: S.opp ? null : '相手を加えて対局図にする',
-          head: fit != null
-            ? `<div class="sec"><h3>対戦相性<small>${esc(d.threat.label)}</small></h3>` +
-              `<p class="mu-fit">${fit.toFixed(2)}<small>戦型の重み × 囲いの強み</small></p></div>`
-            : '',
-        });
-      } else if (sel.kind === 'tactic') {
-        const t = st && st.tacticId ? this.repo.tacticById(st.tacticId) : null;
-        if (!t) { els.misc.hidden = false; els.misc.innerHTML = '<p class="note">戦法が選ばれていません。</p>'; return; }
-        const family = this.repo.tacticFamilies().find(f => f.id === t.family);
-        const castle = st && st.castleId ? this.repo.byId(st.castleId) : null;
-        this.tacticDetail.render(t, {
-          family,
-          castles: this.repo.pairingsOf(t).filter(p => p.level !== 'ng')
-            .map(p => ({ id: p.castle.id, name: p.castle.name, familyName: this.repo.familyOf(p.castle).name, level: p.level, why: p.why })),
-          sources: this.repo.tacticComboSourcesOf(t, castle),
-        });
-      } else {
-        els.misc.innerHTML = this._strategyBlock(sel, st, d);
-      }
-    }
-
-    // *.strategy の説明（STRATEGIES[].desc が未整備の間は短文を出す。本格化は U5）
-    _strategyBlock(sel, st, d) {
-      const whoLabel = sel.who === 'me' ? '自分（先手）' : '相手（後手）';
-      const sid = st ? st.strategy : null;
-      const s = sid && K.STRATEGIES[sid];
-      const citer = makeCiter();
-      if (!s) return `<h2 class="cl-d-t">${whoLabel}の戦略</h2><p class="desc">左の一覧から戦略を選びます。</p>`;
-      const desc = s.desc || (sid === 'ibisha'
-        ? '飛車を初期位置（2筋など盤の左側）に据えて玉を左に囲う戦型。矢倉・角換わり・相掛かり・横歩取りなどに分かれる。'
-        : '飛車を盤の右側（1〜6筋）へ振って玉を右に囲う戦型。四間飛車・三間飛車・中飛車・向かい飛車などがある。');
-      const items = [
-        st.tacticId ? `戦法：${esc(this._nameOf(sel.who, 'tactic', st.tacticId))}` : null,
-        st.castleId ? `囲い：${esc(this._nameOf(sel.who, 'castle', st.castleId))}` : null,
-      ].filter(Boolean).join('・');
-      const labels = (d.labels || []).map(l => `<span class="tag">#${esc(l.label)}</span>`).join('');
-      const dist = sel.who === 'me' && d.threat && d.threat.distance != null
-        ? `<p class="note">自分の玉と相手の飛車の距離は ${d.threat.distance}筋。` +
-          (d.threat.distance <= 2 ? '近い＝縦（上部）から攻められやすい'
-            : d.threat.distance >= 4 ? '遠い＝横から回り込まれやすい' : '縦と横の両方を意識する') + '</p>' : '';
-      return `<h2 class="cl-d-t">${esc(whoLabel)}：${esc(s.label)}</h2>` +
-        `<p class="desc">${rich(desc, citer)}</p>` +
-        (items ? `<p class="note">${items}</p>` : '') +
-        (labels ? `<div class="sec"><h3>戦型</h3><div class="tags">${labels}</div></div>` : '') + dist;
+      this.detail.render({
+        sel,
+        st: d.S[sel.who] || null,
+        S: d.S,
+        threat: d.threat,
+        labels: d.labels,
+        attackId: state.attackId,
+        showThreat: state.showThreat,
+        constraints: state.constraints,
+        changed: this._lastChanged || null,
+      });
     }
 
     // ---------- 再生 ----------
@@ -458,6 +411,7 @@ window.Kakoi = window.Kakoi || {};
       if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test(e.target.tagName)) return;
       if (!e.key.startsWith('Arrow')) return;
       if (document.activeElement && document.activeElement.closest('.cbar')) return; // バー内は bar 側で処理
+      if (document.activeElement && document.activeElement.closest('.dk-sep')) return; // ドックのスプリッタは ↑↓ で比率を動かす
       const sel = parseSel(this.store.state.selected);
       if (!sel) return;
       const S = K.constraints.sides(this.store.state.constraints);

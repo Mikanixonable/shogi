@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="css/clusters.css">
 <link rel="stylesheet" href="css/matchup.css">
 <link rel="stylesheet" href="css/constraint.css">
+<link rel="stylesheet" href="css/dock.css">
 </head>
 <body>
 <div class="atmo" aria-hidden="true"></div>
@@ -64,7 +65,7 @@
 
 <!-- 各パネルは view-pane を画面ごとに持つ。画面は「盤（board）」と「分類マップ（cluster）」の2つ -->
 <div class="app">
-  <!-- 選ぶ（左ドック。暫定: 相手／自分の2ブロック。タイル化・上下分割は U4） -->
+  <!-- 選ぶ（左ドック: 上下2面の分割ペイン。各面は who×tab の対象切替＋タイル一覧。DockView） -->
   <nav class="panel glass rail" aria-label="一覧">
     <div class="view-pane pane-fill" data-view="board" id="pickRail"></div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterRail"></div>
@@ -99,14 +100,10 @@
     </div>
   </main>
 
-  <!-- 読む（右ドック。暫定: 選択中の制約の種類ごとに既存の詳細ビューを使い回す。本格化は U5） -->
+  <!-- 読む（右ドック。BoardDetailView が選択中の制約の種類に応じて組み立てる） -->
   <aside class="panel glass detail">
     <div class="view-pane" data-view="board">
-      <div class="detail-body" id="detail">
-        <div class="dsec" id="detailCastle" hidden></div>
-        <div class="dsec" id="detailTactic" hidden></div>
-        <div class="dsec" id="detailMisc" hidden></div>
-      </div>
+      <div class="detail-body" id="detail"></div>
     </div>
     <div class="view-pane pane-fill" data-view="cluster" id="clusterDetail"></div>
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
