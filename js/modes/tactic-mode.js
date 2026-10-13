@@ -70,12 +70,11 @@ window.Kakoi = window.Kakoi || {};
       if (next) this.selectTactic(next.id);
     }
 
-    /** 囲いを盤に重ねる／外す。重ねるときは骨格線も自動で点ける（スイッチの見た目と実表示を合わせる） */
+    /** 囲いを盤に重ねる／外す。骨格線の ON/OFF はスイッチの値をそのまま使う（重ねる囲いを替えても引き継ぐ） */
     _toggleCastle(id) {
       if (!this.repo.has(id)) return;
       const s = this.store.state;
-      const on = s.tacticCastleId === id ? null : id;
-      this.store.set(on ? { tacticCastleId: on, skeleton: true } : { tacticCastleId: null });
+      this.store.set({ tacticCastleId: s.tacticCastleId === id ? null : id });
     }
 
     /** 相性のよい囲いへ移る。戦型の違う囲いは、系統の絞り込みが合わなければ解除して選ぶ */
