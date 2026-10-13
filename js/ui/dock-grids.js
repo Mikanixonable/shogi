@@ -5,7 +5,8 @@
 //     プロットし（自分は 9→1・相手は盤の絶対座標。列はどちらも絶対座標なので
 //     筋番号ヘッダは両面とも 9…1）、上に筋の番号を出す。
 //     1マス=主役の駒の最終マス（lead.square）。variantOf の派生は親と同じ筋の
-//     セルの中にチップで積む（多いときは畳む）。列の配置は tacticNav.placeTactics（純関数）
+//     列にチップで積み、「派生を表示」スイッチで一括して出す。列の配置は
+//     tacticNav.placeTactics（純関数）
 //   - 囲いタイル: CASTLE_FAMILIES ごとの折りたたみブロック。サムネイルは玉側の隅の
 //     固定窓（6筋×4段）で歩の壁・周辺の駒ごと見せる（lab/shogi と同じ方式。中央寄りの
 //     囲いは窓をずらす。相手の面は180度回転・字は正立）（§4-4）
@@ -37,7 +38,7 @@ window.Kakoi = window.Kakoi || {};
     return b;
   }
 
-  // 派生戦法の小さなチップ（§4-3: 親タイルと同じ筋のセルに束ねる）
+  // 派生戦法の小さなチップ（§4-3: 親と同じ筋の列に積む。「派生を表示」で一括して出す）
   function varChip(who, v) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -48,34 +49,6 @@ window.Kakoi = window.Kakoi || {};
     b.innerHTML = `<span class="nm">${esc(v.short || v.name)}</span>` +
       `<i class="dk-vs"></i><span class="dk-csc"></span>`;
     return b;
-  }
-
-  // 派生チップの束。3枚以上は畳む（縦に長くなりすぎる列の収納）。開閉は面の作り直しまで持つ
-  const FOLD_AT = 3;
-  function varsBox(chips) {
-    const box = document.createElement('div');
-    box.className = 'dk-vars';
-    box.dataset.open = chips.length < FOLD_AT ? 'true' : 'false';
-    if (chips.length >= FOLD_AT) {
-      const tg = document.createElement('button');
-      tg.type = 'button';
-      tg.className = 'dk-vfold';
-      tg.setAttribute('aria-expanded', 'false');
-      tg.setAttribute('aria-label', `派生戦法 ${chips.length} 件を開閉`);
-      tg.innerHTML = `<span class="caret" aria-hidden="true">▸</span>派生${chips.length}`;
-      tg.addEventListener('click', e => {
-        e.stopPropagation();   // 親の項目選択に渡さない
-        const open = box.dataset.open !== 'true';
-        box.dataset.open = String(open);
-        tg.setAttribute('aria-expanded', String(open));
-      });
-      box.appendChild(tg);
-    }
-    const list = document.createElement('div');
-    list.className = 'dk-vlist';
-    for (const c of chips) list.appendChild(c);
-    box.appendChild(list);
-    return box;
   }
 
   // view の器。分類は戦略（居飛車／振り飛車）だけ: 採用中の戦略に合わない
@@ -97,6 +70,15 @@ window.Kakoi = window.Kakoi || {};
   function tactics(ctx, who) {
     const flip = who === 'opp';
     const v = viewShell('dk-tactics');
+    // 派生チップの一括表示スイッチ（既定は畳む。縦に長くなりすぎる列の収納。
+    // 選択中の戦法が派生のときは dock-view がここを開ける）
+    v.el.dataset.vars = 'off';
+    const vs = document.createElement('label');
+    vs.className = 'switch dk-vshow';
+    vs.innerHTML = '<input type="checkbox"> 派生を表示';
+    vs.querySelector('input').addEventListener('change',
+      e => { v.el.dataset.vars = e.target.checked ? 'on' : 'off'; });
+    v.on.appendChild(vs);
     // 筋の番号ヘッダ: 列はどちらの面も盤の絶対座標（左=9筋）なので、両面とも 9…1
     const fh = document.createElement('div');
     fh.className = 'dk-fh';
@@ -133,18 +115,26 @@ window.Kakoi = window.Kakoi || {};
         el.setAttribute('aria-hidden', 'true');
         put(el, d.col, 1, d.row);
       }
-      // 派生チップは親と同じ lead.square → 同じ筋の列。親タイルのセル内で縦に積み、
-      // 多いときは varsBox が畳む（§4-3）
+      // 派生チップは親と同じ lead.square → 同じ筋の列。タイルと同じくグリッドの
+      // 筋列アイテムとして、その列の使われている行の下へ積む（§4-3）
+      const colNext = Array(10).fill(1);
+      const chipEls = [];
       for (const { col, span, row, tactics: cellTs } of cells) {
         const cell = document.createElement('div');
         cell.className = 'dk-cell';
         put(cell, col, span, row);
-        const chips = [];
+        for (let c = col; c < col + span; c++) colNext[c] = Math.max(colNext[c], row + 1);
         for (const t of cellTs) {
           cell.appendChild(tile(who, t, flip));
-          for (const x of variantsOf.get(t.id) || []) chips.push(varChip(who, x));
+          for (const x of variantsOf.get(t.id) || [])
+            chipEls.push({ col, span, el: varChip(who, x) });
         }
-        if (chips.length) cell.appendChild(varsBox(chips));
+      }
+      for (const ch of chipEls) {
+        let r = 0;
+        for (let c = ch.col; c < ch.col + ch.span; c++) r = Math.max(r, colNext[c]);
+        for (let c = ch.col; c < ch.col + ch.span; c++) colNext[c] = r + 1;
+        put(ch.el, ch.col, ch.span, r);
       }
       sec.appendChild(grid);
       v.on.appendChild(sec);
