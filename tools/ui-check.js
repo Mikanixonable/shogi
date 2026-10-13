@@ -252,6 +252,15 @@ async function sweepBoard(page, expect) {
       && [...t.querySelectorAll('#modeSeg button')].length === 2
       && !!t.querySelector('#heat') && !!t.querySelector('#threat') && !!t.querySelector('#resetSettings');
   });
+  await page.keyboard.press('Escape');
+  r.toolsEscape = await page.evaluate(() => !document.querySelector('#tools').classList.contains('open')
+    && document.querySelector('#toolsToggle').getAttribute('aria-expanded') === 'false'
+    && document.activeElement === document.querySelector('#toolsToggle'));
+  await page.click('#toolsToggle');
+  await page.locator('h1').click();
+  r.toolsOutside = await page.evaluate(() => !document.querySelector('#tools').classList.contains('open')
+    && document.querySelector('#toolsToggle').getAttribute('aria-expanded') === 'false');
+  await page.click('#toolsToggle');
   await page.click('#threat'); await wait(300);
   r.t6 = await snap(page);
   r.rects.push(r.t6.rect);
@@ -507,6 +516,7 @@ async function main() {
       ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
+      ok(b.toolsEscape && b.toolsOutside, '表示設定は Escape とパネル外クリックで閉じる', '');
       ok(b.threatOff && b.threatPref, '脅威の帯は表示設定のスイッチ（localStorage の好み。URL には載らない）', `${b.t6 && b.t6.threats}本`);
       ok(b.removed !== false, '×でスロットを外せる', '');
       ok(b.oppOff, '相手を OFF → 後手の駒・帯が退き、相手タブは有効のまま、相手のスロットは残る', JSON.stringify(b.t8 && b.t8.slots));

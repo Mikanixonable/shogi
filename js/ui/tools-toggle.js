@@ -8,9 +8,18 @@ window.Kakoi = window.Kakoi || {};
     /** @param {HTMLButtonElement|null} btn 開閉ボタン @param {HTMLElement|null} panel 開閉される側（.tools） */
     constructor(btn, panel) {
       if (!btn || !panel) return;
-      btn.addEventListener('click', () => {
-        const open = panel.classList.toggle('open');
+      const setOpen = open => {
+        panel.classList.toggle('open', open);
         btn.setAttribute('aria-expanded', String(open));
+      };
+      btn.addEventListener('click', () => setOpen(!panel.classList.contains('open')));
+      document.addEventListener('pointerdown', e => {
+        if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) setOpen(false);
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !panel.classList.contains('open')) return;
+        setOpen(false);
+        btn.focus();
       });
     }
   }
