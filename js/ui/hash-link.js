@@ -1,13 +1,17 @@
-// URLハッシュ共有: 制約リストと選択状態を location.hash に映し、URLを貼れば同じ状態で開ける。
+// URLハッシュ共有: 状態を location.hash に映し、URLを貼れば同じ状態で開ける。
 // 新形式: `#v=board&k=os:furibisha,ot:shikenbisha,mc:funa&sel=mc`
 //   - `k=` の並び順が優先度（先頭ほど古い）。側は m=自分/o=相手、層は s/t/c
 //   - `sel=` は選択中の制約（例: mc = me.castle）
-// 旧形式（v=/c=/t=/ms=…mw=）は読み取り時に制約リストへ変換する。書き出しは新形式のみ。
+//   - `v=` は castle/tactic/board/cluster。`c=`/`t=` は囲い・戦法タブの閲覧中の項目
+// 旧形式（v=/c=/t=/ms=…mw=）も読み取れる。囲い・戦法は実ビューなのでそのまま開き、
+// 対局図（ms/mt/mc/…）は制約リストへ変換する。書き出しは新形式のみ。
 // 表示の好み（mode/heat/skeleton/dock）はこれまでどおり URL に載せない。
 // parseHash / buildQuery は location に触れない純粋関数（unit-test からも使う）。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
+
+  const VIEW_IDS = ['castle', 'tactic', 'board', 'cluster'];
 
   const LAYER_CHAR = { s: 'strategy', t: 'tactic', c: 'castle' };
   const LAYER_LETTER = { strategy: 's', tactic: 't', castle: 'c' };
@@ -38,6 +42,8 @@ window.Kakoi = window.Kakoi || {};
     const p = new URLSearchParams();
     const put = (k, v) => { if (v !== null && v !== undefined && v !== '') p.set(k, v); };
     put('v', state.view);
+    put('c', state.castleId);   // 囲いタブで見ている囲い
+    put('t', state.tacticId);   // 戦法タブで見ている戦法
     const list = Array.isArray(state.constraints) ? state.constraints : [];
     // k= は空でも書く: 制約を全部外した状態も「新形式の空リスト」として往復できるように
     // （書かないと旧形式と区別できず、開いた側が自分の保存値で上書きされてしまう）
@@ -88,7 +94,10 @@ window.Kakoi = window.Kakoi || {};
         if (m) list.push({ who: WHO_CHAR[m[1]], kind: LAYER_CHAR[m[2]], id: m[3] });
       }
       out.constraints = list;
-      out.view = p.get('v') === 'cluster' ? 'cluster' : 'board';
+      const v = p.get('v');
+      out.view = VIEW_IDS.includes(v) ? v : 'board';
+      if (p.has('c')) out.castleId = p.get('c');
+      if (p.has('t')) out.tacticId = p.get('t');
       if (p.has('sel')) {
         const sel = decodeSel(p.get('sel'));
         if (sel) out.selected = sel;
@@ -97,26 +106,21 @@ window.Kakoi = window.Kakoi || {};
       return out;
     }
 
-    // 旧形式: v= が書き出し側の権威（旧 buildQuery は全キーを常に書いていた）
+    // 旧形式: v= が書き出し側の権威（旧 buildQuery は全キーを常に書いていた）。
+    // 囲い・戦法は実ビューに復帰したので、v=castle/v=tactic はそのタブを直接開く
     const v = p.get('v');
     if (v === 'cluster') { out.view = 'cluster'; out.showThreat = mw(); return out; }
     if (v === 'castle') {
-      out.view = 'board';
-      const list = [];
-      if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
-      out.constraints = list;
-      out.selected = 'me.castle';
+      out.view = 'castle';
+      if (p.has('c')) out.castleId = p.get('c');
       out.showThreat = mw();
       return out;
     }
     if (v === 'tactic') {
-      out.view = 'board';
-      const list = [];
-      if (p.has('t')) list.push({ who: 'me', kind: 'tactic', id: p.get('t') });
-      // 旧戦法画面で囲いが別途保持されていた場合（tc= / 後方互換の保険）
-      if (p.has('tc')) list.push({ who: 'me', kind: 'castle', id: p.get('tc') });
-      out.constraints = list;
-      out.selected = 'me.tactic';
+      out.view = 'tactic';
+      if (p.has('t')) out.tacticId = p.get('t');
+      // 旧戦法画面で囲いが別途保持されていた場合（tc= / 後方互換の保険）は囲いの閲覧選択へ
+      if (p.has('tc')) out.castleId = p.get('tc');
       out.showThreat = mw();
       return out;
     }
@@ -131,12 +135,9 @@ window.Kakoi = window.Kakoi || {};
       return out;
     }
     if (p.has('c') || p.has('t')) {
-      // v= の無い旧形式の断片: 囲いか戦法を me の制約として拾う
-      out.view = 'board';
-      const list = [];
-      if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
-      else if (p.has('t')) list.push({ who: 'me', kind: 'tactic', id: p.get('t') });
-      out.constraints = list;
+      // v= の無い旧形式の断片: 囲いは囲いタブ、戦法は戦法タブで開く
+      if (p.has('c')) { out.view = 'castle'; out.castleId = p.get('c'); }
+      else { out.view = 'tactic'; out.tacticId = p.get('t'); }
       out.showThreat = mw();
       return out;
     }
@@ -154,7 +155,7 @@ window.Kakoi = window.Kakoi || {};
       const h = location.hash.replace(/^#/, '');
       if (!h) return undefined;
       const patch = parseHash(h);
-      for (const k of ['view', 'constraints', 'selected', 'showThreat', 'clusterFamily']) {
+      for (const k of ['view', 'constraints', 'selected', 'showThreat', 'clusterFamily', 'castleId', 'tacticId']) {
         if (patch[k] !== undefined) state[k] = patch[k];
       }
       return patch;   // 呼び出し側が「ハッシュが何を指定したか」を知れるよう返す
@@ -176,7 +177,9 @@ window.Kakoi = window.Kakoi || {};
     if (patch.constraints !== undefined) {
       out.constraints = Kakoi.constraints.normalizeList(patch.constraints);
     }
-    if (patch.view !== undefined) out.view = patch.view;
+    if (patch.view !== undefined) out.view = VIEW_IDS.includes(patch.view) ? patch.view : 'board';
+    if (patch.castleId !== undefined && Kakoi.lookup.findCastle(patch.castleId)) out.castleId = patch.castleId;
+    if (patch.tacticId !== undefined && Kakoi.lookup.findTactic(patch.tacticId)) out.tacticId = patch.tacticId;
     if (patch.clusterFamily !== undefined) out.clusterFamily = patch.clusterFamily;
     if (patch.showThreat !== undefined) out.showThreat = patch.showThreat;
     if (patch.selected !== undefined) {
