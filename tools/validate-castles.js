@@ -24,13 +24,16 @@ if (!M) { console.error('load error: Kakoi.MANIFEST が未定義'); process.exit
 // 画面側（ui / app）は読み込まない
 for (const f of [...M.core, ...M.data, ...M.logic]) load(f);
 
+// strategies.js がまだ manifest に無い場合はここで補助的に読む
+if (!(ctx.Kakoi && ctx.Kakoi.STRATEGIES) && fs.existsSync(path.join(ROOT, 'js/data/strategies.js'))) load('js/data/strategies.js');
+
 const K = ctx.Kakoi;
 if (!Array.isArray(K.CASTLES) || !K.SETUPS || !K.SOURCES || !Array.isArray(K.CASTLE_FAMILIES) || !K.validate) {
   console.error('load error: Kakoi.CASTLES / SETUPS / SOURCES / CASTLE_FAMILIES / validate のいずれかが未定義');
   process.exit(1);
 }
 
-const report = K.validate.all({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES, CASTLE_FAMILIES: K.CASTLE_FAMILIES, TACTICS: K.TACTICS, TACTIC_FAMILIES: K.TACTIC_FAMILIES });
+const report = K.validate.all({ CASTLES: K.CASTLES, SETUPS: K.SETUPS, SOURCES: K.SOURCES, CASTLE_FAMILIES: K.CASTLE_FAMILIES, TACTICS: K.TACTICS, TACTIC_FAMILIES: K.TACTIC_FAMILIES, STRATEGIES: K.STRATEGIES });
 const warnings = [];
 let fails = 0, tFails = 0, srcErrors = 0;
 for (const r of report.results) {
