@@ -76,14 +76,25 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
 
 /* ===== 画面ごとのパネル（view-pane）: 表示中の画面のものだけ、枠なし(contents)で親のグリッドに参加 ===== */
 body .view-pane { display:none; }
+body[data-view="castle"] .view-pane[data-view~="castle"],
+body[data-view="tactic"] .view-pane[data-view~="tactic"],
 body[data-view="board"] .view-pane[data-view~="board"],
 body[data-view="cluster"] .view-pane[data-view~="cluster"] { display:contents; }
 /* 親のグリッド全体を使う画面（一覧・解説・分類マップ）は箱として全行にまたがる */
+body[data-view="castle"] .view-pane.pane-fill[data-view~="castle"],
+body[data-view="tactic"] .view-pane.pane-fill[data-view~="tactic"],
 body[data-view="board"] .view-pane.pane-fill[data-view~="board"],
 body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:flex; flex-direction:column; grid-row:1 / -1; min-height:0; overflow:auto; }
+/* 囲い・戦法タブの中央: 見出し→盤→足元の3行（帯と制約バーは対局図だけの部品） */
+body[data-view="castle"] .stage, body[data-view="tactic"] .stage { grid-template-rows:auto minmax(0,1fr) auto; }
+body[data-view="castle"] .stage .stage-f, body[data-view="tactic"] .stage .stage-f { height:auto; min-height:var(--foot-h); }
+/* 持ち駒の列は対局図だけの部品（囲い・戦法では .stage-f の .hand に出す） */
+body:not([data-view="board"]) .handcol { display:none; }
 /* 中央: 相手の帯 → 盤 → 自分の帯 → 足元。行は常に4本確保し、相手がいないときは
    自分の帯が盤の上・相手の帯は盤の下の幽霊行（＋相手を加える）に回る。
    帯の有無で盤の矩形が変わらないようにするための固定（F1） */
+/* 囲い・戦法タブの見出し行（board では帯がこの位置に来る） */
+.stage .stage-h { order:0; }
 .stage .sideband[data-side="opp"] { order:0; }
 .stage .boardarea { order:1; }
 .stage .sideband[data-side="me"] { order:2; }
@@ -92,7 +103,37 @@ body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:f
 .stage[data-opp="false"] .sideband[data-side="opp"] { order:2; }
 
 /* ===== rail: 左ドック（上下2面。DockView が構造を組み立てる。css/dock.css 参照） ===== */
+/* 4行の grid-template-rows は囲いタブ（seg・系統チップ・見出し行・カード一覧）の行でもある */
 .rail { display:grid; grid-template-rows:auto auto auto minmax(0,1fr); padding:16px 18px; gap:10px; }
+
+/* ----- 囲いタブの rail: 系統チップとカード一覧（旧版からの復元） ----- */
+.fchips { display:flex; flex-wrap:wrap; gap:5px; padding:2px 0; }
+.fchip { flex:none; display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:11px; line-height:1.4; padding:3px 9px; cursor:pointer;
+        background:none; border:1px solid var(--line); color:var(--muted); letter-spacing:.06em; white-space:nowrap; transition:color .2s, border-color .2s, background .2s; }
+.fchip:hover { color:var(--fg); border-color:var(--line-2); }
+.fchip .n { font-family:var(--font-n); font-size:12px; opacity:.8; }
+.fchip svg { width:14px; height:14px; flex:none; }
+.fchip[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); font-weight:600; }
+.rail-h { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--muted); padding:0 2px; }
+.rail-h .count { color:var(--fg); font:500 15px/1 var(--font-n); letter-spacing:.06em; }
+.rail-h kbd { font:500 11px/1 var(--font-n); padding:1px 5px; border:1px solid var(--line); color:var(--muted); }
+/* 行はカードの内容高さ（約90px）を下限にし、多ければこの枠がスクロールする。
+   純粋な auto だと min-content（約32px）がベースになり、残り高さの均等配分で
+   行数が多いと max-content に届かず潰れるので、minmax で下限を保証する。
+   少ないときは align-content 既定の stretch が行を伸ばして枠を埋める */
+.cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:minmax(90px,auto); gap:9px; min-height:0; overflow:auto; }
+.card { position:relative; display:grid; grid-template-rows:minmax(0,1fr) auto; gap:5px; padding:7px 7px 6px;
+        border:1px solid var(--line); cursor:pointer; min-height:0; overflow:hidden; background:none;
+        transition:border-color .2s, background .2s; }
+.card:hover { border-color:var(--line-2); }
+.card[aria-current="true"] { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
+.card .fg { position:absolute; top:5px; left:6px; z-index:1; color:var(--muted); opacity:.75; line-height:0; pointer-events:none; }
+.card .fg svg { width:13px; height:13px; }
+.card[aria-current="true"] .fg { color:var(--accent); opacity:1; }
+.card .rf { position:absolute; top:3px; right:6px; z-index:1; font-size:10px; line-height:1.2; color:var(--muted); cursor:help; }
+.card > svg { width:100%; height:100%; display:block; }
+.card .nm { font-size:11.5px; line-height:1.25; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted); letter-spacing:.04em; }
+.card[aria-current="true"] .nm { font-weight:600; color:var(--fg); }
 
 /* ===== stage: 盤を見る ===== */
 /* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。中身がはみ出したら省略・横スクロール。
@@ -123,6 +164,12 @@ body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:f
 /* 相手がいないときの幽霊帯（盤の下の行。＋相手を加える の入口）: 全体を薄く */
 .sideband[data-empty="true"] { opacity:.62; }
 .sideband[data-empty="true"] .sband-name { font-weight:600; font-size:15px; color:var(--muted); letter-spacing:.1em; }
+/* 囲いタブの見出し: 囲い名（大きく）＋読み・想定配置（旧版からの復元） */
+.stage-h { display:flex; align-items:flex-end; gap:12px; }
+.stage-h .ttl { margin-right:auto; min-width:0; }
+.stage-h h2 { margin:0; font:800 26px/1.3 var(--font-d); letter-spacing:.12em; }
+.stage-h .rd { font-size:12px; color:var(--muted); letter-spacing:.1em; }
+.stage-h .setup { margin-left:12px; padding-left:12px; border-left:1px solid var(--line-2); letter-spacing:.02em; }
 .ttl.swap { animation:swap .45s var(--ease); }
 @keyframes swap { from { opacity:0; transform:translateY(4px); } }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
@@ -140,6 +187,9 @@ body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:f
 .stage-f .legend { display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; cursor:help; }
 .stage-f .legend i { flex:none; width:10px; height:10px; display:inline-block; }
 .stage-f .legend .lg-t { overflow:hidden; text-overflow:ellipsis; }
+/* 囲い・戦法タブの持ち駒は足元の枠付き名札（旧版と同じ。board の handcol とは別部品） */
+.stage-f .hand { padding:2px 10px; border:1px solid var(--line); }
+.stage-f .hand:empty { display:none; }
 
 /* ===== detail: 解説を読む（タブなし・一続き） ===== */
 .detail { padding:16px 22px 18px; display:grid; grid-template-rows:minmax(0,1fr); gap:14px; }
@@ -281,4 +331,11 @@ sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underlin
   .sband-h { height:auto; min-height:26px; }
   /* 持ち駒は boardwrap に対する絶対配置のまま。22px の margin は持ち駒列の予約（22+2の張り出しと同じ） */
   .boardwrap { margin:0 22px; }
+  /* 囲いタブ（旧版からの復元）: カードは横スクロール、キー案内は畳む */
+  .rail-h .keys { display:none; } /* キーボードの案内は画面幅を使わないので出さない */
+  .cards { grid-template-columns:none; grid-template-rows:none; grid-auto-flow:column; grid-auto-columns:108px; grid-auto-rows:116px; overflow-x:auto; overflow-y:hidden; padding-bottom:4px; }
+  .stage-h h2 { font-size:22px; }
+  .stage-h .rd { white-space:normal; }
+  /* タップしやすい高さ */
+  .fchip { padding:5px 11px; }
 }

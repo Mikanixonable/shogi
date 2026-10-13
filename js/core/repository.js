@@ -36,6 +36,11 @@ window.Kakoi = window.Kakoi || {};
     ofFamily(familyId) { return this._castles.filter(c => c.family === familyId); }
     setupOf(castle) { return this._setups[castle.setup]; }
 
+    /** 囲いと想定配置の出典 */
+    sourcesOf(castle) {
+      return this._resolveSources([...(castle.sources || []), ...(this.setupOf(castle).sources || [])]);
+    }
+
     /** 出典の参照を、同じ ref はまとめて（for は「・」で連結）解決して返す */
     _resolveSources(list) {
       const merged = new Map();
@@ -56,6 +61,10 @@ window.Kakoi = window.Kakoi || {};
     tacticById(id) { return this._tacticById.get(id); }
     hasTactic(id) { return this._tacticById.has(id); }
     tacticFamilies() { return this._tacticFamilies; }
+    /** 戦法だけの局面（囲いの合成なし。戦法タブが盤に出すもの） */
+    tacticPositionOf(tactic) {
+      return Kakoi.Position.fromPieces(tactic.pieces, { leadSquare: tactic.lead && tactic.lead.square, hand: tactic.hand });
+    }
     /** 戦法の相性表（pairings）を返す。castle は囲いオブジェクト、sources は解決済みの出典 */
     pairingsOf(tactic) {
       return (tactic.pairings || [])

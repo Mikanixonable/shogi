@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 'use strict';
-/* 統合画面の検証: ブラウザで「対局図」「分類マップ」を巡回し、
+/* 全画面の検証: ブラウザで「囲い」「戦法」「対局図」「分類マップ」を巡回し、
    JSエラー・ページのスクロール(幅980px以上では出ない)・制約の追加/削除/連鎖・
-   周期表の出し分け・相手の駒の有無・ハッシュの往復を検査する。
+   周期表の出し分け・相手の駒の有無・タブ間の遷移・ハッシュの往復を検査する。
    画面幅 1440/1280/1100/1024/390 ×ライト/ダーク のスクリーンショットを tools/shots/ に保存する。
    使い方: node tools/ui-check.js [--shots-only]  （システムの Chrome/Edge または ms-playwright の headless shell を使用） */
 const http = require('http');
@@ -16,7 +16,7 @@ const SHOTS = path.join(__dirname, 'shots');
 const SHOTS_ONLY = process.argv.includes('--shots-only');
 const WIDTHS = [1440, 1280, 1100, 1024, 390];   // 390以下はスクロール設計
 const NO_SCROLL_MIN = 980;
-const VIEWS = ['board', 'cluster'];
+const VIEWS = ['castle', 'tactic', 'board', 'cluster'];
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.md': 'text/plain' };
 
@@ -401,6 +401,114 @@ async function sweepBoard(page) {
   return r;
 }
 
+/* ---- 巡回: 囲いタブ（図鑑。制約リストとは独立の閲覧状態） ---- */
+async function sweepCastle(page, expect) {
+  const r = {};
+  const idOf = () => page.evaluate(() => __kakoi.store.state.castleId);
+  r.cards0 = await page.$$eval('#cards .card', els => els.length);
+  r.ptableHidden = await page.evaluate(() => {
+    const p = document.querySelector('#ptable');
+    return p.offsetHeight === 0 && getComputedStyle(p).display === 'none';
+  });
+  r.title = await page.$eval('#castleTitle', el => el.textContent.trim());
+  r.secCount = await page.$$eval('#castleDetail .sec', els => els.length);
+  // 別のカードを押す → castleId が変わり aria-current が移る
+  const id0 = await idOf();
+  await page.evaluate(() => {
+    const c = [...document.querySelectorAll('#cards .card')].find(x => x.getAttribute('aria-current') !== 'true');
+    c && c.click();
+  });
+  await wait(300);
+  r.selWorks = (await idOf()) !== id0
+    && await page.evaluate(() => !!document.querySelector('#cards .card[aria-current="true"]'));
+  // 戦型セグ → 振り飛車の一覧になる
+  await page.click('#castleSideSeg button[data-value="furibisha"]'); await wait(300);
+  r.sideSwitch = await page.evaluate(() => {
+    const st = __kakoi.store.state;
+    const c = Kakoi.CASTLES.find(x => x.id === st.castleId);
+    const n = document.querySelectorAll('#cards .card').length;
+    return c && c.side === 'furibisha' && n === Kakoi.CASTLES.filter(x => x.side === 'furibisha').length;
+  });
+  // 系統チップで絞る → カードが減る・同じチップを再押しで解除（先頭は「すべて」なので2番目を使う）
+  await page.click('#familyChips .fchip:not([data-family=""])'); await wait(250);
+  r.chipFilter = await page.evaluate(() => {
+    const st = __kakoi.store.state;
+    const side = Kakoi.CASTLES.find(c => c.id === st.castleId)?.side;
+    // 一覧は選択中の戦型の囲いだけを出すので、件数も戦型で絞って比べる（anaguma/mino 等は両戦型にある）
+    return !!st.familyFilter
+      && document.querySelectorAll('#cards .card').length
+        === Kakoi.CASTLES.filter(c => c.family === st.familyFilter && c.side === side).length;
+  });
+  await page.click('#familyChips .fchip'); await wait(250);
+  r.chipReset = await page.evaluate(() => __kakoi.store.state.familyFilter === null);
+  // ハッシュは v=castle&c=…（制約 k= も載るが閲覧状態は c=）
+  r.hash = await page.evaluate(() => /[#&]v=castle/.test(location.hash) && /[#&]c=/.test(location.hash));
+  // 「対局図で開く」→ board へ制約を持って移る
+  const castleId = await idOf();
+  await page.click('#castleDetail .mu-open'); await wait(350);
+  r.openBoard = await page.evaluate(cid => {
+    const st = __kakoi.store.state;
+    return st.view === 'board'
+      && st.constraints.some(e => e.who === 'me' && e.kind === 'castle' && e.id === cid)
+      && st.selected === 'me.castle';
+  }, castleId);
+  await setView(page, 'castle'); await wait(250);
+  return r;
+}
+
+/* ---- 巡回: 戦法タブ（周期表＋系統別一覧） ---- */
+async function sweepTactic(page, expect) {
+  const r = {};
+  const idOf = () => page.evaluate(() => __kakoi.store.state.tacticId);
+  r.ptableShown = await page.evaluate(() => document.querySelector('#ptable').offsetHeight > 0);
+  r.cells = await page.$$eval('#ptable .pt-cell', els => els.length);
+  r.railItems = await page.$$eval('#tacticRail .tr-item', els => els.length);
+  r.title = await page.$eval('#tacticStage h2', el => el.textContent.trim());
+  r.secCount = await page.$$eval('#tacticDetail .sec', els => els.length);
+  // 周期表の別セル → tacticId が変わり aria-current が移る
+  const id0 = await idOf();
+  await page.evaluate(() => {
+    const c = [...document.querySelectorAll('#ptable .pt-cell')].find(x => x.getAttribute('aria-current') !== 'true');
+    c && c.click();
+  });
+  await wait(300);
+  r.cellPick = (await idOf()) !== id0;
+  // 系統ピッカー → 別の系統の段になる（居飛車側に切り替えて試す: 振り飛車の系統は1系統しかない）
+  await page.click('#tacticRail [data-role="seg"] button[data-value="ibisha"]'); await wait(300);
+  const fam0 = await page.evaluate(() => document.querySelector('#ptable .pt-fam[aria-pressed="true"]')?.dataset.fam);
+  r.famSiblings = await page.$$eval('#ptable .pt-fam', els => els.length);
+  await page.evaluate(f => {
+    const b = [...document.querySelectorAll('#ptable .pt-fam')].find(x => x.dataset.fam !== f);
+    b && b.click();
+  }, fam0);
+  await wait(300);
+  r.famPick = r.famSiblings > 1 && await page.evaluate(f =>
+    document.querySelector('#ptable .pt-fam[aria-pressed="true"]')?.dataset.fam !== f, fam0);
+  // 一覧のアイテムクリック → tacticId が変わる
+  await page.evaluate(() => {
+    const c = [...document.querySelectorAll('#tacticRail .tr-item')].find(x => x.getAttribute('aria-current') !== 'true');
+    c && c.click();
+  });
+  await wait(300);
+  r.railPick = await page.evaluate(() => !!__kakoi.store.state.tacticId);
+  r.hash = await page.evaluate(() => /[#&]v=tactic/.test(location.hash) && /[#&]t=/.test(location.hash));
+  // 相性のよい囲い「→」→ 囲いタブへ
+  await page.click('#tacticDetail .tc-go'); await wait(350);
+  r.openCastle = await page.evaluate(() => __kakoi.store.state.view === 'castle');
+  // 戻って「対局図で開く」（.tc-castle は相性のよい囲い）→ board へ
+  await setView(page, 'tactic'); await wait(250);
+  const castleChip = await page.$('#tacticDetail .tc-castle[data-act="matchup"]');
+  if (castleChip) {
+    await castleChip.click(); await wait(350);
+    r.openBoard = await page.evaluate(() => {
+      const st = __kakoi.store.state;
+      return st.view === 'board' && st.constraints.some(e => e.who === 'me' && e.kind === 'tactic');
+    });
+    await setView(page, 'tactic'); await wait(250);
+  } else r.openBoard = null;
+  return r;
+}
+
 /* ---- 巡回: 分類マップ ---- */
 async function sweepCluster(page) {
   const dotCount = await page.$$eval('.cl-svg .pt .dot', els => els.length);   // 木の図の葉（.pt .dot）
@@ -455,6 +563,7 @@ async function main() {
         famsUsed: new Set(Kakoi.CASTLES.map(c => c.family)).size,
         tacticTiles: Kakoi.TACTICS.filter(t => !t.variantOf).length,   // 派生は親タイルのチップに束ねる
         tacticVars: Kakoi.TACTICS.filter(t => !!t.variantOf).length,
+        ibishaCastles: Kakoi.CASTLES.filter(c => c.side === 'ibisha').length,
       }));
 
       const b = await sweepBoard(page);
@@ -520,6 +629,34 @@ async function main() {
       await setView(page, 'cluster'); await wait(400);
       const c = await sweepCluster(page);
       ok(c.dots > 0 && c.fams === expect.fams, '分類マップの点と系統', `dots=${c.dots} fams=${c.fams}`);
+
+      // ---- 囲いタブ ----
+      await setView(page, 'castle'); await wait(400);
+      const ca = await sweepCastle(page, expect);
+      ok(ca.cards0 === expect.ibishaCastles, '囲いタブ: 居飛車のカード一覧', `${ca.cards0}枚`);
+      ok(ca.title.length > 0 && ca.secCount >= 4, '囲いタブ: 見出しと詳細の節', `title=${ca.title} sec=${ca.secCount}`);
+      ok(ca.ptableHidden, '囲いタブでは周期表を出さない', '');
+      ok(ca.selWorks, '囲いタブ: カード選択で castleId が変わる', '');
+      ok(ca.sideSwitch, '囲いタブ: 戦型セグで振り飛車の一覧', '');
+      ok(ca.chipFilter && ca.chipReset, '囲いタブ: 系統チップで絞り込みと解除', `filter=${ca.chipFilter} reset=${ca.chipReset}`);
+      ok(ca.hash, '囲いタブ: ハッシュに v=castle&c=', '');
+      ok(ca.openBoard, '囲いタブ: 「対局図で開く」で制約を持って board へ', '');
+
+      // ---- 戦法タブ ----
+      await setView(page, 'tactic'); await wait(400);
+      const ta = await sweepTactic(page, expect);
+      ok(ta.ptableShown && ta.cells > 0, '戦法タブ: 周期表が盤の下に出る', `cells=${ta.cells}`);
+      ok(ta.railItems > 0 && ta.title.length > 0 && ta.secCount >= 3,
+        '戦法タブ: 一覧・見出し・詳細', `items=${ta.railItems} title=${ta.title} sec=${ta.secCount}`);
+      ok(ta.cellPick, '戦法タブ: 周期表のセルで tacticId が変わる', '');
+      ok(ta.famPick, '戦法タブ: 系統ピッカーで段が変わる', '');
+      ok(ta.railPick, '戦法タブ: 一覧で戦法を選べる', '');
+      ok(ta.hash, '戦法タブ: ハッシュに v=tactic&t=', '');
+      ok(ta.openCastle, '戦法タブ: 「→」で囲いタブへ', '');
+      ok(ta.openBoard !== false, '戦法タブ: 「対局図で開く」で制約を持って board へ', '');
+      await setView(page, 'board'); await wait(300);
+      ok(await page.evaluate(() => document.querySelector('#ptable').offsetHeight === 0),
+        'board では周期表を出さない', '');
 
       // ---- 各幅でのスクロール検査（全画面） ----
       for (const w of WIDTHS.filter(w => w >= NO_SCROLL_MIN)) {

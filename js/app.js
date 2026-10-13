@@ -1,11 +1,11 @@
 // アプリの組み立て: 状態・共有の部品・画面ごとのモードを結び、状態の変化を有効なモードへ伝える
-// 状態は制約リスト（constraints）＋選択（selected）が中核。旧形式（castleId/tacticId/matchup）の
-// 保存値・ハッシュは起動時に制約へ変換する（計画書 §2）
+// 対局図（board）は制約リスト（constraints）＋選択（selected）が中核。囲い（castle）・戦法（tactic）は
+// 独立した閲覧状態（castleId/tacticId など）を持つ図鑑タブ。旧形式（matchup 等）の保存値は起動時に制約へ変換する
 (() => {
   'use strict';
   const K = window.Kakoi;
   const $ = id => document.getElementById(id);
-  const VIEWS = ['board', 'cluster'];
+  const VIEWS = ['castle', 'tactic', 'board', 'cluster'];
   const debug = new URLSearchParams(location.search).has('debug');
 
   const DATA = {
@@ -35,16 +35,22 @@
       dock: DOCK_DEFAULT,
       mode: 'dim', heat: false, skeleton: false, heatScope: 'core',
       attackId: null, clusterFamily: null, showThreat: true,
+      // 囲い・戦法タブの閲覧状態（制約リストとは独立。旧囲い図鑑と同じキー名なので保存値もそのまま引き継ぐ）
+      castleId: repo.castles()[0].id, familyFilter: null, lastBySide: {},
+      tacticId: repo.tactics()[0]?.id ?? null, tacticLastBySide: {}, tacticLastByFam: {},
     },
-    ['view', 'constraints', 'selected', 'dock', 'mode', 'heat', 'skeleton', 'heatScope', 'attackId', 'clusterFamily', 'showThreat'],
+    ['view', 'constraints', 'selected', 'dock', 'mode', 'heat', 'skeleton', 'heatScope', 'attackId', 'clusterFamily', 'showThreat',
+      'castleId', 'familyFilter', 'lastBySide', 'tacticId', 'tacticLastBySide', 'tacticLastByFam'],
     'shogi-castle',
   );
   // URLハッシュを保存値に重ねる（正規化より先。貼られたURLが最優先）
   const hashPatch = K.hashLink.read(store.state);
   const hashView = hashPatch && hashPatch.view;   // ハッシュが view を指定済みなら移行で潰さない
 
-  // ---- 旧形式の保存値（localStorage の shogi-castle:*）を制約へ変換する。
-  // persist キーから外したので Store は読まない。ハッシュが制約を与えていないときだけ適用する
+  // ---- 旧形式の保存値（localStorage の shogi-castle:*）のうち、対局図（matchup）だけを制約へ変換する。
+  // 囲い・戦法の閲覧状態（castleId/familyFilter/tacticId/lastBySide 等）は persist キーに復帰したので、
+  // Store が旧保存値をそのまま読み、各タブへそのまま復元される（view:'castle'/'tactic' も今は実ビュー）。
+  // ハッシュが制約を与えているときは matchup も移行しない
   const lg = k => {
     try {
       const v = localStorage.getItem(`shogi-castle:${k}`);
@@ -58,24 +64,7 @@
     const empty = (!Array.isArray(st.constraints) || !st.constraints.length)
       && !(hashPatch && hashPatch.constraints !== undefined);
     const view = lg('view');
-    if (empty && view === 'castle') {
-      const id = lg('castleId');
-      if (validId('castle', id)) {
-        st.constraints = [{ who: 'me', kind: 'castle', id }];
-        st.selected = 'me.castle';
-        if (hashView === undefined) st.view = 'board';
-      }
-    } else if (empty && view === 'tactic') {
-      const id = lg('tacticId');
-      if (validId('tactic', id)) {
-        const list = [{ who: 'me', kind: 'tactic', id }];
-        const c = lg('tacticCastleId');         // 旧戦法画面が保持していた囲い（あれば）
-        if (validId('castle', c)) list.push({ who: 'me', kind: 'castle', id: c });
-        st.constraints = list;
-        st.selected = 'me.tactic';
-        if (hashView === undefined) st.view = 'board';
-      }
-    } else if (empty && view === 'matchup') {
+    if (empty && view === 'matchup') {
       const mu = lg('matchup');
       if (mu && typeof mu === 'object') {
         const sideOf = (s, who) => {
@@ -97,6 +86,10 @@
         if (hashView === undefined) st.view = 'board';
       }
     }
+    // 囲い・戦法タブの閲覧状態: 旧保存値・ハッシュ由来の不正値をここで丸める
+    // （各モードの _sanitize でも同じ確認をするが、ハッシュ書き換えより先に済ませる）
+    if (!repo.has(st.castleId)) st.castleId = repo.castles()[0].id;
+    if (!repo.hasTactic(st.tacticId)) st.tacticId = repo.tactics()[0]?.id ?? null;
   }
 
   // ---- 保存値・ハッシュの正規化 ----
@@ -181,6 +174,15 @@
         detail: $('detail'),
       },
     }),
+    castle: new K.CastleMode({
+      ...common,
+      els: {
+        side: $('castleSideSeg'), chips: $('familyChips'), count: $('railCount'), cards: $('cards'),
+        title: $('castleTitle'), titleWrap: $('castleTtl'), reading: $('castleReading'), setup: $('castleSetup'),
+        legend: $('castleLegend'), hand: $('castleHand'), detailBody: $('castleDetail'),
+      },
+    }),
+    tactic: new K.TacticMode({ ...common, els: { rail: $('tacticRail'), ptable: $('ptable'), stage: $('tacticStage'), detail: $('tacticDetail') } }),
     cluster: new K.ClusterMode({ ...common, els: { rail: $('clusterRail'), stage: $('clusterStage'), detail: $('clusterDetail') } }),
   };
 
