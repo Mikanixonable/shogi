@@ -248,6 +248,14 @@ window.Kakoi = window.Kakoi || {};
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
+      // 「すべてはずす」は中央の最上部=上の帯のヘッダに置く。帯は相手の有無で
+      // 上下が入れ替わるので追従させる。各帯自身の「はずす」は常に右端に残し、
+      // その左に差し込む（並び: すべてはずす・○○をはずす）
+      const topH = (hasOpp ? e.bandOpp : e.bandMe).querySelector('.sband-h');
+      const anchor = hasOpp ? e.clearOpp : e.clearMe;
+      if (e.clearAll.parentNode !== topH || e.clearAll.nextElementSibling !== anchor) {
+        topH.insertBefore(e.clearAll, anchor);
+      }
       e.clearAll.hidden = !(state.constraints || []).length;
       const selTactic = sel && sel.kind === 'tactic';
       e.playBtn.hidden = !selTactic;
