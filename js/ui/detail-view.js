@@ -3,7 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { label } = Kakoi.notation;
-  const { esc, sqAttr, makeCiter, rich, sourcesBlock, bindCites } = Kakoi.html;
+  const { esc, sqAttr, makeCiter, rich, sourcesBlock } = Kakoi.html;
 
   // 特徴の目安の軸。正五角形の頂点に、上から時計回りで割り当てる
   const RATINGS = [
@@ -58,7 +58,7 @@ window.Kakoi = window.Kakoi || {};
         const b = e.target.closest('.attack');
         if (b) handlers.onAttack(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.id);
       });
-      bindCites(el); // 本文の [n] ホバーで出典リストの行を強調
+      Kakoi.cites.bind(el); // 本文の [n] ホバーで出典リストの行を強調（ui/cites.js。生成時には読み込み済み）
     }
 
     render(castle, { attackId, sources, family, subtype, lineage }) {

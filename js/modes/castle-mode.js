@@ -78,23 +78,22 @@ window.Kakoi = window.Kakoi || {};
       this.store.set({ castleId: id, attackId: null, lastBySide: { ...this.store.state.lastBySide, [c.side]: id } });
     }
 
-    /** 「対局図で開く」: この囲いと、その戦型の既定戦法を自分側にセットして対局図へ移る */
+    /** 「対局図で開く」: この囲いと、その戦型の既定戦法を自分側の制約にして対局図へ移る。
+     *  旧版は matchup.me の3層を直接書き換えていた。新版は制約リストに strategy → tactic → castle の
+     *  順で set を適用する（並び順＝優先度。連動の解決は apply がやる。相手側の制約はそのまま残る） */
     _openMatchup(id) {
       const castle = this.repo.byId(id);
       if (!castle) return;
-      const s = this.store.state;
-      this.store.set({
-        view: 'matchup',
-        matchup: {
-          ...s.matchup,
-          me: {
-            strategy: castle.side,
-            tacticId: K.STRATEGIES[castle.side].defaultTactic,
-            castleId: id,
-            pick: ['strategy', 'tactic', 'castle'],
-          },
-        },
-      });
+      const ops = [
+        { kind: 'strategy', id: castle.side },
+        { kind: 'tactic', id: K.STRATEGIES[castle.side].defaultTactic },
+        { kind: 'castle', id },
+      ];
+      const constraints = ops.reduce(
+        (list, op) => K.constraints.apply(list, { type: 'set', who: 'me', ...op }).list,
+        this.store.state.constraints,
+      );
+      this.store.set({ view: 'board', constraints, selected: 'me.castle', attackId: null });
     }
 
     /** 入るたびに盤も含めて全部描き直す（アニメーションなし） */
@@ -143,7 +142,9 @@ window.Kakoi = window.Kakoi || {};
       } else if (changed.has('attackId')) {
         detail.setAttack(state.attackId);
       }
-      stage.renderLegend(state);
+      if (castleChanged || ['attackId', 'heat', 'heatScope'].some(k => changed.has(k))) {
+        stage.renderLegend(state);
+      }
     }
   }
 
