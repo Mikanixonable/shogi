@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活版と板紙</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+/* 05 活版と板紙 — 厚いコットン紙に活版で刷った盤。罫線は墨が少し滲み、紙に押し込まれて凹む。
+   木口には板紙の積層、駒はチップボールを型抜きして刷った紙を貼ったもの。隅にトンボと朱の判子。
+   今のテーマ「墨と余白」の延長で、そのまま本番に移しやすい案 */
+:root {
+  --S:54px; --M:calc(var(--S) * .5); --T:calc(var(--S) * .42); --LEG:0px; --PT:4; --pstep:calc(var(--S) * .03);
+  --rad:3px; --rad-b:2px; --dai-rad:3px;
+  --env:#e4ddcd; --env-glow:.28; --env-vig:.14; --ground-op:.28;
+  --ln:#1e1b16; --lw:1.5px;
+  --pc-side:#8d826f; --pc-shadow:#2a2010; --pc-shadow-op:.45; --bev:3.5%;
+  --pc-ring:linear-gradient(var(--la), #fffdf6, #e8e0cf 60%, #bfb39b);
+  --pc-ink:#1b1a17; --pc-ink-g:#2c4777;
+  --pc-font:800 calc(var(--S) * .42)/1 var(--font-d);
+  --shu:#c8371f;
+}
+:root[data-theme="dark"] { --env:#22201c; --env-glow:.14; --env-vig:.45; --ground-op:.6; }
+
+/* 紙の天面: 生成りのコットン紙＋繊維。光源側にふわっと明るさ */
+.slab > .topf, .dai > .topf { background:linear-gradient(var(--la), #fbf8f0, #f2ecdf 60%, #e8e0cf); }
+.topf .tex { mix-blend-mode:multiply; }
+.slab > .topf::after { content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(80% 70% at calc(50% + var(--lx) * 45%) calc(50% + var(--ly) * 45%), rgba(255,255,250,.5), transparent 70%); }
+/* 活版の罫線: 墨の滲み（#ink）＋押し込まれた凹み（光の反対側の縁に照り、光の側に影） */
+.lines { filter:url(#ink) drop-shadow(calc(var(--lx) * -.9px) calc(var(--ly) * -.9px) 0 rgba(255,255,255,.95))
+                          drop-shadow(calc(var(--lx) * .6px) calc(var(--ly) * .6px) .4px rgba(80,60,30,.35)); }
+.hoshi { width:calc(var(--S) * .13); background:#1e1b16; filter:url(#ink); }
+.flab, .rlab { font:700 calc(var(--S) * .2)/1 var(--font-d); color:var(--shu); filter:url(#ink); opacity:.9; }
+.flab { transform:translate(.6px,.4px); }   /* 版ずれ */
+.tombo { position:absolute; width:calc(var(--M) * .7); height:calc(var(--M) * .7); pointer-events:none; opacity:.5; }
+.tombo::before, .tombo::after { content:""; position:absolute; background:#1e1b16; }
+.tombo::before { left:50%; top:0; bottom:0; width:.6px; } .tombo::after { top:50%; left:0; right:0; height:.6px; }
+.hanko { position:absolute; left:calc(var(--M) * .07); bottom:calc(var(--M) * .07); width:calc(var(--M) * .86); aspect-ratio:1; display:grid; place-items:center;
+         border:2px solid var(--shu); border-radius:3px; color:var(--shu); font:800 calc(var(--M) * .58)/1 var(--font-d); transform:rotate(-4deg);
+         filter:url(#stamp); opacity:.85; mix-blend-mode:multiply; }
+
+/* 木口: 板紙の積層 */
+.front .edge { background:
+  linear-gradient(rgba(255,255,255,.55), transparent 8%),
+  repeating-linear-gradient(180deg, #efe7d6 0 2px, #d6cab2 2px 3px, #ebe2cf 3px 5px, #b9ab90 5px 6px); }
+.front .edge::after { content:""; position:absolute; inset:0; background:linear-gradient(transparent 60%, rgba(60,40,10,.25)); }
+
+/* 駒: チップボールの胴（灰茶の積層）に刷った紙。字は活版の墨、後手は藍 */
+.pc .sl:nth-of-type(odd) { background:#9a8f7b; }
+.pc .fc::before { background:var(--paper-tex), linear-gradient(var(--la), #fffdf7, #f5efe2 70%, #ebe3d2); }
+.pc .fc span { filter:url(#ink); text-shadow:calc(var(--lx) * -.7px) calc(var(--ly) * -.7px) 0 rgba(255,255,255,.9); }
+.pc.sz-k .fc span { font-size:calc(var(--S) * .46); }
+.pc.sz-s .fc span { font-size:calc(var(--S) * .36); }
+
+/* 駒台: クラフト紙の枡 */
+.dai > .topf { background:linear-gradient(var(--la), #d9b98a, #c7a26d 60%, #b48d58);
+  box-shadow:inset calc(var(--lx) * 5px) calc(var(--ly) * 5px) 6px rgba(70,45,10,.45), inset 0 0 0 3px #caa774, inset 0 0 0 4px rgba(70,45,10,.3); }
+.dai > .front .edge { background:linear-gradient(#e2c597, #b48d58 20%, #9c7746); }
+.dai .hand b { color:#3a2a10; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="ink" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="1.1" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="stamp" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="3" seed="11" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3 2.1" result="holes"/>
+    <feComposite in="SourceGraphic" in2="holes" operator="in" result="s"/>
+    <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="1" seed="2" result="m"/>
+    <feDisplacementMap in="s" in2="m" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<section class="hero">
+  <div>
+    <h2><span class="no">05</span>活版と板紙<small>LETTERPRESS · BOARD</small></h2>
+    <p class="lead">厚いコットン紙に活版で刷った盤。罫線は墨がわずかに滲み、紙に押し込まれて凹む（光の反対側の縁に照り）。木口には板紙の積層が見え、駒はチップボールを型抜きして刷り紙を貼ったもの。隅にトンボ、朱の判子、筋の数字はわずかに版ずれ。今のテーマ「墨と余白」をそのまま立体と質感に延ばす案。</p>
+    <ul class="kw"><li>テーマとの地続き</li><li>手仕事</li><li>紙の肌理</li><li>遊び心</li><li>軽さ</li></ul>
+  </div>
+  <div class="swatches">
+    <span style="background:#f5efe2" data-n="コットン紙"></span><span style="background:#1e1b16" data-n="墨"></span>
+    <span style="background:#c8371f" data-n="朱"></span><span style="background:#2c4777" data-n="藍"></span><span style="background:#c7a26d" data-n="クラフト"></span>
+  </div>
+</section>
+<div class="stage"></div>
+<section class="details">
+  <dl class="spec">
+    <dt>盤面</dt><dd>生成りのコットン紙（今の <code>--bg</code> と同じ系統）に、短い繊維と紙の斑を乗算。光源側にふわっと明るさ。</dd>
+    <dt>線</dt><dd>活版: <code>feDisplacementMap</code>（scale 1.1）で墨のにじみ。凹みは光の反対側の縁に白い照り、光の側に薄い影。</dd>
+    <dt>文字</dt><dd>筋・段の数字は朱で、わずかに版ずれ。左下に朱の判子（かすれは SVG フィルタ）、四隅にトンボ。</dd>
+    <dt>駒</dt><dd>チップボールの胴（灰茶と灰の積層）＋刷った紙の面。面取りはほぼなく、型抜きの潰れ程度。字も活版のにじみ。後手の藍は今のアプリと同じ。</dd>
+    <dt>縁と台</dt><dd>木口は板紙の積層、脚なし。駒台はクラフト紙の枡（内側に影）。</dd>
+    <div class="sep"></div>
+    <dt>アプリへ</dt><dd>いちばん移しやすい。色はほぼ今のトークンのまま、足すのは「紙の繊維」「線のにじみフィルタ」「凹みの照り」の3つ。立体駒は <code>wall</code> をチップボール色にし、駒面テクスチャの字にノイズで縁の揺れを焼き込む。</dd>
+    <dt>注意</dt><dd>にじみフィルタは小さい盤で字が太って見えるので、390px 幅では scale を半分に。判子は飾りなので重ね表示の邪魔なら消す。</dd>
+  </dl>
+</section>
+<script src="common.js"></script>
+<script>
+Ref.init({
+  light: [-.5, -.8], tilt: 18, loupe: [6.6, 6.6], loupeCap: '真上から 2.6 倍 ・ 活版の凹みとにじみ',
+  boardTex: `<feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="4" seed="3" result="m"/>
+    <feColorMatrix in="m" type="matrix" values="0 0 0 0 .55  0 0 0 0 .45  0 0 0 0 .3  0 0 0 -.45 .26" result="mott"/>
+    <feTurbulence type="fractalNoise" baseFrequency=".12 .7" numOctaves="2" seed="9" result="f"/>
+    <feColorMatrix in="f" type="matrix" values="0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .25  0 0 0 1.3 -.8" result="fib"/>
+    <feMerge><feMergeNode in="mott"/><feMergeNode in="fib"/></feMerge>`,
+  daiTex: `<feTurbulence type="fractalNoise" baseFrequency=".6" numOctaves="2" seed="5"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .05  0 0 0 1.5 -.9"/>`,
+  vars: {
+    '--clip-s': Ref.roundClip(.03), '--clip-g': Ref.roundClip(.03, true),
+    '--paper-tex': Ref.tex(90, 90, `<feTurbulence type="fractalNoise" baseFrequency=".03 .6" numOctaves="2" seed="6"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .25  0 0 0 1.2 -.72"/>`),
+  },
+  decorate(rig) {
+    const top = rig.querySelector('.slab > .topf');
+    for (const [x, y] of [[0, 0], [1, 0], [1, 1]]) {
+      const t = document.createElement('i'); t.className = 'tombo';
+      t.style[x ? 'right' : 'left'] = 'calc(var(--M) * .08)'; t.style[y ? 'bottom' : 'top'] = 'calc(var(--M) * .08)';
+      top.append(t);
+    }
+    top.insertAdjacentHTML('beforeend', '<span class="hanko">囲</span>');
+  },
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>左ドック 視認性の案</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* 左ドックの視認性・遊び心を上げる4案（実寸版）。
+   器は 1280px 幅の実画面と同じ（左ドック 390px・中身 約326px・高さ 780px）。
+   実ドックの UI はすべて載せる: 側の名前と凡例? / 囲い・戦法 / はずす / 居飛車・振り飛車 /
+   並べ方（系統別・発展ツリー・堅さ順・速さ順） / 系統ブロックの折りたたみと件数 /
+   ◎△（相手との相性）・✕（両立しない）・基本の落款・選択中・既定値の点線 / 戦法の筋の格子と派生チップ / 駒の見出し */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --good-soft:rgba(74,107,63,.12);
+  --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --gote-ink:#33507a;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --f-funa:#b5652b; --f-yagura:#33507a; --f-gangi:#4a6b3f; --f-anaguma:#55504a; --f-mino:#c8371f;
+  --f-itidan:#a07a1f; --f-nakazumai:#6b5a7a; --f-kinmusou:#8a6d3f; --f-migigyoku:#2f7a73;
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --good-soft:rgba(156,191,138,.14);
+  --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --gote-ink:#8ea6cf;
+  --f-funa:#d98a50; --f-yagura:#8ea6cf; --f-gangi:#9cbf8a; --f-anaguma:#b4ada2; --f-mino:#e2563b;
+  --f-itidan:#d1a94a; --f-nakazumai:#a996bb; --f-kinmusou:#c4a77a; --f-migigyoku:#6cc0b6;
+  --t-rook:#e2563b; --t-silver:#8ea6cf; --t-kaku:#9cbf8a;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); }
+body { margin:0; font:14px/1.6 var(--font-b); color:var(--fg); background:var(--bg); }
+button, select { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+/* ===== ページの枠 ===== */
+.top { position:sticky; top:0; z-index:30; display:flex; gap:6px 14px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 12px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 10px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.top button { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; }
+.intro { max-width:1100px; margin:22px auto 0; padding:0 16px; color:var(--fg2); font-size:13.5px; }
+.intro ul { margin:6px 0 0; padding-left:1.3em; }
+section.plan { max-width:1100px; margin:40px auto 0; padding:0 16px 36px; border-bottom:1px solid var(--line); }
+section.plan h2 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:800 24px/1.3 var(--font-d); letter-spacing:.06em; }
+section.plan h2 .no { font:800 34px/1 var(--font-d); color:var(--accent); }
+section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-width:820px; }
+.stage { display:grid; grid-template-columns:390px 390px minmax(0,1fr); gap:0 40px; align-items:start; }
+.stage .cap { grid-row:1; font-size:11px; color:var(--muted); letter-spacing:.14em; margin-bottom:4px; }
+.notes { grid-row:2; grid-column:3; font-size:12.5px; color:var(--fg2); display:flex; flex-direction:column; gap:12px; padding-left:8px; }
+.notes h4 { margin:0 0 2px; font-size:12px; letter-spacing:.14em; color:var(--muted); }
+.notes ul { margin:0; padding-left:1.2em; }
+.notes .try { padding:8px 12px; border-left:2px solid var(--accent); background:var(--accent-soft); }
+@media (max-width:1100px) { .stage { grid-template-columns:390px 390px; } .notes { grid-row:3; grid-column:1 / -1; padding:16px 0 0; } }
+@media (max-width:880px) { .stage { grid-template-columns:390px; } .stage .cap { grid-row:auto; } .rail { grid-row:auto !important; margin-bottom:20px; } }
+
+/* ===== 共通: 左ドックの器（実寸）と駒の見出し ===== */
+.rail { position:relative; grid-row:2; width:390px; height:780px; border-right:1px solid var(--line); }
+.rail .pg { position:absolute; inset:0; padding:26px 32px 16px 32px; display:flex; flex-direction:column; min-height:0; }
+.rail[data-who="opp"] .pg { background:color-mix(in srgb, var(--gote-ink) 5%, transparent); }
+.body { flex:1 1 auto; min-height:0; overflow:auto; padding-right:3px; scrollbar-width:thin; }
+.binder { position:absolute; z-index:6; top:0; bottom:0; right:-18px; width:36px; display:flex; flex-direction:column;
+          justify-content:center; gap:14px; pointer-events:none; }
+.pc { position:relative; width:36px; height:150px; padding:0; border:0; background:none; cursor:pointer; pointer-events:auto; color:var(--muted); }
+.pc .bd { position:absolute; inset:0; background:var(--line-2); clip-path:polygon(50% 0,100% 12%,100% 100%,0 100%,0 12%); }
+.pc .bd::after { content:""; position:absolute; inset:1px; background:var(--bg); clip-path:polygon(50% 0,100% 12%,100% 100%,0 100%,0 12%); }
+.pc.opp .bd { transform:scaleY(-1); }
+.pc .v { position:absolute; inset:14px 0 0; display:flex; align-items:center; justify-content:center; gap:5px;
+         writing-mode:vertical-rl; font:700 15px/1 var(--font-d); letter-spacing:.3em; }
+.pc.opp .v { inset:0 0 14px; }
+.pc .v small { font:500 10px/1 var(--font-b); letter-spacing:.06em; }
+.pc[aria-selected="true"] { color:var(--ink); }
+.pc.opp[aria-selected="true"] { color:#33507a; }
+.pc[aria-selected="true"] .bd { background:var(--piece-edge); }
+.pc[aria-selected="true"] .bd::after { background:var(--piece-1); }
+
+/* ===== 共通: サムネイル（玉側の 6筋×4段 の窓） ===== */
+.mb { display:block; width:100%; height:100%; }
+.mb .bg { fill:url(#wood); }
+.mb .sq { fill:none; stroke:var(--wood-line); stroke-width:.5; }
+.mb .ch { font-family:var(--font-d); font-weight:700; text-anchor:middle; dominant-baseline:central; fill:#3d3a33; }
+.mb .co .ch { fill:#c8371f; }
+.mb .sh .ch { fill:#6d6250; }
+
+/* ===== 共通: 状態の記号（全案で意味は同じ。見せ方は案ごと） ===== */
+.it { position:relative; font:inherit; color:inherit; cursor:pointer; min-width:0; }
+.it .mk { display:flex; align-items:center; justify-content:center; gap:3px; min-height:11px; font-size:11px; line-height:1; }
+.it .mk i { font-style:normal; }
+.it .seal { position:absolute; top:-1px; left:-1px; padding:1px 3px 0; background:var(--accent); color:#fbf6ea;
+            font:700 8.5px/1.3 var(--font-b); letter-spacing:.06em; pointer-events:none; z-index:2; }
+.it[data-implied="true"]::after { content:""; position:absolute; top:3px; right:3px; width:6px; height:6px; border:1px dashed var(--muted); }
+.it[data-ng="true"] { border-style:dashed !important; }
+.legend { width:18px; height:18px; padding:0; border:1px solid var(--line-2); border-radius:50%; background:none; color:var(--muted);
+          font:600 11px/1 var(--font-b); cursor:pointer; flex:none; }
+.clear { border:1px solid var(--line); background:none; padding:2px 9px; font-size:12px; color:var(--muted); cursor:pointer; }
+.clear:hover { color:var(--accent); border-color:var(--accent); }
+.fold { display:flex; align-items:center; gap:7px; width:100%; padding:2px 0; border:0; background:none; cursor:pointer; text-align:left; }
+.fold .caret { font-size:9px; color:var(--muted); transition:transform .2s var(--ease); }
+.grp[data-closed="true"] .fold .caret { transform:rotate(-90deg); }
+.grp[data-closed="true"] .gbody { display:none; }
+.gl svg { display:block; }
+.fh { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:0 4px; text-align:center; }
+.tg { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:5px 4px; }
+.tg .dot { grid-row:1; display:grid; place-items:center; color:var(--muted); opacity:.35; font-size:11px; }
+.tile { container-type:inline-size; }
+.tile .nm { font-size:max(8px, min(13px, calc(96cqw / var(--n, 3)))); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; line-height:1.15; }
+.tile .fb small { font-size:.85em; }
+/* 戦法タイルは小さいので、基本の落款は字を消して朱の角印にする（実ドックと同じ） */
+.tile .seal { width:0; height:0; padding:0; background:none; font-size:0; top:-1px; left:-1px;
+              border-top:9px solid var(--accent); border-right:9px solid transparent; }
+.var .nm { overflow-wrap:anywhere; }
+
+/* ============================================================
+   0. いま（比較用）— 実ドックの見た目をなぞった基準
+   ============================================================ */
+.k0 .head { display:flex; align-items:center; justify-content:space-between; padding-bottom:6px; border-bottom:1px solid var(--line); margin-bottom:8px; }
+.k0 .head b { font:700 16px/1.3 var(--font-d); letter-spacing:.16em; } .k0 .head small { font-size:11px; color:var(--muted); margin-left:8px; }
+.k0 .tabs { display:flex; justify-content:space-between; align-items:center; padding-bottom:5px; border-bottom:1px solid var(--fg); margin-bottom:4px; }
+.k0 .tabs .seg button { border:0; background:none; padding:3px 9px; font-size:13px; color:var(--muted); cursor:pointer; }
+.k0 .tabs .seg button[aria-pressed="true"] { color:var(--fg); font-weight:600; box-shadow:inset 0 -2px 0 var(--accent); }
+.k0 .strat { display:flex; margin-bottom:6px; }
+.k0 .strat button { flex:1; border:0; background:none; padding:7px 0; font-size:14px; letter-spacing:.12em; color:var(--muted); cursor:pointer; }
+.k0 .strat button[aria-pressed="true"] { color:var(--fg); font-weight:600; box-shadow:inset 0 -2px 0 var(--accent); }
+.k0 .sort { font-size:12px; color:var(--muted); margin-bottom:6px; } .k0 .sort select { font-size:12px; border:1px solid var(--line-2); background:var(--bg); }
+.k0 .grp { margin-bottom:12px; }
+.k0 .fold { font-size:12.5px; letter-spacing:.14em; color:var(--muted); font-weight:600; }
+.k0 .fold::after { content:""; flex:1; height:1px; background:var(--line); }
+.k0 .gbody { margin-top:6px; }
+.k0 .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px 6px; }
+.k0 .card { display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 4px 6px; border:1px solid var(--line); background:none; }
+.k0 .card .th { width:100%; height:56px; }
+.k0 .card .nm { font-size:12px; line-height:1.25; text-align:center; }
+.k0 .it[data-basic="true"] { border-color:var(--fg); }
+.k0 .it[aria-current="true"] { box-shadow:inset 0 -2px 0 var(--accent); }
+.k0 .row { display:flex; align-items:center; gap:8px; padding:4px 8px 4px 6px; border:1px solid var(--line); background:none; margin:0 0 4px calc(var(--d) * 16px); width:calc(100% - var(--d) * 16px); text-align:left; }
+.k0 .row .th { width:58px; height:38px; flex:none; } .k0 .row .nm { flex:1; font-size:12px; }
+.k0 .fh { font:500 11px/1 var(--font-d); color:var(--muted); margin-bottom:6px; }
+.k0 .trow h3 { display:flex; align-items:center; gap:8px; margin:10px 0 6px; font-size:12px; letter-spacing:.16em; color:var(--muted); font-weight:600; }
+.k0 .trow h3::after { content:""; flex:1; height:1px; background:var(--line); }
+.k0 .trow h3 .pz { color:var(--accent); font:700 14px/1 var(--font-d); }
+.k0 .tile { display:flex; flex-direction:column; align-items:center; gap:1px; padding:4px 1px 5px; border:1px solid var(--line); background:none; }
+.k0 .tile .fb { font-size:10px; color:var(--muted); }
+.k0 .var { display:flex; align-items:center; gap:2px; padding:6px 3px; border:1px dashed var(--line); background:none; font-size:9.5px; color:var(--muted); }
+
+/* ============================================================
+   A. 系統の色と印 — 系統ごとの色帯で塊を読ませ、状態は色付きの小さなバッジにする
+   ============================================================ */
+.kA .head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.kA .head .who { font:800 22px/1 var(--font-d); letter-spacing:.1em; }
+.kA .head small { font-size:11px; color:var(--muted); }
+.kA .head .sp { flex:1; }
+.kA .tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+.kA .tabs button { display:flex; align-items:center; justify-content:center; gap:7px; padding:7px 0; border:1.5px solid var(--line-2); background:none;
+                   cursor:pointer; font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted); }
+.kA .tabs button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; }
+.kA .tabs button[aria-pressed="true"] { background:var(--fg); border-color:var(--fg); color:var(--bg); }
+.kA .bar { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+.kA .pill { display:flex; flex:1; border:1.5px solid var(--line-2); border-radius:999px; padding:2px; }
+.kA .pill button { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; border:0; border-radius:999px; background:none; padding:4px 0; cursor:pointer;
+                   font:700 12.5px/1 var(--font-b); color:var(--muted); }
+.kA .pill button b { display:grid; place-items:center; width:18px; height:18px; border-radius:50%; border:1px solid currentColor; font:800 11px/1 var(--font-d); }
+.kA .pill button[aria-pressed="true"] { background:var(--accent); color:#fbf6ea; }
+.kA .sorts { display:flex; border:1px solid var(--line-2); }
+.kA .sorts button { width:30px; height:28px; border:0; background:none; cursor:pointer; color:var(--muted); font-size:13px; padding:0; }
+.kA .sorts button + button { border-left:1px solid var(--line); }
+.kA .sorts button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+.kA .grp { margin-bottom:12px; border-left:4px solid var(--fam); padding-left:8px; }
+.kA .fold { font:700 14px/1.2 var(--font-d); letter-spacing:.08em; }
+.kA .fold .gl { color:var(--fam); }
+.kA .fold .n:last-child { margin-left:auto; min-width:22px; padding:1px 6px; border-radius:999px; background:var(--fam); color:#fbf6ea; font:700 11px/1.4 var(--font-b); text-align:center; }
+.kA .fold .n { font-size:11px; color:var(--muted); }
+.kA .gbody { margin-top:6px; }
+.kA .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:7px 5px; }
+.kA .card { display:flex; flex-direction:column; align-items:stretch; gap:2px; padding:0 0 4px; border:1px solid var(--line-2); background:var(--bg);
+            transition:transform .15s var(--ease), box-shadow .15s; }
+.kA .card:hover { transform:translateY(-2px); box-shadow:0 4px 10px rgba(24,18,8,.12); }
+.kA .card .th { height:50px; border-bottom:3px solid var(--fam); }
+.kA .card .nm { font-size:11.5px; line-height:1.2; text-align:center; padding:2px 2px 0; }
+.kA .it[data-basic="true"] { border:1.5px solid var(--fam); }
+.kA .it[data-basic="true"] .nm { font-weight:700; }
+.kA .mk i { padding:1px 5px; border-radius:999px; font:700 9.5px/1.4 var(--font-b); }
+.kA .mk .good { background:var(--good); color:var(--bg); } .kA .mk .bad { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
+.kA .mk .ng { background:var(--accent); color:#fbf6ea; }
+.kA .it[aria-current="true"] { outline:2.5px solid var(--accent); outline-offset:1px; }
+.kA .it[aria-current="true"]::before { content:"✓"; position:absolute; z-index:3; top:-8px; right:-7px; width:16px; height:16px; border-radius:50%;
+                                       background:var(--accent); color:#fbf6ea; font:700 10px/16px var(--font-b); text-align:center; }
+.kA .row { display:flex; align-items:center; gap:8px; padding:3px 6px 3px 3px; border:1px solid var(--line-2); background:none; text-align:left;
+           margin:0 0 5px calc(var(--d) * 14px); width:calc(100% - var(--d) * 14px); }
+.kA .row .th { width:54px; height:36px; flex:none; border-bottom:2px solid var(--fam); } .kA .row .nm { flex:1; font-size:12px; }
+.kA .fh { font:700 11px/1 var(--font-b); color:var(--muted); margin-bottom:6px; }
+.kA .trow { margin-bottom:12px; border-left:4px solid var(--tc); padding-left:6px; }
+.kA .trow h3 { display:flex; align-items:center; gap:7px; margin:0 0 6px; font:700 13.5px/1.2 var(--font-d); letter-spacing:.06em; }
+.kA .trow h3 .pz { display:grid; place-items:center; width:22px; height:24px; padding-top:3px; background:var(--tc); color:#fbf6ea; font:800 13px/1 var(--font-d);
+                   clip-path:polygon(50% 0,88% 14%,100% 100%,0 100%,12% 14%); }
+.kA .tile { display:flex; flex-direction:column; align-items:center; gap:1px; padding:3px 1px 4px; border:1px solid var(--line-2); border-top:3px solid var(--tc); background:var(--bg); }
+.kA .tile .fb { font-size:9.5px; color:var(--muted); }
+.kA .tile[data-basic="true"] { background:color-mix(in srgb, var(--tc) 12%, var(--bg)); border-color:var(--tc); border-top-width:3px; }
+.kA .tile .mk i { padding:0 3px; font-size:8.5px; }
+.kA .var { display:flex; align-items:center; gap:2px; padding:5px 3px; border:1px dashed var(--tc); background:none; font-size:9.5px; color:var(--fg2); border-radius:0 0 8px 8px; }
+
+/* ============================================================
+   B. 基本が大きい — 同じ格子の中で基本形だけ 2×2 マスに広げる。発展形は小さく従える
+   ============================================================ */
+.kB .head { display:flex; align-items:baseline; gap:10px; margin-bottom:4px; }
+.kB .head .kd { display:flex; align-items:baseline; gap:10px; }
+.kB .head .kd button { border:0; background:none; padding:0; cursor:pointer; font:800 14px/1 var(--font-d); letter-spacing:.14em; color:var(--muted); transition:font-size .2s var(--ease); }
+.kB .head .kd button[aria-pressed="true"] { font-size:30px; color:var(--fg); letter-spacing:.06em; }
+.kB .head .sp { flex:1; }
+.kB .head .who { font:700 12px/1 var(--font-d); letter-spacing:.16em; color:var(--muted); }
+.kB .bar { display:flex; align-items:center; gap:8px; margin:6px 0 10px; padding:6px 0; border-top:1px solid var(--fg); border-bottom:1px solid var(--line); }
+.kB .seg2 { display:flex; gap:2px; }
+.kB .seg2 button { border:0; background:none; padding:3px 8px; cursor:pointer; font:700 13px/1 var(--font-b); color:var(--muted); }
+.kB .seg2 button[aria-pressed="true"] { color:var(--fg); box-shadow:inset 0 -2px 0 var(--accent); }
+.kB .bar .sp { flex:1; }
+.kB .bar select { font-size:12px; border:1px solid var(--line-2); background:var(--bg); padding:2px 2px; }
+.kB .grp { margin-bottom:14px; }
+.kB .fold { gap:8px; }
+.kB .fold .gl { color:var(--fg); }
+.kB .fold .t { font:800 17px/1.1 var(--font-d); letter-spacing:.06em; }
+.kB .fold .n { font:700 12px/1 var(--font-d); color:var(--muted); }
+.kB .fold::after { content:""; flex:1; height:1px; background:var(--line); }
+.kB .gbody { margin-top:6px; }
+.kB .cards { display:grid; grid-template-columns:repeat(3,1fr); grid-auto-flow:dense; gap:6px 5px; }
+.kB .card { display:flex; flex-direction:column; align-items:center; gap:1px; padding:3px 3px 4px; border:1px solid var(--line); background:none; }
+.kB .card .th { width:100%; height:40px; opacity:.92; }
+.kB .card .nm { font-size:10.5px; line-height:1.2; text-align:center; color:var(--fg2); }
+.kB .card[data-basic="true"] { grid-column:span 2; grid-row:span 2; border:1.5px solid var(--fg); padding:6px; gap:4px; }
+.kB .card[data-basic="true"] .th { height:auto; flex:1; min-height:80px; opacity:1; }
+.kB .card[data-basic="true"] .nm { font:800 16px/1.15 var(--font-d); color:var(--fg); }
+.kB .card[data-basic="true"] .mk { font-size:14px; font-weight:700; }
+.kB .card[data-basic="true"] .seal { font-size:10px; padding:2px 5px 1px; }
+.kB .it[aria-current="true"] { box-shadow:inset 0 -3px 0 var(--accent); }
+.kB .it[aria-current="true"] .nm { color:var(--accent); }
+.kB .mk .good { color:var(--fg); font-weight:700; } .kB .mk .bad { color:var(--muted); } .kB .mk .ng { color:var(--accent); font-weight:700; }
+.kB .row { display:flex; align-items:center; gap:8px; padding:3px 6px; border:1px solid var(--line); background:none; text-align:left;
+           margin:0 0 3px calc(var(--d) * 16px); width:calc(100% - var(--d) * 16px); }
+.kB .row .th { width:44px; height:30px; flex:none; } .kB .row .nm { flex:1; font-size:11.5px; color:var(--fg2); }
+.kB .row[data-basic="true"] { padding:6px; border:1.5px solid var(--fg); } .kB .row[data-basic="true"] .th { width:80px; height:52px; }
+.kB .row[data-basic="true"] .nm { font:800 16px/1.2 var(--font-d); color:var(--fg); }
+.kB .fh { font:700 12px/1 var(--font-d); color:var(--muted); margin-bottom:6px; }
+.kB .trow h3 { display:flex; align-items:center; gap:8px; margin:12px 0 6px; font:800 15px/1.1 var(--font-d); letter-spacing:.06em; }
+.kB .trow h3 .pz { display:grid; place-items:center; width:28px; height:31px; padding-top:4px; background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
+                   color:var(--accent); font:800 16px/1 var(--font-d); clip-path:polygon(50% 0,86% 14%,100% 100%,0 100%,14% 14%); }
+.kB .trow h3::after { content:""; flex:1; height:1px; background:var(--line); }
+.kB .tile { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:3px 1px; border:1px solid var(--line); background:none; }
+.kB .tile .fb { font-size:9px; color:var(--muted); }
+.kB .tile[data-basic="true"] { grid-row:1 / span 2 !important; border:1.5px solid var(--fg); padding:6px 1px; }
+.kB .tile[data-basic="true"] .fb { font:800 22px/1 var(--font-d); color:var(--accent); order:-1; margin-bottom:3px; }
+.kB .tile[data-basic="true"] .fb small { display:none; }
+.kB .tile[data-basic="true"] .nm { font-weight:800; font-family:var(--font-d); }
+.kB .tile:not([data-basic="true"]) .nm { color:var(--fg2); }
+.kB .var { display:flex; align-items:center; gap:2px; padding:4px 2px; border:1px dashed var(--line); background:none; font-size:9px; color:var(--muted); }
+
+/* ============================================================
+   C. 盤と駒の見立て — カードは盤の絵を主役に、名は駒の札。戦法は盤の帯の上の駒
+   ============================================================ */
+.kC .head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.kC .head .who { font:800 18px/1 var(--font-d); letter-spacing:.14em; } .kC .head small { font-size:11px; color:var(--muted); } .kC .head .sp { flex:1; }
+.kC .tabs { display:flex; align-items:flex-end; gap:0; border-bottom:2px solid var(--fg); margin-bottom:8px; }
+.kC .tabs button { border:0; background:none; padding:6px 16px 5px; cursor:pointer; font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted); }
+.kC .tabs button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+.kC .tabs .sp { flex:1; } .kC .tabs .clear { margin-bottom:4px; }
+.kC .bar { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.kC .koma { display:flex; gap:6px; }
+.kC .koma button { position:relative; width:38px; height:44px; padding:0; border:0; cursor:pointer; background:var(--line-2);
+                   clip-path:polygon(50% 0,86% 14%,100% 100%,0 100%,14% 14%); }
+.kC .koma button span { position:absolute; inset:1px; display:grid; place-items:center; padding-top:7px; background:var(--bg); color:var(--muted);
+                        clip-path:polygon(50% 0,86% 14%,100% 100%,0 100%,14% 14%); font:800 12px/1.05 var(--font-d); }
+.kC .koma button[aria-pressed="true"] { background:var(--piece-edge); }
+.kC .koma button[aria-pressed="true"] span { background:var(--piece-1); color:var(--accent); }
+.kC .bar .sp { flex:1; }
+.kC .bar select { font-size:12px; border:1px solid var(--line-2); background:var(--bg); padding:2px; }
+.kC .grp { margin-bottom:12px; }
+.kC .fold { font:700 13.5px/1 var(--font-d); letter-spacing:.12em; }
+.kC .fold .n { font:700 12px/1 var(--font-d); color:var(--accent); }
+.kC .fold::after { content:""; flex:1; height:0; border-top:1px dashed var(--line-2); }
+.kC .gbody { margin-top:6px; }
+.kC .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:7px 5px; }
+.kC .card { display:flex; flex-direction:column; padding:0 0 5px; border:0; background:linear-gradient(170deg,var(--wood-1),var(--wood-2)); box-shadow:inset 0 0 0 1px var(--wood-line); }
+.kC .card .th { height:58px; }
+.kC .card .nm { position:relative; margin:-10px 6px 0; padding:2px 2px 1px; background:var(--piece-1); color:var(--ink); box-shadow:inset 0 0 0 1px var(--piece-edge);
+                font:700 11px/1.25 var(--font-d); text-align:center; }
+.kC .card .mk { position:absolute; top:3px; right:3px; }
+.kC .mk i { display:grid; place-items:center; width:17px; height:17px; border-radius:50%; font:800 10px/1 var(--font-d); }
+.kC .mk .good { box-shadow:inset 0 0 0 1.5px #c8371f; color:#c8371f; background:rgba(251,246,234,.92); transform:rotate(-8deg); }
+.kC .mk .bad { box-shadow:inset 0 0 0 1px #8a7a5a; color:#8a7a5a; background:rgba(251,246,234,.85); }
+.kC .mk .ng { background:#3d3a33; color:#fbf6ea; }
+.kC .it[data-basic="true"] { box-shadow:inset 0 0 0 2px var(--accent-2); }
+.kC .it[data-basic="true"] .nm { font-weight:800; }
+.kC .it .seal { top:3px; left:3px; }
+.kC .it[aria-current="true"] { box-shadow:inset 0 0 0 3px var(--accent); }
+.kC .it[aria-current="true"] .nm { background:#c8371f; color:#fbf6ea; box-shadow:none; }
+.kC .row { display:flex; align-items:center; gap:8px; padding:0 6px 0 0; border:0; background:none; text-align:left; box-shadow:inset 0 0 0 1px var(--line-2);
+           margin:0 0 4px calc(var(--d) * 16px); width:calc(100% - var(--d) * 16px); }
+.kC .row .th { width:64px; height:42px; flex:none; } .kC .row .nm { flex:1; font:700 12px/1.2 var(--font-d); }
+.kC .row .mk { position:static; }
+.kC .row .seal { top:auto; bottom:2px; left:2px; }
+.kC .fh { font:700 11px/1 var(--font-d); color:var(--muted); margin-bottom:2px; }
+.kC .trow { margin-bottom:10px; }
+.kC .trow h3 { display:flex; align-items:center; gap:7px; margin:8px 0 4px; font:700 13px/1 var(--font-d); letter-spacing:.1em; }
+.kC .trow h3 .pz { display:grid; place-items:center; width:20px; height:22px; padding-top:3px; background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge); color:#c8371f;
+                   font:800 12px/1 var(--font-d); clip-path:polygon(50% 0,86% 14%,100% 100%,0 100%,14% 14%); }
+.kC .tg { padding:6px 0; background-image:repeating-linear-gradient(90deg, transparent 0, transparent calc((100% - 32px) / 9 + 2px), var(--wood-line) calc((100% - 32px) / 9 + 2px), var(--wood-line) calc((100% - 32px) / 9 + 3px), transparent calc((100% - 32px) / 9 + 3px), transparent calc((100% - 32px) / 9 + 4px)), linear-gradient(170deg,var(--wood-1),var(--wood-2));
+          box-shadow:inset 0 0 0 1px var(--wood-line); }
+.kC .tg .dot { opacity:0; }
+.kC .tile { justify-self:center; width:100%; max-width:36px; display:flex; flex-direction:column; align-items:center; gap:0; padding:8px 1px 3px; border:0;
+            background:var(--piece-1); color:var(--ink); clip-path:polygon(50% 0,88% 12%,100% 100%,0 100%,12% 12%); }
+.kC .tile[style*="span 2"] { max-width:none; }
+.kC .tile .fb { font-size:8.5px; color:#8a7a5a; }
+.kC .tile .nm { font-family:var(--font-d); font-weight:700; }
+.kC .tile:not([data-basic="true"]) { transform:scale(.86); transform-origin:50% 100%; opacity:.88; }
+.kC .tile[data-basic="true"] .nm { color:#c8371f; font-weight:800; }
+.kC .tile .seal { display:none; }
+.kC .tile .mk { font-size:9px; color:#3d3a33; }
+.kC .tile .mk i { width:auto; height:auto; box-shadow:none !important; background:none !important; color:#3d3a33 !important; transform:none !important; }
+.kC .tile[aria-current="true"] { background:#c8371f; box-shadow:none; } .kC .tile[aria-current="true"] .nm, .kC .tile[aria-current="true"] .fb, .kC .tile[aria-current="true"] .mk i { color:#fbf6ea !important; }
+.kC .var { display:flex; align-items:center; gap:1px; padding:3px 2px; border:0; background:rgba(251,246,234,.78); font:600 9px/1.2 var(--font-d); color:#3d3a33; border-radius:2px; }
+
+/* ============================================================
+   D. 大きな下見＋詰めた一覧 — 上に「いま見ているもの」を大きく、一覧は細かく詰める
+   ============================================================ */
+.kD .head { display:flex; align-items:center; gap:6px; margin-bottom:14px; }
+.kD .seg3 { display:flex; border:1px solid var(--line-2); }
+.kD .seg3 button { border:0; background:none; padding:4px 8px; cursor:pointer; font:700 12px/1 var(--font-b); color:var(--muted); }
+.kD .seg3 button + button { border-left:1px solid var(--line); }
+.kD .seg3 button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+.kD .head .sp { flex:1; }
+.kD .head select { font-size:11.5px; border:1px solid var(--line-2); background:var(--bg); padding:2px; max-width:84px; }
+.kD .peek { position:relative; display:grid; grid-template-columns:112px 1fr; gap:3px 12px; align-items:center; padding:12px 10px 10px; margin-bottom:12px;
+            border:1.5px solid var(--fg); min-height:112px; }
+.kD .peek .who { position:absolute; top:-9px; left:8px; padding:0 6px; background:var(--bg); font:700 11px/18px var(--font-d); letter-spacing:.16em; color:var(--muted); }
+.kD.rail[data-who="opp"] .peek .who { color:var(--gote-ink); background:color-mix(in srgb, var(--gote-ink) 5%, var(--bg)); }
+.kD .peek > * { min-width:0; }
+.kD .peek .art { grid-row:span 3; height:76px; }
+.kD .peek .fam { font:700 10px/1.2 var(--font-b); letter-spacing:.16em; color:var(--fam); }
+.kD .peek .nm { font:800 22px/1.15 var(--font-d); letter-spacing:.02em; }
+.kD .peek .mk { justify-content:flex-start; flex-wrap:wrap; gap:4px; font-size:10.5px; }
+.kD .peek .mk i { padding:1px 6px; border:1px solid var(--line-2); font-style:normal; }
+.kD .peek .mk .good { border-color:var(--good); color:var(--good); font-weight:700; }
+.kD .peek .mk .ng { border-color:var(--accent); color:var(--accent); font-weight:700; }
+.kD .peek .tag { font-size:10px; color:var(--muted); }
+.kD .peek[data-hover="true"] { border-style:dashed; }
+.kD .peek[data-hover="true"]::after { content:"プレビュー"; position:absolute; bottom:-8px; right:8px; padding:0 5px; background:var(--bg); font-size:9.5px; color:var(--muted); letter-spacing:.1em; }
+.kD .peek .clear { position:absolute; top:-11px; right:8px; background:var(--bg); padding:0 6px; font-size:11px; }
+.kD .peek .strip .fl { display:grid; grid-template-columns:repeat(9,1fr); height:30px; background:linear-gradient(170deg,var(--wood-1),var(--wood-2)); box-shadow:inset 0 0 0 1px var(--wood-line); }
+.kD .peek .strip .fl span { border-right:1px solid var(--wood-line); display:grid; place-items:center; font:800 13px/1 var(--font-d); color:#c8371f; }
+.kD .peek .strip .fl span:last-child { border-right:0; }
+.kD .peek .strip .fn { display:grid; grid-template-columns:repeat(9,1fr); font:600 9.5px/1.4 var(--font-d); color:var(--muted); text-align:center; }
+.kD .peek .strip { height:auto; align-self:center; }
+.kD .grp { margin-bottom:9px; }
+.kD .fold { font:700 11.5px/1.2 var(--font-b); letter-spacing:.1em; color:var(--fg2); }
+.kD .fold .gl { color:var(--fam); }
+.kD .fold .n { font-size:10.5px; color:var(--muted); }
+.kD .fold::after { content:""; flex:1; height:1px; background:var(--line); }
+.kD .gbody { margin-top:4px; }
+.kD .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; }
+.kD .card { display:flex; flex-direction:column; align-items:center; gap:0; padding:2px 2px 3px; border:1px solid var(--line); background:none; }
+.kD .card .th { width:100%; height:34px; }
+.kD .card .nm { font-size:9.5px; line-height:1.2; text-align:center; letter-spacing:-.02em; }
+.kD .card .mk { position:absolute; bottom:1px; right:2px; font-size:9px; min-height:0; }
+.kD .it[data-basic="true"] { border-color:var(--fg); } .kD .it[data-basic="true"] .nm { font-weight:700; }
+.kD .it .seal { font-size:7.5px; padding:0 2px; }
+.kD .it:hover { border-color:var(--fg); background:var(--faint); }
+.kD .it[aria-current="true"] { box-shadow:inset 0 -2px 0 var(--accent); background:var(--accent-soft); }
+.kD .mk .good { color:var(--fg); font-weight:700; } .kD .mk .bad { color:var(--muted); } .kD .mk .ng { color:var(--accent); font-weight:700; }
+.kD .row { display:flex; align-items:center; gap:6px; padding:2px 4px; border:1px solid var(--line); background:none; text-align:left;
+           margin:0 0 3px calc(var(--d) * 14px); width:calc(100% - var(--d) * 14px); }
+.kD .row .th { width:40px; height:27px; flex:none; } .kD .row .nm { flex:1; font-size:11px; }
+.kD .row .mk { position:static; }
+.kD .fh { font:600 10.5px/1 var(--font-b); color:var(--muted); margin-bottom:4px; }
+.kD .trow h3 { display:flex; align-items:center; gap:6px; margin:8px 0 4px; font:700 11.5px/1 var(--font-b); letter-spacing:.1em; color:var(--fg2); }
+.kD .trow h3 .pz { font:800 12px/1 var(--font-d); color:var(--accent); }
+.kD .trow h3::after { content:""; flex:1; height:1px; background:var(--line); }
+.kD .tile { display:flex; flex-direction:column; align-items:center; gap:0; padding:3px 1px; border:1px solid var(--line); background:none; }
+.kD .tile .fb { font-size:8.5px; color:var(--muted); }
+.kD .tile .mk { font-size:8.5px; min-height:0; }
+.kD .var { display:flex; align-items:center; gap:1px; padding:3px 2px; border:1px dashed var(--line); background:none; font-size:8.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--wood-1)"/><stop offset="1" style="stop-color:var(--wood-2)"/></linearGradient></defs>
+</svg>
+<header class="top">
+  <h1>左ドック 視認性の案（実寸）</h1>
+  <nav><a href="#k0">0 いま</a><a href="#kA">A 色と印</a><a href="#kB">B 基本が大きい</a><a href="#kC">C 盤と駒</a><a href="#kD">D 大きな下見</a></nav>
+  <span class="sp"></span>
+  <button type="button" id="theme">ライト／ダーク</button>
+</header>
+
+<div class="intro">
+  <p>1280px 幅の実画面と同じ器（左ドック 390px、中身 約326px、高さ 780px）に、実ドックの UI を全部載せた4案です。囲いは3列（D だけ4列）、戦法は9筋の格子のままで、<b>タイルの面積を増やさずに</b>見分けやすさを上げます。各案とも左が囲い、右が戦法の画面で、どちらも操作できます（並べ方・系統の折りたたみ・はずす・駒の見出しも動きます）。</p>
+  <ul>
+    <li>載せている UI: 側の名前と凡例? ／ 囲い・戦法 ／ はずす ／ 居飛車・振り飛車 ／ 並べ方（系統別・発展ツリー・堅さ順・速さ順）／ 系統ブロック（折りたたみ・件数）／ ◎△（相手との相性）・✕（両立しない）・基本・選択中・既定値の点線 ／ 戦法の筋の格子と派生 ／ 駒の見出し。</li>
+    <li>◎△✕ は見本のための仮の判定です（相手は反対の戦略。✕ は数件に固定で付けています）。</li>
+  </ul>
+</div>
+
+<main id="plans"></main>
+
+<script>
+const DATA = {"fams":[{"id":"funa","name":"舟囲い型","shape":"玉が7八。金銀が玉の横から下へ広がる"},{"id":"yagura","name":"矢倉型","shape":"逆L字：玉の右上を金銀が囲む"},{"id":"gangi","name":"雁木型","shape":"銀が玉の前や横に並んで壁を作る形。前へ出れば逆V字"},{"id":"anaguma","name":"穴熊型","shape":"玉を隅にもぐらせ、香で蓋をする"},{"id":"mino","name":"美濃型","shape":"玉・銀・金が斜めにつながる"},{"id":"itidan","name":"一段玉型","shape":"玉が8九に座り（隅の一段内側）、銀・桂が上を覆う"},{"id":"nakazumai","name":"中住まい型","shape":"玉が5〜6筋の中央に留まり、金銀が周囲に低く並ぶ"},{"id":"kinmusou","name":"金無双型","shape":"金2枚が横に並び、玉と銀がその前に座る（相振りの右辺）"},{"id":"migigyoku","name":"右玉型","shape":"玉を飛車側の右辺へ寄せ、金銀が左と正面を囲む"}],"castles":[{"id":"anaguma","name":"居飛車穴熊","short":"居飛車穴熊","side":"ibisha","family":"anaguma","from":"funa","basic":true,"core":"玉99 香98 桂89 銀88 金79 金78","shell":"歩97 歩87 歩76 角77 歩66 歩56 歩47 歩37 銀26","r":{"hard":5,"wide":1,"top":3,"side":5,"quick":1},"tags":["対振り飛車","持久戦","堅さ最強クラス"]},{"id":"funa","name":"舟囲い（7九銀型）","short":"舟囲い 7九銀","side":"ibisha","family":"funa","from":null,"basic":true,"core":"玉78 銀79 金69 金58","shell":"歩87 歩76 歩67 歩56 角88 香99 桂89 歩96 歩47 歩36 銀26","r":{"hard":2,"wide":3,"top":1,"side":3,"quick":5},"tags":["対振り飛車","急戦","基本形"]},{"id":"funa68gin","name":"舟囲い（6八銀型）","short":"舟囲い 6八銀","side":"ibisha","family":"funa","from":"funa","basic":false,"core":"玉78 銀68 金69 金58","shell":"歩87 歩76 歩67 歩56 角88 香99 桂89 歩96 歩47 歩36 銀26","r":{"hard":2,"wide":3,"top":2,"side":3,"quick":4},"tags":["対振り飛車","急戦"]},{"id":"elmo","name":"エルモ囲い（舟囲い7九金型）","short":"エルモ囲い","side":"ibisha","family":"funa","from":"funa68gin","basic":false,"core":"玉78 銀68 金79 金59","shell":"歩87 歩76 歩67 歩56 角88 香99 桂89 歩96 歩47 歩36 銀26","r":{"hard":3,"wide":2,"top":2,"side":4,"quick":4},"tags":["対振り飛車","急戦","コンピュータ発"]},{"id":"funa68kin","name":"舟囲い（6八金型）","short":"舟囲い 6八金","side":"ibisha","family":"funa","from":"funa","basic":false,"core":"玉78 金68 金58","shell":"歩87 歩76 歩67 歩56 角88 香99 桂89 歩96 歩47 歩36 銀57 銀26","r":{"hard":2,"wide":3,"top":3,"side":2,"quick":4},"tags":["対振り飛車","急戦"]},{"id":"yagura","name":"矢倉囲い（金矢倉）","short":"金矢倉","side":"ibisha","family":"yagura","from":null,"basic":true,"core":"玉88 銀77 金78 金67","shell":"歩97 歩87 歩76 歩66 香99 桂89 角68 歩56 歩47 歩37 銀26","r":{"hard":4,"wide":3,"top":5,"side":3,"quick":2},"tags":["相居飛車","持久戦","将棋の純文学"]},{"id":"kani","name":"カニ囲い","short":"カニ囲い","side":"ibisha","family":"gangi","from":null,"basic":false,"core":"玉69 銀68 金78 金58","shell":"歩87 歩76 歩67 歩57 角88 香99 桂89 歩97 歩47 歩37 銀26","r":{"hard":2,"wide":3,"top":3,"side":3,"quick":4},"tags":["相居飛車","急戦矢倉"]},{"id":"kabuto","name":"兜囲い（兜矢倉）","short":"兜矢倉","side":"ibisha","family":"gangi","from":null,"basic":false,"core":"玉68 銀77 金78 金58","shell":"歩87 歩76 歩67 歩57 香99 桂89 歩97 歩47 歩37 銀26","r":{"hard":2,"wide":2,"top":4,"side":2,"quick":4},"tags":["相居飛車","急戦"]},{"id":"gangi","name":"雁木囲い（旧型）","short":"雁木","side":"ibisha","family":"gangi","from":null,"basic":false,"core":"玉69 銀67 銀57 金78 金58","shell":"歩87 歩76 歩66 歩56 角88 香99 桂89 歩96 歩47 歩36","r":{"hard":2,"wide":3,"top":5,"side":2,"quick":3},"tags":["相居飛車","江戸時代からある"]},{"id":"tsunogin","name":"ツノ銀雁木","short":"ツノ銀雁木","side":"ibisha","family":"gangi","from":null,"basic":false,"core":"玉69 銀67 銀47 金78 金58","shell":"歩87 歩76 歩66 歩56 歩46 角88 香99 桂89 歩96 歩37","r":{"hard":2,"wide":4,"top":4,"side":3,"quick":3},"tags":["相居飛車","現代雁木","ソフト流行"]},{"id":"bonanza","name":"ボナンザ囲い","short":"ボナンザ囲い","side":"ibisha","family":"yagura","from":"katayagura","basic":false,"core":"玉78 銀77 金68 金58","shell":"歩87 歩76 歩67 歩57 香99 桂89 歩97 歩47 歩37 銀26","r":{"hard":3,"wide":2,"top":3,"side":3,"quick":4},"tags":["角換わり","コンピュータ発"]},{"id":"hidarimino","name":"左美濃","short":"左美濃","side":"ibisha","family":"mino","from":null,"basic":true,"core":"玉88 銀78 金69 金58","shell":"歩96 歩87 歩76 歩66 歩56 角77 香99 桂89 歩47 歩37 銀26","r":{"hard":3,"wide":3,"top":2,"side":4,"quick":3},"tags":["対振り飛車","持久戦"]},{"id":"ginyagura","name":"銀矢倉","short":"銀矢倉","side":"ibisha","family":"yagura","from":"yagura","basic":false,"core":"玉88 銀77 金78 銀67","shell":"歩97 歩87 歩76 歩66 香99 桂89 角68 歩56 歩47 歩37 金58","r":{"hard":4,"wide":3,"top":5,"side":3,"quick":2},"tags":["相居飛車","持久戦"]},{"id":"katayagura","name":"片矢倉（天野矢倉）","short":"片矢倉","side":"ibisha","family":"yagura","from":null,"basic":false,"core":"玉78 銀77 金68 金67","shell":"歩97 歩87 歩76 歩66 角88 香99 桂89 歩56 歩47 歩37 銀26","r":{"hard":3,"wide":3,"top":4,"side":3,"quick":3},"tags":["相居飛車","急戦矢倉"]},{"id":"doiyagura","name":"土居矢倉","short":"土居矢倉","side":"ibisha","family":"yagura","from":null,"basic":false,"core":"玉78 銀77 金67 金58","shell":"歩97 歩87 歩76 歩66 角88 香99 桂89 歩56 歩47 歩37 銀26","r":{"hard":3,"wide":3,"top":3,"side":3,"quick":3},"tags":["相居飛車","急戦矢倉"]},{"id":"kikusui","name":"菊水矢倉","short":"菊水矢倉","side":"ibisha","family":"itidan","from":null,"basic":false,"core":"玉89 銀88 金78 金67 桂77","shell":"歩97 歩87 歩76 歩66 香99 角68 歩56 歩47 歩37 銀26","r":{"hard":4,"wide":2,"top":5,"side":4,"quick":2},"tags":["相居飛車","持久戦","一段玉"]},{"id":"millennium","name":"ミレニアム囲い","short":"ミレニアム","side":"ibisha","family":"itidan","from":null,"basic":false,"core":"玉89 銀88 銀79 金78 金67 桂77","shell":"歩97 歩87 歩76 歩66 香99 角68 歩56 歩47 歩37","r":{"hard":4,"wide":3,"top":4,"side":4,"quick":3},"tags":["相居飛車","持久戦","一段玉"]},{"id":"yagura-anaguma","name":"矢倉穴熊","short":"矢倉穴熊","side":"ibisha","family":"anaguma","from":"yagura","basic":false,"core":"玉99 香98 桂89 銀77 金78 金67","shell":"歩97 歩87 歩76 歩66 角68 歩56 歩47 歩37 銀26","r":{"hard":5,"wide":2,"top":4,"side":5,"quick":1},"tags":["相居飛車","持久戦","堅さ最強クラス"]},{"id":"matsuo-anaguma","name":"松尾流穴熊","short":"松尾流穴熊","side":"ibisha","family":"anaguma","from":"anaguma","basic":false,"core":"玉99 香98 桂89 銀88 銀79 金78 金67","shell":"歩97 歩87 歩76 角77 歩66 歩56 歩47 歩37","r":{"hard":5,"wide":1,"top":4,"side":5,"quick":1},"tags":["相居飛車","持久戦","堅さ最強クラス"]},{"id":"big4","name":"ビッグ4","short":"ビッグ4","side":"ibisha","family":"anaguma","from":null,"basic":false,"core":"玉99 香98 桂89 金88 金78 銀87 銀77","shell":"歩97 歩86 歩76 角68 歩66 歩56 歩47 歩37","r":{"hard":5,"wide":1,"top":3,"side":5,"quick":1},"tags":["相居飛車","持久戦","堅さ最強クラス"]},{"id":"tenshukaku","name":"天守閣美濃","short":"天守閣美濃","side":"ibisha","family":"mino","from":"hidarimino","basic":false,"core":"玉87 銀78 金69 金58","shell":"歩96 歩86 歩76 歩66 歩56 角77 香99 桂89 歩47 歩37 銀26","r":{"hard":3,"wide":3,"top":3,"side":4,"quick":3},"tags":["対振り飛車","持久戦"]},{"id":"yonmaimino","name":"四枚美濃（左美濃系）","short":"四枚美濃","side":"ibisha","family":"mino","from":"tenshukaku","basic":false,"core":"玉87 銀78 銀77 金69 金67","shell":"歩96 歩86 歩76 歩66 歩56 角88 香99 桂89 歩47 歩37","r":{"hard":4,"wide":3,"top":4,"side":4,"quick":2},"tags":["対振り飛車","持久戦","金銀4枚"]},{"id":"nakazumai","name":"中住まい（4八銀型）","short":"中住まい","side":"ibisha","family":"nakazumai","from":null,"basic":false,"core":"玉58 金78 金38 銀48","shell":"歩97 歩87 歩76 歩67 歩57 歩47 歩37 角88 香99 桂89 銀79","r":{"hard":2,"wide":4,"top":2,"side":3,"quick":5},"tags":["相居飛車","急戦","相掛かり・横歩取り"]},{"id":"nakahara","name":"中原囲い","short":"中原囲い","side":"ibisha","family":"nakazumai","from":null,"basic":false,"core":"玉69 金78 金59 銀88 銀48","shell":"歩96 歩87 歩76 歩66 歩56 歩46 角79 香99 桂89 歩37","r":{"hard":3,"wide":4,"top":2,"side":4,"quick":4},"tags":["相居飛車","相掛かり・横歩取り"]},{"id":"migigyoku","name":"右玉（角換わり型）","short":"右玉","side":"ibisha","family":"migigyoku","from":null,"basic":false,"core":"玉48 金58 金78 銀47 銀67 桂37","shell":"歩36 歩46 歩56 歩66 歩76 角88 香99 歩87 歩97","r":{"hard":3,"wide":4,"top":3,"side":2,"quick":3},"tags":["角換わり","バランス型","玉飛接近"]},{"id":"mino","name":"美濃囲い（本美濃）","short":"本美濃","side":"furibisha","family":"mino","from":"katamino","basic":true,"core":"玉28 銀38 金49 金58","shell":"歩16 歩27 歩37 歩47 香19 桂29 銀67","r":{"hard":3,"wide":3,"top":2,"side":4,"quick":4},"tags":["対居飛車","基本の囲い"]},{"id":"katamino","name":"片美濃囲い","short":"片美濃","side":"furibisha","family":"mino","from":null,"basic":false,"core":"玉28 銀38 金49","shell":"歩16 歩27 歩37 歩47 香19 桂29 銀67 金69","r":{"hard":2,"wide":3,"top":2,"side":3,"quick":5},"tags":["対居飛車","急戦向き"]},{"id":"takamino","name":"高美濃囲い","short":"高美濃","side":"furibisha","family":"mino","from":"mino","basic":false,"core":"玉28 銀38 金47 金49","shell":"歩16 歩27 歩37 歩46 香19 桂29 銀67","r":{"hard":3,"wide":4,"top":4,"side":3,"quick":3},"tags":["対居飛車","持久戦"]},{"id":"gincan","name":"銀冠","short":"銀冠","side":"furibisha","family":"mino","from":"takamino","basic":false,"core":"玉28 銀27 金38 金47","shell":"歩16 歩26 歩37 歩46 香19 桂29 銀67","r":{"hard":4,"wide":5,"top":5,"side":3,"quick":2},"tags":["対居飛車","持久戦","上部に強い"]},{"id":"diamond","name":"ダイヤモンド美濃","short":"ダイヤモンド美濃","side":"furibisha","family":"mino","from":"mino","basic":false,"core":"玉28 銀38 金49 金58 銀47","shell":"歩16 歩27 歩36 歩46 香19 桂29","r":{"hard":5,"wide":3,"top":4,"side":4,"quick":2},"tags":["対居飛車","持久戦","金銀4枚"]},{"id":"furianaguma","name":"振り飛車穴熊","short":"振り飛車穴熊","side":"furibisha","family":"anaguma","from":null,"basic":true,"core":"玉19 香18 桂29 銀28 金39 金38","shell":"歩17 歩27 歩37 歩47 銀67","r":{"hard":5,"wide":1,"top":3,"side":5,"quick":1},"tags":["対居飛車","持久戦","堅さ最強クラス"]},{"id":"ginkananaguma","name":"銀冠穴熊","short":"銀冠穴熊","side":"furibisha","family":"anaguma","from":"furianaguma","basic":false,"core":"玉19 香18 桂29 銀27 金38 金47","shell":"歩17 歩26 歩37 歩46 銀67","r":{"hard":5,"wide":4,"top":5,"side":5,"quick":1},"tags":["対居飛車","持久戦","堅さ最強クラス"]},{"id":"kimuramino","name":"木村美濃","short":"木村美濃","side":"furibisha","family":"mino","from":null,"basic":false,"core":"玉28 金38 銀47","shell":"歩16 歩27 歩37 歩46 香19 桂29 金69 銀67","r":{"hard":2,"wide":3,"top":3,"side":3,"quick":4},"tags":["対居飛車","中飛車","急戦向き"]},{"id":"kinmusou","name":"金無双","short":"金無双","side":"furibisha","family":"kinmusou","from":null,"basic":true,"core":"玉38 銀28 金48 金58","shell":"歩16 歩27 歩37 歩47 香19 桂29 銀67","r":{"hard":4,"wide":3,"top":3,"side":4,"quick":2},"tags":["相振り飛車","持久戦"]},{"id":"migiyagura","name":"右矢倉","short":"右矢倉","side":"furibisha","family":"kinmusou","from":null,"basic":false,"core":"玉28 銀37 金38 金47","shell":"歩17 歩27 歩36 歩46 香19 桂29 銀67","r":{"hard":4,"wide":2,"top":5,"side":3,"quick":2},"tags":["相振り飛車","持久戦"]}],"tfams":[{"id":"furibisha-rook","name":"振り飛車：飛車の筋","side":"furibisha","piece":"飛"},{"id":"ibisha-silver","name":"居飛車：銀の筋","side":"ibisha","piece":"銀"},{"id":"ibisha-rook","name":"居飛車：飛車の筋","side":"ibisha","piece":"飛"},{"id":"ibisha-kakukeifu","name":"居飛車：角・桂・歩の筋","side":"ibisha","piece":"角"}],"tactics":[{"id":"kyukenbisha","name":"九間飛車","short":"九間","family":"furibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[9],"square":"98"},"route":["28","98"],"pace":"rapid","tags":["奇襲","相振り"]},{"id":"mukaibisha","name":"向かい飛車","short":"向飛車","family":"furibisha-rook","basic":true,"variantOf":null,"lead":{"piece":"飛","files":[8],"square":"88"},"route":["28","88"],"pace":"both","tags":["逆襲","飛車交換"]},{"id":"sankenbisha","name":"三間飛車","short":"三間","family":"furibisha-rook","basic":true,"variantOf":null,"lead":{"piece":"飛","files":[7],"square":"78"},"route":["28","78"],"pace":"both","tags":["バランス"]},{"id":"ishida","name":"石田流","short":"石田流","family":"furibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[7],"square":"76"},"route":["28","78","76"],"pace":"both","tags":["角道","位取り"]},{"id":"hayaisida","name":"早石田","short":"早石田","family":"furibisha-rook","basic":false,"variantOf":"ishida","lead":{"piece":"飛","files":[7],"square":"76"},"route":["28","78","76"],"pace":"rapid","tags":["急戦","ハメ手"]},{"id":"masuda-ishida","name":"升田式石田流","short":"升田式","family":"furibisha-rook","basic":false,"variantOf":"ishida","lead":{"piece":"飛","files":[7],"square":"76"},"route":["28","78","76"],"pace":"slow","tags":["持久戦"]},{"id":"tateishi","name":"立石流","short":"立石流","family":"furibisha-rook","basic":false,"variantOf":"ishida","lead":{"piece":"飛","files":[7],"square":"76"},"route":["28","68","66","76"],"pace":"both","tags":["角道","位取り"]},{"id":"shikenbisha","name":"四間飛車","short":"四間","family":"furibisha-rook","basic":true,"variantOf":null,"lead":{"piece":"飛","files":[6],"square":"68"},"route":["28","68"],"pace":"both","tags":["バランス"]},{"id":"fujiisystem","name":"藤井システム","short":"藤井シス","family":"furibisha-rook","basic":false,"variantOf":"shikenbisha","lead":{"piece":"飛","files":[6],"square":"68"},"route":["28","68"],"pace":"rapid","tags":["居玉","対左美濃"]},{"id":"kakukoukan-shiken","name":"角交換四間飛車","short":"角換四間","family":"furibisha-rook","basic":false,"variantOf":"shikenbisha","lead":{"piece":"飛","files":[6],"square":"68"},"route":["28","68"],"pace":"both","tags":["角交換"]},{"id":"nakabisha","name":"中飛車","short":"中飛車","family":"furibisha-rook","basic":true,"variantOf":null,"lead":{"piece":"飛","files":[5],"square":"58"},"route":["28","58"],"pace":"both","tags":["破壊力"]},{"id":"gokigen","name":"ゴキゲン中飛車","short":"ゴキ中","family":"furibisha-rook","basic":false,"variantOf":"nakabisha","lead":{"piece":"飛","files":[5],"square":"58"},"route":["28","58"],"pace":"rapid","tags":["角道","位取り"]},{"id":"ikkenbisha","name":"一間飛車","short":"一間","family":"furibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[1],"square":"18"},"route":["28","18"],"pace":"slow","tags":["奇襲","端攻め"]},{"id":"koshikakegin","name":"腰掛け銀","short":"腰掛銀","family":"ibisha-silver","basic":true,"variantOf":null,"lead":{"piece":"銀","files":[5],"square":"56"},"route":["39","38","47","56"],"pace":"both","tags":["本格派"]},{"id":"hayakurigin","name":"早繰り銀","short":"早繰銀","family":"ibisha-silver","basic":true,"variantOf":null,"lead":{"piece":"銀","files":[4,3],"square":"46"},"route":["39","38","37","46"],"pace":"rapid","tags":["急戦"]},{"id":"chousoku37gin","name":"超速▲3七銀","short":"超速","family":"ibisha-silver","basic":false,"variantOf":"hayakurigin","lead":{"piece":"銀","files":[4,3],"square":"46"},"route":["39","48","37","46"],"pace":"rapid","tags":["急戦","対ゴキゲン"]},{"id":"gin46-hidari","name":"4六銀左","short":"4六銀左","family":"ibisha-silver","basic":false,"variantOf":"hayakurigin","lead":{"piece":"銀","files":[4,3],"square":"46"},"route":["79","68","57","46"],"pace":"rapid","tags":["急戦","対ゴキゲン"]},{"id":"yamada-jouseki","name":"山田定跡","short":"山田","family":"ibisha-silver","basic":false,"variantOf":"hayakurigin","lead":{"piece":"銀","files":[4,3],"square":"46"},"route":["39","38","37","46"],"pace":"rapid","tags":["急戦","対ゴキゲン"]},{"id":"bougin","name":"棒銀","short":"棒銀","family":"ibisha-silver","basic":true,"variantOf":null,"lead":{"piece":"銀","files":[2],"square":"26"},"route":["39","38","27","26"],"pace":"rapid","tags":["急戦"]},{"id":"genshibougin","name":"原始棒銀","short":"原始棒銀","family":"ibisha-silver","basic":false,"variantOf":"bougin","lead":{"piece":"銀","files":[2],"square":"26"},"route":["39","38","27","26"],"pace":"rapid","tags":["急戦","古典"]},{"id":"hineribisha","name":"ひねり飛車","short":"ひねり","family":"ibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[8],"square":"86"},"route":["28","26","36","86"],"pace":"both","tags":["持久戦","相掛かり"]},{"id":"hineri-76hi","name":"ひねり飛車 7六飛型","short":"7六飛型","family":"ibisha-rook","basic":false,"variantOf":"hineribisha","lead":{"piece":"飛","files":[8],"square":"86"},"route":["28","26","76","86"],"pace":"both","tags":["持久戦"]},{"id":"naka-ibisha","name":"矢倉中飛車","short":"矢中飛車","family":"ibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[5],"square":"59"},"route":["28","29","59"],"pace":"rapid","tags":["急戦"]},{"id":"migishiken","name":"右四間飛車","short":"右四間","family":"ibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[4],"square":"48"},"route":["28","48"],"pace":"rapid","tags":["急戦"]},{"id":"sodebisha","name":"袖飛車","short":"袖飛車","family":"ibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[3],"square":"38"},"route":["28","38"],"pace":"rapid","tags":["急戦"]},{"id":"ibisha-base","name":"居飛車（2筋）","short":"2筋","family":"ibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[2],"square":"28"},"route":["28"],"pace":"both","tags":["基本"]},{"id":"suzumezashi","name":"雀刺し","short":"雀刺し","family":"ibisha-rook","basic":false,"variantOf":null,"lead":{"piece":"飛","files":[1],"square":"18"},"route":["28","18"],"pace":"slow","tags":["端攻め","矢倉"]},{"id":"onigoroshi","name":"鬼殺し","short":"鬼殺し","family":"ibisha-kakukeifu","basic":false,"variantOf":null,"lead":{"piece":"桂","files":[6],"square":"65"},"route":["89","77","65"],"pace":"rapid","tags":["奇襲"]},{"id":"sujichigaikaku","name":"筋違い角","short":"筋違角","family":"ibisha-kakukeifu","basic":false,"variantOf":null,"lead":{"piece":"角","files":[4],"square":"45"},"route":["45"],"pace":"both","tags":["奇襲","角換わり"]},{"id":"shigofu-hayajikake","name":"4五歩早仕掛け","short":"4五歩","family":"ibisha-kakukeifu","basic":false,"variantOf":null,"lead":{"piece":"歩","files":[4],"square":"45"},"route":["47","46","45"],"pace":"rapid","tags":["急戦","相掛かり"]}]};
+</script>
+<script>
+(() => {
+  'use strict';
+  const root = document.documentElement;
+  document.getElementById('theme').addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('shogi-theme', root.dataset.theme); } catch (e) {}
+  });
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  const { fams, castles, tfams, tactics } = DATA;
+  const FAM = Object.fromEntries(fams.map(f => [f.id, f]));
+  const TFAM = Object.fromEntries(tfams.map(f => [f.id, f]));
+  const byId = Object.fromEntries(castles.map(c => [c.id, c]));
+  const tById = Object.fromEntries(tactics.map(t => [t.id, t]));
+  const STRAT = { ibisha:'居飛車', furibisha:'振り飛車' };
+  const SORTS = [['family','系統別','▦'],['tree','発展ツリー','⑂'],['hard','堅さ順','★'],['quick','速さ順','⚡']];
+  const TC = { 'furibisha-rook':'--tc:var(--t-rook)', 'ibisha-rook':'--tc:var(--t-rook)', 'ibisha-silver':'--tc:var(--t-silver)', 'ibisha-kakukeifu':'--tc:var(--t-kaku)' };
+  const famVar = id => `--fam:var(--f-${id})`;
+  // 系統の小さな形（実ドックの family-glyph と同じ趣旨の簡略版）
+  const GLYPH = {
+    funa:'M4 9 Q13 17 22 9', yagura:'M7 20 H17 V5', gangi:'M4 19 L13 7 L22 19', anaguma:'M5 5 V21 H21', mino:'M5 20 L21 6',
+    itidan:'M4 19 H22 M8 14 H18', nakazumai:'M5 13 H21 M13 7 V19', kinmusou:'M9 6 V20 M17 6 V20', migigyoku:'M20 5 V21 M6 13 H20',
+  };
+  const glyph = (id, s = 22) => `<span class="gl"><svg viewBox="0 0 26 26" width="${s}" height="${s}"><path d="${GLYPH[id] || 'M5 13 H21'}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+
+  // ---------- サムネイル: 玉側の 6筋×4段 の窓（中央寄りの囲いは窓をずらす） ----------
+  const parse = s => (s || '').split(/\s+/).filter(Boolean).map(t => ({ p:t[0], f:+t[1], r:+t[2] }));
+  function thumb(c) {
+    const ps = parse(c.core), sh = parse(c.shell), cell = 12, span = 6, r0 = 6;
+    const fs = ps.map(x => x.f);
+    let hi = c.side === 'ibisha' ? 9 : 6;
+    if (Math.max(...fs) > hi) hi = Math.max(...fs);
+    if (Math.min(...fs) < hi - span + 1) hi = Math.min(9, Math.min(...fs) + span - 1);
+    const lo = hi - span + 1, W = span * cell, H = 4 * cell;
+    let g = `<rect class="bg" width="${W}" height="${H}"/>`;
+    for (let i = 0; i < span; i++) for (let j = 0; j < 4; j++) g += `<rect class="sq" x="${i*cell}" y="${j*cell}" width="${cell}" height="${cell}"/>`;
+    const pz = (x, cls) => (x.f < lo || x.f > hi || x.r < r0) ? '' :
+      `<g class="${cls}"><text class="ch" x="${(hi - x.f) * cell + cell / 2}" y="${(x.r - r0) * cell + cell / 2 + .5}" font-size="${cell * .8}">${x.p}</text></g>`;
+    g += sh.map(x => pz(x, 'sh')).join('') + ps.map(x => pz(x, 'co')).join('');
+    return `<svg class="mb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${g}</svg>`;
+  }
+
+  // ---------- 見本の判定（◎△✕・既定値） ----------
+  const NG = new Set(['bonanza', 'elmo', 'ginkananaguma', 'hineribisha', 'onigoroshi']);
+  const vsCastle = (c, s) => { const opp = s.strat === 'ibisha' ? '振り飛車' : '居飛車';
+    if (c.tags.includes('対' + opp)) return 'good'; if (c.tags.some(t => t.startsWith('対'))) return 'bad'; return null; };
+  const vsTactic = t => t.basic ? 'good' : (t.pace === 'rapid' ? 'bad' : null);
+  const marks = (vs, ng) => `<span class="mk">${vs ? `<i class="${vs}">${vs === 'good' ? '◎' : '△'}</i>` : ''}${ng ? '<i class="ng">✕</i>' : ''}</span>`;
+  const impliedTactic = s => s.sel.tactic ? null : (s.strat === 'ibisha' ? tactics.find(t => t.lead.square === '28') : tById.shikenbisha);
+
+  // ---------- 一覧の中身（構造は全案で共通。見た目は案ごとの CSS） ----------
+  const castleItem = (c, s, cls = 'card', d = 0) => {
+    const vs = vsCastle(c, s), ng = NG.has(c.id);
+    return `<button type="button" class="it ${cls}" style="${famVar(c.family)};--d:${d}" data-pick="castle:${c.id}" data-basic="${c.basic}" aria-current="${s.sel.castle === c.id}"` +
+      ` data-ng="${ng}" title="${esc(c.name)}">${c.basic ? '<span class="seal">基本</span>' : ''}<span class="th">${thumb(c)}</span>` +
+      `<span class="nm">${cls === 'row' && d ? '└ ' : ''}${esc(c.short)}</span>${marks(vs, ng)}</button>`;
+  };
+  function castleGroups(s) {
+    const list = castles.filter(c => c.side === s.strat);
+    if (s.sort === 'hard' || s.sort === 'quick') {
+      const k = s.sort;
+      return [5, 4, 3, 2, 1].map(v => ({ id:`${k}${v}`, title:`${'★'.repeat(v)}${'☆'.repeat(5 - v)}`, sub:`${k === 'hard' ? '堅さ' : '速さ'} ${v}`, fam:'kinmusou', star:true,
+        items:list.filter(c => c.r[k] === v).sort((a, b) => b.basic - a.basic) })).filter(g => g.items.length);
+    }
+    return fams.map(f => ({ id:f.id, title:f.name, fam:f.id, items:list.filter(c => c.family === f.id).sort((a, b) => b.basic - a.basic) })).filter(g => g.items.length);
+  }
+  function castleBody(s) {
+    return castleGroups(s).map(g => {
+      let inner;
+      if (s.sort === 'tree') {
+        const ids = new Set(g.items.map(c => c.id)); let rows = '';
+        const walk = (c, d) => { rows += castleItem(c, s, 'row', d); g.items.filter(x => x.from === c.id).forEach(k => walk(k, d + 1)); };
+        g.items.filter(c => !c.from || !ids.has(c.from)).forEach(r => walk(r, 0));
+        inner = `<div class="tree">${rows}</div>`;
+      } else inner = `<div class="cards">${g.items.map(c => castleItem(c, s)).join('')}</div>`;
+      return `<div class="grp" style="${famVar(g.fam)}" data-closed="${!!s.closed[g.id]}"><button type="button" class="fold" data-fold="${g.id}" aria-expanded="${!s.closed[g.id]}">` +
+        `<span class="caret">▼</span>${g.star ? '' : glyph(g.fam, s.plan === 'kB' ? 28 : s.plan === 'kD' ? 18 : 22)}<span class="t">${esc(g.title)}</span>${g.sub ? `<span class="n">${g.sub}</span>` : ''}<span class="n">${g.items.length}</span></button>` +
+        `<div class="gbody">${inner}</div></div>`;
+    }).join('');
+  }
+  function tacticBody(s) {
+    const imp = impliedTactic(s);
+    let html = `<div class="fh">${[9,8,7,6,5,4,3,2,1].map(n => `<span>${n}</span>`).join('')}</div>`;
+    for (const f of tfams.filter(f => f.side === s.strat)) {
+      const ts = tactics.filter(t => t.family === f.id && !t.variantOf);
+      const used = new Set(); let cells = '';
+      for (const t of ts) {
+        const files = t.lead.files.length ? t.lead.files : [+t.lead.square[0]];
+        const col = 10 - Math.max(...files), span = files.length;
+        for (let i = 0; i < span; i++) used.add(col + i);
+        const ng = NG.has(t.id), isImp = !!(imp && imp.id === t.id), vs = vsTactic(t);
+        cells += `<button type="button" class="it tile" style="grid-column:${col} / span ${span};grid-row:1;--n:${[...t.short].length}" data-pick="tactic:${t.id}" data-basic="${t.basic}"` +
+          ` aria-current="${s.sel.tactic === t.id || isImp}" data-implied="${isImp}" data-ng="${ng}" title="${esc(t.name)}">` +
+          `${t.basic ? '<span class="seal">基本</span>' : ''}<span class="nm">${esc(t.short)}</span><span class="fb">${files.join('・')}<small>筋</small></span>${marks(vs, ng)}</button>`;
+        let r = t.basic && s.plan === 'kB' ? 3 : 2;
+        for (const v of tactics.filter(v => v.variantOf === t.id)) {
+          cells += `<button type="button" class="it var" style="grid-column:${col} / span ${span};grid-row:${r++}" data-pick="tactic:${v.id}" aria-current="${s.sel.tactic === v.id}" title="${esc(v.name)}"><span>↳</span><span class="nm">${esc(v.short)}</span></button>`;
+        }
+      }
+      for (let c = 1; c <= 9; c++) if (!used.has(c)) cells += `<span class="dot" style="grid-column:${c}">–</span>`;
+      html += `<div class="trow" style="${TC[f.id]}"><h3><span class="pz">${esc(f.piece)}</span>${esc(f.name)}</h3><div class="tg">${cells}</div></div>`;
+    }
+    return html;
+  }
+
+  // ---------- 上部の操作（案ごと） ----------
+  const pressed = (a, b) => `aria-pressed="${a === b}"`;
+  const whoLbl = s => s.who === 'opp' ? ['相手', '後手 △'] : ['自分', '先手 ▲'];
+  const sortSel = s => `<select data-sort aria-label="囲いの並べ方">${SORTS.map(([k, l]) => `<option value="${k}"${s.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  const hasSel = s => !!(s.sel.castle || s.sel.tactic);
+  const ICON = { castle:'<svg viewBox="0 0 24 24"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>', tactic:'<svg viewBox="0 0 24 24"><path d="M4 20L20 4M13 4h7v7"/></svg>' };
+
+  const PLANS = [
+    { id:'k0', name:'いま（比較用）', lead:'実ドックの見た目をなぞった基準。罫線の細い枠が同じ大きさで並び、基本形・選択中・相性の差は小さな記号だけで示している。',
+      notes:null,
+      controls:s => {
+        const [w, side] = whoLbl(s);
+        return `<div class="head"><span><b>${w}</b><small>${side}</small></span><button class="legend" type="button">?</button></div>` +
+          `<div class="tabs"><span class="seg">${[['castle','囲い'],['tactic','戦法']].map(([k, l]) => `<button type="button" data-set="kind=${k}" ${pressed(s.kind, k)}>${l}</button>`).join('')}</span>${hasSel(s) ? '<button type="button" class="clear" data-clear>はずす</button>' : ''}</div>` +
+          `<div class="strat">${Object.entries(STRAT).map(([k, l]) => `<button type="button" data-set="strat=${k}" ${pressed(s.strat, k)}>${l}</button>`).join('')}</div>` +
+          (s.kind === 'castle' ? `<div class="sort">並べ方 ${sortSel(s)}</div>` : '');
+      } },
+    { id:'kA', name:'系統の色と印',
+      lead:'系統ごとに色を決め、ブロック左の太い帯・サムネイルの下線・件数の丸で「どの塊か」を色で読ませる。◎△✕は色付きのバッジに、選択中は朱の枠＋✓にして、遠目でも状態が分かる。囲い／戦法は塗りの大きな2択ボタン、居飛車／振り飛車は朱のピル、並べ方はアイコンの4択にして、選択肢を開かなくても見えるようにする。',
+      notes:{ try:'並べ方の「⑂」で発展ツリー、「★」で堅さ順。系統名を押すと折りたためる。', good:['タイルの面積は今と同じまま、色で塊と状態をすぐ見分けられる','操作がすべて開いた状態で見え、セレクトを開く手間がない'], bad:['色が9系統分増える（「墨と余白」の方針から最も離れる）','色だけに頼らないよう、記号（◎✕✓）は残す必要がある'] },
+      controls:s => {
+        const [w, side] = whoLbl(s);
+        return `<div class="head"><span class="who">${w}</span><small>${side}</small><span class="sp"></span>${hasSel(s) ? '<button type="button" class="clear" data-clear>× はずす</button>' : ''}<button class="legend" type="button">?</button></div>` +
+          `<div class="tabs">${[['castle','囲い'],['tactic','戦法']].map(([k, l]) => `<button type="button" data-set="kind=${k}" ${pressed(s.kind, k)}>${ICON[k]}${l}</button>`).join('')}</div>` +
+          `<div class="bar"><div class="pill">${[['ibisha','居','居飛車'],['furibisha','振','振り飛車']].map(([k, g, l]) => `<button type="button" data-set="strat=${k}" ${pressed(s.strat, k)}><b>${g}</b>${l}</button>`).join('')}</div>` +
+          (s.kind === 'castle' ? `<div class="sorts" role="group" aria-label="並べ方">${SORTS.map(([k, l, i]) => `<button type="button" data-set="sort=${k}" ${pressed(s.sort, k)} title="${l}">${i}</button>`).join('')}</div>` : '') + `</div>`;
+      } },
+    { id:'kB', name:'基本が大きい',
+      lead:'同じ3列の格子の中で、基本形のカードだけを2×2マスに広げる（盤の絵と、名前16pxの明朝）。発展形は1マスのまま小さく灰色寄りにして、基本形に従わせる（dense 配置で隙間を埋める）。戦法は基本のタイルだけ縦2段にし、筋の数字を22pxで先に出す。見出しは「囲い 30px／戦法 14px」の文字の大小で、いまの層を示す。',
+      notes:{ try:'「振り飛車」に切り替えると、本美濃・振り飛車穴熊・金無双が大きなカードになる。', good:['ジャンプ率が最も高く、初心者が最初に見るべきものがはっきりする','色を増やさず「墨と余白」のまま'], bad:['基本形がある系統はブロックが縦に伸び、全体のスクロール量は増える','戦法の基本タイルが2段を使うため、派生チップの位置が1段下がる'] },
+      controls:s => {
+        const [w, side] = whoLbl(s);
+        return `<div class="head"><div class="kd">${[['castle','囲い'],['tactic','戦法']].map(([k, l]) => `<button type="button" data-set="kind=${k}" ${pressed(s.kind, k)}>${l}</button>`).join('')}</div><span class="sp"></span>` +
+          `<span class="who">${w} ${side}</span><button class="legend" type="button">?</button></div>` +
+          `<div class="bar"><div class="seg2">${Object.entries(STRAT).map(([k, l]) => `<button type="button" data-set="strat=${k}" ${pressed(s.strat, k)}>${l}</button>`).join('')}</div><span class="sp"></span>` +
+          (s.kind === 'castle' ? sortSel(s) : '') + (hasSel(s) ? '<button type="button" class="clear" data-clear>はずす</button>' : '') + `</div>`;
+      } },
+    { id:'kC', name:'盤と駒の見立て',
+      lead:'囲いのカードは枠をやめて、盤の絵をカードいっぱいに敷く。名前は盤の上に置いた駒札、◎は朱の丸印（判子）、✕は墨の丸印にする。戦法の格子は木目の帯にして筋の罫を引き、タイルを駒の形にする（基本は朱字の駒、ほかは一回り小さな駒）。居飛車／振り飛車も駒の形のボタン。囲い／戦法は黒いインデックスのタブ。',
+      notes:{ try:'戦法を開くと、木目の帯の上に駒が並ぶ。駒を押すと朱の駒になる。', good:['将棋の道具そのものに見え、遊び心が一番ある','盤の絵の面積が最大になり、形の見分けが速い'], bad:['駒の形は字の入る幅が狭く、4文字以上の戦法名は小さくなる','木目の面が増えて、画面全体が茶色っぽくなる'] },
+      controls:s => {
+        const [w, side] = whoLbl(s);
+        return `<div class="head"><span class="who">${w}</span><small>${side}</small><span class="sp"></span><button class="legend" type="button">?</button></div>` +
+          `<div class="tabs">${[['castle','囲い'],['tactic','戦法']].map(([k, l]) => `<button type="button" data-set="kind=${k}" ${pressed(s.kind, k)}>${l}</button>`).join('')}<span class="sp"></span>${hasSel(s) ? '<button type="button" class="clear" data-clear>はずす</button>' : ''}</div>` +
+          `<div class="bar"><div class="koma">${[['ibisha','居飛'],['furibisha','振飛']].map(([k, g]) => `<button type="button" data-set="strat=${k}" ${pressed(s.strat, k)} title="${STRAT[k]}"><span>${g[0]}<br>${g[1]}</span></button>`).join('')}</div>` +
+          `<span style="font:700 13px/1.3 var(--font-d);letter-spacing:.1em">${STRAT[s.strat]}</span><span class="sp"></span>` + (s.kind === 'castle' ? sortSel(s) : '') + `</div>`;
+      } },
+    { id:'kD', name:'大きな下見＋詰めた一覧',
+      lead:'ドックの上に「いま見ているもの」の下見を大きく置く（盤の絵・名前22px・系統・◎✕の理由・基本）。一覧のタイルにマウスを乗せると下見が入れ替わり（点線の枠）、離すと選択中に戻る。一覧は小さく詰めて（囲いは4列）、一度に見える数を増やす。操作は1行のツールバーにまとめる。',
+      notes:{ try:'一覧のカードにマウスを乗せると、上の下見が切り替わる。', good:['大小の差（ジャンプ率）を下見の1か所に集めるので、一覧は詰められる','名前を読まなくても、形を大きく確かめてから選べる'], bad:['一覧のタイルが小さく、文字は9.5pxまで下がる','下見の欄の分、一覧の高さが約130px減る'] },
+      controls:s => `<div class="head"><div class="seg3">${[['castle','囲い'],['tactic','戦法']].map(([k, l]) => `<button type="button" data-set="kind=${k}" ${pressed(s.kind, k)}>${l}</button>`).join('')}</div>` +
+        `<div class="seg3">${[['ibisha','居飛車'],['furibisha','振飛車']].map(([k, l]) => `<button type="button" data-set="strat=${k}" ${pressed(s.strat, k)}>${l}</button>`).join('')}</div><span class="sp"></span>` +
+        (s.kind === 'castle' ? sortSel(s) : '') + `<button class="legend" type="button">?</button></div>`,
+      peek:s => {
+        const [w, side] = whoLbl(s);
+        const id = s.hover || (s.kind === 'castle' ? s.sel.castle : (s.sel.tactic || (impliedTactic(s) || {}).id));
+        const clr = hasSel(s) ? '<button type="button" class="clear" data-clear>はずす</button>' : '';
+        if (s.kind === 'castle') {
+          const c = byId[id];
+          if (!c) return `<div class="peek"><span class="who">${w} ${side}</span><span class="art"></span><span class="nm" style="color:var(--muted);font-size:15px">囲いを選ぶ</span></div>`;
+          const vs = vsCastle(c, s), ng = NG.has(c.id);
+          return `<div class="peek" style="${famVar(c.family)}" data-hover="${!!s.hover}"><span class="who">${w} ${side}</span>${clr}<span class="art">${thumb(c)}</span>` +
+            `<span class="fam">${esc(FAM[c.family].name)}${c.basic ? '　<span class="seal" style="position:static;display:inline;padding:1px 4px;background:var(--accent);color:#fbf6ea">基本</span>' : ''}</span><span class="nm">${esc(c.short)}</span>` +
+            `<span class="mk">${vs ? `<i class="${vs}">${vs === 'good' ? '◎ 相手の' + (s.strat === 'ibisha' ? '振り飛車' : '居飛車') + 'に強い' : '△ 相手とは相性が悪い'}</i>` : ''}${ng ? '<i class="ng">✕ いまの戦法と両立しない</i>' : ''}<span class="tag">堅さ${c.r.hard}・速さ${c.r.quick}</span></span></div>`;
+        }
+        const t = tById[id];
+        if (!t) return `<div class="peek"><span class="who">${w} ${side}</span><span class="art"></span><span class="nm" style="color:var(--muted);font-size:15px">戦法を選ぶ</span></div>`;
+        const files = t.lead.files.length ? t.lead.files : [+t.lead.square[0]];
+        return `<div class="peek" style="--fam:var(--accent)" data-hover="${!!s.hover}"><span class="who">${w} ${side}</span>${clr}<span class="art strip"><span class="fl">${[9,8,7,6,5,4,3,2,1].map(n => `<span>${files.includes(n) ? esc(t.lead.piece) : ''}</span>`).join('')}</span>` +
+          `<span class="fn">${[9,8,7,6,5,4,3,2,1].map(n => `<span>${n}</span>`).join('')}</span></span>` +
+          `<span class="fam">${esc(TFAM[t.family].name)}${t.basic ? '　<span style="padding:1px 4px;background:var(--accent);color:#fbf6ea">基本</span>' : ''}</span><span class="nm">${esc(t.name)}</span>` +
+          `<span class="mk">${!s.sel.tactic && !s.hover ? '<i>点線＝既定値（未選択）</i>' : ''}${NG.has(t.id) ? '<i class="ng">✕ いまの囲いと両立しない</i>' : ''}<span class="tag">${esc(t.lead.piece)}を${files.join('・')}筋へ${t.tags[0] ? '・' + esc(t.tags[0]) : ''}</span></span></div>`;
+      } },
+  ];
+
+  // ---------- 組み立て: 各案につき「囲い」「戦法」の2画面 ----------
+  const host = document.getElementById('plans');
+  for (const p of PLANS) {
+    const sec = document.createElement('section');
+    sec.className = 'plan'; sec.id = p.id;
+    sec.innerHTML = `<h2><span class="no">${p.id === 'k0' ? '0' : p.id[1]}</span>${p.name}</h2><p class="lead">${p.lead}</p><div class="stage"></div>`;
+    const stage = sec.querySelector('.stage');
+    for (const kind of ['castle', 'tactic']) {
+      const s = { plan:p.id, who:'me', kind, strat:'ibisha', sort:'family', sel:{ castle:'yagura', tactic:null }, closed:{}, hover:null };
+      const cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = kind === 'castle' ? '囲いの画面' : '戦法の画面（未選択＝既定値の点線の角）';
+      const rail = document.createElement('div'); rail.className = `rail ${p.id}`;
+      rail.innerHTML = `<div class="pg"></div><div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">` +
+        `<button type="button" role="tab" class="pc opp" data-who="opp"><span class="bd"></span><span class="v">相手<small>後手 △</small></span></button>` +
+        `<button type="button" role="tab" class="pc me" data-who="me"><span class="bd"></span><span class="v">自分<small>先手 ▲</small></span></button></div>`;
+      stage.append(cap, rail);
+      const pg = rail.querySelector('.pg');
+      const render = (keep = true) => {
+        rail.dataset.who = s.who;
+        for (const b of rail.querySelectorAll('.pc')) b.setAttribute('aria-selected', String(b.dataset.who === s.who));
+        const old = pg.querySelector('.body'), y = keep && old ? old.scrollTop : 0;
+        pg.innerHTML = p.controls(s) + (p.peek ? `<div class="peekbox">${p.peek(s)}</div>` : '') +
+          `<div class="body">${s.kind === 'castle' ? castleBody(s) : tacticBody(s)}</div>`;
+        pg.querySelector('.body').scrollTop = y;
+      };
+      rail.addEventListener('click', e => {
+        const t = e.target;
+        const pc = t.closest('.pc'); if (pc) { s.who = pc.dataset.who; return render(); }
+        const pick = t.closest('[data-pick]'); if (pick) { const [k, id] = pick.dataset.pick.split(':'); s.sel[k] = id; s.hover = null; return render(); }
+        const f = t.closest('[data-fold]'); if (f) { s.closed[f.dataset.fold] = !s.closed[f.dataset.fold]; return render(); }
+        if (t.closest('[data-clear]')) { s.sel = { castle:null, tactic:null }; return render(); }
+        const set = t.closest('[data-set]');
+        if (set) { const [k, v] = set.dataset.set.split('='); s[k] = v; return render(k !== 'kind' && k !== 'strat' && k !== 'sort'); }
+      });
+      rail.addEventListener('change', e => { if (e.target.matches('[data-sort]')) { s.sort = e.target.value; render(false); } });
+      if (p.peek) {
+        rail.addEventListener('mouseover', e => {
+          const it = e.target.closest('[data-pick]'); const id = it ? it.dataset.pick.split(':')[1] : null;
+          if (id === s.hover) return;
+          s.hover = id; rail.querySelector('.peekbox').innerHTML = p.peek(s);
+        });
+        rail.addEventListener('mouseleave', () => { s.hover = null; rail.querySelector('.peekbox').innerHTML = p.peek(s); });
+      }
+      render();
+    }
+    if (p.notes) {
+      const n = document.createElement('div'); n.className = 'notes';
+      n.innerHTML = `<div class="try"><b>試す：</b>${p.notes.try}</div><div><h4>よいところ</h4><ul>${p.notes.good.map(x => `<li>${x}</li>`).join('')}</ul></div>` +
+        `<div><h4>気になるところ</h4><ul>${p.notes.bad.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
+      stage.appendChild(n);
+    }
+    host.appendChild(sec);
+  }
+})();
+</script>
+</body>
+</html>

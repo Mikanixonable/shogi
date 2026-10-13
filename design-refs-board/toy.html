@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>積み木の盤</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&family=M+PLUS+Rounded+1c:wght@800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+/* 02 積み木の盤 — 朱く塗ったトレイに、楓の角タイルを81枚はめ込む。
+   線は描かずタイルの隙間（溝）で出す。駒は分厚く、側面を先手=朱・後手=藍に塗り分け、横から見ても持ち主が分かる。
+   触るとぴょこっと浮く。おもちゃの「手で遊べそう」を前に出す案 */
+:root {
+  --S:54px; --M:calc(var(--S) * .62); --T:calc(var(--S) * .8); --LEG:0px; --PT:6; --pstep:calc(var(--S) * .045);
+  --rad:calc(var(--S) * .38); --rad-b:calc(var(--S) * .3); --dai-rad:calc(var(--S) * .32);
+  --env:#bfe3d6;
+  --env-tex:radial-gradient(circle, rgba(255,255,255,.55) 0 3px, transparent 3.5px) 0 0/28px 28px,
+            radial-gradient(circle, rgba(255,255,255,.35) 0 3px, transparent 3.5px) 14px 14px/28px 28px;
+  --env-glow:.35; --env-vig:.12; --ground-op:.28;
+  --pc-shadow:#0d3b33; --pc-shadow-op:.4; --bev:9%;
+  --pc-ring:linear-gradient(var(--la), #fffaf0 0%, #f6dfb4 45%, #d9b27a 100%);
+  --pc-ink:#4a2a12; --pc-ink-g:#1d3f73;
+  --pc-font:900 calc(var(--S) * .42)/1 "M PLUS Rounded 1c", var(--font-b);
+  --ov-col:#ff4f2e;
+}
+:root[data-theme="dark"] {
+  --env:#1d2b3a;
+  --env-tex:radial-gradient(circle, rgba(255,255,255,.08) 0 3px, transparent 3.5px) 0 0/28px 28px,
+            radial-gradient(circle, rgba(255,214,120,.08) 0 3px, transparent 3.5px) 14px 14px/28px 28px;
+  --env-glow:.2; --env-vig:.35; --ground-op:.55;
+}
+
+/* トレイ: 朱の塗装（下の木目がうっすら透ける）。縁の面取りに大きな照り */
+.slab > .topf { background:linear-gradient(var(--la), #ff8a64, #f0532f 50%, #c93c1f);
+  box-shadow:inset calc(var(--lx) * -4px) calc(var(--ly) * -4px) 3px rgba(255,220,190,.55),
+             inset calc(var(--lx) * 5px) calc(var(--ly) * 5px) 5px rgba(120,20,0,.4); }
+.slab > .topf .tex, .dai > .topf .tex { mix-blend-mode:overlay; opacity:.55; }
+/* 盤の窪み: タイルの間の溝の底。縁から落ちる影 */
+.grid::before { content:""; position:absolute; inset:-4px; border-radius:10px; background:#6e2410;
+  box-shadow:inset calc(var(--lx) * -6px) calc(var(--ly) * -6px) 8px rgba(40,5,0,.75), 0 0 0 1px rgba(255,190,160,.5); }
+.lines { display:none; }
+/* 楓のタイル: 角を丸めた積み木。面取りの照りと影が光源で回る */
+.sq::before { content:""; position:absolute; inset:2.5px; border-radius:calc(var(--S) * .14);
+  background:var(--tile-tex), linear-gradient(var(--la), #fff1d2, #f8d79d 60%, #edc37e);
+  box-shadow:inset calc(var(--lx) * -2.5px) calc(var(--ly) * -2.5px) 1px rgba(255,255,255,.75),
+             inset calc(var(--lx) * 3px) calc(var(--ly) * 3px) 2px rgba(170,95,25,.45),
+             calc(var(--lx) * -1.5px) calc(var(--ly) * -1.5px) 2px rgba(60,10,0,.55); }
+.sq:nth-child(even)::before { background-position:37px 11px, 0 0; filter:hue-rotate(-4deg) brightness(.985); }
+/* 星: 青緑のビーズ */
+.hoshi { z-index:2; width:calc(var(--S) * .2); transform:translate(-50%,-50%) translateZ(2px);
+  background:radial-gradient(circle at calc(50% + var(--lx) * 28%) calc(50% + var(--ly) * 28%), #b6fff0, #1fb59a 45%, #0a6d5c);
+  box-shadow:calc(var(--lx) * -2px) calc(var(--ly) * -2px) 2px rgba(0,40,30,.5); }
+.flab, .rlab { font:900 calc(var(--S) * .24)/1 "M PLUS Rounded 1c", var(--font-b); color:rgba(255,240,225,.92);
+               text-shadow:calc(var(--lx) * 1px) calc(var(--ly) * 1px) 0 rgba(120,20,0,.6); }
+.slab > .front .edge { background:linear-gradient(#ff9c78 0, #e04a28 10%, #c33a1d 55%, #8d2810); }
+.slab > .front .edge::after { content:""; position:absolute; left:4%; right:4%; bottom:10%; height:12%; border-radius:99px; background:rgba(60,8,0,.35); }
+
+/* 駒: 分厚い楓、側面だけ持ち主の色 */
+.pc .sl { background:#e2512e; }
+.pc.g .sl { background:#2c5aa0; }
+.pc .sl:nth-of-type(2) { filter:brightness(.88); }
+.pc .fc::before { background:var(--tile-tex), linear-gradient(var(--la), #fffaf0, #fbe7c2 70%, #f1d39d); }
+.pc .fc span { text-shadow:calc(var(--lx) * -.8px) calc(var(--ly) * -.8px) 0 rgba(255,255,255,.8); }
+.pc.sz-k .fc span { font-size:calc(var(--S) * .46); }
+.pc.sz-s .fc span { font-size:calc(var(--S) * .38); }
+/* 触るとぴょこっと浮く（影は床に残して遠ざかる） */
+.pc .sl, .pc .fc { transition:translate .35s cubic-bezier(.3,1.7,.5,1); }
+.pc .sh { transition:translate .35s cubic-bezier(.3,1.7,.5,1), opacity .35s; }
+.sq:hover .pc .sl, .sq:hover .pc .fc, .hand > div:hover .pc .sl, .hand > div:hover .pc .fc { translate:0 0 calc(var(--S) * .3); }
+.sq:hover .pc .sh, .hand > div:hover .pc .sh { translate:calc(var(--lx) * -9px) calc(var(--ly) * -9px); opacity:.3; }
+.sq, .hand > div { cursor:grab; }
+
+/* 駒台: 青緑の小箱 */
+.dai > .topf { background:linear-gradient(var(--la), #59d6bd, #23b096 55%, #158a74);
+  box-shadow:inset calc(var(--lx) * -3px) calc(var(--ly) * -3px) 2px rgba(220,255,245,.6), inset calc(var(--lx) * 4px) calc(var(--ly) * 4px) 5px rgba(0,60,50,.4); }
+.dai > .front .edge { background:linear-gradient(#7ee8d2 0, #1fa58c 12%, #12735f); }
+.dai .hand b { color:#fff; }
+</style>
+</head>
+<body>
+<section class="hero">
+  <div>
+    <h2><span class="no">02</span>積み木の盤<small>TOY BLOCKS</small></h2>
+    <p class="lead">朱く塗ったトレイに楓の角タイルを81枚はめ込んだ盤。線は描かず、タイルの隙間の溝で升目を作る。駒は分厚く、側面を先手＝朱・後手＝藍に塗り分けて、斜めから見ても持ち主が分かる。マスに触れると駒がぴょこっと浮く。</p>
+    <ul class="kw"><li>おもちゃ感</li><li>遊び心</li><li>手触り</li><li>丸み</li><li>持ち主が色で分かる</li></ul>
+  </div>
+  <div class="swatches">
+    <span style="background:#f0532f" data-n="朱塗り"></span><span style="background:#f8d79d" data-n="楓"></span>
+    <span style="background:#23b096" data-n="青緑"></span><span style="background:#2c5aa0" data-n="藍"></span><span style="background:#bfe3d6" data-n="卓"></span>
+  </div>
+</section>
+<div class="stage"></div>
+<section class="details">
+  <dl class="spec">
+    <dt>盤面</dt><dd>朱の塗装トレイ（overlay で木目がうっすら透ける）＋一段下がった窪み＋81枚の楓タイル。縁の内側に光源の反対側から落ちる影。</dd>
+    <dt>線</dt><dd>描かない。タイル間 5px の溝が罫線の代わり。各タイルの面取りの照り・影が光の向きで回るので、盤全体がキラキラ細かく反応する。</dd>
+    <dt>星</dt><dd>青緑のビーズ。タイルより一段浮かせ、落ち影を付ける。</dd>
+    <dt>駒</dt><dd>厚み6枚（ほかの案の1.5倍）。側面を持ち主の色に塗り、駒面は全員同じ楓。字は丸ゴシック（M PLUS Rounded 1c 900）、後手は藍の字。</dd>
+    <dt>動き</dt><dd>マスに触れると駒が 0.3 マス浮き、影が床に残って遠ざかる（バネのイージング）。アプリの「駒の滑り」と同じ系統の動きにできる。</dd>
+    <div class="sep"></div>
+    <dt>アプリへ</dt><dd>タイルは <code>.sq::before</code> だけで作れるので DOM は増えない。立体駒は側面マテリアル（<code>wall</code>）を持ち主で色分けするだけで近づく。窪みの影は盤の枠に inset shadow 1本。</dd>
+    <dt>注意</dt><dd>溝が罫線より太いぶん盤面の情報（利きのヒート・朱枠）と張り合う。ヒートはタイルの面だけを塗る、朱枠は溝の外側に出すなど、重ね表示を溝に合わせる調整が要る。</dd>
+  </dl>
+</section>
+<script src="common.js"></script>
+<script>
+Ref.init({
+  light: [-.45, -.85], tilt: 26, loupe: [7.5, 6.9], loupeCap: '真上から 2.6 倍 ・ 触れると浮く',
+  fileDigits: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+  boardTex: Ref.grain({ fx: .012, fy: .12, oct: 2, seed: 6, bands: 10, rgb: [255, 230, 210], a: .6, fine: .2 }),
+  daiTex: Ref.grain({ fx: .012, fy: .14, oct: 2, seed: 2, bands: 8, rgb: [230, 255, 245], a: .5, fine: .2 }),
+  vars: {
+    '--clip-s': Ref.roundClip(.16), '--clip-g': Ref.roundClip(.16, true),
+    '--tile-tex': Ref.tex(120, 120, Ref.grain({ fx: .015, fy: .2, oct: 2, seed: 9, bands: 5, rgb: [190, 130, 60], a: .35, fine: .3, warp: 14 })),
+  },
+});
+</script>
+</body>
+</html>

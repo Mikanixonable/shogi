@@ -128,6 +128,16 @@ async function sweepBoard(page, expect) {
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
   r.layerTabs = await page.$$eval(`${DOCK} .dk-tab button`, els => els.map(el => el.textContent.trim()));
+  r.binderStyle = await page.evaluate(() => {
+    const binder = document.querySelector('#pickRail .dk-binder').getBoundingClientRect();
+    const opp = document.querySelector('#pickRail .dk-pc[data-who="opp"]').getBoundingClientRect();
+    const me = document.querySelector('#pickRail .dk-pc[data-who="me"]').getBoundingClientRect();
+    const ghost = document.querySelector('#pickRail .dk-pc-ghost');
+    return getComputedStyle(ghost).display !== 'none'
+      && Math.abs(opp.top - binder.top - 30) < 1
+      && Math.abs(binder.bottom - me.bottom - 30) < 1
+      && Math.round(me.width) === 46;
+  });
   r.oppTabEnabled = await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled);
   r.noOldUi = await page.evaluate(() => !document.querySelector('#viewSeg, [data-view], #addOpp, #clearAll, #clearMe, #clearOpp, #skeleton, #heatScopeSeg, .dk-sep, .dk-fold, .dk-addopp, .dk-threat'));
   r.noClusterCss = await page.evaluate(() => ![...document.styleSheets].some(s => /clusters\.css/.test(s.href || '')));
@@ -230,18 +240,41 @@ async function sweepBoard(page, expect) {
   }, stratB);
   await page.click(`${DOCK} .dk-strategy button[data-value="${stratA}"]`); await wait(250);
   // 並べ方: 発展ツリーは from の子を字下げした行で出し、性質順は段（5→1）のブロックにする。
-  await page.selectOption(`${DOCK} .dk-sort select`, 'tree'); await wait(250);
+  await page.click(`${DOCK} .dk-sort-seg button[data-value="tree"]`); await wait(250);
   r.sortTree = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#pickRail .dk-tree .dk-row')];
+    const shownRows = rows.filter(row => !row.hidden && !row.closest('.dk-fam').hidden);
     const byId = Object.fromEntries(Kakoi.CASTLES.map(c => [c.id, c]));
     return rows.length > 0 && rows.some(x => x.dataset.depth !== '0')
-      && rows.filter(x => x.dataset.depth !== '0').every(x => byId[x.dataset.id].from);
+      && rows.filter(x => x.dataset.depth !== '0').every(x => byId[x.dataset.id].from)
+      && shownRows.every(x => {
+        const thumb = x.querySelector('.thumb').getBoundingClientRect();
+        return Math.round(thumb.width) === 54 && Math.round(thumb.height) === 36;
+      });
   });
-  await page.selectOption(`${DOCK} .dk-sort select`, 'hard'); await wait(250);
+  await page.click(`${DOCK} .dk-sort-seg button[data-value="hard"]`); await wait(250);
   r.sortAxis = await page.evaluate(() => [...document.querySelectorAll('#pickRail .dk-fam')]
     .every(s => [...s.querySelectorAll('.dk-card')].every(c =>
       `hard${Kakoi.CASTLES.find(x => x.id === c.dataset.id).ratings.hard}` === s.dataset.family)));
-  await page.selectOption(`${DOCK} .dk-sort select`, 'family'); await wait(250);
+  await page.click(`${DOCK} .dk-sort-seg button[data-value="family"]`); await wait(250);
+  // A「系統の色と印」: 系統ブロックは系統色の帯（4px）を持ち、並べ方は開かずに全部見える選択肢
+  r.famColors = await page.evaluate(() => {
+    const fams = [...document.querySelectorAll('#pickRail .dk-fam:not([hidden])')];
+    const sorts = [...document.querySelectorAll('#pickRail .dk-sort-seg button')];
+    const sortIds = sorts.map(button => button.dataset.value);
+    const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
+    const sortBar = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
+    const cards = document.querySelector('#pickRail .dk-cards');
+    const thumb = document.querySelector('#pickRail .dk-card .thumb').getBoundingClientRect();
+    return fams.length > 0 && fams.every(s => s.style.getPropertyValue('--fam').startsWith('var(--f-')
+        && getComputedStyle(s).borderLeftWidth === '4px')
+      && sorts.length === Kakoi.dockGrids.CASTLE_SORTS.length && sorts.every(b => b.offsetWidth > 0)
+      && !sortIds.includes('wide') && !sortIds.includes('quick')
+      && Math.abs(strategy.top + strategy.height / 2 - sortBar.top - sortBar.height / 2) < 2
+      && getComputedStyle(cards).gridTemplateColumns.split(' ').length === 3
+      && Math.round(thumb.height) === 50
+      && !document.querySelector('#pickRail .dk-sort select');
+  });
   r.basicStyle = await page.evaluate(() => {
     const basics = [...document.querySelectorAll('#pickRail .dk-item[data-basic="true"]')];
     return basics.length > 0 && basics.every(el => !!el.querySelector('.dk-seal'))
@@ -563,9 +596,11 @@ async function main() {
 
       const b = await sweepBoard(page, expect);
       ok(b.panes === 1 && b.oppTabEnabled, '左ドックは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
+      ok(b.binderStyle, 'バインダーは上下端に配置し、相手 OFF 時は点線の駒影を残す', '');
       ok(b.layerTabs.join(',') === '囲い,戦法', '左ドックのタブ順は囲い→戦法', b.layerTabs.join(' → '));
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
       ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
+      ok(b.famColors, 'A案: 系統色の帯と3列タイル、戦略・並べ方を同じ行に表示', '');
       ok(b.basicStyle, '基本の囲いは朱の印で識別され、絞り込みトグルは無い', '');
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');

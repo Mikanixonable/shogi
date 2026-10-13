@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>削り出しの盤</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Cormorant+Garamond:wght@500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+/* 03 削り出し — アルミ板からの削り出し。ヘアラインの異方性の艶、V溝で彫った罫線、
+   敵陣の境（三段目・六段目）だけ橙の差し色、四隅に六角穴のボルト。駒は白磁と黒鉛のセラミック。
+   道具・計器としての「かっこよさ」と、読み取りの速さ（実用感）を両立させる案 */
+:root {
+  --S:54px; --M:calc(var(--S) * .5); --T:calc(var(--S) * .45); --LEG:calc(var(--S) * .32); --PT:3; --pstep:calc(var(--S) * .05);
+  --rad:6px; --rad-b:4px; --dai-rad:6px;
+  --env:#d6d6d2; --env-glow:.25; --env-vig:.22; --ground-op:.35;
+  --env-tex:linear-gradient(rgba(0,0,0,.035) 1px, transparent 1px) 0 0/40px 40px, linear-gradient(90deg, rgba(0,0,0,.035) 1px, transparent 1px) 0 0/40px 40px;
+  --al-1:#d9dcdf; --al-2:#aeb3b8; --al-3:#8b9096; --groove:#3a3e44; --groove-hi:rgba(255,255,255,.75); --lab:#4b5057;
+  --ln:var(--groove); --lw:1.3px; --zone:#ff6a1a;
+  --pc-shadow:#0a0c0f; --pc-shadow-op:.5; --bev:7%;
+  --pc-ring:linear-gradient(var(--la), #ffffff 0 22%, #d9dbde 55%, #9a9ea4 100%);
+  --pc-face:var(--cer-tex), linear-gradient(var(--la), #fbfbfa, #ededeb 70%, #e2e2df);
+  --pc-side:#b9bcc0; --pc-ink:#17191c;
+  --pc-font:900 calc(var(--S) * .4)/1 "Zen Kaku Gothic New", var(--font-b);
+  --ov-col:#ff5a1a; --last:rgba(255,106,26,.16);
+}
+:root[data-theme="dark"] {
+  --env:#141619; --env-glow:.1; --env-vig:.5; --ground-op:.7;
+  --env-tex:linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px) 0 0/40px 40px, linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px) 0 0/40px 40px;
+  --al-1:#4a4e54; --al-2:#2c2f33; --al-3:#1d1f22; --groove:#0c0d0f; --groove-hi:rgba(255,255,255,.22); --lab:#8a9098;
+}
+/* 後手: 黒鉛のセラミックに白い彫り */
+.pc.g { --pc-ring:linear-gradient(var(--la), #8b9097 0 18%, #464a50 55%, #1e2024 100%);
+        --pc-face:var(--cer-tex), linear-gradient(var(--la), #3d4146, #2f3236 70%, #26292c);
+        --pc-side:#1b1d20; --pc-ink:#f1f2f3; }
+
+/* 天面: ヘアライン（横）＋ 光源の位置に縦の帯状の照り（異方性） */
+.slab > .topf, .dai > .topf { background:linear-gradient(var(--la), var(--al-1), var(--al-2) 60%, var(--al-3));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25), inset calc(var(--lx) * -1px) calc(var(--ly) * -1px) 0 rgba(255,255,255,.6); }
+.topf .tex { mix-blend-mode:overlay; opacity:.6; }
+:root[data-theme="dark"] .topf .tex { opacity:1; }
+.slab > .topf::after, .dai > .topf::after { content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen;
+  background:linear-gradient(90deg, transparent calc(32% + var(--lx) * 38%), rgba(255,255,255,.32) calc(50% + var(--lx) * 38%), transparent calc(68% + var(--lx) * 38%)); }
+/* V溝: 線の奥側（光の反対）に照り */
+.lines { filter:drop-shadow(calc(var(--lx) * -1px) calc(var(--ly) * -1px) 0 var(--groove-hi)); }
+.lines .zone { stroke:var(--zone); stroke-width:2px; filter:drop-shadow(0 0 2px rgba(255,106,26,.6)); }
+/* 星: 真鍮を埋めた皿穴 */
+.hoshi { width:calc(var(--S) * .16); background:radial-gradient(circle at calc(50% + var(--lx) * 30%) calc(50% + var(--ly) * 30%), #fff4c9, #d9a83e 45%, #8c6416);
+         box-shadow:0 0 0 1.5px var(--groove), calc(var(--lx) * -1px) calc(var(--ly) * -1px) 0 1.5px var(--groove-hi); }
+.flab, .rlab { font:500 calc(var(--S) * .2)/1 "JetBrains Mono", var(--font-b); color:var(--lab); letter-spacing:.02em;
+               text-shadow:calc(var(--lx) * -1px) calc(var(--ly) * -1px) 0 var(--groove-hi); }
+.rlab { font-family:"Zen Kaku Gothic New", var(--font-b); font-weight:700; }
+/* ボルトと刻印 */
+.screw { position:absolute; width:calc(var(--S) * .26); aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%);
+  background:radial-gradient(circle at calc(50% + var(--lx) * 30%) calc(50% + var(--ly) * 30%), #f4f5f6, #9da2a8 50%, #5d6268);
+  box-shadow:0 0 0 1px rgba(0,0,0,.45), calc(var(--lx) * -1.5px) calc(var(--ly) * -1.5px) 2px rgba(0,0,0,.4); }
+.screw::after { content:""; position:absolute; inset:30%; background:#1a1c1f;
+  clip-path:polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); box-shadow:inset 0 0 2px #000; }
+.serial { position:absolute; left:var(--M); bottom:calc(var(--M) * .22); font:500 calc(var(--S) * .15)/1 "JetBrains Mono", monospace;
+          letter-spacing:.18em; color:var(--lab); opacity:.85; text-shadow:calc(var(--lx) * -1px) calc(var(--ly) * -1px) 0 var(--groove-hi); }
+
+/* 木口: 面取りの照り → 縦のヘアライン。下は一段引っ込んだ台座 */
+.front .edge { background:linear-gradient(#f5f6f7 0, var(--al-2) 9%, var(--al-3) 70%, color-mix(in srgb, var(--al-3) 70%, #000)); }
+.front .edge::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 3px); }
+.plinth { position:absolute; left:6%; right:6%; top:0; bottom:0; background:linear-gradient(#0c0d0f, #23262a); border-radius:0 0 3px 3px; }
+
+/* 駒の彫り: 字の縁の光源側に影、奥に照り（凹み） */
+.pc .fc span { text-shadow:calc(var(--lx) * .8px) calc(var(--ly) * .8px) 0 rgba(0,0,0,.25), calc(var(--lx) * -.8px) calc(var(--ly) * -.8px) 0 rgba(255,255,255,.55); }
+.pc.g .fc span { text-shadow:calc(var(--lx) * .8px) calc(var(--ly) * .8px) 0 rgba(0,0,0,.7); }
+.pc.sz-k .fc span { font-size:calc(var(--S) * .44); }
+.pc.sz-s .fc span { font-size:calc(var(--S) * .34); }
+.dai .hand b { font-family:"JetBrains Mono", monospace; color:var(--lab); }
+</style>
+</head>
+<body>
+<section class="hero">
+  <div>
+    <h2><span class="no">03</span>削り出し<small>MACHINED</small></h2>
+    <p class="lead">アルミの塊から削り出した盤。ヘアラインの帯状の艶が光についてきて、罫線はV溝の彫り。敵陣の境（三段目・六段目）だけ橙の線を入れ、成れる範囲がひと目で分かる。駒は白磁（先手）と黒鉛（後手）のセラミック。チェスのように白黒で持ち主を分ける、計器のような案。</p>
+    <ul class="kw"><li>かっこよさ</li><li>実用感</li><li>精度</li><li>冷たい質感</li><li>白黒の読み取り</li></ul>
+  </div>
+  <div class="swatches">
+    <span style="background:#aeb3b8" data-n="アルミ"></span><span style="background:#2c2f33" data-n="黒アルマイト"></span>
+    <span style="background:#f4f4f2" data-n="白磁"></span><span style="background:#2f3236" data-n="黒鉛"></span><span style="background:#ff6a1a" data-n="敵陣線"></span>
+  </div>
+</section>
+<div class="stage"></div>
+<section class="details">
+  <dl class="spec">
+    <dt>盤面</dt><dd>アルミの3段グラデーション＋横のヘアライン（異方性ノイズを overlay）＋光源の位置に縦の照りの帯（screen）。ダークでは黒アルマイトに切り替わる。</dd>
+    <dt>線</dt><dd>V溝の彫り: 1.3px の暗い線に、光と反対側へ 1px の照り。三段目・六段目の境だけ橙（敵陣・成れる範囲）。</dd>
+    <dt>星・金物</dt><dd>星は真鍮を埋めた皿穴。四隅に六角穴のボルト、下の縁に刻印。所有物としての「本気の道具」感を細部で出す。</dd>
+    <dt>駒</dt><dd>先手は白磁・後手は黒鉛。面取りが鋭く、照りが細く強い。字はゴシックの彫り（Zen Kaku Gothic New 900）。</dd>
+    <dt>厚み</dt><dd>盤は薄く（0.45 マス）、一段引っ込んだ黒い台座で浮いて見せる。</dd>
+    <div class="sep"></div>
+    <dt>アプリへ</dt><dd>白黒の駒は今の「墨＝自分・藍＝相手」より遠目の判別が速い。立体駒は MeshStandardMaterial（metalness 0, roughness .35）＋後手だけ色を反転。敵陣線は盤 SVG に2本足すだけ。</dd>
+    <dt>注意</dt><dd>和の題材とのずれが最も大きい。テーマ「墨と余白」と並べるなら、ダーク専用の「夜の盤」として出す手もある。</dd>
+  </dl>
+</section>
+<script src="common.js"></script>
+<script>
+Ref.init({
+  light: [-.35, -.9], tilt: 22, loupe: [7.4, 6.4], loupeCap: '真上から 2.6 倍 ・ 六段目の橙線',
+  boardTex: `<feTurbulence type="fractalNoise" baseFrequency=".0015 .9" numOctaves="2" seed="3" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 1.4 0 0 -.55"/>`,
+  daiTex: `<feTurbulence type="fractalNoise" baseFrequency=".003 .9" numOctaves="2" seed="8" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 1.4 0 0 -.55"/>`,
+  boardLegs: '<div class="plinth"></div>', daiLegs: '<div class="plinth"></div>',
+  vars: {
+    '--clip-s': Ref.roundClip(.04), '--clip-g': Ref.roundClip(.04, true),
+    '--cer-tex': Ref.tex(80, 80, `<feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="2"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 -1.4 .9"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".12"/></feComponentTransfer>`),
+  },
+  decorate(rig) {
+    const top = rig.querySelector('.slab > .topf');
+    const ln = top.querySelector('.lines');
+    ln.insertAdjacentHTML('beforeend', '<path class="zone" d="M0 3H9M0 6H9" vector-effect="non-scaling-stroke"/>');
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      const s = document.createElement('i'); s.className = 'screw';
+      s.style.left = `calc(${x * 100}% + ${x ? -1 : 1} * var(--M) * .5)`; s.style.top = `calc(${y * 100}% + ${y ? -1 : 1} * var(--M) * .5)`;
+      top.append(s);
+    }
+    top.insertAdjacentHTML('beforeend', '<span class="serial">KAKOI · 9×9 · AL6061-T6 · № 0417</span>');
+  },
+});
+</script>
+</body>
+</html>

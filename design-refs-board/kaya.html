@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本榧と彫駒</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&family=Yuji+Syuku&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+/* 01 本榧と彫駒 — 天地柾の榧の盤に漆の太刀盛りの線。駒は黄楊の一木から切り出した彫駒。
+   視点はアプリと同じ真上だけ。筋・段・持ち駒の表記もアプリの .boardwrap を継ぐ。
+   立体感は「駒の面取りの陰影」「字の彫りの影」「盤に落ちる駒の影」の3つで出す */
+:root {
+  --S:54px; --T:calc(var(--S) * 1.15); --LEG:calc(var(--S) * .75);
+  --env:#bdb27a;
+  --env-tex:repeating-linear-gradient(0deg, rgba(80,70,20,.20) 0 1px, transparent 1px 4px),
+            repeating-linear-gradient(90deg, rgba(255,255,230,.06) 0 1px, transparent 1px 3px);
+  --env-glow:.28; --env-vig:.3; --ground-op:.5;
+  --ln:#1f1208; --lw:1.7px;
+  --lab-c:#3b3420;
+}
+:root[data-theme="dark"] { --env:#3a3722; --env-glow:.34; --env-vig:.55; --ground-op:.7; --lab-c:#d6cca8; }
+@media (max-width:860px) { :root:root:root { --S:clamp(22px, calc((100vw - 120px) / 9.84), 52px); } }
+
+/* 盤の天面: 榧の黄金色 + 柾目（SVG）+ 光源の側の艶 */
+.slab > .topf { background:linear-gradient(var(--la), #f6d99a, #e9be70 55%, #d9a659); }
+.slab > .topf .tex { mix-blend-mode:multiply; }
+.slab > .topf::after { content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:soft-light;
+  background:radial-gradient(70% 55% at calc(50% + var(--lx) * 48%) calc(50% + var(--ly) * 48%), rgba(255,250,235,.85), transparent 70%); }
+/* 太刀盛り: 漆の線は盛り上がって光る。光の側に細い照り、反対に影 */
+.lines { filter:drop-shadow(calc(var(--lx) * -1.2px) calc(var(--ly) * -1.2px) .6px rgba(60,30,0,.45))
+                drop-shadow(calc(var(--lx) * .8px) calc(var(--ly) * .8px) 0 rgba(255,236,190,.55)); }
+.hoshi { background:radial-gradient(circle at calc(50% + var(--lx) * 25%) calc(50% + var(--ly) * 25%), #6b4a2a, #1f1208 60%);
+         box-shadow:calc(var(--lx) * -1px) calc(var(--ly) * -1px) 1px rgba(60,30,0,.5); width:calc(var(--S) * .14); }
+
+/* 駒: 1枚の SVG。マスの中央に置き、盤へ2段の影（接地の濃い影 + 光の反対へ伸びる柔らかい影）を落とす */
+.kp { position:absolute; left:50%; top:50%; height:calc(var(--SH) * var(--k, .9)); aspect-ratio:88/100; translate:-50% -50%; overflow:visible;
+      filter:drop-shadow(calc(var(--lx) * var(--len) * -1.6px) calc(var(--ly) * var(--len) * -1.6px) .7px rgba(45,22,0,.55))
+             drop-shadow(calc(var(--lx) * var(--len) * -6px) calc(var(--ly) * var(--len) * -6px) 3.5px rgba(45,22,0,.32)); }
+.kp text { font-family:"Yuji Syuku", var(--font-d); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="kp-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6e2ad"/><stop offset="1" stop-color="#ebcb88"/>
+    </linearGradient>
+    <!-- 彫り: 光の側の壁は影、奥の壁は木地が照る（offset は光源に合わせて JS が書き換える） -->
+    <filter id="engrave" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="1" dy="1" result="away"/>
+      <feComposite in="SourceAlpha" in2="away" operator="out" result="nearWall"/>
+      <feGaussianBlur in="nearWall" stdDeviation=".35" result="nearSoft"/>
+      <feFlood flood-color="#000" flood-opacity=".8"/>
+      <feComposite in2="nearSoft" operator="in" result="shadow"/>
+      <feOffset in="SourceAlpha" dx="-1" dy="-1" result="toward"/>
+      <feComposite in="SourceAlpha" in2="toward" operator="out" result="farWall"/>
+      <feFlood flood-color="#c99a55" flood-opacity=".9"/>
+      <feComposite in2="farWall" operator="in" result="wall"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="wall"/><feMergeNode in="shadow"/></feMerge>
+      <feComposite in2="SourceAlpha" operator="in"/>
+    </filter>
+  </defs>
+</svg>
+<section class="hero">
+  <div>
+    <h2><span class="no">01</span>本榧と彫駒<small>KAYA · HORI-GOMA</small></h2>
+    <p class="lead">天地柾の榧の厚盤に、漆を盛った太刀盛りの線。駒は黄楊の一木から切り出した彫駒で、柾目が面から面取りまで途切れずに通る。字は彫り込み。視点はアプリと同じ真上で、筋・段・持ち駒の表記もアプリのまま。光源を動かすと、面取りの明暗と彫りの影、盤に落ちる駒の影がついてくる。</p>
+    <ul class="kw"><li>実感</li><li>格</li><li>重さ</li><li>肌理のリアリティ</li><li>静けさ</li></ul>
+  </div>
+  <div class="swatches">
+    <span style="background:#f6d99a" data-n="榧・明"></span><span style="background:#d9a659" data-n="榧・暗"></span>
+    <span style="background:#f2d897" data-n="黄楊"></span><span style="background:#1f1208" data-n="漆"></span><span style="background:#2b3f66" data-n="藍漆"></span>
+  </div>
+</section>
+<div class="stage"></div>
+<section class="details">
+  <dl class="spec">
+    <dt>視点と表記</dt><dd>真上だけ。盤の上に筋（9〜1）、右に段（一〜九）、持ち駒は縦書きで 相手＝左上「△角 歩」・自分＝右下「▲角 歩」。アプリの <code>.flabels</code> <code>.rlabels</code> <code>.handcol</code> と同じ並び。</dd>
+    <dt>盤面</dt><dd>榧の黄金色のグラデーション（光の向きに回る）に、縦の柾目を乗算。光源の側に soft-light の艶だまり。</dd>
+    <dt>線と星</dt><dd>漆の太刀盛り。光の側へ照り、反対へ影を drop-shadow で付けて盛り上がりを出す。</dd>
+    <dt>駒の形</dt><dd>実物の比率の五角形（肩は上から 1/5、下へ広がる）。駒の大きさも実物の順: 玉 &gt; 飛角 &gt; 金銀 &gt; 桂 &gt; 香 &gt; 歩。</dd>
+    <dt>駒の木目</dt><dd>一木の黄楊なので模様（虎斑など）はなく、細い柾目だけ。面と面取りは同じ1枚の木目で、駒ごとに取り位置だけずらす。</dd>
+    <dt>面取り</dt><dd>5つの斜面それぞれの向きと光源の内積で明暗を決める（光に向いた面は明るく、背いた面は暗い）。駒面もわずかに先へ傾けてある。</dd>
+    <dt>字</dt><dd>彫り込み。光の側の壁に影、奥の壁に木地の照り（SVG フィルタ、光源で offset を更新）。字の位置はフォントの実際の墨の範囲を測って、駒の重心に合わせる。先手は黒漆、後手は藍漆（アプリの「後手は藍」を継ぐ）。</dd>
+    <dt>影</dt><dd>駒は盤に2段の影を落とす: 接地の濃い影と、光の反対へ伸びる柔らかい影。光源を低くすると長くなる。</dd>
+    <div class="sep"></div>
+    <dt>アプリへ</dt><dd>盤は <code>.board</code> の背景と罫線 SVG の差し替え。駒は <code>piece-layer-3d.js</code> なら、五角錐台の側面を斜めにして Standard マテリアル＋柾目テクスチャ、字は法線マップで彫りにする。DOM 版はこのページの SVG 駒をそのまま使える。</dd>
+  </dl>
+</section>
+<script src="common.js"></script>
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 88, H = 100, TARGET_Y = 57;           // 字の中心（先手の向き）
+  // 実物の比率: 先端 → 右肩 → 右下 → 左下 → 左肩
+  const OUT = [[44, 1], [77, 20], [86, 99], [2, 99], [11, 20]];
+  const BEV = [3.2, 3.4, 1.4, 3.4, 3.2];         // 各辺の面取りの見え幅（下辺は立っているので細い）
+  const SLOPE = [52, 58, 70, 58, 52];            // 各面取りの傾き（度）
+  const SCALE = { k: .97, r: .93, b: .93, g: .9, s: .9, n: .87, l: .85, p: .82 };
+  const INK = { s: '#1e1209', g: '#24375c' };
+
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+  const nrm = v => { const l = Math.hypot(...v); return [v[0] / l, v[1] / l]; };
+  const flip = P => P.map(([x, y]) => [W - x, H - y]);
+  // 内側へ辺ごとに D[i] だけ寄せた多角形（隣り合う辺の交点）と、各辺の外向き法線
+  const inset = (P, D) => {
+    const n = P.length, cx = P.reduce((s, p) => s + p[0], 0) / n, cy = P.reduce((s, p) => s + p[1], 0) / n;
+    const lines = P.map((p, i) => {
+      const q = P[(i + 1) % n], t = nrm(sub(q, p));
+      let nv = [-t[1], t[0]];
+      if ((cx - p[0]) * nv[0] + (cy - p[1]) * nv[1] < 0) nv = [-nv[0], -nv[1]];
+      return { p: [p[0] + nv[0] * D[i], p[1] + nv[1] * D[i]], t, out: [-nv[0], -nv[1]] };
+    });
+    const pts = P.map((_, i) => {
+      const a = lines[(i + n - 1) % n], b = lines[i];
+      const den = a.t[0] * b.t[1] - a.t[1] * b.t[0];
+      const s = ((b.p[0] - a.p[0]) * b.t[1] - (b.p[1] - a.p[1]) * b.t[0]) / den;
+      return [a.p[0] + a.t[0] * s, a.p[1] + a.t[1] * s];
+    });
+    return { pts, outs: lines.map(l => l.out) };
+  };
+  // 角を少し丸めた輪郭
+  const rounded = (P, r) => {
+    let d = '';
+    P.forEach((v, i) => {
+      const a = P[(i + P.length - 1) % P.length], b = P[(i + 1) % P.length];
+      const ua = nrm(sub(a, v)), ub = nrm(sub(b, v));
+      const A = [v[0] + ua[0] * r, v[1] + ua[1] * r], B = [v[0] + ub[0] * r, v[1] + ub[1] * r];
+      d += `${i ? 'L' : 'M'}${A[0].toFixed(2)} ${A[1].toFixed(2)}Q${v[0]} ${v[1]} ${B[0].toFixed(2)} ${B[1].toFixed(2)}`;
+    });
+    return d + 'Z';
+  };
+  const poly = P => P.map(p => p.map(v => v.toFixed(2)).join(' ')).join(' ');
+
+  // 後手は形を上下左右に反転（字だけ回す。光の向きは盤の座標のまま）
+  const GEO = {};
+  for (const side of ['s', 'g']) {
+    const P = side === 's' ? OUT : flip(OUT);
+    const { pts, outs } = inset(P, BEV);
+    GEO[side] = { P, I: pts, outs, path: rounded(P, 2.2) };
+  }
+
+  // 黄楊の柾目（模様なし・細い縦目だけ）。駒ごとに取り位置をずらして使う
+  const GRAIN = Ref.tex(260, 110, Ref.grain({ fx: .17, fy: .005, oct: 2, seed: 12, bands: 9, rgb: [170, 115, 40], a: .45, fine: .3, warp: 5 })).slice(5, -2);
+
+  // 字の墨の範囲を実測して、駒の重心（TARGET_Y）に墨の中心を合わせる
+  const ctx = document.createElement('canvas').getContext('2d');
+  const place = tx => {
+    const ch = tx.textContent, cy = +tx.dataset.cy, cx = W / 2;
+    ctx.font = '100px "Yuji Syuku"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const m = ctx.measureText(ch);
+    const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+    const fs = Math.min(50 / (inkH / 100), 60 / (inkW / 100));   // 墨の高さ 50・幅 60 に収める
+    const offX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2 * fs / 100;
+    const offY = (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2 * fs / 100;
+    tx.setAttribute('font-size', fs.toFixed(2));
+    tx.setAttribute('text-anchor', 'middle');
+    tx.setAttribute('x', (cx - offX).toFixed(2)); tx.setAttribute('y', (cy - offY).toFixed(2));
+    if (tx.dataset.side === 'g') tx.setAttribute('transform', `rotate(180 ${cx} ${cy})`);
+  };
+
+  let seq = 0;
+  const piece = (t, side, pro, ch) => {
+    const g = GEO[side], id = `kc${seq++}`;
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'kp'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.style.setProperty('--k', SCALE[t] || .9);
+    const ox = -((seq * 37) % 150), oy = -((seq * 13) % 10);
+    const facets = g.P.map((p, i) => {
+      const q = g.P[(i + 1) % 5], qi = g.I[(i + 1) % 5], pi = g.I[i];
+      return `<polygon class="fct" data-nx="${g.outs[i][0].toFixed(3)}" data-ny="${g.outs[i][1].toFixed(3)}" data-a="${SLOPE[i]}" points="${poly([p, q, qi, pi])}"/>`;
+    }).join('');
+    const tip = side === 's' ? -1 : 1;   // 駒面はわずかに先へ傾く（尻が厚い）
+    const cy = side === 's' ? TARGET_Y : H - TARGET_Y;
+    svg.innerHTML = `<defs><clipPath id="${id}"><path d="${g.path}"/></clipPath></defs>
+      <g clip-path="url(#${id})">
+        <rect width="${W}" height="${H}" fill="url(#kp-base)"/>
+        <image href="${GRAIN}" x="${ox}" y="${oy}" width="240" height="${H + 12}" preserveAspectRatio="none"/>
+        ${facets}
+        <polygon class="fct" data-nx="0" data-ny="${tip}" data-a="5" points="${poly(g.I)}"/>
+      </g>
+      <path d="${g.path}" fill="none" stroke="rgba(90,55,15,.35)" stroke-width=".6"/>
+      <g filter="url(#engrave)"><text data-cy="${cy}" data-side="${side}" fill="${pro ? '#a3261a' : INK[side]}">${ch}</text></g>`;
+    place(svg.querySelector('text'));
+    return svg;
+  };
+
+  // 光: 面取り・駒面の明暗（斜面の法線と光の内積を、平らな面との差で）と彫りの影
+  const light = (lx, ly, m) => {
+    const h = Math.min(m, 1) * .85, lz = Math.sqrt(1 - h * h);
+    const u = m > 1e-3 ? [lx / m, ly / m] : [0, 0];
+    for (const f of document.querySelectorAll('.kp .fct')) {
+      const a = f.dataset.a * Math.PI / 180;
+      const s = Math.sin(a) * h * (f.dataset.nx * u[0] + f.dataset.ny * u[1]) + Math.cos(a) * lz - lz;
+      f.setAttribute('fill', s > 0 ? '#fffaf0' : '#3a2000');
+      f.setAttribute('fill-opacity', Math.min(.72, Math.abs(s) * (s > 0 ? 1.15 : 1.35)).toFixed(3));
+    }
+    const k = .6 + h * 1.1;
+    const [away, toward] = document.querySelectorAll('#engrave feOffset');
+    away.setAttribute('dx', (-u[0] * k).toFixed(2)); away.setAttribute('dy', (-u[1] * k).toFixed(2));
+    toward.setAttribute('dx', (u[0] * k * .8).toFixed(2)); toward.setAttribute('dy', (u[1] * k * .8).toFixed(2));
+  };
+
+  Ref.init({
+    topDown: true, light: [-.55, -.8], loupe: [7.5, 7.45], loupeCap: '真上から 2.6 倍 ・ 面取り・彫り・落ち影',
+    boardTex: Ref.grain({ fx: .16, fy: .0035, oct: 3, seed: 11, bands: 14, rgb: [150, 92, 30], a: .55, fine: .3, warp: 18 }),
+    piece, onLight: light,
+  });
+  document.fonts.load('100px "Yuji Syuku"', '玉王飛角金銀桂香歩').then(() => {
+    document.querySelectorAll('.kp text').forEach(place);
+    dispatchEvent(new Event('resize'));
+  });
+})();
+</script>
+</body>
+</html>

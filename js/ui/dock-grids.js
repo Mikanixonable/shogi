@@ -19,6 +19,9 @@ window.Kakoi = window.Kakoi || {};
   const { ZEN } = K.notation;
   // 筋の表示名: 相手の面は盤の絶対座標（10−f）に合わせる
   const fileBadge = (t, flip) => t.lead.files.map(f => ZEN[flip ? 10 - f : f]).join('・') + '筋';
+  // 系統色（theme.css の --f-* / --t-*）: 囲いは系統、戦法は主役の駒で塗り分ける
+  const famColor = id => `var(--f-${id}, var(--accent-2))`;
+  const PIECE_COLOR = { '飛': 'var(--t-rook)', '銀': 'var(--t-silver)', '角': 'var(--t-kaku)' };
 
   // 基本の項目（データの basic）を先に出す安定ソート
   const basicFirst = list => [...list].sort((a, b) => (b.basic ? 1 : 0) - (a.basic ? 1 : 0));
@@ -94,6 +97,7 @@ window.Kakoi = window.Kakoi || {};
       const sec = document.createElement('section');
       sec.className = 'dk-trow';
       sec.dataset.side = family.side;
+      sec.style.setProperty('--tc', PIECE_COLOR[family.piece] || 'var(--accent-2)');
       // 行見出しに乗せると系統の note（「○が主役の理由」）を出す（lab 周期表の行タイルの title と同じ）
       sec.innerHTML = `<h3 title="${esc(family.note ? `${family.name}\n${family.note}` : family.name)}">` +
         `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>${esc(family.name)}</h3>`;
@@ -153,6 +157,7 @@ window.Kakoi = window.Kakoi || {};
     b.className = `dk-item dk-card${row ? ' dk-row' : ''}`;
     b.dataset.who = who; b.dataset.kind = 'castle'; b.dataset.id = c.id;
     if (c.basic) b.dataset.basic = 'true';
+    b.style.setProperty('--fam', famColor(c.family));   // 堅さ順など系統が混ざる段でも下線で系統が分かる
     if (row) { b.style.setProperty('--d', depth); b.dataset.depth = depth; }
     b.innerHTML =
       (row && depth ? '<span class="br" aria-hidden="true">└</span>' : '') +
@@ -167,10 +172,11 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // 折りたたみブロックの器（系統・性質の段のどちらにも使う）
-  function block(id, head, members) {
+  function block(id, head, members, color = 'var(--accent-2)') {
     const sec = document.createElement('section');
     sec.className = 'dk-fam';
     sec.dataset.family = id;
+    sec.style.setProperty('--fam', color);   // 左の帯・記号・件数の丸の色
     sec._sides = new Set(members.flatMap(K.lookup.castleSides));   // ブロックの戦略フィルタ判定用
     sec.innerHTML = `<button type="button" class="dk-fam-h" aria-expanded="true">
           <span class="caret" aria-hidden="true">▾</span>${head}<span class="n">${members.length}</span></button>`;
@@ -204,7 +210,9 @@ window.Kakoi = window.Kakoi || {};
   const CASTLE_SORTS = [
     { id: 'family', label: '系統別' },
     { id: 'tree', label: '発展ツリー' },
-    ...K.detailSections.RATINGS.map(([id, name]) => ({ id, label: `${name}順`, axis: name })),
+    ...K.detailSections.RATINGS
+      .filter(([id]) => id !== 'wide' && id !== 'quick')
+      .map(([id, name]) => ({ id, label: `${name}順`, axis: name })),
   ];
 
   /**
@@ -243,7 +251,7 @@ window.Kakoi = window.Kakoi || {};
       const members = K.CASTLES.filter(c => c.family === fam.id);
       if (!members.length) continue;
       const sec = block(fam.id, `<span class="g" aria-hidden="true">${K.familyGlyph(fam.glyph)}</span>` +
-        `<b>${esc(fam.name)}</b>`, members);
+        `<b>${esc(fam.name)}</b>`, members, famColor(fam.id));
       if (sort === 'tree') {
         const tree = document.createElement('div');
         tree.className = 'dk-cards dk-tree';

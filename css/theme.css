@@ -9,6 +9,10 @@
   --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
   --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --core:#c8371f;
   --gote-ink:#33507a;
+  /* 左ドックの系統色（囲いの系統 --f-*・戦法の主役の駒 --t-*）。彩度を落とした和の色 */
+  --f-funa:#b5652b; --f-yagura:#33507a; --f-gangi:#4a6b3f; --f-anaguma:#55504a; --f-mino:#c8371f;
+  --f-itidan:#a07a1f; --f-nakazumai:#6b5a7a; --f-kinmusou:#8a6d3f; --f-migigyoku:#2f7a73;
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
   --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
   --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
   --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
@@ -24,6 +28,9 @@
   --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
   --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17; --core:#c8371f;
   --gote-ink:#43506e;
+  --f-funa:#d98a50; --f-yagura:#8ea6cf; --f-gangi:#9cbf8a; --f-anaguma:#b4ada2; --f-mino:#e2563b;
+  --f-itidan:#d1a94a; --f-nakazumai:#a996bb; --f-kinmusou:#c4a77a; --f-migigyoku:#6cc0b6;
+  --t-rook:#e2563b; --t-silver:#8ea6cf; --t-kaku:#9cbf8a;
 }
 
 /* ===== base & atmosphere ===== */
