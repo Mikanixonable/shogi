@@ -720,16 +720,10 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
     const c = TN.placeTactics([mk('t1', [4], '58'), mk('t2', [4], '58'), mk('t3', [5], '55')]);
     ok(c.cells.length === 2 && c.cells[0].tactics.length === 2,
       'placeTactics:square で同じマスを1セルに束ねる', jstr(c.cells));
-    const d = TN.placeTactics([mk('t1', [4], '58'), mk('t2', [4], '55'), mk('t3', [5], '55')], { group: 'file' });
-    ok(d.cells.length === 2 && d.cells[0].tactics.length === 2,
-      'placeTactics:file で同じ右端の筋を1セルに束ねる', jstr(d.cells));
-    // 衝突: 2筋に広がるセル（col4-5）と単筋のセル（col5）が重なる
-    const e = TN.placeTactics([mk('t1', [6, 5], '58'), mk('t2', [5], '55')], { group: 'file', collide: 'stack' });
+    // 衝突: 2筋に広がるセル（col4-5）と単筋のセル（col5）が重なると下の行へ送る
+    const e = TN.placeTactics([mk('t1', [6, 5], '58'), mk('t2', [5], '55')]);
     ok(e.cells.length === 2 && e.cells[1].row === 2,
-      'placeTactics:stack は重なるセルを下の行へ', jstr(e.cells));
-    const f = TN.placeTactics([mk('t1', [6, 5], '58'), mk('t2', [5], '55')], { group: 'file', collide: 'drop' });
-    ok(f.cells.length === 1 && f.cells[0].tactics[0].id === 't1',
-      'placeTactics:drop は重なるセルを捨てる（先のものだけ残る）', jstr(f.cells));
+      'placeTactics:重なるセルは下の行へ', jstr(e.cells));
     ok(a.dots.length === 8 && a.dots.every(x => x.row === 1 && x.col >= 1 && x.col <= 9),
       'placeTactics:空き筋にドット', jstr(a.dots));
   }

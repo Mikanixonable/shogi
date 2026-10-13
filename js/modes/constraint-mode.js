@@ -6,8 +6,8 @@
 //   - 制約バー: 制約チップ（×で削除・クリックで選択）＋既定の層＋導出ラベル（戦型）
 //   - 左ドック（U4）: 上下2面の DockView。各面は who×tab を独立に切り替え、選択はすべて constraints.apply に通す
 //   - 右ドック（U5）: BoardDetailView が selected の {who,kind} に応じて detail-sections の部品を組み立てる
-//   - 筋ボタン（周期表）: selected が *.tactic のときだけ。相手側は列を反転して「相手の戦法」と出す
-//   - state.selected だけの変更では盤の駒を再描画しない（オーバーレイ・周期表・詳細だけ更新）
+//   - 戦法の選択は左ドックの筋タイル（1〜9筋にプロット）。盤の上に別の表は置かない
+//   - state.selected だけの変更では盤の駒を再描画しない（オーバーレイ・詳細だけ更新）
 // 計画書 §1-3/§3-3/§4-5/§5
 window.Kakoi = window.Kakoi || {};
 (() => {
@@ -24,7 +24,7 @@ window.Kakoi = window.Kakoi || {};
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
      *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe, stageH,
      *        legend, handOpp, handMe, playBtn,
-     *        addOpp, clearOpp, clearMe, clearAll, ptable, boardwrap, rail, detail
+     *        addOpp, clearOpp, clearMe, clearAll, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
       Object.assign(this, { repo, store, board, overlay, els });
@@ -44,7 +44,6 @@ window.Kakoi = window.Kakoi || {};
         opp: new K.ConstraintBar(els.barOpp, { who: 'opp', ...barHandlers }),
         me: new K.ConstraintBar(els.barMe, { who: 'me', ...barHandlers }),
       };
-      this.table = new K.TacticTableView(els.ptable, { onSelect: id => this._set(this._selWho(), 'tactic', id) });
       // 左ドック: 上下2面の分割ペイン（U4）。面の {who,tab} と分割比は dock が store に書く
       this.dock = new K.DockView(els.rail /* #pickRail */, {
         store,
@@ -74,7 +73,7 @@ window.Kakoi = window.Kakoi || {};
       // 「見える半分」は BoardScreen に委譲（S6）
       this.screen = new K.BoardScreen({
         els, board, overlay,
-        bars: this.bars, table: this.table, detail: this.detail,
+        bars: this.bars, detail: this.detail,
         repo, rows: this.rows, playback: this.playback,
         nameOf: (w, k, id) => this._nameOf(w, k, id),
       });
@@ -333,7 +332,7 @@ window.Kakoi = window.Kakoi || {};
       }
       if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test(e.target.tagName)) return;
       if (!e.key.startsWith('Arrow')) return;
-      // 矢印の役割はフォーカスのある部品の中で閉じる（U3）。制約バー・ドック・周期表・
+      // 矢印の役割はフォーカスのある部品の中で閉じる（U3）。制約バー・ドック・
       // 詳細は各部品が処理するので、盤（中央）にフォーカスがあるときだけ
       // 「選択中の制約の隣の候補へ」が効く。フォーカスが無いときも中央扱いにする
       const ae = document.activeElement;

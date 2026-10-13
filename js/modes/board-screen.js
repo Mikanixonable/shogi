@@ -1,5 +1,5 @@
 // 統合画面の「見える半分」（計画書 S6 の BoardScreen）: 盤の駒レイヤ・重ね表示・
-// 盤の上下の帯・制約バー・周期表・右ドックへの描画をまとめる。制約の読み書き
+// 盤の上下の帯・制約バー・右ドックへの描画をまとめる。制約の読み書き
 // （コマンド・元に戻す・ホバー予告）は constraint-mode.js のコントローラが持つ。
 // 導出は core/board-model.js の deriveBoard に一本化（S5）。state.play（再生中の
 // 表示専用の差し替え）は制約を書き換えずに実効戦法だけを変える（§4-5）
@@ -11,20 +11,22 @@ window.Kakoi = window.Kakoi || {};
   const FIELD = K.constraints.FIELD;
   const { LAYER_JA } = K.lookup;
   const parseSel = K.constraints.parseSel;
+  // 主役が飛車ではなく筋道（経路が2マス以上）のある戦法だけ矢印を引く。
+  // 飛車の経路は盤の筋そのものなので矢印が冗長（駒の移動アニメ trace は残す）
+  const hasArrow = t => !!(t && t.route && t.route.length > 1 && t.lead && t.lead.piece !== '飛');
 
   class BoardScreen {
     /**
      * @param {{ els:object, board:Kakoi.BoardView, overlay:Kakoi.OverlayView,
      *   bars:{opp:Kakoi.ConstraintBar, me:Kakoi.ConstraintBar},
-     *   table:Kakoi.TacticTableView, detail:Kakoi.BoardDetailView,
+     *   detail:Kakoi.BoardDetailView,
      *   repo:Kakoi.Repository, rows:Array, playback:Kakoi.TacticPlayback,
      *   nameOf:(who:string,kind:string,id:string)=>string }} deps
      */
-    constructor({ els, board, overlay, bars, table, detail, repo, rows, playback, nameOf }) {
-      Object.assign(this, { els, board, overlay, bars, table, detail, repo, rows, playback });
+    constructor({ els, board, overlay, bars, detail, repo, rows, playback, nameOf }) {
+      Object.assign(this, { els, board, overlay, bars, detail, repo, rows, playback });
       this._nameOf = nameOf;
       this._renderKey = null;
-      this._ptKey = null;
       this._meTactic = null;
       this._stageKeys = {};
       this._skKey = null;
@@ -102,7 +104,6 @@ window.Kakoi = window.Kakoi || {};
           || ch.has('attackId') || ch.has('showThreat')) {
         this._paintBar(state, d);
         this._paintStage(state, d);
-        this._paintTable(state, d);
         this._renderDetail(state, d, lastChanged);
       }
       return d;   // 呼び出し側（コントローラ）が dock.update などに使う
@@ -138,8 +139,8 @@ window.Kakoi = window.Kakoi || {};
       const meT = this.repo.tacticById(S.me.tacticId);
       const oppT = S.opp ? this.repo.tacticById(S.opp.tacticId) : null;
       const routes = [
-        meT && meT.route && meT.route.length > 1 ? { squares: meT.route, tone: 'ink' } : null,
-        oppT && oppT.route && oppT.route.length > 1 ? { squares: oppT.route.map(mirrorSq), tone: 'bad' } : null,
+        hasArrow(meT) ? { squares: meT.route, tone: 'ink' } : null,
+        hasArrow(oppT) ? { squares: oppT.route.map(mirrorSq), tone: 'bad' } : null,
       ].filter(Boolean);
       ov.routes(routes.length ? routes : null);
       ov.contacts(merged.contacts.length
@@ -240,11 +241,14 @@ window.Kakoi = window.Kakoi || {};
         (who === 'me' ? e.bandMe : e.bandOpp).dataset.sel = sel && sel.who === who ? 'true' : 'false';
       }
 
-      // 凡例は1行に縮める（F4）: 色見本＋短い名札だけにして全文は title に持つ
+      // 凡例は1行に縮める（F4）: 色見本＋短い名札だけにして全文は title に持つ。
+      // 盤に出ている要素だけを説明する（飛車が主役の戦法では矢印を引かないので言及もしない）
+      const arrow = hasArrow(this.repo.tacticById(S.me.tacticId))
+        || (S.opp ? hasArrow(this.repo.tacticById(S.opp.tacticId)) : false);
       e.legend.innerHTML = '<i></i><span class="lg-t">図の見方</span>';
       e.legend.title = d.threat
-        ? '朱の帯は相手の攻め筋。破線は主役の駒の動き（墨＝自分・朱＝相手）。枠のマスは両軍の接触'
-        : '朱色は囲いの駒と主役の駒。破線は主役の駒の動き';
+        ? `朱の帯は相手の攻め筋。${arrow ? '破線は主役の駒の動き（墨＝自分・朱＝相手）。' : ''}枠のマスは両軍の接触`
+        : `朱色は囲いの駒と主役の駒${arrow ? '。破線は主役の駒の動き' : ''}`;
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
@@ -260,31 +264,6 @@ window.Kakoi = window.Kakoi || {};
       const selTactic = sel && sel.kind === 'tactic';
       e.playBtn.hidden = !selTactic;
       if (!selTactic && this.playback.playing) this.playback.stop();
-    }
-
-    // ---------- 筋ボタン（周期表。selected が *.tactic のときだけ） ----------
-    _paintTable(state, d) {
-      const sel = parseSel(state.selected);
-      const on = !!(sel && sel.kind === 'tactic' && (d.S[sel.who] || d.S.me));
-      this.els.boardwrap.dataset.pt = on ? 'on' : 'off';
-      if (!on) { this._ptKey = null; return; }
-      const st = d.S[sel.who] || d.S.me;
-      const rows = this.rows.filter(r => r.family.side === st.strategy);
-      const offRows = this.rows.filter(r => r.family.side !== st.strategy);
-      // 選択中が派生戦法のときは親のセルを current にする（§4-3: 派生は親に束ねる）
-      const selT = this.repo.tacticById(st.tacticId);
-      const selId = (selT && selT.variantOf) || st.tacticId;
-      const key = `${sel.who}:${st.strategy}`;
-      if (key !== this._ptKey) {
-        this._ptKey = key;
-        this.table.render(rows, selId, {
-          flip: sel.who === 'opp',
-          sideLabel: sel.who === 'opp' ? '相手の戦法' : '自分の戦法',
-          offRows,
-        });
-      } else {
-        this.table.select(selId);
-      }
     }
 
     // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------

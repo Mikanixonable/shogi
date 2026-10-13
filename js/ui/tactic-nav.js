@@ -39,25 +39,21 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 戦法の行を「筋の列」へ配置する計算（純関数。周期表とドックのタイルで共有する。S6）
+   * 戦法の行を「筋の列」へ配置する計算（純関数。ドックのタイル用。S6）
    * 列の規則: 自分は 9筋→左端（col = 10−f）、相手は盤の絶対座標（col = f）。
+   * 同じ lead.square の戦法は1セルに束ね、列が重なるセルは下の行へ送る。
    * @param {object[]} tactics その行（系統）の戦法（派生 variantOf は呼び側が除く）
-   * @param {{ flip?:boolean, group?:'square'|'file', collide?:'stack'|'drop' }} [opts]
-   *   group: 'square'=同じ lead.square の戦法を1セルに束ねる（ドック）
-   *          'file'  =同じ右端の筋の戦法を1セルに束ねる（周期表: 同じ列の別戦法は先のものだけ）
-   *   collide: 'stack'=列が重なるセルは下の行へ送る（ドック）
-   *            'drop' =列が重なるセルは捨てる（周期表: 隠れた戦法は一覧から選ぶ）
+   * @param {{ flip?:boolean }} [opts]
    * @returns {{ cells:Array<{col:number, span:number, row:number, tactics:object[]}>,
    *            dots:Array<{col:number, row:number}> }}
    *   cells は col・span・row（1始まりの行内での積み上げ順）と束ねた戦法。
    *   dots は列が空の筋（プレースホルダ）
    */
-  function placeTactics(tactics, { flip = false, group = 'square', collide = 'stack' } = {}) {
-    // 束ねる: 1セル = 束ねキーごとの戦法（データ順を保つ）
-    const keyOf = t => group === 'square' ? t.lead.square : `f${Math.max(...t.lead.files)}`;
+  function placeTactics(tactics, { flip = false } = {}) {
+    // 束ねる: 1セル = 同じ lead.square の戦法（データ順を保つ）
     const groups = new Map();
     for (const t of tactics) {
-      const k = keyOf(t);
+      const k = t.lead.square;
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(t);
     }
@@ -71,7 +67,6 @@ window.Kakoi = window.Kakoi || {};
       let row = 0;
       for (let c = col; c < col + span; c++) row = Math.max(row, used[c]);
       row += 1;
-      if (collide === 'drop' && row > 1) continue;   // 隠れるセルは描かない（周期表）
       for (let c = col; c < col + span; c++) used[c] = row;
       cells.push({ col, span, row, tactics: ts });
     }

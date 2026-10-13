@@ -163,12 +163,15 @@
   if (debug) window.__kakoi = { overlay, board, repo, store };
 
   const toolbar = new K.ToolbarView(
-    { mode: $('modeSeg'), heat: $('heat'), skeleton: $('skeleton'), heatScope: $('heatScopeSeg'), heatScopeWrap: $('heatScopeWrap') },
+    { mode: $('modeSeg'), heat: $('heat'), skeleton: $('skeleton'), heatScope: $('heatScopeSeg'), heatScopeWrap: $('heatScopeWrap'), reset: $('resetSettings') },
     patch => store.set(patch),
+    // リセット: URL引数（クエリ・ハッシュ）と保存済みの状態を捨て、初期状態で読み込み直す
+    () => { store.clearPersisted(); location.replace(location.pathname); },
   );
   const viewSeg = new K.Segmented($('viewSeg'), view => store.set({ view }));
   new K.ThemeToggle($('themeToggle'));
   new K.ToolsToggle($('toolsToggle'), $('tools'));
+  new K.AboutModal($('aboutOpen'), $('aboutDialog'));
   // 中くらいの幅（≤1180px）で右ドックはドロワー。タブで開閉する（§4-6）
   {
     const t = $('detailToggle');
@@ -193,7 +196,7 @@
         playBtn: $('playBtn'),
         addOpp: $('addOpp'),
         clearOpp: $('clearOpp'), clearMe: $('clearMe'), clearAll: $('clearAll'),
-        ptable: $('ptable'), boardwrap: $('boardwrap'), rail: $('pickRail'),
+        boardwrap: $('boardwrap'), rail: $('pickRail'),
         detail: $('detail'),
       },
     }),

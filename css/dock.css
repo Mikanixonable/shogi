@@ -12,7 +12,7 @@
 .dk-legend:hover, .dk-legend[aria-expanded="true"] { color:var(--fg); border-color:var(--fg); }
 .dk-legend-pop { position:absolute; top:22px; right:0; z-index:12; min-width:200px; max-width:260px;
                  padding:9px 12px; background:var(--bg); border:1px solid var(--line-2);
-                 box-shadow:0 8px 22px rgba(24,18,8,.14); font-size:11.5px; line-height:1.7; }
+                 box-shadow:0 8px 22px rgba(24,18,8,.14); font-size:12px; line-height:1.7; }
 .dk-legend-pop b { display:block; margin-bottom:3px; }
 .dk-legend-pop ul { margin:0; padding:0; list-style:none; }
 .dk-legend-pop .lg-ex { display:inline-block; min-width:2.4em; padding:0 4px; border:1px solid var(--line-2);
@@ -40,21 +40,23 @@
 .dk-fold[aria-expanded="false"] .caret { transform:rotate(-90deg); }
 .dk-fold:hover { color:var(--fg); border-color:var(--line-2); }
 .dk-fold:disabled { opacity:.4; cursor:default; }
-.dk-who-l { font:600 11px/1 var(--font-d); letter-spacing:.18em; color:var(--muted); }
+.dk-who-l { font:600 12px/1 var(--font-d); letter-spacing:.18em; color:var(--muted); }
 .dk-pane[data-who="opp"] .dk-who-l { color:var(--gote-ink); }
 .dk-tab { margin-left:auto; }
-.dk-tab button { padding:3px 9px; font-size:12px; }
+.dk-tab button { padding:3px 9px; font-size:13px; }
 .dk-addopp { margin-left:auto; border:1px dashed var(--line-2); background:none; padding:4px 12px;
-             font-size:11.5px; color:var(--fg); cursor:pointer; letter-spacing:.05em; }
+             font-size:12.5px; color:var(--fg); cursor:pointer; letter-spacing:.05em; }
 .dk-addopp:hover { border-color:var(--accent); color:var(--accent); }
-.dk-clear { border:1px solid var(--line); background:none; padding:2px 9px; font-size:11px;
+.dk-clear { border:1px solid var(--line); background:none; padding:2px 9px; font-size:12px;
             color:var(--muted); cursor:pointer; letter-spacing:.06em; }
 .dk-clear:hover { color:var(--bad); border-color:var(--bad); }
 .dk-clear[hidden], .dk-addopp[hidden] { display:none; }
 .dk-strategy { flex:none; margin-bottom:5px; }
 /* 脅威の帯スイッチ（相手の面・戦略セグの下。中央フッタから移動） */
-.dk-threat { flex:none; margin-bottom:6px; font-size:11.5px; letter-spacing:.04em; }
+.dk-threat { flex:none; margin-bottom:6px; font-size:12.5px; letter-spacing:.04em; }
 .dk-body { flex:1 1 auto; min-height:0; overflow:auto; padding-right:3px; outline-offset:-1px; }
+/* 採用中の戦略に合わない項目・行・系統は hidden で隠す（flex/grid の display を消す） */
+.dk-body [hidden] { display:none !important; }
 .dk-view { display:flex; flex-direction:column; gap:12px; padding-bottom:2px; }
 
 /* ===== スプリッタ（role=separator。罫線＋握りの2本線） ===== */
@@ -70,8 +72,8 @@
    記号の意味を分ける: 選択=朱の下線＋太字 / 相手との相性=◎△の文字だけ（朱の線は引かない）
    / 連動=⇄＋灰色の破線枠 / フォーカスは theme.css の墨の輪 */
 .dk-item { position:relative; }
-.dk-item .dk-vs { font-style:normal; font-size:11px; min-width:11px; text-align:center; line-height:1; }
-.dk-item .dk-csc { font:500 9.5px/1.25 var(--font-n); letter-spacing:.02em; color:var(--muted); }
+.dk-item .dk-vs { font-style:normal; font-size:12px; min-width:12px; text-align:center; line-height:1; }
+.dk-item .dk-csc { font:500 10px/1.25 var(--font-n); letter-spacing:.02em; color:var(--muted); }
 .dk-item .dk-csc:empty { display:none; }
 /* 連動（選ぶと他の層も変わる）: 灰色の破線枠＋⇄の印 */
 .dk-item[data-cascade="true"] { border-style:dashed; border-color:var(--line-2); }
@@ -94,30 +96,41 @@
 .dk-strategy button[data-implied="true"] { font-style:italic; }
 
 /* ===== 戦法タイル（§4-3: 行=主役の駒、列=筋、1マス=最終マス） ===== */
-.dk-trow h3 { display:flex; align-items:center; gap:8px; margin:0 0 5px; font-size:10.5px;
+/* 行頭の系統アイコン: 駒の形の小さなタイル（tactics.css の周期表と共有だった器をこちらへ） */
+.pt-tile { align-self:center; justify-self:center; display:grid; place-items:center;
+           font:700 11px var(--font-d); color:var(--core); cursor:default;
+           background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
+           clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
+/* 筋の番号ヘッダ: タイルの列と同じ9列グリッド。列は絶対座標（左=9筋）なので両面とも 9…1 */
+.dk-fh { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:0 4px; margin-bottom:-6px;
+         font:500 11px/1 var(--font-d); color:var(--muted); text-align:center; }
+.dk-fh span { border-bottom:1px solid var(--line); padding-bottom:3px; }
+.dk-trow h3 { display:flex; align-items:center; gap:8px; margin:0 0 6px; font-size:12px;
               letter-spacing:.16em; color:var(--muted); font-weight:600; }
 .dk-trow h3::after { content:""; flex:1; height:1px; background:var(--line); }
-.dk-trow h3 .pt-tile { width:15px; height:17px; padding-top:2px; font-size:9px; }
+.dk-trow h3 .pt-tile { width:30px; height:33px; padding-top:5px; font-size:16px; }
 .dk-tgrid { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:6px 4px; }
-.dk-dot { display:grid; place-items:center; color:var(--muted); opacity:.35; font:10px/1 var(--font-n); }
+.dk-dot { display:grid; place-items:center; color:var(--muted); opacity:.35; font:11px/1 var(--font-n); }
 .dk-cell { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .dk-tile { display:flex; flex-direction:column; align-items:center; gap:1px; padding:4px 1px 5px; cursor:pointer;
            border:1px solid var(--line); background:none; font:inherit; color:inherit; min-width:0;
            container-type:inline-size; transition:border-color .2s, background .2s; }
 .dk-tile:hover { border-color:var(--line-2); }
-.dk-tile .tglyph { width:100%; max-width:22px; height:auto; display:block; }
-/* 短縮名はタイル幅に追随する（周期表 .pt-cell と同じ cqw 方式。--n は文字数） */
-.dk-tile .nm { font-size:max(7px, min(11px, calc(84cqw / var(--n, 3)))); line-height:1.15; letter-spacing:.01em;
+/* 駒アイコン（経路の折れ線＋終点の駒字）: 列の幅いっぱいに広げる（9列の1マスなので
+   これ以上は列の幾何が限界） */
+.dk-tile .tglyph { width:100%; max-width:34px; height:auto; display:block; }
+/* 短縮名はタイル幅に追随する（cqw 方式。--n は文字数） */
+.dk-tile .nm { font-size:max(8px, min(13px, calc(96cqw / var(--n, 3)))); line-height:1.15; letter-spacing:.01em;
                max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dk-tile .fb { font:500 9px/1 var(--font-n); color:var(--muted); letter-spacing:.03em; }
-.dk-marks { display:flex; align-items:center; gap:3px; min-height:9px; }
+.dk-tile .fb { font:500 10px/1 var(--font-n); color:var(--muted); letter-spacing:.03em; }
+.dk-marks { display:flex; align-items:center; gap:3px; min-height:10px; }
 /* 派生チップはタイルの列の下に全幅の行として出す（9列の1マスに押し込まない。F4） */
 .dk-vars { display:flex; flex-wrap:wrap; gap:2px 4px; padding-top:2px; }
-.dk-var { display:inline-flex; align-items:center; gap:2px; padding:1px 5px; cursor:pointer;
-          border:1px solid var(--line); background:none; font:inherit; font-size:9.5px; line-height:1.3;
+.dk-var { display:inline-flex; align-items:center; gap:2px; padding:1px 6px; cursor:pointer;
+          border:1px solid var(--line); background:none; font:inherit; font-size:10.5px; line-height:1.3;
           color:var(--muted); transition:border-color .2s, color .2s; }
 .dk-var:hover { color:var(--fg); border-color:var(--line-2); }
-.dk-var .dk-csc { font-size:9.5px; }
+.dk-var .dk-csc { font-size:10px; }
 
 /* 戦法アイコン（tactic-glyph.js）: 格子は薄く、経路は墨、終点の駒は字 */
 .tglyph .tgl-grid { stroke:var(--line); stroke-width:.5; }
@@ -127,33 +140,23 @@
 .tglyph .tgl-dia { stroke:var(--accent); stroke-width:1.2; }
 .dk-item[aria-current="true"] .tglyph { color:var(--accent); }
 
-/* もう一方の戦略の項目は項目ごとに薄く（U4: 系統単位ではなく項目単位。隠さない） */
-.dk-item[data-offside="true"] { opacity:.5; }
-/* 「もう一方」グループ（U4）: 採用中の戦略に合わない行・系統をまとめる折りたたみ */
+/* 採用中の戦略に合わない項目は表示しない（分類は戦略だけ。「もう一方」は持たない） */
 .dk-on { display:flex; flex-direction:column; gap:12px; }
-.dk-off { border-top:1px dashed var(--line-2); margin-top:2px; padding-top:6px; }
-.dk-off[hidden] { display:none; }
-.dk-off-h { display:flex; align-items:center; gap:7px; font-size:11px; letter-spacing:.1em;
-            color:var(--muted); font-weight:600; cursor:pointer; list-style:none; }
-.dk-off-h::-webkit-details-marker { display:none; }
-.dk-off-h::before { content:"▾"; font-size:9px; transition:transform .2s var(--ease); }
-.dk-off:not([open]) > .dk-off-h::before { transform:rotate(-90deg); }
-.dk-off-body { display:flex; flex-direction:column; gap:12px; padding-top:8px; }
 /* 制約チップからの連動（U5）: 対象の項目に一瞬だけ墨の輪郭を添える */
 .dk-item[data-reveal="true"], .dk-strategy[data-reveal="true"] { box-shadow:0 0 0 2px var(--fg); }
 
 /* ===== 囲いタイル（§4-4: 系統ごとの折りたたみブロック） ===== */
 .dk-fam { display:flex; flex-direction:column; gap:6px; }
 .dk-fam-h { display:flex; align-items:center; gap:7px; width:100%; padding:2px 0; border:0; background:none;
-            font:inherit; font-size:11px; letter-spacing:.14em; color:var(--muted); font-weight:600;
+            font:inherit; font-size:12.5px; letter-spacing:.14em; color:var(--muted); font-weight:600;
             cursor:pointer; text-align:left; }
 .dk-fam-h::after { content:""; flex:1; height:1px; background:var(--line); }
 .dk-fam-h:hover { color:var(--fg); }
-.dk-fam-h .caret { font-size:9px; transition:transform .2s var(--ease); }
+.dk-fam-h .caret { font-size:10px; transition:transform .2s var(--ease); }
 .dk-fam[data-closed="true"] .dk-fam-h .caret { transform:rotate(-90deg); }
 .dk-fam-h .g { display:inline-flex; }
-.dk-fam-h .g svg { width:14px; height:14px; display:block; }
-.dk-fam-h .n { font:500 11px/1 var(--font-n); }
+.dk-fam-h .g svg { width:26px; height:26px; display:block; }
+.dk-fam-h .n { font:500 12px/1 var(--font-n); }
 .dk-fam[data-closed="true"] .dk-cards { display:none; }
 
 /* F3: カードの最小幅は84px。列が減る分はドックの縦スクロールで吸収する */
@@ -166,7 +169,7 @@
 .dk-card .thumb { display:flex; justify-content:center; align-items:center; width:100%; height:60px; }
 .dk-card .thumb .sc { display:block; height:100%; max-width:100%; }
 .dk-card .thumb svg { width:auto; max-width:100%; height:100%; display:block; margin:auto; }
-.dk-card .nm { font-size:10.5px; line-height:1.25; text-align:center; letter-spacing:.02em; }
+.dk-card .nm { font-size:12px; line-height:1.25; text-align:center; letter-spacing:.02em; }
 
 /* ===== narrow: 上下分割の比率はやめ、2面を内容の高さで縦に並べる ===== */
 @media (max-width:979px) {

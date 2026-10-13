@@ -1,10 +1,12 @@
 // 左ドックの面の中身（計画書 S6 の tactic-grid / castle-grid）:
 // 戦法タイルと囲いカードの「構築」だけを持つ純粋な描画部品。状態の書き換え
-// （バッジ・薄表示・「もう一方」への振り分け）は dock-badges.js、面の器は dock-pane.js
-//   - 戦法タイル: 行=主役の駒の系統、列=筋（自分は 9→1、相手は盤の絶対座標で反転）。
+// （バッジ・戦略に合わない項目の非表示）は dock-badges.js / dock-view.js、面の器は dock-pane.js
+//   - 戦法タイル: 行=主役の駒の系統、列=筋。タイルは正確に lead.files の筋に
+//     プロットし（自分は 9→1・相手は盤の絶対座標。列はどちらも絶対座標なので
+//     筋番号ヘッダは両面とも 9…1）、上に筋の番号を出す。
 //     1マス=主役の駒の最終マス（lead.square）。variantOf の派生は親タイルの下の
 //     チップに束ねる。アイコンは経路から自動生成する K.tacticGlyph（§4-3）。
-//     列の配置は tacticNav.placeTactics（周期表と共有の純関数）
+//     列の配置は tacticNav.placeTactics（純関数）
 //   - 囲いタイル: CASTLE_FAMILIES ごとの折りたたみブロック。サムネイルは玉側の隅の
 //     固定窓（6筋×4段）で歩の壁・周辺の駒ごと見せる（lab/shogi と同じ方式。中央寄りの
 //     囲いは窓をずらす。相手の面は180度回転・字は正立）（§4-4）
@@ -50,22 +52,15 @@ window.Kakoi = window.Kakoi || {};
     return b;
   }
 
-  // 「採用中の戦略」の行は .dk-on、「もう一方の戦略」の行は折りたたみの .dk-off に
-  // 入れる器（U4）。振り分け自体は dock-badges.group が update のたびに行う
+  // view の器。分類は戦略（居飛車／振り飛車）だけ: 採用中の戦略に合わない
+  // 行・系統・項目は dock-view が hidden にする（「もう一方」の領域は持たない）
   function viewShell(cls) {
     const view = document.createElement('div');
     view.className = `dk-view ${cls}`;
     const on = document.createElement('div');
     on.className = 'dk-on';
-    const off = document.createElement('details');
-    off.className = 'dk-off';
-    off.innerHTML = `<summary class="dk-off-h"></summary><div class="dk-off-body"></div>`;
-    view.append(on, off);
-    return {
-      el: view, on, off,
-      offBody: off.querySelector('.dk-off-body'),
-      offH: off.querySelector('.dk-off-h'),
-    };
+    view.append(on);
+    return { el: view, on };
   }
 
   /**
@@ -76,6 +71,12 @@ window.Kakoi = window.Kakoi || {};
   function tactics(ctx, who) {
     const flip = who === 'opp';
     const v = viewShell('dk-tactics');
+    // 筋の番号ヘッダ: 列はどちらの面も盤の絶対座標（左=9筋）なので、両面とも 9…1
+    const fh = document.createElement('div');
+    fh.className = 'dk-fh';
+    fh.setAttribute('aria-hidden', 'true');
+    fh.innerHTML = [9, 8, 7, 6, 5, 4, 3, 2, 1].map(f => `<span>${ZEN[f]}</span>`).join('');
+    v.on.appendChild(fh);
     const variantsOf = new Map();
     for (const t of K.TACTICS) {
       if (!t.variantOf) continue;
@@ -86,17 +87,19 @@ window.Kakoi = window.Kakoi || {};
       const sec = document.createElement('section');
       sec.className = 'dk-trow';
       sec.dataset.side = family.side;
-      sec.innerHTML = `<h3><span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>${esc(family.name)}</h3>`;
+      // 行見出しに乗せると系統の note（「○が主役の理由」）を出す（lab 周期表の行タイルの title と同じ）
+      sec.innerHTML = `<h3 title="${esc(family.note ? `${family.name}\n${family.note}` : family.name)}">` +
+        `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>${esc(family.name)}</h3>`;
       const grid = document.createElement('div');
       grid.className = 'dk-tgrid';
-      // 同じ lead.square の非派生戦法は1セルに束ね（group:'square'）、列が重なるセルは下へ送る（collide:'stack'）
+      // 同じ lead.square の非派生戦法は1セルに束ね、列が重なるセルは下へ送る
       const put = (el, col, span, row) => {
         el.style.gridColumn = `${col} / span ${span}`;
         el.style.gridRow = String(row);
         grid.appendChild(el);
       };
       const { cells, dots } = K.tacticNav.placeTactics(
-        ts.filter(t => !t.variantOf), { flip, group: 'square', collide: 'stack' });
+        ts.filter(t => !t.variantOf), { flip });
       for (const d of dots) {
         const el = document.createElement('span');
         el.className = 'dk-dot';
@@ -149,7 +152,7 @@ window.Kakoi = window.Kakoi || {};
       const sec = document.createElement('section');
       sec.className = 'dk-fam';
       sec.dataset.family = fam.id;
-      sec._sides = new Set(members.flatMap(sidesOf));   // ブロックの「もう一方」判定用
+      sec._sides = new Set(members.flatMap(sidesOf));   // ブロックの戦略フィルタ判定用
       sec.innerHTML = `<button type="button" class="dk-fam-h" aria-expanded="true" aria-label="${esc(fam.name)}の一覧を開閉">
           <span class="caret" aria-hidden="true">▾</span>
           <span class="g" aria-hidden="true">${K.familyGlyph(fam.glyph)}</span>

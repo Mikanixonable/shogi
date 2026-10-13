@@ -12,12 +12,12 @@
 .cbar-lab { display:flex; flex:none; align-items:center; gap:5px; }
 .cbar-lab:empty { display:none; }
 /* チップ: #名称 を枠で囲む。内側の選択・削除は別ボタン（入れ子の button を避けるため span の器） */
-.cchip { display:inline-flex; align-items:stretch; flex:none; font-size:12px; letter-spacing:.04em;
+.cchip { display:inline-flex; align-items:stretch; flex:none; font-size:12.5px; letter-spacing:.04em;
          border:1px solid var(--line-2); background:none; color:var(--fg); }
 .cchip .cchip-b { display:inline-flex; align-items:center; gap:6px; padding:3px 4px 3px 10px;
                   border:0; background:none; cursor:pointer; font:inherit; color:inherit; letter-spacing:inherit; }
 .cchip .cchip-b:hover { color:var(--accent); }
-.cchip-side { font-style:normal; font-size:10px; color:var(--muted); }
+.cchip-side { font-style:normal; font-size:10.5px; color:var(--muted); }
 .cchip[data-who="opp"] .cchip-side { color:var(--gote-ink); }
 .cchip-nm { font-weight:600; white-space:nowrap; }
 .cchip-x { display:grid; place-items:center; width:20px; margin-left:2px; border:0; border-left:1px solid var(--line);

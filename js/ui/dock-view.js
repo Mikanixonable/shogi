@@ -2,7 +2,7 @@
 // 各面は独立して「相手／自分」×「戦法／囲い」を切り替え、先頭の小さな Segmented で
 // その側の戦略（居飛車／振り飛車）を常時選べる（計画書 §4-2）。
 // 計画書 S6 で分割: 面の器は dock-pane.js、中身の構築は dock-grids.js、
-// バッジと「もう一方」の振り分けは dock-badges.js、仕切りは dock-splitter.js。
+// バッジと「戦略に合わない項目」の判定は dock-badges.js、仕切りは dock-splitter.js。
 // このファイルは状態（dock.split / dock.{opp,me}.{tab,open}）と面の更新を束ねる
 //   - バッジ2軸（§3-1/U1）: 連動=preview で他層が変わる → ⇄。相手との相性=judge().vs → ◎/△
 //   - ホバー/フォーカスで onPreview（制約バーの点滅・盤のマス表示は呼び出し側が描く）
@@ -12,7 +12,6 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { VS_MARK, findTactic } = K.lookup;
   const FIELD = K.constraints.FIELD;
-  const STRATEGY_IDS = ['ibisha', 'furibisha'];
   const castlePos = c => K.Position.fromCastle(c, K.SETUPS[c.setup]);
 
   class DockView {
@@ -79,7 +78,7 @@ window.Kakoi = window.Kakoi || {};
           `<li><span class="lg-ex lg-sel">名称</span>選択中（朱の下線）</li>` +
           `<li><b>◎</b>相手との相性がよい／<b>△</b>苦手</li>` +
           `<li><b>⇄</b>＋点線の枠：選ぶと他も連動して変わる</li>` +
-          `<li><span class="lg-ex lg-imp">名称</span>点線の項目：既定値・もう一方の戦略</li>` +
+          `<li><span class="lg-ex lg-imp">名称</span>点線の項目：既定値（自動で補った選択）</li>` +
           `</ul>`;
         this.root.appendChild(pop);
         btn.setAttribute('aria-expanded', 'true');
@@ -210,12 +209,14 @@ window.Kakoi = window.Kakoi || {};
         if (tip) b.title = tip; else b.removeAttribute('title');
       }
 
+      // 分類は戦略（居飛車／振り飛車）だけ: 採用中の戦略に合わない項目は
+      // 項目ごとに隠す（「もう一方」の領域は持たない。切替は面の戦略セグ）
+      const curStrat = st && st.strategy;
       for (const it of pane.cur.items) {
         const { pv, j } = evalOf(it.kind, it.id);
         const cur = !!st && eff[FIELD[it.kind]] === it.id;
         it.el.setAttribute('aria-current', cur ? 'true' : 'false');
-        // 薄く表示するかは系統ではなく項目ごとに判定する（U4）
-        it.el.dataset.offside = B.offItem(it, st) ? 'true' : 'false';
+        it.el.hidden = !!curStrat && B.offItem(it, st);
         const implied = cur && st.implied[it.kind];
         B.badge(it.el, pv.changed, j, implied);
         // 連動は ⇄ の印だけ（要約は title と制約バーの点滅で示す。F4）
@@ -234,12 +235,20 @@ window.Kakoi = window.Kakoi || {};
           else delete t.dataset.vsel;
         }
       }
-      // 「もう一方の戦略」の振り分け（U4）: 項目ごとに判定する。合わない項目だけの
-      // 行・系統は折りたたみの「もう一方」へ移す
-      const curStrat = st && st.strategy;
-      const otherStrat = STRATEGY_IDS.find(id => id !== curStrat) || null;
-      if (pane.cur.rows) B.group(pane, pane.cur.rows, sec => !curStrat || sec.dataset.side === curStrat, '戦法', otherStrat);
-      if (pane.cur.fams) B.group(pane, pane.cur.fams, sec => !curStrat || sec._sides.has(curStrat), '囲い', otherStrat);
+      // 採用中の戦略に合わない項目だけの行・系統はまるごと隠す。
+      // 系統名の件数は、いま表示している項目の数に合わせる
+      if (pane.cur.rows) {
+        for (const sec of pane.cur.rows) sec.hidden = !!curStrat && sec.dataset.side !== curStrat;
+      }
+      if (pane.cur.fams) {
+        for (const sec of pane.cur.fams) {
+          sec.hidden = !!curStrat && !sec._sides.has(curStrat);
+          if (!sec.hidden) {
+            const n = sec.querySelector('.n');
+            if (n) n.textContent = sec.querySelectorAll('.dk-item:not([hidden])').length;
+          }
+        }
+      }
       pane.roving.refresh();
     }
 

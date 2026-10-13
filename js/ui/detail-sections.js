@@ -109,6 +109,21 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
+   * 発展の前後: どの囲いから駒を動かして組むか（発展元）/ どの囲いへ組み替えられるか（発展先）。
+   * ボタンは .tc-castle を流用し data-act="castle" data-id を出すだけ（委譲はビュー側）。
+   * @param {{from:?Object, to:Object[]}} lineage Repository.lineageOf() 相当の出力
+   */
+  function lineage(lineage) {
+    if (!lineage || (!lineage.from && !(lineage.to || []).length)) return '';
+    const btn = c =>
+      `<button class="tc-castle" data-act="castle" data-id="${esc(c.id)}"><b>${esc(c.short || c.name)}</b></button>`;
+    const row = (lbl, list) => list.length
+      ? `<div class="ln-row"><span class="ln-lbl">${lbl}</span>${list.map(btn).join('')}</div>` : '';
+    return sec('発展', '押すとその囲いへ',
+      row('発展元', lineage.from ? [lineage.from] : []) + row('発展先', lineage.to || []));
+  }
+
+  /**
    * 長所・短所のリスト。
    * @param {Array<{t:string, sq?:string[]}>} items
    * @param {{tone?:string, cls?:string, small?:string}} [opt]
@@ -295,7 +310,7 @@ window.Kakoi = window.Kakoi || {};
   K.detailSections = {
     RATINGS, RADAR, sec,
     penta, castleTags, tacticTags,
-    desc, note, refFamily, coreChips, pcList, attacks, route,
+    desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, senkei, distanceNote,
     vsSection, vsRows, reasons, contacts, history, sources,
   };

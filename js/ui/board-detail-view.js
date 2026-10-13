@@ -4,7 +4,7 @@
 //     ＋相手がいれば導出ラベル（戦型）と「どちらからの攻めが主になるか」
 //   - *.tactic: 戦法の詳細（タグ・説明・長所短所・主役の駒の動き）＋派生の切替
 //     ＋相性のよい囲い（◎/○・いまの囲い・連動の予告）＋相手との相性の相性（judge の vs 軸）
-//   - *.castle: 囲いの詳細（ペンタグラム・#タグ・長所短所・攻め筋）。相手がいれば
+//   - *.castle: 囲いの詳細（ペンタグラム・#タグ・発展・長所短所・攻め筋）。相手がいれば
 //     ペンタグラムに戦型の重みを重ね、fitness と効いている軸を表示する
 //   - 共通の末尾: 両軍の接触 → 直近の連動 → 出典
 // render は self-contained: データは Kakoi.*（CASTLES/TACTICS/…）と内部の Repository で
@@ -211,6 +211,7 @@ window.Kakoi = window.Kakoi || {};
         Sec().tacticTags(t, family),
         Sec().desc(t.desc, citer),
         Sec().note(t.note, citer),
+        family && family.note ? Sec().note(`${family.piece}が主役の理由：${family.note}`, citer) : '',
         Sec().pcList('長所', t.pros, { small: '' }, citer),
         Sec().pcList('短所', t.cons, { cls: 'cons', small: '' }, citer),
         Sec().route(t),
@@ -261,6 +262,7 @@ window.Kakoi = window.Kakoi || {};
         Sec().desc(c.desc, citer),
         Sec().note(c.note, citer),
         Sec().coreChips(c),
+        Sec().lineage(this._lineageOf(c)),
         Sec().pcList('長所', c.pros, { tone: 'good' }, citer),
         Sec().pcList('短所', c.cons, { tone: 'bad', cls: 'cons' }, citer),
         Sec().attacks(c, attackId, citer, { hasOpp: !!other }),
@@ -311,6 +313,16 @@ window.Kakoi = window.Kakoi || {};
     _tacticSources(t, castle) {
       const r = this._repo();
       return r && t ? r.tacticComboSourcesOf(t, castle) : [];
+    }
+    // 発展の前後: from（発展元）と、この囲いを from に持つ囲いの一覧。
+    // Repository.lineageOf があれば使い、なければ findCastle と全CASTLES走査で組み立てる
+    _lineageOf(c) {
+      const r = this._repo();
+      if (r && r.lineageOf) return r.lineageOf(c);
+      return {
+        from: c.from ? findCastle(c.from) : null,
+        to: (K.CASTLES || []).filter(x => x.from === c.id),
+      };
     }
     _pairingsOf(t) {
       const r = this._repo();

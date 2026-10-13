@@ -3,13 +3,14 @@
 //   shell: 囲いの形として意味がある歩（城壁の前線）。戦法と合成するときもそのまま置く
 //   rest:  core に含まれない守り駒（金・銀）の置き場所。合成のとき優先して置く
 //   filler: 比較用に揃えた駒（初期位置の香・桂、盤外扱いの駒）。合成のときは置かない
+// from: 発展元の囲い（この囲いはそこから駒を動かして組む）。詳細に「発展元・発展先」として出す
 // flex: 戦法に貸し出せる core の駒と行き先（崩し形になる）
 // pros・cons の sq は盤上で示すマス、attacks の gote は後手の駒、target は狙われるマス
 window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
 Kakoi.CASTLES.push(
   {
-    id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', family: 'mino', subtype: 'hon', setup: 'furibisha',
+    id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', from: 'katamino', family: 'mino', subtype: 'hon', setup: 'furibisha',
     core: '玉28 銀38 金49 金58',
     shell: '歩16 歩27 歩37 歩47',
     rest: '銀67',
@@ -63,7 +64,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'takamino', name: '高美濃囲い', short: '高美濃', reading: 'たかみのがこい', side: 'furibisha', family: 'mino', subtype: 'taka', setup: 'furibisha',
+    id: 'takamino', name: '高美濃囲い', short: '高美濃', reading: 'たかみのがこい', side: 'furibisha', from: 'mino', family: 'mino', subtype: 'taka', setup: 'furibisha',
     core: '玉28 銀38 金47 金49',
     shell: '歩16 歩27 歩37 歩46',
     rest: '銀67',
@@ -87,7 +88,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'gincan', name: '銀冠', short: '銀冠', reading: 'ぎんかんむり', side: 'furibisha', family: 'mino', subtype: 'gincan', setup: 'furibisha',
+    id: 'gincan', name: '銀冠', short: '銀冠', reading: 'ぎんかんむり', side: 'furibisha', from: 'takamino', family: 'mino', subtype: 'gincan', setup: 'furibisha',
     core: '玉28 銀27 金38 金47',
     shell: '歩16 歩26 歩37 歩46',
     rest: '銀67',
@@ -112,7 +113,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'diamond', name: 'ダイヤモンド美濃', short: 'ダイヤモンド美濃', reading: 'だいやもんどみの', side: 'furibisha', family: 'mino', subtype: 'ginmino', setup: 'furibisha',
+    id: 'diamond', name: 'ダイヤモンド美濃', short: 'ダイヤモンド美濃', reading: 'だいやもんどみの', side: 'furibisha', from: 'mino', family: 'mino', subtype: 'ginmino', setup: 'furibisha',
     core: '玉28 銀38 金49 金58 銀47',
     shell: '歩16 歩27 歩36 歩46',
     filler: '香19 桂29',

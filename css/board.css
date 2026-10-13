@@ -2,13 +2,11 @@
    「墨と余白」: 板はフラットな榧の一枚、駒は和紙色の駒面に墨の輪郭線と墨字 */
 
 .boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
-/* 周期表の高さ --pt-h は常に確保する（F1/F2: 表の出し入れで盤が縮まない）。
-   持ち駒列の幅（左右24pxずつ）は .boardwrap の margin で常時予約する */
+/* 盤の外枠: 上に筋ラベル（22px）、下に盤本体。持ち駒列の幅（左右24pxずつ）は
+   .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
 .boardwrap { display:grid; position:relative; grid-template-columns:minmax(0,1fr) 22px;
-             --pt-rows:4; --pt-row:18px; --pt-gap:3px; --pt-pad:8px;
-             --pt-h:calc(var(--pt-rows) * var(--pt-row) + (var(--pt-rows) - 1) * var(--pt-gap) + var(--pt-pad));
-             grid-template-rows:var(--pt-h) 22px minmax(0,auto);
-             width:min(calc(100cqw - 48px), calc((100cqh - 22px - var(--pt-h)) * 9 / 9.6 + 22px)); }
+             grid-template-rows:22px minmax(0,auto);
+             width:min(calc(100cqw - 48px), calc((100cqh - 22px) * 9 / 9.6 + 22px)); }
 .flabels { display:grid; grid-template-columns:repeat(9,1fr); font:500 11px var(--font-d); color:var(--muted); text-align:center; align-items:end; padding-bottom:4px; }
 .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:11px var(--font-d); color:var(--muted); align-items:center; justify-items:center; }
 
