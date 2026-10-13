@@ -56,7 +56,10 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
 :root[data-theme="dark"] .ib .i-sun { display:block; }
 
 /* ===== app grid: パネル間は罫線 ===== */
-.app { display:grid; grid-template-columns:minmax(250px,330px) minmax(0,1fr) minmax(300px,360px); gap:0; padding:0; min-height:0; }
+/* 列幅は CSS 変数で（計画書 §4-1）。1440px で左右 約440/475px・中央 約525px になる比。
+   左右の下限（320/340）が効き始める 1100px 前後では中央が細くなる（狭い幅の折りたたみは §4-6）。
+   980px 以下は narrow ブロックの1列表示 */
+.app { display:grid; grid-template-columns:var(--col-l, minmax(320px,1.45fr)) minmax(0,1.75fr) var(--col-r, minmax(340px,1.55fr)); gap:0; padding:0; min-height:0; }
 .panel { border-radius:0; min-height:0; }
 .rail { border-right:1px solid var(--line); }
 .detail { border-left:1px solid var(--line); position:relative; }

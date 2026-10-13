@@ -1,0 +1,125 @@
+/* 左ドック（U4。計画書 §4-2〜§4-4）: 上下2面の分割ペイン＋戦法/囲いタイル。
+   「墨と余白」: 面を増やさず、罫線・破線・記号（◎/△/→要約）で状態を示す。
+   暫定ドックの2軸バッジの規則はそのままタイルに引き継ぐ（constraint.css の .cr-item と同じ意味） */
+
+/* ===== 上下分割 ===== */
+#pickRail { padding:10px 14px; }              /* 暫定の 16/18 より詰めてタイルを立てる */
+#pickRail .dk { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.dk-pane { display:flex; flex-direction:column; min-width:0; min-height:120px; }
+.dk-pane[data-pane="top"] { flex:var(--dock-split, .5) 1 0; }
+.dk-pane[data-pane="bottom"] { flex:calc(1 - var(--dock-split, .5)) 1 0; }
+
+.dk-pane-h { flex:none; display:flex; align-items:center; gap:4px 14px; flex-wrap:wrap; padding-bottom:5px; }
+.dk-who button, .dk-tab button { padding:3px 9px; font-size:12px; }
+.dk-tools { margin-left:auto; display:inline-flex; align-items:center; gap:12px; }
+.dk-clear { border:1px solid var(--line); background:none; padding:2px 9px; font-size:11px;
+            color:var(--muted); cursor:pointer; letter-spacing:.06em; }
+.dk-clear:hover { color:var(--bad); border-color:var(--bad); }
+.dk-strategy { flex:none; margin-bottom:5px; }
+.dk-body { flex:1 1 auto; min-height:0; overflow:auto; padding-right:3px; outline-offset:-1px; }
+.dk-view { display:flex; flex-direction:column; gap:12px; padding-bottom:2px; }
+.dk-empty { margin:0 0 2px; font-size:11.5px; color:var(--muted); }
+
+/* ===== スプリッタ（role=separator。罫線＋握りの2本線） ===== */
+.dk-sep { flex:none; position:relative; height:10px; margin:1px -4px; cursor:row-resize; touch-action:none; user-select:none; }
+.dk-sep::before { content:""; position:absolute; left:0; right:0; top:4.5px; height:1px; background:var(--line-2); }
+.dk-sep::after { content:""; position:absolute; left:50%; top:2.5px; width:30px; height:4px; transform:translateX(-50%);
+                 border-top:1px solid var(--line-2); border-bottom:1px solid var(--line-2); }
+.dk-sep:hover::before, .dk-sep:focus-visible::before { background:var(--accent); }
+.dk-sep:hover::after, .dk-sep:focus-visible::after { border-color:var(--accent); }
+
+/* ===== 選択肢の2軸バッジ（計画書 §3-1。暫定ドックと同じ規則をタイルに適用） ===== */
+.dk-item { position:relative; }
+.dk-item .dk-vs { font-style:normal; font-size:11px; min-width:11px; text-align:center; line-height:1; }
+.dk-item .dk-csc { font:500 9.5px/1.25 var(--font-n); letter-spacing:.02em; color:var(--muted); }
+.dk-item .dk-csc:empty { display:none; }
+.dk-item[data-cascade="true"] { border-style:dashed; }
+.dk-item[data-vs="good"] { box-shadow:inset 2px 0 0 var(--accent); }
+.dk-item[data-vs="good"] .dk-vs { color:var(--accent); font-weight:700; }
+.dk-item[data-vs="bad"] .dk-vs { color:var(--bad); font-weight:700; }
+.dk-item[aria-current="true"] { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
+.dk-item[data-vs="good"][aria-current="true"] { box-shadow:inset 2px 0 0 var(--accent), inset 0 0 0 1px var(--accent); }
+.dk-item[aria-current="true"] .nm { font-weight:600; color:var(--fg); }
+.dk-item[data-implied="true"] .nm::after { content:"（既定）"; font-size:9px; color:var(--muted); margin-left:3px; }
+.dk-item[data-rare="true"] .nm { color:var(--muted); font-style:italic; }
+/* 選択中の派生を持つ親タイル（§4-3） */
+.dk-item[data-vsel="true"] { border-color:var(--accent-2); }
+
+/* 戦略セグのボタンにも同じ印を（暫定と同じ） */
+.dk-strategy button[data-cascade="true"] { box-shadow:inset 0 0 0 1px var(--line-2); }
+.dk-strategy button[data-vs="good"] { color:var(--fg); box-shadow:inset 0 0 0 1px var(--accent); }
+.dk-strategy button[data-implied="true"] { font-style:italic; }
+
+/* ===== 戦法タイル（§4-3: 行=主役の駒、列=筋、1マス=最終マス） ===== */
+.dk-trow h3 { display:flex; align-items:center; gap:8px; margin:0 0 5px; font-size:10.5px;
+              letter-spacing:.16em; color:var(--muted); font-weight:600; }
+.dk-trow h3::after { content:""; flex:1; height:1px; background:var(--line); }
+.dk-trow h3 .pt-tile { width:15px; height:17px; padding-top:2px; font-size:9px; }
+.dk-tgrid { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:6px 4px; }
+.dk-dot { display:grid; place-items:center; color:var(--muted); opacity:.35; font:10px/1 var(--font-n); }
+.dk-cell { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.dk-tile { display:flex; flex-direction:column; align-items:center; gap:1px; padding:4px 1px 5px; cursor:pointer;
+           border:1px solid var(--line); background:none; font:inherit; color:inherit; min-width:0;
+           container-type:inline-size; transition:border-color .2s, background .2s; }
+.dk-tile:hover { border-color:var(--line-2); }
+.dk-tile .tglyph { width:100%; max-width:22px; height:auto; display:block; }
+/* 短縮名はタイル幅に追随する（周期表 .pt-cell と同じ cqw 方式。--n は文字数） */
+.dk-tile .nm { font-size:max(7px, min(11px, calc(84cqw / var(--n, 3)))); line-height:1.15; letter-spacing:.01em;
+               max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dk-tile .fb { font:500 9px/1 var(--font-n); color:var(--muted); letter-spacing:.03em; }
+.dk-marks { display:flex; align-items:center; gap:3px; min-height:9px; }
+.dk-vars { display:flex; flex-wrap:wrap; gap:2px; }
+.dk-var { display:inline-flex; align-items:center; gap:2px; padding:1px 4px; cursor:pointer;
+          border:1px solid var(--line); background:none; font:inherit; font-size:9.5px; line-height:1.3;
+          color:var(--muted); transition:border-color .2s, color .2s; }
+.dk-var:hover { color:var(--fg); border-color:var(--line-2); }
+.dk-var .dk-csc { font-size:8.5px; }
+
+/* 戦法アイコン（tactic-glyph.js）: 格子は薄く、経路は墨、終点の駒は字 */
+.tglyph .tgl-grid { stroke:var(--line); stroke-width:.5; }
+.tglyph .tgl-route { stroke:currentColor; }
+.tglyph .tgl-start { fill:currentColor; stroke:none; }
+.tglyph .tgl-pc { fill:currentColor; stroke:none; font:700 7.8px var(--font-d); text-anchor:middle; dominant-baseline:central; }
+.tglyph .tgl-dia { stroke:var(--accent); stroke-width:1.2; }
+.dk-item[aria-current="true"] .tglyph { color:var(--accent); }
+
+/* 戦略に合わない行・系統ブロックは cascade 見た目で残す（隠さない。要件4） */
+.dk-trow[data-offside="true"], .dk-fam[data-offside="true"] { opacity:.5; }
+.dk-trow[data-offside="true"] > h3 { border-bottom:1px dashed var(--line-2); padding-bottom:3px; }
+.dk-fam[data-offside="true"] > .dk-fam-h { border-bottom:1px dashed var(--line-2); padding-bottom:4px; }
+
+/* ===== 囲いタイル（§4-4: 系統ごとの折りたたみブロック） ===== */
+.dk-fam { display:flex; flex-direction:column; gap:6px; }
+.dk-fam-h { display:flex; align-items:center; gap:7px; width:100%; padding:2px 0; border:0; background:none;
+            font:inherit; font-size:11px; letter-spacing:.14em; color:var(--muted); font-weight:600;
+            cursor:pointer; text-align:left; }
+.dk-fam-h::after { content:""; flex:1; height:1px; background:var(--line); }
+.dk-fam-h:hover { color:var(--fg); }
+.dk-fam-h .caret { font-size:9px; transition:transform .2s var(--ease); }
+.dk-fam[data-closed="true"] .dk-fam-h .caret { transform:rotate(-90deg); }
+.dk-fam-h .g { display:inline-flex; }
+.dk-fam-h .g svg { width:14px; height:14px; display:block; }
+.dk-fam-h .n { font:500 11px/1 var(--font-n); }
+.dk-fam[data-closed="true"] .dk-cards { display:none; }
+
+/* 旧カード（92×116〜160px）の約75%: 左ドックが広がったので1行に4〜5列入る */
+.dk-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(60px,1fr)); gap:8px 6px; }
+.dk-card { display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 4px 6px; cursor:pointer;
+           border:1px solid var(--line); background:none; font:inherit; color:inherit; min-width:0;
+           transition:border-color .2s, background .2s; }
+.dk-card:hover { border-color:var(--line-2); }
+.dk-card .thumb { display:flex; justify-content:center; width:100%; }
+.dk-card .thumb .sc { display:block; max-width:100%; }
+.dk-card .thumb svg { width:100%; height:auto; display:block; }
+.dk-card .nm { font-size:10.5px; line-height:1.25; text-align:center; letter-spacing:.02em; }
+
+/* ===== narrow: 上下分割をやめ、タブ切替の1面にする（§4-2末） ===== */
+@media (max-width:980px) {
+  /* ページ全体でスクロールしドックの高さは内容次第: basis:0 の grow 分割だと高さが潰れるので
+     面は内容の高さを取る（split は使わない） */
+  #pickRail .dk { flex:none; display:block; }
+  .dk-pane { display:block; min-height:0; }
+  .dk-pane[data-pane="bottom"], .dk-sep { display:none; }
+  .dk-body { overflow:visible; }
+  .dk-cards { grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); }
+}

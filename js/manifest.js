@@ -8,11 +8,12 @@ Kakoi.MANIFEST = (() => {
   const ui = [
     'js/ui/store.js', 'js/ui/segmented.js', 'js/ui/mini-board.js', 'js/ui/family-glyph.js',
     'js/ui/piece-layer-dom.js', 'js/ui/piece-layer-3d.js', 'js/ui/board-view.js', 'js/ui/overlay-view.js',
-    'js/ui/toolbar-view.js', 'js/ui/detail-view.js',
-    'js/ui/tactic-nav.js', 'js/ui/tactic-player.js', 'js/ui/tactic-table-view.js', 'js/ui/tactic-detail-view.js',
+    'js/ui/toolbar-view.js',
+    'js/ui/detail-sections.js', 'js/ui/board-detail-view.js',
+    'js/ui/tactic-nav.js', 'js/ui/tactic-player.js', 'js/ui/tactic-table-view.js',
     'js/ui/cluster-tree-view.js', 'js/ui/cluster-stage-view.js', 'js/ui/cluster-rail-view.js', 'js/ui/cluster-detail-view.js',
     'js/ui/theme-toggle.js', 'js/ui/tools-toggle.js', 'js/ui/toast.js', 'js/ui/hash-link.js',
-    'js/ui/constraint-bar.js', 'js/ui/constraint-rail-view.js',
+    'js/ui/constraint-bar.js', 'js/ui/tactic-glyph.js', 'js/ui/dock-view.js',
   ];
   const modes = ['js/modes/constraint-mode.js', 'js/modes/cluster-mode.js'];
   const app = ['js/app.js'];

@@ -161,7 +161,7 @@
         legend: $('legend'), hand: $('hand'),
         threatWrap: $('threatWrap'), threatSw: $('threatSw'), playBtn: $('playBtn'),
         ptable: $('ptable'), boardwrap: $('boardwrap'), rail: $('pickRail'),
-        detail: { castle: $('detailCastle'), tactic: $('detailTactic'), misc: $('detailMisc') },
+        detail: $('detail'),
       },
     }),
     cluster: new K.ClusterMode({ ...common, els: { rail: $('clusterRail'), stage: $('clusterStage'), detail: $('clusterDetail') } }),

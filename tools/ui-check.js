@@ -82,8 +82,8 @@ const snap = page => page.evaluate(() => {
     threats: document.querySelectorAll('#board .ov-threat').length,
     ptableOn: document.querySelector('#boardwrap').dataset.pt === 'on',
     ptCells: document.querySelectorAll('#ptable .pt-cell').length,
-    detailCastle: !document.querySelector('#detailCastle').hidden,
-    detailTactic: !document.querySelector('#detailTactic').hidden,
+    // 右ドックは BoardDetailView が .bd-h/.bd-who に「自分（先手）の囲い」のように出す
+    detailKind: (document.querySelector('#detail .bd-who') || {}).textContent || '',
     hash: location.hash,
   };
 });
@@ -92,22 +92,53 @@ const snap = page => page.evaluate(() => {
 async function sweepBoard(page) {
   const r = {};
   r.t0 = await snap(page);
-  // 左ドックの一覧が出ている（自分＋相手の2ブロック分）
-  r.items = await page.$$eval('#pickRail .cr-item', els => els.length);
-  r.segs = await page.$$eval('#pickRail .seg button[data-value]', els => els.length);
+  // 左ドック（U4）: 上下2面・separator・タイル・クラスタ見出しが出ている
+  r.panes = await page.$$eval('#pickRail .dk-pane', els => els.length);
+  r.sep = await page.evaluate(() => {
+    const s = document.querySelector('#pickRail [role="separator"]');
+    return s ? { orient: s.getAttribute('aria-orientation'), now: +s.getAttribute('aria-valuenow'), tab: s.tabIndex } : null;
+  });
+  r.items = await page.$$eval('#pickRail .dk-item', els => els.length);
+  r.tiles = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-tile', els => els.length);
+  r.vars = await page.$$eval('#pickRail .dk-pane[data-who="opp"] .dk-var', els => els.length);
+  r.cards = await page.$$eval('#pickRail .dk-pane[data-who="me"] .dk-card', els => els.length);
+  r.fams = await page.$$eval('#pickRail .dk-pane[data-who="me"] .dk-fam', els => els.length);
+  r.segs = await page.$$eval('#pickRail .dk-strategy button[data-value]', els => els.length);
+  // 相手の面は筋が反転: 四間飛車（先手6筋の戦法）は盤の4筋=グリッド列6に置かれる
+  r.flipCol = await page.evaluate(() => {
+    const t = document.querySelector('#pickRail .dk-pane[data-who="opp"] .dk-tile[data-id="shikenbisha"]');
+    const cell = t && t.closest('.dk-cell');
+    return cell ? getComputedStyle(cell).gridColumnStart : null;
+  });
+  // 系統ブロックの折りたたみ
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
+  r.collapse = await page.$eval('#pickRail .dk-pane[data-who="me"] .dk-fam',
+    el => el.dataset.closed === 'true' && el.querySelector('.dk-fam-h').getAttribute('aria-expanded') === 'false');
+  await page.click('#pickRail .dk-pane[data-who="me"] .dk-fam-h'); await wait(120);
+  // スプリッタ: ↑↓キーで比率が5%刻みで動く
+  await page.focus('#pickRail .dk-sep');
+  const sp0 = await page.evaluate(() => __kakoi.store.state.dock.split);
+  await page.keyboard.press('ArrowDown'); await wait(150);
+  r.splitKey = await page.evaluate(s => Math.abs(__kakoi.store.state.dock.split - (s + .05)) < 1e-6, sp0);
+  await page.keyboard.press('ArrowUp'); await wait(150);
+  r.splitBack = await page.evaluate(s => Math.abs(__kakoi.store.state.dock.split - s) < 1e-6, sp0);
 
   // 囲いを選ぶ → 制約が増え、チップが現れ、詳細が囲いになる
   const before = r.t0.constraints.length;
-  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="castle"]'); await wait(350);
+  await page.click('#pickRail .dk-item[data-who="me"][data-kind="castle"]'); await wait(350);
   r.t1 = await snap(page);
   r.added = r.t1.constraints.length === before + 1
     && r.t1.constraints.some(e => e.who === 'me' && e.kind === 'castle')
-    && r.t1.selected === 'me.castle' && r.t1.detailCastle;
+    && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い');
 
-  // 戦法を選ぶ → 周期表が出る。selected=me.tactic
-  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="tactic"]'); await wait(350);
+  // 戦法を選ぶ: 下面を戦法タブに切り替えてからタイルを押す → 周期表が出る。selected=me.tactic
+  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tab button[data-value="tactic"]'); await wait(250);
+  r.tabSwitch = await page.evaluate(() =>
+    document.querySelector('#pickRail .dk-pane[data-pane="bottom"]').dataset.tab === 'tactic'
+    && document.querySelectorAll('#pickRail .dk-pane[data-pane="bottom"] .dk-tile').length > 0);
+  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tile[data-who="me"]'); await wait(350);
   r.t2 = await snap(page);
-  r.ptOn = r.t2.ptableOn && r.t2.selected === 'me.tactic' && r.t2.detailTactic;
+  r.ptOn = r.t2.ptableOn && r.t2.selected === 'me.tactic' && r.t2.detailKind.includes('戦法');
   // 筋ボタン（周期表のセル）を押す → その側の戦法が変わる
   const cells = r.t2.ptCells;
   if (cells > 1) {
@@ -116,12 +147,13 @@ async function sweepBoard(page) {
   r.t3 = await snap(page);
   r.ptPick = r.t3.ptableOn && r.t3.selected === 'me.tactic' && r.t3.constraints.some(e => e.kind === 'tactic');
   // 囲いを選び直す → 周期表が消える（selected だけの変更で駒は再描画されない構造）
-  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="castle"]'); await wait(350);
+  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tab button[data-value="castle"]'); await wait(250);
+  await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-card[data-who="me"]'); await wait(350);
   r.t4 = await snap(page);
   r.ptOff = !r.t4.ptableOn;
 
   // 相手を選ぶ → 相手の制約が増え、後手の駒（DOM駒のとき）と脅威の帯・導出ラベルが出る
-  await page.click('#pickRail [data-side="opp"] .cr-item[data-kind="tactic"]'); await wait(400);
+  await page.click('#pickRail .dk-pane[data-who="opp"] .dk-tile'); await wait(400);
   r.t5 = await snap(page);
   r.opp = !!r.t5.sides.opp && r.t5.constraints.some(e => e.who === 'opp');
   r.oppShown = r.t5.canvas || r.t5.gote > 0;
@@ -140,7 +172,9 @@ async function sweepBoard(page) {
 
   // 連鎖: cascade のある候補を選ぶと自動差し替えが起き、トーストが出る
   r.toast = '';
-  const csc = await page.$('#pickRail [data-side="me"] .cr-item[data-cascade="true"]');
+  r.badges = await page.$$eval('#pickRail .dk-item[data-cascade="true"], #pickRail .dk-item[data-vs="good"], #pickRail .dk-item[data-vs="bad"]', els => els.length);
+  const csc = await page.$('#pickRail .dk-pane[data-who="me"] .dk-item[data-cascade="true"]')
+    || await page.$('#pickRail .dk-item[data-cascade="true"]');
   r.cascadeTried = !!csc;
   let preList = null;
   if (csc) {
@@ -167,7 +201,7 @@ async function sweepBoard(page) {
     r.removed = await page.evaluate(n => __kakoi.store.state.constraints.length === n - 1, n0);
   }
   // 相手を全部はずす → 後手の駒と脅威の帯が退く（直前の × で相手が空になった場合に備えて足しておく）
-  await page.click('#pickRail [data-side="opp"] .cr-item[data-kind="strategy"], #pickRail [data-side="opp"] .seg button[data-value]').catch(() => {});
+  await page.click('#pickRail .dk-pane[data-who="opp"] .dk-strategy button[data-value]').catch(() => {});
   await wait(350);
   const clearBtn = await page.$('#pickRail [data-clear="opp"]');
   if (clearBtn && await clearBtn.isVisible()) {
@@ -178,8 +212,15 @@ async function sweepBoard(page) {
     r.oppGone = null;
   }
 
-  // 矢印キー: 戦法を選択しているとき ←→ で戦法が送れる
-  await page.click('#pickRail [data-side="me"] .cr-item[data-kind="tactic"]'); await wait(300);
+  // 矢印キー: 戦法を選択しているとき ←→ で戦法が送れる（制約バーのチップで selected を戦法にする）
+  const meTacticChip = await page.$('#constraintBar .cchip-b[data-who="me"][data-kind="tactic"]');
+  if (meTacticChip) {
+    await meTacticChip.click();
+  } else {
+    await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-tab button[data-value="tactic"]'); await wait(200);
+    await page.click('#pickRail .dk-pane[data-pane="bottom"] .dk-item[data-who="me"][data-kind="tactic"]');
+  }
+  await wait(300);
   const tId0 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
   await page.keyboard.press('ArrowRight'); await wait(250);
   const tId1 = await page.evaluate(() => Kakoi.constraints.sides(__kakoi.store.state.constraints).me.tacticId);
@@ -252,11 +293,25 @@ async function main() {
         castles: Kakoi.CASTLES.length,
         tactics: Kakoi.TACTICS.length,
         fams: Kakoi.CASTLE_FAMILIES.length,
+        famsUsed: new Set(Kakoi.CASTLES.map(c => c.family)).size,
+        tacticTiles: Kakoi.TACTICS.filter(t => !t.variantOf).length,   // 派生は親タイルのチップに束ねる
+        tacticVars: Kakoi.TACTICS.filter(t => !!t.variantOf).length,
       }));
 
       const b = await sweepBoard(page);
-      ok(b.items === (expect.tactics + expect.castles) * 2, `左ドックの一覧（戦法+囲い)×2側`, `${b.items}行`);
-      ok(b.segs === 4, '左ドックの戦略セグ（自分・相手）', `${b.segs}個`);
+      ok(b.panes === 2, '左ドックは上下2面', `${b.panes}面`);
+      ok(b.sep && b.sep.orient === 'vertical' && b.sep.tab === 0 && b.sep.now >= 20 && b.sep.now <= 80,
+        'ドックのスプリッタ（role=separator + aria）', JSON.stringify(b.sep));
+      ok(b.items === expect.tactics + expect.castles, '左ドックの選択肢（戦法タイル＋派生チップ＋囲いカード）', `${b.items}件`);
+      ok(b.tiles === expect.tacticTiles && b.vars === expect.tacticVars,
+        '戦法タイル（1マス1タイル＋派生はチップ）', `tiles=${b.tiles} vars=${b.vars}`);
+      ok(b.cards === expect.castles, '囲いタイル', `${b.cards}枚`);
+      ok(b.fams === expect.famsUsed, '囲いのクラスタ見出し（系統ごと）', `${b.fams}系統`);
+      ok(b.segs === 4, '戦略セグは各面に常時表示', `${b.segs}個`);
+      ok(b.flipCol === '6', '相手の面は筋が反転（四間飛車=盤の4筋の列）', `列=${b.flipCol}`);
+      ok(b.collapse, '系統ブロックを折りたためる', '');
+      ok(b.splitKey && b.splitBack, 'スプリッタを↑↓キーで5%刻みに動かせる', `down=${b.splitKey} up=${b.splitBack}`);
+      ok(b.tabSwitch, '面のタブ切替（囲い→戦法）', '');
       ok(b.added, '囲いを選ぶ→制約とチップが増える', JSON.stringify(b.t1 && b.t1.constraints));
       ok(b.ptOn, '戦法を選ぶ→筋ボタン（周期表）が出る', `ptableOn=${b.t2.ptableOn} sel=${b.t2.selected}`);
       ok(b.ptPick, '筋ボタンで選択中の側の戦法が変わる', JSON.stringify(b.t3 && b.t3.selected));
@@ -265,6 +320,7 @@ async function main() {
       ok(b.threatOn, '相手がいると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
       ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
       ok(b.oppTable, '相手の戦法を選択→周期表は相手側（反転）', '');
+      ok(b.badges > 0, 'タイルに2軸バッジ（cascade か ◎/△）が出る', `${b.badges}件`);
       ok(b.threatOff, '脅威の帯スイッチで帯を消せる', `${b.t6 && b.t6.threats}本`);
       if (!b.cascadeTried) warn('連鎖のある候補が見つからず、自動差し替えトーストを試せなかった');
       else {
