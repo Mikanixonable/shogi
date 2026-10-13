@@ -69,7 +69,7 @@ window.Kakoi = window.Kakoi || {};
     // castle 優先だと essential が持ち駒に移され、貸し出せる組み合わせまで × になる）
     const composed = Kakoi.compose.position({
       strategy: st.strategy, tacticId: st.tacticId, castleId: st.castleId,
-      side: 'sente', priority: 'tactic',
+      side: 'sente', priority: 'tactic', oppStrategy: opp && opp.strategy,
     });
     const ng = [], notes = [];
     for (const c of composed.conflicts || []) {
@@ -170,6 +170,9 @@ window.Kakoi = window.Kakoi || {};
           ngAll.push(r); level = 'ng';
         } else if (p.level === 'ok') {
           cappedOk = true;                    // ○指定は best への昇格を止める
+          if (level === 'ng') {               // 注記つき○は自動判定の×を覆す（中飛車×本美濃など「浮き飛車の形」）
+            level = 'ok'; ngAll.length = 0;   // ng 理由は reasons に残り、注意として表示される
+          }
         } else if (p.level === 'best' && level !== 'ng') {
           level = 'best';
         }
@@ -245,10 +248,9 @@ window.Kakoi = window.Kakoi || {};
     }
     return null;
   }
-  // 代替候補を探す（§4-2 の a→b→c→d の順。同点は TACTICS/CASTLES/STRATEGIES のデータ順で決定的）
-  function searchAlternative(next, L, cur, others, done, opp) {
-    // まだ処理していない層がいま ng なら、あとで差し替わる前提で未選択（＝戦略既定）に戻して評価する。
-    // さもないと古い ng の値のせいで、本来両立する候補まで全て × に見えて差し替え先が見つからない
+  // まだ処理していない層がいま ng なら、あとで差し替わる前提で未選択（＝戦略既定）に戻した評価用ベース。
+  // さもないと古い ng の値のせいで、本来両立する候補まで全て × に見えてしまう
+  function cleanBase(next, L, others, done, opp) {
     const base = { ...next };
     for (const O of others) {
       if (O === L || done.has(O)) continue;
@@ -256,6 +258,12 @@ window.Kakoi = window.Kakoi || {};
       if (v == null) continue;
       if (judgeFull(base, O, v, opp).level === 'ng') base[FIELD[O]] = null;
     }
+    return base;
+  }
+
+  // 代替候補を探す（§4-2 の a→b→c→d の順。同点は TACTICS/CASTLES/STRATEGIES のデータ順で決定的）
+  function searchAlternative(next, L, cur, others, done, opp) {
+    const base = cleanBase(next, L, others, done, opp);
     const ok = candidatesOf(L).filter(c => c !== cur)
       .map(cid => ({ id: cid, j: judgeFull(base, L, cid, opp) }))
       .filter(e => e.j.level !== 'ng');
@@ -306,7 +314,7 @@ window.Kakoi = window.Kakoi || {};
     // 他の層を優先度の低い順（pick の古い順。pick に無い層は最古扱い）に並べる
     const others = LAYERS.filter(l => l !== layer).sort((a, b) => {
       const ia = next.pick.indexOf(a), ib = next.pick.indexOf(b);
-      return (ia === -1 ? -1 : ia) - (ib === -1 ? -1 : ib) || LAYERS.indexOf(a) - LAYERS.indexOf(b);
+      return ia - ib || LAYERS.indexOf(a) - LAYERS.indexOf(b); // pick に無い層（-1）が最古
     });
     const done = new Set();
     for (const L of others) {
@@ -316,10 +324,11 @@ window.Kakoi = window.Kakoi || {};
       const j = judgeFull(next, L, cur, opp);        // いまの値が新しい選択のもとで ng か
       if (j.level !== 'ng') continue;
       let rep = null;
-      // 戦略を変えた直後は、まずテンプレートの既定値に戻す（§4-2.3）
+      // 戦略を変えた直後は、まずテンプレートの既定値に戻す（§4-2.3）。
+      // 評価は古い層を清掃したベースで行う（ng の古い値のせいで既定値まで×に見えるのを防ぐ）
       if (layer === 'strategy') {
         const d = defaultOf(L, next.strategy, opp);
-        if (d && d !== cur && judgeFull(next, L, d, opp).level !== 'ng') rep = d;
+        if (d && d !== cur && judgeFull(cleanBase(next, L, others, done, opp), L, d, opp).level !== 'ng') rep = d;
       }
       if (rep == null) rep = searchAlternative(next, L, cur, others, done, opp);
       if (rep != null && rep !== cur) {
@@ -328,6 +337,11 @@ window.Kakoi = window.Kakoi || {};
           layer: L, from: cur, to: rep,
           why: j._ng.map(r => r.text).join('、') || '新しい選択と両立しない',
         });
+      } else {
+        // 差し替え先が見つからなかった（全候補 ng）。ng の値はそのまま残るが、
+        // 静かに放置せず通知に載せる（M3「どの順で選んでも ng が残らない」の例外時の表示用）
+        changed.push({ layer: L, from: cur, to: cur, unresolved: true,
+          why: j._ng.map(r => r.text).join('、') || '両立する候補がありません' });
       }
     }
     return { next, changed };

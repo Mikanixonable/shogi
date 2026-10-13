@@ -21,12 +21,12 @@ window.Kakoi = window.Kakoi || {};
   const canSlide = (p, from, to) => Kakoi.pieceMatch.moveCost(p, from, to);
 
   // 戦略テンプレートの既定囲い。defaultCastle は文字列または {vsIbisha, vsFuribisha}。
-  // 合成時点では相手の戦型が分からないので、オブジェクト形は vsIbisha を中立の既定とする
-  function templateCastleOf(strategy) {
+  // 相手の戦略が分かるときはそれで振り分け、不明なら vsIbisha を中立の既定とする
+  function templateCastleOf(strategy, oppStrategy) {
     const s = strategy && Kakoi.STRATEGIES && Kakoi.STRATEGIES[strategy];
     const dc = s && s.defaultCastle;
     const id = typeof dc === 'string' ? dc
-      : dc ? (dc.vsIbisha || dc.vsFuribisha || null)
+      : dc ? ((oppStrategy === 'furibisha' ? dc.vsFuribisha : dc.vsIbisha) || dc.vsIbisha || dc.vsFuribisha || null)
       : null;
     return id ? findCastle(id) : null;
   }
@@ -34,14 +34,16 @@ window.Kakoi = window.Kakoi || {};
   /**
    * 戦略・戦法・囲いの3層を合成した局面を返す。
    * @param {{strategy?:string, tacticId?:string, castleId?:string,
-   *          side?:'sente'|'gote', priority?:'tactic'|'castle'}} opts
+   *          side?:'sente'|'gote', priority?:'tactic'|'castle',
+   *          oppStrategy?:string}} opts
+   *   oppStrategy: 囲い未選択のとき戦略テンプレートの既定囲いを振り分けるのに使う
    * @returns {{position: Kakoi.Position,
    *            conflicts: Array<{code:string, squares?:string[], text:string}>,
    *            moved: number, flexed: Array<{piece:string, from:string, to:string}>}}
    */
   function position(opts = {}) {
     const { strategy = null, tacticId = null, castleId = null,
-      side = 'sente', priority = 'tactic' } = opts;
+      side = 'sente', priority = 'tactic', oppStrategy = null } = opts;
     const tactic = tacticId ? findTactic(tacticId) : null;
     const castle = castleId ? findCastle(castleId) : null;
 
@@ -53,7 +55,7 @@ window.Kakoi = window.Kakoi || {};
         hand: tactic.hand || '',
       });
     } else {
-      const tc = templateCastleOf(strategy);
+      const tc = templateCastleOf(strategy, oppStrategy);
       base = tc ? Kakoi.Position.fromCastle(tc, Kakoi.SETUPS[tc.setup]) : new Kakoi.Position([], []);
     }
     const pieces = base.pieces.map(x => ({ ...x }));

@@ -43,7 +43,8 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
 .mu-sel select:focus-visible { outline:1.5px solid var(--accent); outline-offset:1px; }
 .mu-status { margin:2px 0 0; font-size:11.5px; color:var(--muted); display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
 .mu-status .mk { font-weight:700; }
-.mu-status .mk[data-level="best"], .mu-status .mk[data-level="ng"] { color:var(--accent); }
+.mu-status .mk[data-level="best"] { color:var(--accent); }
+.mu-status .mk[data-level="ng"] { color:var(--bad); }
 .mu-status-r { font-size:10.5px; }
 
 /* ===== 中央: 見出しと凡例 ===== */
