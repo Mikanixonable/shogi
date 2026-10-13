@@ -1,8 +1,7 @@
 // 統合画面の「見える半分」（計画書 S6 の BoardScreen）: 盤の駒レイヤ・重ね表示・
 // 盤の上下の帯・制約バー・右ドックへの描画をまとめる。スロットの読み書き
 // （コマンド・ホバー予告）は constraint-mode.js のコントローラが持つ。
-// 導出は core/board-model.js の deriveBoard に一本化（S5）。state.play（再生中の
-// 表示専用の差し替え）はスロットを書き換えずに実効戦法だけを変える（§4-5）
+// 導出は core/board-model.js の deriveBoard に一本化（S5）。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -20,11 +19,11 @@ window.Kakoi = window.Kakoi || {};
      * @param {{ els:object, board:Kakoi.BoardView, overlay:Kakoi.OverlayView,
      *   bars:{opp:Kakoi.ConstraintBar, me:Kakoi.ConstraintBar},
      *   detail:Kakoi.BoardDetailView,
-     *   repo:Kakoi.Repository, rows:Array, playback:Kakoi.TacticPlayback,
+     *   repo:Kakoi.Repository, rows:Array,
      *   nameOf:(who:string,kind:string,id:string)=>string }} deps
      */
-    constructor({ els, board, overlay, bars, detail, repo, rows, playback, nameOf }) {
-      Object.assign(this, { els, board, overlay, bars, detail, repo, rows, playback });
+    constructor({ els, board, overlay, bars, detail, repo, rows, nameOf }) {
+      Object.assign(this, { els, board, overlay, bars, detail, repo, rows });
       this._nameOf = nameOf;
       this._renderKey = null;
       this._meTactic = null;
@@ -35,11 +34,10 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 合成（導出は deriveBoard に一本化。S5） ----------
     _compute(state) {
       const slots = state.slots;
-      // update() のたびに作り直さない: slots の参照と再生差し替え・相手の表示をキーに再利用（S6）
-      const p = state.play || null;
-      const k = `${p ? `${p.who}|${p.tacticId}` : ''}|${state.showOpp}`;
+      // update() のたびに作り直さない: slots の参照と相手の表示をキーに再利用（S6）
+      const k = state.showOpp;
       if (this._derived && this._derived.slots === slots && this._derived.k === k) return this._derived.d;
-      const d = K.deriveBoard(slots, p ? { tactic: p.tacticId, who: p.who } : {}, state.showOpp);
+      const d = K.deriveBoard(slots, state.showOpp);
       this._derived = { slots, k, d };
       return d;
     }
@@ -75,29 +73,23 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    /**
-     * 描画の統括。changed に 'play' が入るときは再生中の差し替え＝表示だけの
-     * 再描画なので、スロット変更と同じ絵の組み立てを走らせる（slots/attackId 相当）
-     */
     update(state, changed) {
-      // 再生差し替えは「スロットが変わった」絵として描く（S6: play は非永続の別キー）
-      const ch = changed.has('play') ? new Set([...changed, 'slots', 'attackId']) : changed;
       const d = this._compute(state);
       const attack = this._attackInfo(state, d.S);
-      const hard = ch.has('initial');
+      const hard = changed.has('initial');
       const key = this._renderKeyOf(state, d, attack);
       const redraw = key !== this._renderKey;
       if (hard || redraw) {
         this._renderKey = key;
-        this._renderBoard(state, d, attack, !hard && ch.has('slots'));
-      } else if (ch.has('mode')) {
+        this._renderBoard(state, d, attack, !hard && changed.has('slots'));
+      } else if (changed.has('mode')) {
         this.board.setMode(state.mode);
       }
       // 脅威の帯スイッチは駒レイヤに触らず、重ね表示だけ更新する
-      if (!redraw && ch.has('showThreat')) this._overlays(state, d);
+      if (!redraw && changed.has('showThreat')) this._overlays(state, d);
 
-      if (hard || ch.has('slots') || ch.has('selected') || ch.has('showOpp')
-          || ch.has('attackId') || ch.has('showThreat')) {
+      if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')
+          || changed.has('attackId') || changed.has('showThreat')) {
         this._paintBar(state, d);
         this._paintStage(state, d);
         this._renderDetail(state, d);
@@ -229,9 +221,6 @@ window.Kakoi = window.Kakoi || {};
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
-      const selTactic = sel && sel.kind === 'tactic';
-      e.playBtn.hidden = !selTactic;
-      if (!selTactic && this.playback.playing) this.playback.stop();
     }
 
     // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------
