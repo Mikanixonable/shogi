@@ -87,7 +87,7 @@ header { position:relative; }
 .stage { --band-h:56px; display:grid; position:relative;
          grid-template-columns:minmax(0,1fr);
          grid-template-rows:var(--band-h) minmax(0,1fr) var(--band-h);
-         padding:18px 26px 14px; gap:10px; }
+         padding:40px 26px; gap:10px; }
 /* 状態の帯（sideband）: 盤の上=相手・下=自分。左に側の印、その右に状態の名前。
    高さ --band-h 固定: 見出し1行＋制約チップ1行。はみ出しは省略する（F4） */
 .sideband { display:flex; flex-direction:column; gap:4px; min-width:0; min-height:0; overflow:hidden; }
