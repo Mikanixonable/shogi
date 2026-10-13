@@ -18,6 +18,7 @@ window.Kakoi = window.Kakoi || {};
       Object.assign(this, { repo, store, board, overlay, els });
       const st = els.stage;
       this.stageEls = {
+        h: st.querySelector('.stage-h'),
         ttl: st.querySelector('.ttl'), title: st.querySelector('h2'),
         context: st.querySelector('.setup'), legend: st.querySelector('.legend'), hand: st.querySelector('.hand'),
       };
@@ -65,6 +66,8 @@ window.Kakoi = window.Kakoi || {};
           ? `${LAYER_JA[c.layer]}は両立する候補がなく「${this._nameOf(c.layer, c.from)}」のまま`
           : `${LAYER_JA[c.layer]}を「${this._nameOf(c.layer, c.from)}」から「${this._nameOf(c.layer, c.to)}」へ`).join('、');
         K.Toast.show(`${msg}変更しました`, {
+          // 「対局図」の右の余白に置く（既存の要素に重ねない）
+          host: this.stageEls.h,
           // 戻すのは自動差し替えだけ（直前の matchup 全体ではなく、差し替わった層の値と pick 順を復元する）
           action: {
             label: '元に戻す',
