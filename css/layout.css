@@ -76,7 +76,9 @@ header { position:relative; }
 .stage .sideband[data-side="opp"] { order:0; }
 .stage .boardarea { order:1; }
 .stage .sideband[data-side="me"] { order:2; }
-.stage #bandOpp[data-empty="true"] { display:none; }
+.stage #bandOpp { transition:opacity .36s var(--ease), visibility 0s linear .36s; }
+.stage #bandOpp[data-empty="true"] { order:2; visibility:hidden; opacity:0; pointer-events:none; }
+.stage #bandOpp[data-empty="false"] { visibility:visible; opacity:1; transition:opacity .36s var(--ease), visibility 0s; }
 .stage #bandOpp[data-empty="true"] ~ #bandMe { order:0; }
 
 /* ===== rail: 左ドック（自分／相手のタブで切り替える1枚の面。DockView が構造を組み立てる。css/dock.css 参照） ===== */
@@ -110,6 +112,7 @@ header { position:relative; }
 .sideband[data-empty="true"] .sband-name { font-weight:600; font-size:15px; color:var(--muted); letter-spacing:.1em; }
 .ttl.swap { animation:swap .45s var(--ease); }
 @keyframes swap { from { opacity:0; transform:translateY(4px); } }
+@media (prefers-reduced-motion:reduce) { .stage #bandOpp { transition:none; } }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
 .handcol { position:absolute; top:22px; bottom:0; width:22px; margin:0 2px;

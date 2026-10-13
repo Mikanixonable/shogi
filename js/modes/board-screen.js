@@ -179,6 +179,8 @@ window.Kakoi = window.Kakoi || {};
       const e = this.els, { S } = d;
       const sel = parseSel(state.selected);
       const hasOpp = !!state.showOpp;
+      const moved = this._shownOpp !== undefined && this._shownOpp !== hasOpp;
+      const start = moved ? [e.bandOpp, e.bandMe].map(el => [el, el.getBoundingClientRect().top]) : null;
       // 相手 OFF 時も行トラックは確保して盤の矩形を固定し、自分の帯を盤の上へ移す（F1）。
       // 表示 ON/OFF は左ドックの駒の見出しで行う
       e.bandOpp.dataset.empty = hasOpp ? 'false' : 'true';
@@ -212,6 +214,17 @@ window.Kakoi = window.Kakoi || {};
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
+      if (start && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        for (const [el, top] of start) {
+          const y = top - el.getBoundingClientRect().top;
+          if (Math.abs(y) < 1 || typeof el.animate !== 'function') continue;
+          el.getAnimations().forEach(animation => animation.cancel());
+          el.animate([{ transform: `translateY(${y}px)` }, { transform: 'translateY(0)' }], {
+            duration: 360, easing: 'cubic-bezier(.2,.7,.2,1)',
+          });
+        }
+      }
+      this._shownOpp = hasOpp;
     }
 
     // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------
