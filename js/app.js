@@ -51,10 +51,7 @@
       return v == null ? undefined : JSON.parse(v);
     } catch { return undefined; }
   };
-  const validId = (kind, id) =>
-    kind === 'strategy' ? Object.hasOwn(K.STRATEGIES, id)
-      : kind === 'tactic' ? repo.hasTactic(id)
-      : kind === 'castle' ? repo.has(id) : false;
+  const validId = K.constraints.isValidId;
   {
     const st = store.state;
     // 制約が空 かつ ハッシュが制約を指定していない（k= の空リストは「明示的に空」なので移行しない）
@@ -81,13 +78,10 @@
     } else if (empty && view === 'matchup') {
       const mu = lg('matchup');
       if (mu && typeof mu === 'object') {
-        const LAYERS = K.constraints.KINDS;
         const sideOf = (s, who) => {
           s = s && typeof s === 'object' ? s : {};
-          const pick = Array.isArray(s.pick) ? s.pick.filter(l => LAYERS.includes(l)) : [];
-          const order = pick.length ? [...LAYERS.filter(l => !pick.includes(l)), ...pick] : LAYERS;
-          return order.map(k => {
-            const id = k === 'strategy' ? s.strategy : k === 'tactic' ? s.tacticId : s.castleId;
+          return K.constraints.orderFromPick(s.pick).map(k => {
+            const id = s[K.constraints.FIELD[k]];
             return validId(k, id) ? { who, kind: k, id } : null;
           }).filter(Boolean);
         };
@@ -112,13 +106,7 @@
     // 制約: 形と id の正当性を確かめ、先頭から順に apply(set) し直す。
     // 重複の整理だけでなく連動による解決まで起動時に済ませる（計画書 L4。
     // 旧形式からの変換もこの同じ経路を通る）
-    const valid = e => e && (e.who === 'me' || e.who === 'opp')
-      && K.constraints.KINDS.includes(e.kind) && validId(e.kind, e.id);
-    st.constraints = (Array.isArray(st.constraints) ? st.constraints : [])
-      .filter(valid)
-      .reduce((acc, e) => K.constraints.apply(acc, {
-        type: 'set', who: e.who, kind: e.kind, id: e.id,
-      }).list, []);
+    st.constraints = K.constraints.normalizeList(st.constraints);
     // dock: 上=相手・下=自分の固定2面（面ごとに tab と開閉）。旧 {top,bottom}.{who,tab} は tab だけ引き継ぐ
     const dk = st.dock && typeof st.dock === 'object' ? st.dock : {};
     const dkPane = (p, oldP, fb) => {
@@ -136,14 +124,7 @@
       me: dkPane(dk.me, dk.bottom, DOCK_DEFAULT.me),
     };
     // selected: 'who.kind' 形式。相手側を指しているのに相手の制約が無いときは握り直す
-    if (!/^(me|opp)\.(strategy|tactic|castle)$/.test(st.selected || '')) st.selected = null;
-    if (st.selected && st.selected.startsWith('opp.') && !st.constraints.some(e => e.who === 'opp')) {
-      st.selected = null;
-    }
-    if (st.selected == null) {
-      const last = [...st.constraints].reverse().find(e => e.who === 'me') || st.constraints[st.constraints.length - 1];
-      st.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
-    }
+    st.selected = K.constraints.normalizeSelected(st.constraints, st.selected);
     st.showThreat = st.showThreat !== false;
     if (!repo.families().some(f => f.id === st.clusterFamily)) st.clusterFamily = null;
   }

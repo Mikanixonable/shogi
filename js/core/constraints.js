@@ -1,22 +1,18 @@
 // 制約モデル（統合画面用。DOM に依存しない）: 制約リストを両側の選択状態に正規化し、
-// 未指定の層を戦略既定値で補う。既定値の解決規則（defaultTactic / defaultCastle の
-// {vsIbisha,vsFuribisha} 振り分けを含む）はこのファイルが唯一の権威で、
-// compat.js / matchup.js / compose.js の重複実装はここへ委譲する。
+// 未指定の層を戦略既定値で補う。既定値の解決規則（{vsIbisha,vsFuribisha} 振り分けを
+// 含む）の権威は core/defaults.js で、層のスキーマ定数（KINDS/FIELD/WHOS）は
+// core/lookup.js が唯一の定義。
 // 追加・削除と自動差し替えは compat.judge と同じ判定を使い、
 // 解が無い古い制約は削除する（unresolved を残さない）。計画書 §1-1〜§1-4 / §3-2。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  const KINDS = ['strategy', 'tactic', 'castle'];            // 層の既定順
-  const FIELD = { strategy: 'strategy', tactic: 'tacticId', castle: 'castleId' };
-  const WHOS = ['me', 'opp'];
-  const { findTactic, findCastle, tacticFamilyOf: familyOf } = Kakoi.lookup;
+  const { findTactic, findCastle, tacticFamilyOf: familyOf, KINDS, FIELD, WHOS } = Kakoi.lookup;
   const tacticSideOf = t => { const f = familyOf(t); return f ? f.side : null; };
 
-  // ---------- 既定値の解決は core/defaults.js に集約（S6: compat↔constraints の
-  // 相互参照を一方向にする。ここからも使えるようエイリアスだけ残す） ----------
-  const { stratOf, defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf } = Kakoi.defaults;
+  // ---------- 既定値の解決は core/defaults.js に集約（S6: compat↔constraints の相互参照を一方向に） ----------
+  const { defaultIdOf } = Kakoi.defaults;
 
   // ---------- 正規化（§1-1 / §1-2） ----------
   // Object.hasOwn: 'constructor' や '__proto__' を有効な戦略 id として通さない（L6）
@@ -285,6 +281,32 @@ window.Kakoi = window.Kakoi || {};
     return SEL_RE.test(s) ? s : null;
   };
 
+  // ---------- 保存値・ハッシュの正規化（起動時の app.js と hash-link.js で共有。計画書 L4） ----------
+  // 形と id の正当性を確かめ、先頭から順に apply(set) し直す。
+  // 重複の整理だけでなく連動による解決まで済ませる（旧形式からの変換も同じ経路を通る）
+  function normalizeList(list) {
+    const valid = e => isEntry(e) && isValidId(e.kind, e.id);
+    return (Array.isArray(list) ? list : []).filter(valid)
+      .reduce((acc, e) => apply(acc, { type: 'set', who: e.who, kind: e.kind, id: e.id }).list, []);
+  }
+
+  // 'who.kind' の選択を制約リストへ握り直す: 形式不正・または存在しない側を指す
+  // （opp.* だが相手の制約が無い）ときは、自分側の末尾の制約 → 末尾の制約 → 'me.castle'
+  function normalizeSelected(list, selected) {
+    const sel = parseSel(selected);
+    if (sel && !(sel.who === 'opp' && !list.some(e => e.who === 'opp'))) return encodeSel(sel);
+    const last = [...list].reverse().find(e => e.who === 'me') || list[list.length - 1];
+    return last ? `${last.who}.${last.kind}` : 'me.castle';
+  }
+
+  // 旧形式の「いじった層の順」pick から制約の並び順を復元する（L5）:
+  // pick に無い層が先頭（古い・既定順）、pick の順が末尾（新しい）。
+  // app.js の localStorage 移行と hash-link.js の旧ハッシュ移行で共有する
+  const orderFromPick = pick => {
+    const p = [...new Set(Array.isArray(pick) ? pick : [])].filter(l => KINDS.includes(l));
+    return p.length ? [...KINDS.filter(l => !p.includes(l)), ...p] : KINDS;
+  };
+
   // ---------- merge の late（§1-3.5） ----------
   // 歩同士の接触で1段下げる側: リスト末尾の制約の who（＝最後に選んだ側が遅れて下がる）
   function lateOf(list) {
@@ -336,7 +358,7 @@ window.Kakoi = window.Kakoi || {};
 
   const api = {
     sides, apply, preview, evaluate, lateOf, labels, parseSel, encodeSel,
-    tacticIdOf, castleIdOf, defaultTacticId, defaultCastleId, defaultIdOf,
+    isValidId, normalizeList, normalizeSelected, orderFromPick,
     KINDS, FIELD,
   };
   Kakoi.constraints = api;

@@ -13,7 +13,6 @@ window.Kakoi = window.Kakoi || {};
   const LAYER_LETTER = { strategy: 's', tactic: 't', castle: 'c' };
   const WHO_CHAR = { m: 'me', o: 'opp' };
   const WHO_LETTER = { me: 'm', opp: 'o' };
-  const LAYERS = ['strategy', 'tactic', 'castle'];
 
   const encodeSel = sel => {
     const [who, kind] = String(sel || '').split('.');
@@ -59,8 +58,7 @@ window.Kakoi = window.Kakoi || {};
   function legacyMatchup(p) {
     const side = (pre, who) => {
       const vals = { strategy: p.get(pre + 's'), tactic: p.get(pre + 't'), castle: p.get(pre + 'c') };
-      const pick = decodePick(p.get(pre + 'p'));
-      const order = pick.length ? [...LAYERS.filter(l => !pick.includes(l)), ...pick] : LAYERS;
+      const order = Kakoi.constraints.orderFromPick(decodePick(p.get(pre + 'p')));
       return order.filter(l => vals[l] != null && vals[l] !== '')
         .map(l => ({ who, kind: l, id: vals[l] }));
     };
@@ -176,28 +174,13 @@ window.Kakoi = window.Kakoi || {};
   function normalize(patch) {
     const out = {};
     if (patch.constraints !== undefined) {
-      const valid = e => e && (e.who === 'me' || e.who === 'opp')
-        && Kakoi.constraints.KINDS.includes(e.kind)
-        && (e.kind === 'strategy' ? Object.hasOwn(Kakoi.STRATEGIES || {}, e.id)
-          : e.kind === 'tactic' ? !!Kakoi.lookup.findTactic(e.id)
-          : !!Kakoi.lookup.findCastle(e.id));
-      out.constraints = (patch.constraints || []).filter(valid)
-        .reduce((acc, e) => Kakoi.constraints.apply(acc, {
-          type: 'set', who: e.who, kind: e.kind, id: e.id,
-        }).list, []);
+      out.constraints = Kakoi.constraints.normalizeList(patch.constraints);
     }
     if (patch.view !== undefined) out.view = patch.view;
     if (patch.clusterFamily !== undefined) out.clusterFamily = patch.clusterFamily;
     if (patch.showThreat !== undefined) out.showThreat = patch.showThreat;
     if (patch.selected !== undefined) {
-      const sel = Kakoi.constraints.parseSel(patch.selected);
-      const list = out.constraints || [];
-      out.selected = sel && !(sel.who === 'opp' && !list.some(e => e.who === 'opp'))
-        ? patch.selected : null;
-      if (out.selected == null) {
-        const last = [...list].reverse().find(e => e.who === 'me') || list[list.length - 1];
-        out.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
-      }
+      out.selected = Kakoi.constraints.normalizeSelected(out.constraints || [], patch.selected);
     }
     return out;
   }

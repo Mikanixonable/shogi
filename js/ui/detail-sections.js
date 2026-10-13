@@ -1,7 +1,6 @@
-// 右ドックのセクション部品（計画書 §5 / U5）: DetailView / TacticDetailView /
-// 旧 MatchupDetailView の描画を「HTML文字列を返す関数」に分解したもの。
-// 選択中の制約の種類ごとの組み立ては board-detail-view.js（Kakoi.BoardDetailView）が行い、
-// DetailView / TacticDetailView も同じ部品を使う。
+// 右ドックのセクション部品（計画書 §5 / U5）: 囲い・戦法・対局図の詳細の描画を
+// 「HTML文字列を返す関数」に分解したもの。
+// 選択中の制約の種類ごとの組み立ては board-detail-view.js（Kakoi.BoardDetailView）が行う。
 // 決め事:
 //   - 出典: 本文中の [[ref]] / [[a|b]] トークンは rich(text, citer) で [n] に変わる。
 //     citer はパネル1枚につき1つ作り、出典リストは sourcesBlock が同じ番号で並べ直す（§7）

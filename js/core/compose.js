@@ -271,7 +271,7 @@ window.Kakoi = window.Kakoi || {};
         if (hand.includes(p)) continue;
         const on = pieces.find(x => x.p === p && x.owner === 'sente');
         if (!on) continue;
-        if (locked.has(on) || assigned.has(on) || on.role === 'lead' || on.fresh) {
+        if (locked.has(on) || assigned.has(on) || on.role === 'lead') {
           conflicts.push({ code: 'HAND', squares: [sq(on.f, on.r)],
             text: `${p}を持ち駒にできない（${label(on.f, on.r)}の駒は戦法の必須）` });
           continue;

@@ -85,20 +85,10 @@ window.Kakoi = window.Kakoi || {};
       document.addEventListener('keydown', e => this._onKey(e));
     }
 
-    // ---------- 名前まわり ----------
-    _nameOf(who, kind, id) {
-      if (id == null) return '（未選択）';
-      if (kind === 'strategy') return (K.STRATEGIES[id] && K.STRATEGIES[id].label) || id;
-      const x = kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
-      return x ? x.name : id;
-    }
+    // ---------- 名前まわり（表示名の解決は lookup が権威） ----------
+    _nameOf(who, kind, id) { return K.lookup.nameOf(kind, id); }
     // トースト用の短い名前（short があればそれ。長い正式名で3行以上になるのを防ぐ）
-    _shortOf(kind, id) {
-      if (id == null) return '既定値';
-      if (kind === 'strategy') return (K.STRATEGIES[id] && K.STRATEGIES[id].label) || id;
-      const x = kind === 'tactic' ? this.repo.tacticById(id) : this.repo.byId(id);
-      return x ? (x.short || x.name) : id;
-    }
+    _shortOf(kind, id) { return K.lookup.nameOf(kind, id, { short: true, empty: '既定値' }); }
     // 変更1件を「層 前→後」の短い形にする（dropped: 自分=既定値に戻る・相手=外れる）。
     // 長文にしない・理由は詳細パネルに任せる（トーストは最大2行を目安に）
     _toastPart(c) {
@@ -145,8 +135,7 @@ window.Kakoi = window.Kakoi || {};
       // ただし相手側の制約がこれで全部消えたときは、存在しない側を指さないよう握り直す
       const sel = parseSel(s.selected);
       if (sel && sel.who === 'opp' && !r.list.some(e => e.who === 'opp')) {
-        const last = [...r.list].reverse().find(e => e.who === 'me') || r.list[r.list.length - 1];
-        patch.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
+        patch.selected = K.constraints.normalizeSelected(r.list, s.selected);
       }
       this.store.set(patch);
       // 明示 → 既定値（既定の層）へ戻った層を、チップの破線への移行で示す（U5）

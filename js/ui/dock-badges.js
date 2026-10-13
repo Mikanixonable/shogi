@@ -8,16 +8,9 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const K = window.Kakoi;
   const { plain } = K.html;
-  const { LAYER_JA, findTactic, findCastle, tacticFamilyOf } = K.lookup;
+  const { LAYER_JA, findTactic, findCastle, tacticFamilyOf, castleSides } = K.lookup;
 
-  const nameOf = (kind, id) => {
-    if (id == null) return '（なし）';
-    if (kind === 'strategy') return (K.STRATEGIES[id] && K.STRATEGIES[id].label) || id;
-    const x = kind === 'tactic' ? findTactic(id) : findCastle(id);
-    return x ? x.name : id;
-  };
-  // その囲いを許す戦略の集合（strategies があればそれだけ、なければ side）
-  const sidesOf = c => (Array.isArray(c.strategies) ? c.strategies : [c.side]);
+  const nameOf = (kind, id) => K.lookup.nameOf(kind, id, { empty: '（なし）' });
 
   /**
    * 2軸バッジ（data-cascade / data-vs / data-implied）を要素に書く
@@ -60,8 +53,8 @@ window.Kakoi = window.Kakoi || {};
       return f ? f.side !== st.strategy : false;
     }
     const c = findCastle(it.id);
-    return c ? !sidesOf(c).includes(st.strategy) : false;
+    return c ? !castleSides(c).includes(st.strategy) : false;
   }
 
-  K.dockBadges = { badge, tip, offItem, nameOf, sidesOf };
+  K.dockBadges = { badge, tip, offItem };
 })();

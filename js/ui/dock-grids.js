@@ -141,8 +141,7 @@ window.Kakoi = window.Kakoi || {};
   function castles(ctx, who) {
     const flip = who === 'opp';
     const v = viewShell('dk-castles');
-    // その囲いを許す戦略の集合（strategies があればそれだけ、なければ side）
-    const sidesOf = c => (Array.isArray(c.strategies) ? c.strategies : [c.side]);
+    const sidesOf = K.lookup.castleSides; // その囲いを許す戦略の集合
     const fams = [];
     for (const fam of K.CASTLE_FAMILIES) {
       const members = K.CASTLES.filter(c => c.family === fam.id);
