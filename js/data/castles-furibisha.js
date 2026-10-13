@@ -1,5 +1,8 @@
 // 振り飛車の囲い
-// core: 囲いを構成する駒 / support: 囲いごとの補助の駒（setup と合わせて先手の全駒になる）
+// core: 囲いを構成する駒 / shell+filler: 補助の駒（setup と合わせて先手の全駒になる）
+//   shell: 囲いの形として意味がある歩（城壁の前線）。戦法と合成するときもそのまま置く
+//   filler: 比較用に揃えた駒（初期位置の香・桂、比較用の銀67、盤外扱いの金）。合成のときは置かない
+// flex: 戦法に貸し出せる core の駒と行き先（崩し形になる）
 // pros・cons の sq は盤上で示すマス、attacks の gote は後手の駒、target は狙われるマス
 window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
@@ -7,7 +10,8 @@ Kakoi.CASTLES.push(
   {
     id: 'mino', name: '美濃囲い（本美濃）', short: '本美濃', reading: 'みのがこい', side: 'furibisha', family: 'mino', subtype: 'hon', setup: 'furibisha',
     core: '玉28 銀38 金49 金58',
-    support: '銀67 香19 桂29 歩16 歩27 歩37 歩47',
+    shell: '歩16 歩27 歩37 歩47',
+    filler: '銀67 香19 桂29',
     tags: ['対居飛車', '基本の囲い'],
     desc: '振り飛車の代表的な囲い。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる。',
     ratings: { hard: 3, wide: 3, top: 2, side: 4, quick: 4 },
@@ -33,7 +37,8 @@ Kakoi.CASTLES.push(
   {
     id: 'katamino', name: '片美濃囲い', short: '片美濃', reading: 'かたみのがこい', side: 'furibisha', family: 'mino', subtype: 'kata', setup: 'furibisha',
     core: '玉28 銀38 金49',
-    support: '銀67 金69 香19 桂29 歩16 歩27 歩37 歩47',
+    shell: '歩16 歩27 歩37 歩47',
+    filler: '銀67 金69 香19 桂29',
     tags: ['対居飛車', '急戦向き'],
     desc: '本美濃から左金（5八）を除いた形。左金は最後に動かす駒なので、本美濃に組む途中でもこの形になる。左金を攻めや中央の守りに使いたいときや、中飛車で5八に飛車がいるときに現れる。',
     note: '左金は出典の図では盤外扱いのため、初期位置の6九に置いている。',
@@ -57,7 +62,8 @@ Kakoi.CASTLES.push(
   {
     id: 'takamino', name: '高美濃囲い', short: '高美濃', reading: 'たかみのがこい', side: 'furibisha', family: 'mino', subtype: 'taka', setup: 'furibisha',
     core: '玉28 銀38 金47 金49',
-    support: '銀67 香19 桂29 歩16 歩27 歩37 歩46',
+    shell: '歩16 歩27 歩37 歩46',
+    filler: '銀67 香19 桂29',
     tags: ['対居飛車', '持久戦'],
     desc: '本美濃から4六歩と突き、左金を4七へ上げた形。上部への守りが厚くなり、玉頭や4筋・3筋からの攻めに強くなる。銀冠へ組み替える途中の形でもある。',
     ratings: { hard: 3, wide: 4, top: 4, side: 3, quick: 3 },
@@ -79,7 +85,8 @@ Kakoi.CASTLES.push(
   {
     id: 'gincan', name: '銀冠', short: '銀冠', reading: 'ぎんかんむり', side: 'furibisha', family: 'mino', subtype: 'gincan', setup: 'furibisha',
     core: '玉28 銀27 金38 金47',
-    support: '銀67 香19 桂29 歩16 歩26 歩37 歩46',
+    shell: '歩16 歩26 歩37 歩46',
+    filler: '銀67 香19 桂29',
     tags: ['対居飛車', '持久戦', '上部に強い'],
     desc: '高美濃から2六歩と突き、3八銀を2七へ上げて、空いた3八に金を寄せた形。玉の頭に銀がかぶさり「冠」のように見える。3七桂と跳ねる形もある。',
     ratings: { hard: 4, wide: 5, top: 5, side: 3, quick: 2 },
@@ -102,7 +109,8 @@ Kakoi.CASTLES.push(
   {
     id: 'diamond', name: 'ダイヤモンド美濃', short: 'ダイヤモンド美濃', reading: 'だいやもんどみの', side: 'furibisha', family: 'mino', subtype: 'ginmino', setup: 'furibisha',
     core: '玉28 銀38 金49 金58 銀47',
-    support: '香19 桂29 歩16 歩27 歩36 歩46',
+    shell: '歩16 歩27 歩36 歩46',
+    filler: '香19 桂29',
     tags: ['対居飛車', '持久戦', '金銀4枚'],
     desc: '本美濃に左銀を4七まで持ってきて、金銀4枚で守る形（銀美濃の一種）。駒の並びがダイヤモンドの形になる。堅いが、攻めに使える駒が減る。',
     ratings: { hard: 5, wide: 3, top: 4, side: 4, quick: 2 },
@@ -125,7 +133,8 @@ Kakoi.CASTLES.push(
   {
     id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha',
     core: '玉19 香18 桂29 銀28 金39 金38',
-    support: '銀67 歩17 歩27 歩37 歩47',
+    shell: '歩17 歩27 歩37',
+    filler: '銀67 歩47',
     tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
     desc: '居飛車穴熊の左右反転形。1九の香を1八に上げ、空いた1九に玉を入れて、2八銀・3九金・3八金で固める。王手がかかりにくく、振り飛車の攻めを最後まで通しやすい。',
     ratings: { hard: 5, wide: 1, top: 3, side: 5, quick: 1 },

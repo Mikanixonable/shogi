@@ -1,5 +1,8 @@
 // 居飛車の囲い
-// core: 囲いを構成する駒 / support: 囲いごとの補助の駒（setup と合わせて先手の全駒になる）
+// core: 囲いを構成する駒 / shell+filler: 補助の駒（setup と合わせて先手の全駒になる）
+//   shell: 囲いの形として意味がある歩（城壁の前線）。戦法と合成するときもそのまま置く
+//   filler: 比較用に揃えた駒（初期位置の角・香・桂、比較用の銀、遠側の歩）。合成のときは置かない
+// flex: 戦法に貸し出せる core の駒と行き先（崩し形になる。例: 雁木の右銀→腰掛け銀）
 // pros・cons の sq は盤上で示すマス、attacks の gote は後手の駒、target は狙われるマス
 window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLES = Kakoi.CASTLES || [];
@@ -7,7 +10,8 @@ Kakoi.CASTLES.push(
   {
     id: 'anaguma', name: '居飛車穴熊', short: '居飛車穴熊', reading: 'いびしゃあなぐま', side: 'ibisha', family: 'anaguma', setup: 'ibisha',
     core: '玉99 香98 桂89 銀88 金79 金78',
-    support: '角77 銀26 歩97 歩87 歩76 歩66 歩56 歩47 歩37',
+    shell: '歩97 歩87 歩76',
+    filler: '角77 銀26 歩66 歩56 歩47 歩37',
     tags: ['対振り飛車', '持久戦', '堅さ最強クラス'],
     desc: '9九の香を9八に上げ、空いた9九に玉を入れて、8八銀・7九金・7八金で固める。王手がかかりにくく、終盤で「ゼット（絶対に詰まない形）」になりやすい。',
     ratings: { hard: 5, wide: 1, top: 3, side: 5, quick: 1 },
@@ -32,7 +36,8 @@ Kakoi.CASTLES.push(
   {
     id: 'funa', name: '舟囲い（7九銀型）', short: '舟囲い 7九銀', reading: 'ふながこい', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha',
     core: '玉78 銀79 金69 金58',
-    support: '角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
+    shell: '歩87 歩76 歩67 歩56',
+    filler: '角88 銀26 香99 桂89 歩96 歩47 歩36',
     tags: ['対振り飛車', '急戦', '基本形'],
     desc: '玉を7八に移し、5八金・6九金と7九銀で守る簡易な囲い。手数が少なく、右銀を棒銀などで繰り出して急戦を仕掛けるときの土台になる。',
     ratings: { hard: 2, wide: 3, top: 1, side: 3, quick: 5 },
@@ -59,7 +64,8 @@ Kakoi.CASTLES.push(
   {
     id: 'funa68gin', name: '舟囲い（6八銀型）', short: '舟囲い 6八銀', reading: 'ふながこい ろくはちぎんがた', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha',
     core: '玉78 銀68 金69 金58',
-    support: '角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
+    shell: '歩87 歩76 歩67 歩56',
+    filler: '角88 銀26 香99 桂89 歩96 歩47 歩36',
     tags: ['対振り飛車', '急戦'],
     desc: '7九銀型から左銀を6八へ上げた形。6七・5七・7七に利きが増え、中央が厚くなる。',
     ratings: { hard: 2, wide: 3, top: 2, side: 3, quick: 4 },
@@ -83,7 +89,8 @@ Kakoi.CASTLES.push(
   {
     id: 'elmo', name: 'エルモ囲い（舟囲い7九金型）', short: 'エルモ囲い', reading: 'えるもがこい', side: 'ibisha', family: 'funa', subtype: 'kin79', setup: 'ibisha',
     core: '玉78 銀68 金79 金59',
-    support: '角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
+    shell: '歩87 歩76 歩67 歩56',
+    filler: '角88 銀26 香99 桂89 歩96 歩47 歩36',
     tags: ['対振り飛車', '急戦', 'コンピュータ発'],
     desc: '将棋ソフト「elmo」が多用して広まった形。舟囲いの6九金を7九へ寄せて6八銀と組み合わせ、右金は5九に置く。玉の真下の7九金が銀とつながるのが要。',
     ratings: { hard: 3, wide: 2, top: 2, side: 4, quick: 4 },
@@ -109,7 +116,8 @@ Kakoi.CASTLES.push(
   {
     id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', side: 'ibisha', family: 'funa', subtype: 'kin68', setup: 'ibisha',
     core: '玉78 金68 金58',
-    support: '銀57 角88 銀26 香99 桂89 歩96 歩87 歩76 歩67 歩56 歩47 歩36',
+    shell: '歩87 歩76 歩67 歩56',
+    filler: '銀57 角88 銀26 香99 桂89 歩96 歩47 歩36',
     tags: ['対振り飛車', '急戦'],
     desc: '左銀を7九から5七へ繰り出して急戦を仕掛けるときの舟囲い。左金を6八に上げ、6八金・5八金を横に並べて中央を守る。',
     ratings: { hard: 2, wide: 3, top: 3, side: 2, quick: 4 },
@@ -133,7 +141,9 @@ Kakoi.CASTLES.push(
   {
     id: 'yagura', name: '矢倉囲い（金矢倉）', short: '金矢倉', reading: 'やぐらがこい', side: 'ibisha', family: 'yagura', subtype: 'kin', setup: 'ibisha',
     core: '玉88 銀77 金78 金67',
-    support: '香99 桂89 角68 銀26 歩97 歩87 歩76 歩66 歩56 歩47 歩37',
+    shell: '歩97 歩87 歩76 歩66',
+    filler: '香99 桂89 角68 銀26 歩56 歩47 歩37',
+    flex: [{ sq: '77', to: ['66', '86'] }],
     tags: ['相居飛車', '持久戦', '将棋の純文学'],
     desc: '相居飛車の代表的な囲い。8八玉を7七銀・7八金・6七金で包み、上からの攻めに強い。角は6八に引いて使う。',
     ratings: { hard: 4, wide: 3, top: 5, side: 3, quick: 2 },
@@ -159,7 +169,8 @@ Kakoi.CASTLES.push(
   {
     id: 'kani', name: 'カニ囲い', short: 'カニ囲い', reading: 'かにがこい', side: 'ibisha', family: 'gangi', subtype: 'heiretsu', refFamily: '文献ではどの系統にも属さず、「矢倉の子供」とも呼ばれる', setup: 'ibisha',
     core: '玉69 銀68 金78 金58',
-    support: '角88 銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
+    shell: '歩87 歩76 歩67 歩57',
+    filler: '角88 銀26 香99 桂89 歩97 歩47 歩37',
     tags: ['相居飛車', '急戦矢倉'],
     desc: '金・銀・金を8段目に横一列に並べ、その下の6九に玉を置く。形がカニに似ていることから。急戦矢倉や矢倉の序盤でよく現れる。',
     ratings: { hard: 2, wide: 3, top: 3, side: 3, quick: 4 },
@@ -185,7 +196,9 @@ Kakoi.CASTLES.push(
   {
     id: 'kabuto', name: '兜囲い（兜矢倉）', short: '兜矢倉', reading: 'かぶとがこい', side: 'ibisha', family: 'gangi', subtype: 'hidarimae', refFamily: '名前は矢倉系（文献でも矢倉系統）だが、形は雁木型', setup: 'ibisha',
     core: '玉68 銀77 金78 金58',
-    support: '銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
+    shell: '歩87 歩76 歩67 歩57',
+    filler: '銀26 香99 桂89 歩97 歩47 歩37',
+    flex: [{ sq: '77', to: ['66', '86'] }],
     hand: '角',
     tags: ['相居飛車', '急戦'],
     desc: '7七銀・7八金・5八金で6八玉をかぶせるように守る形。玉の頭上を銀・金がふさぎ、兜をかぶったように見える。角換わりなどで角を持ち駒にしているときに現れやすい。',
@@ -211,7 +224,9 @@ Kakoi.CASTLES.push(
   {
     id: 'gangi', name: '雁木囲い（旧型）', short: '雁木', reading: 'がんぎがこい', side: 'ibisha', family: 'gangi', subtype: 'nimai', setup: 'ibisha',
     core: '玉69 銀67 銀57 金78 金58',
-    support: '角88 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩47 歩36',
+    shell: '歩87 歩76 歩66 歩56',
+    filler: '角88 香99 桂89 歩96 歩47 歩36',
+    flex: [{ sq: '57', to: ['46', '56'] }],
     tags: ['相居飛車', '江戸時代からある'],
     desc: '6七銀・5七銀と銀を2枚並べ、その下に7八金・5八金、玉は6九。銀の並びが雪国の「雁木（がんぎ）」に似ていることから。角が8八のまま使えるのも特徴。',
     ratings: { hard: 2, wide: 3, top: 5, side: 2, quick: 3 },
@@ -236,7 +251,9 @@ Kakoi.CASTLES.push(
   {
     id: 'tsunogin', name: 'ツノ銀雁木', short: 'ツノ銀雁木', reading: 'つのぎんがんぎ', side: 'ibisha', family: 'gangi', subtype: 'tsuno', setup: 'ibisha',
     core: '玉69 銀67 銀47 金78 金58',
-    support: '角88 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩46 歩37',
+    shell: '歩87 歩76 歩66 歩56 歩46',
+    filler: '角88 香99 桂89 歩96 歩37',
+    flex: [{ sq: '47', to: ['46', '56', '36'] }],
     tags: ['相居飛車', '現代雁木', 'ソフト流行'],
     desc: '右銀を5七ではなく4七に置く雁木。銀2枚がツノのように左右に分かれる。2017年頃から将棋ソフトの影響で再流行した「新しい雁木」の代表形。',
     ratings: { hard: 2, wide: 4, top: 4, side: 3, quick: 3 },
@@ -260,7 +277,9 @@ Kakoi.CASTLES.push(
   {
     id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（後継ソフト Ponanza 由来の「ポナンザ囲い」の表記もある）', setup: 'ibisha',
     core: '玉78 銀77 金68 金58',
-    support: '銀26 香99 桂89 歩97 歩87 歩76 歩67 歩57 歩47 歩37',
+    shell: '歩87 歩76 歩67 歩57',
+    filler: '銀26 香99 桂89 歩97 歩47 歩37',
+    flex: [{ sq: '77', to: ['66', '86'] }],
     hand: '角',
     tags: ['角換わり', 'コンピュータ発'],
     desc: '片矢倉の6七金を5八に残した形（7八玉・7七銀・6八金・5八金）。将棋ソフト「Bonanza」Ver.2が多用したことから名付けられた。角換わりなど角を交換した将棋で使われ、角は持ち駒。',
@@ -286,7 +305,8 @@ Kakoi.CASTLES.push(
   {
     id: 'hidarimino', name: '左美濃', short: '左美濃', reading: 'ひだりみの', side: 'ibisha', family: 'mino', subtype: 'hon', refFamily: '文献では左美濃系統（居飛車側の美濃）', setup: 'ibisha',
     core: '玉88 銀78 金69 金58',
-    support: '角77 銀26 香99 桂89 歩96 歩87 歩76 歩66 歩56 歩47 歩37',
+    shell: '歩96 歩87 歩76 歩66 歩56',
+    filler: '角77 銀26 香99 桂89 歩47 歩37',
     tags: ['対振り飛車', '持久戦'],
     desc: '振り飛車の美濃囲いを左右反転させた形。7七角と上げてから8八に玉を入れ、7八銀・6九金・5八金で守る。天守閣美濃や銀冠へ発展できる。',
     ratings: { hard: 3, wide: 3, top: 2, side: 4, quick: 3 },

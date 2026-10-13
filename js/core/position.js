@@ -17,9 +17,10 @@ window.Kakoi = window.Kakoi || {};
 
     /** 囲いデータから局面を作る。attack を渡すと後手の駒を重ねる */
     static fromCastle(castle, setup, attack = null) {
+      const support = [castle.shell, castle.filler].filter(Boolean).join(' ');
       const pieces = [
         ...parsePieces(setup.pieces, { owner: 'sente', role: 'setup' }),
-        ...parsePieces(castle.support, { owner: 'sente', role: 'support' }),
+        ...parsePieces(support, { owner: 'sente', role: 'support' }),
         ...parsePieces(castle.core, { owner: 'sente', role: 'core' }),
         ...(attack ? parsePieces(attack.gote, { owner: 'gote', role: 'attack' }) : []),
       ];

@@ -58,8 +58,14 @@ window.Kakoi = window.Kakoi || {};
     hasTactic(id) { return this._tacticById.has(id); }
     tacticFamilies() { return this._tacticFamilies; }
     tacticsOf(familyId) { return this._tactics.filter(t => t.family === familyId); }
-    /** 戦法に合う囲い（存在する id のみ） */
-    castlesOfTactic(tactic) { return (tactic.castles || []).filter(id => this._byId.has(id)).map(id => this._byId.get(id)); }
+    /** 戦法に合う囲い: pairings のうち ×(ng) 以外を、並び順どおりに囲いオブジェクトで返す */
+    castlesOfTactic(tactic) { return this.pairingsOf(tactic).filter(p => p.level !== 'ng').map(p => p.castle); }
+    /** 戦法の相性表（pairings）を返す。castle は囲いオブジェクト、sources は解決済みの出典 */
+    pairingsOf(tactic) {
+      return (tactic.pairings || [])
+        .filter(p => p && this._byId.has(p.castle))
+        .map(p => ({ castle: this._byId.get(p.castle), level: p.level, why: p.why, sources: this._resolveSources(p.sources || []) }));
+    }
     /** 戦法と囲い（＋その想定配置）の出典を併記する。castle がなければ戦法だけ */
     tacticComboSourcesOf(tactic, castle) {
       const setup = castle && this.setupOf(castle);
