@@ -84,7 +84,7 @@ window.Kakoi = window.Kakoi || {};
   function fullSet(list, hand, errors) {
     const count = {};
     for (const x of list) count[x.p] = (count[x.p] || 0) + 1;
-    if (hand !== undefined && typeof hand !== 'string' && !isArr(hand)) errors.push('handが文字列でない');
+    if (hand !== undefined && typeof hand !== 'string' && !isArr(hand)) errors.push('handが文字列でも配列でもない');
     else for (const p of hand || []) count[p] = (count[p] || 0) + 1;
     for (const [p, n] of Object.entries(FULL_SET)) if (count[p] !== n) errors.push(`${p}の枚数 ${count[p] || 0}/${n}`);
   }
@@ -247,7 +247,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /** 想定配置1件の検査 */
-  function setup(id, s, ctx) {
+  function setup(s, ctx) {
     const r = result();
     try {
       if (!s || typeof s !== 'object') { r.errors.push('想定配置がオブジェクトでない'); return r; }
@@ -493,7 +493,7 @@ window.Kakoi = window.Kakoi || {};
     }
     for (const [sid, s] of Object.entries(ctx.SETUPS || {})) {
       for (const x of (s && isArr(s.sources) ? s.sources : [])) if (x && x.ref) used.add(x.ref);
-      results.push({ kind: 'setup', id: sid, ...setup(sid, s, ctx) });
+      results.push({ kind: 'setup', id: sid, ...setup(s, ctx) });
     }
     for (const t of isArr(ctx.TACTICS) ? ctx.TACTICS : []) {
       const r = tactic(t, ctx);

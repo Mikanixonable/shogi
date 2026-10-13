@@ -33,6 +33,8 @@
 /* ホバー予告: 変更される予定のチップを点滅させる（constraint-bar.js の flash()） */
 .cchip[data-flash="true"] { animation:cchipBlink .55s var(--ease) infinite alternate; }
 @keyframes cchipBlink { from { border-color:var(--line-2); } to { border-color:var(--bad); box-shadow:inset 0 0 0 1px var(--bad); } }
+/* 明示→既定へ移行したチップを一度だけ点滅させる（constraint-bar の markImplied、U5） */
+.cchip[data-implied-in="true"] { animation:cchipBlink .55s var(--ease) 2 alternate; }
 /* 導出ラベル（戦型など）: .cbar-lab に入る消せない灰色チップ。紙色で固定、褪せない */
 .cchip.cchip-label { border-color:var(--line); color:var(--muted); cursor:default; padding:3px 10px; background:var(--bg); }
 .cchip.cchip-label .cchip-nm { font-weight:400; white-space:nowrap; }

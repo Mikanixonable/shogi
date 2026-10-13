@@ -3,10 +3,15 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  let el = null, timer = null, left = 0;
+  let el = null, timer = null, left = 0, armedAt = 0;
 
-  const arm = ms => { clearTimeout(timer); left = ms; timer = setTimeout(hide, ms); };
-  const pause = () => { if (timer) { clearTimeout(timer); timer = null; } }; // left は残したまま保持
+  const arm = ms => { clearTimeout(timer); left = ms; armedAt = Date.now(); timer = setTimeout(hide, ms); };
+  const pause = () => {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    left -= Date.now() - armedAt; // 経過分を引いて残り時間だけ保持
+  };
   const resume = () => { if (!timer && left > 0) arm(left); };
 
   function hide() {

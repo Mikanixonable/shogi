@@ -287,7 +287,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（後継ソフト Ponanza 由来の「ポナンザ囲い」の表記もある）', setup: 'ibisha',
+    id: 'bonanza', name: 'ボナンザ囲い', short: 'ボナンザ囲い', reading: 'ぼなんざがこい', side: 'ibisha', from: 'katayagura', family: 'yagura', subtype: 'kata', refFamily: '文献では片矢倉の変形（後継ソフト Ponanza 由来の「ポナンザ囲い」の表記もある）', setup: 'ibisha',
     core: '玉78 銀77 金68 金58',
     shell: '歩87 歩76 歩67 歩57',
     rest: '銀26',
@@ -343,21 +343,21 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'ginyagura', name: '銀矢倉', short: '銀矢倉', reading: 'ぎんやぐら', side: 'ibisha', family: 'yagura', subtype: 'gin', setup: 'ibisha',
+    id: 'ginyagura', name: '銀矢倉', short: '銀矢倉', reading: 'ぎんやぐら', side: 'ibisha', from: 'yagura', family: 'yagura', subtype: 'gin', setup: 'ibisha',
     core: '玉88 銀77 金78 銀67',
     shell: '歩97 歩87 歩76 歩66',
     rest: '金58',
     filler: '香99 桂89 角68 歩56 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     tags: ['相居飛車', '持久戦'],
-    desc: '金矢倉の6七金を銀に替えた形（玉8八・銀7七・金7八・銀6七）[[wj-ginyagura|sj-yagura|wj-yagura]]。銀は上方向への利きが強いので上部・玉頭への耐性は金矢倉以上だが、銀の真下には利かないため6七の底（5八・7八方面）が弱点になる[[wj-ginyagura|wj-yagura]]。',
+    desc: '金矢倉の6七金を銀に替えた形（玉8八・銀7七・金7八・銀6七）[[wj-ginyagura|sj-yagura|wj-yagura]]。銀は上方向への利きが強いので上部・玉頭への耐性は金矢倉以上だが、銀の真下には利かないため6八方面が弱点になる[[wj-ginyagura|wj-yagura]]。',
     ratings: { hard: 4, wide: 3, top: 5, side: 3, quick: 2 },
     pros: [
       { t: '上部（正面）からの攻めに非常に強い[[wj-ginyagura]]', sq: ['77', '67', '76', '66'] },
       { t: '6七銀が5六・7六を押さえ、相手の銀や歩の進出を防ぐ[[wj-ginyagura]]', sq: ['67', '56', '76'] },
     ],
     cons: [
-      { t: '6七銀は下に利かず、5八・7八への打ち込みが弱点になる[[wj-ginyagura]]', sq: ['58', '78'] },
+      { t: '6七銀は真下に利かず、6八への打ち込みが弱点になる[[wj-ginyagura]]', sq: ['67', '68'] },
       { t: '組むのに手数がかかる' },
     ],
     attacks: [
@@ -430,10 +430,10 @@ Kakoi.CASTLES.push(
     rest: '銀26',
     filler: '香99 角68 歩56 歩47 歩37',
     tags: ['相居飛車', '持久戦', '一段玉'],
-    desc: '玉を8九に据え、銀8八と桂7七で屋根を作る一段玉型の矢倉[[wj-kikusui|wj-yagura]]。桂が8九・9七の両方を守るため上部と端への耐性が高い[[wj-kikusui]]。反面、前線に出た7七の桂が攻めの焦点になりやすい[[wj-kikusui]]。',
+    desc: '玉を8九に据え、銀8八と桂7七で屋根を作る一段玉型の矢倉[[wj-kikusui|wj-yagura]]。桂7七が8五・6五を押さえるため上部・端への進出路が少なく耐性が高い[[wj-kikusui]]。反面、前線に出た7七の桂が攻めの焦点になりやすい[[wj-kikusui]]。',
     ratings: { hard: 4, wide: 2, top: 5, side: 4, quick: 2 },
     pros: [
-      { t: '桂7七が9七・8九を守り、上部と端の両方に強い[[wj-kikusui]]', sq: ['77', '97', '89'] },
+      { t: '桂7七が8五・6五を押さえ、上部と端の両方に強い[[wj-kikusui]]', sq: ['77', '85', '65'] },
       { t: '銀8八・金7八・金6七の連結がよい', sq: ['88', '78', '67'] },
     ],
     cons: [
@@ -458,7 +458,7 @@ Kakoi.CASTLES.push(
     ratings: { hard: 4, wide: 3, top: 4, side: 4, quick: 3 },
     pros: [
       { t: '金銀4枚が玉の周囲に集まり隙が少ない[[wj-millennium|sj-millennium]]', sq: ['88', '79', '78', '67'] },
-      { t: '桂7七が上部（8九・9七）をカバーする', sq: ['77', '89', '97'] },
+      { t: '桂7七が8五・6五を押さえ、上部への接点を減らす', sq: ['77', '85', '65'] },
     ],
     cons: [
       { t: '玉が8筋に近く、8筋の突破や桂馬の吊り上げに注意', sq: ['87', '88', '89'] },
@@ -550,7 +550,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'tenshukaku', name: '天守閣美濃', short: '天守閣美濃', reading: 'てんしゅかくみの', side: 'ibisha', family: 'mino', setup: 'ibisha',
+    id: 'tenshukaku', name: '天守閣美濃', short: '天守閣美濃', reading: 'てんしゅかくみの', side: 'ibisha', from: 'hidarimino', family: 'mino', setup: 'ibisha',
     core: '玉87 銀78 金69 金58',
     shell: '歩96 歩86 歩76 歩66 歩56',
     rest: '銀26',
@@ -576,7 +576,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'yonmaimino', name: '四枚美濃（左美濃系）', short: '四枚美濃', reading: 'よんまいみの', side: 'ibisha', family: 'mino', subtype: 'ginmino', setup: 'ibisha',
+    id: 'yonmaimino', name: '四枚美濃（左美濃系）', short: '四枚美濃', reading: 'よんまいみの', side: 'ibisha', from: 'tenshukaku', family: 'mino', subtype: 'ginmino', setup: 'ibisha',
     core: '玉87 銀78 銀77 金69 金67',
     shell: '歩96 歩86 歩76 歩66 歩56',
     filler: '角88 香99 桂89 歩47 歩37',
@@ -605,7 +605,7 @@ Kakoi.CASTLES.push(
     shell: '歩97 歩87 歩76 歩67 歩57 歩47 歩37',
     rest: '銀79',
     filler: '角88 香99 桂89',
-    tags: ['相居飛車', '急戦', '横歩取り・相掛かり'],
+    tags: ['相居飛車', '急戦', '相掛かり・横歩取り'],
     desc: '玉を5八に上げただけの簡素な構え[[wj-nakazumai|sj-nakazumai]]。金は7八と3八に開き（金開き）、銀は4八に置く形が代表的[[wj-nakazumai|sj-nakazumai]]。囲いというより居玉を1手だけ固くした形で、横歩取りや相掛かりの激しい展開でよく現れる[[wj-nakazumai]]。',
     ratings: { hard: 2, wide: 4, top: 2, side: 3, quick: 5 },
     pros: [
