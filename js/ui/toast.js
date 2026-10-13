@@ -12,18 +12,21 @@ window.Kakoi = window.Kakoi || {};
 
   /**
    * @param {string} text 通知文
-   * @param {{ action?:{label:string, fn:()=>void}, ms?:number }} [opts]
+   * @param {{ action?:{label:string, fn:()=>void}, ms?:number, host?:Element|string }} [opts]
    *   action: 本文の横に置くボタン（押すとトーストを閉じて fn を呼ぶ）
    *   ms: 自動で消えるまでの時間（既定 4500ms）
+   *   host: 置き場所（要素またはセレクタ。省略時は body の末尾＝画面への重ね表示）
    */
-  function show(text, { action, ms = 4500 } = {}) {
+  function show(text, { action, ms = 4500, host } = {}) {
     if (!el) {
       el = document.createElement('div');
       el.className = 'toast';
       el.setAttribute('role', 'status');
       el.setAttribute('aria-live', 'polite');
-      document.body.appendChild(el);
     }
+    const target = host instanceof Element ? host
+      : (host && document.querySelector(host)) || document.body;
+    if (el.parentNode !== target) target.appendChild(el);
     hide(); // 前のトーストを置き換える
     el.replaceChildren();
     const msg = document.createElement('span');
