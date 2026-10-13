@@ -475,6 +475,30 @@ async function sweepTactic(page, expect) {
   r.cellPick = (await idOf()) !== id0;
   // 系統ピッカー → 別の系統の段になる（居飛車側に切り替えて試す: 振り飛車の系統は1系統しかない）
   await page.click('#tacticRail [data-role="seg"] button[data-value="ibisha"]'); await wait(300);
+  const furibishaStart = await page.evaluate(() => {
+    const K = window.Kakoi, st = window.__kakoi.store.state, side = 'furibisha';
+    const valid = id => {
+      const tactic = K.TACTICS.find(t => t.id === id);
+      const family = tactic && K.TACTIC_FAMILIES.find(f => f.id === tactic.family);
+      return family && family.side === side;
+    };
+    const saved = st.tacticLastBySide && st.tacticLastBySide[side];
+    if (saved && valid(saved)) return saved;
+    const family = K.TACTIC_FAMILIES.find(f => f.side === side && f.piece === '飛');
+    const row = K.tacticNav.tacticRows(K.TACTIC_FAMILIES, K.TACTICS).find(r => r.family.id === family.id);
+    const remembered = st.tacticLastByFam && st.tacticLastByFam[family.id];
+    return remembered && row.tactics.some(t => t.id === remembered)
+      ? remembered : (row.tactics.find(t => !t.variantOf) || row.tactics[0]).id;
+  });
+  await page.locator('#tacticRail [data-role="seg"] button[data-value="ibisha"]').focus();
+  await page.keyboard.press('ArrowRight'); await wait(300);
+  r.segmentArrowSingle = await idOf() === furibishaStart
+    && await page.evaluate(() => {
+      const K = window.Kakoi, id = window.__kakoi.store.state.tacticId;
+      const tactic = K.TACTICS.find(t => t.id === id);
+      return K.TACTIC_FAMILIES.find(f => f.id === tactic.family).side === 'furibisha';
+    });
+  await page.click('#tacticRail [data-role="seg"] button[data-value="ibisha"]'); await wait(300);
   const fam0 = await page.evaluate(() => document.querySelector('#ptable .pt-fam[aria-pressed="true"]')?.dataset.fam);
   r.famSiblings = await page.$$eval('#ptable .pt-fam', els => els.length);
   await page.evaluate(f => {
@@ -507,6 +531,29 @@ async function sweepTactic(page, expect) {
     await setView(page, 'tactic'); await wait(250);
   } else r.openBoard = null;
   return r;
+}
+
+async function checkResizeAnimation(page) {
+  if (await page.evaluate(() => window.__kakoi.board.layer.kind) !== '3d') return null;
+  await page.evaluate(() => {
+    const board = window.__kakoi.board, K = window.Kakoi;
+    const start = K.Position.fromPieces('銀79', { leadSquare: '79' });
+    const end = K.Position.fromPieces('銀46', { leadSquare: '46' });
+    board.render(start, { mode: 'all', heat: null, animate: false });
+    board.render(end, {
+      mode: 'all', heat: null, animate: true,
+      trace: { square: '46', piece: '銀', path: ['79', '68', '57', '46'] },
+    });
+  });
+  await wait(100);
+  return page.evaluate(() => {
+    const layer = window.__kakoi.board.layer;
+    const pc = layer.cur.find(x => x.p === '銀' && x.sq === '46');
+    const before = Math.hypot(pc.group.position.x - layer._pos(pc.sq).x, pc.group.position.y - layer._pos(pc.sq).y);
+    layer._resize();
+    const after = Math.hypot(pc.group.position.x - layer._pos(pc.sq).x, pc.group.position.y - layer._pos(pc.sq).y);
+    return before > 1 && after < 1 && !layer._tweens.some(t => t.pc === pc);
+  });
 }
 
 /* ---- 巡回: 分類マップ ---- */
@@ -654,6 +701,7 @@ async function main() {
       ok(ta.hash, '戦法タブ: ハッシュに v=tactic&t=', '');
       ok(ta.openCastle, '戦法タブ: 「→」で囲いタブへ', '');
       ok(ta.openBoard !== false, '戦法タブ: 「対局図で開く」で制約を持って board へ', '');
+      ok(ta.segmentArrowSingle, '戦法タブ: セグメントの矢印は戦法を二重に進めない', '');
       await setView(page, 'board'); await wait(300);
       ok(await page.evaluate(() => document.querySelector('#ptable').offsetHeight === 0),
         'board では周期表を出さない', '');
@@ -722,6 +770,14 @@ async function main() {
       const cb = await page.evaluate(() => Math.round(document.querySelector('#clusterStage .cl-body').getBoundingClientRect().height));
       ok(cb >= 300, `w=390 分類マップに十分な高さ`, `${cb}px`);
       await page.close();
+      const resizePage = await browser.newPage({ viewport: { width: 1100, height: 850 } });
+      resizePage.on('pageerror', e => errs.push(`pageerror: ${e.message}`));
+      await resizePage.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+      await resizePage.goto(baseDebug, { waitUntil: 'networkidle' });
+      const resizeOk = await checkResizeAnimation(resizePage);
+      if (resizeOk === null) warn('WebGL非対応のため立体駒リサイズテストをスキップ');
+      else ok(resizeOk, '立体駒: リサイズ時に進行中アニメを完了させる');
+      await resizePage.close();
       ok(errs.length === 0, 'JSエラー・404なし', errs.slice(0, 5).join(' | '));
     }
 

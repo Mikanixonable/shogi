@@ -19,6 +19,7 @@ window.Kakoi = window.Kakoi || {};
       while (this.map.size > this.max) this.map.delete(this.map.keys().next().value);
       return v;
     }
+    delete(k) { return this.map.delete(k); }
     clear() { this.map.clear(); }
     get size() { return this.map.size; }
   }
