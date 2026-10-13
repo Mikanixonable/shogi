@@ -179,10 +179,9 @@ window.Kakoi = window.Kakoi || {};
       const e = this.els, { S } = d;
       const sel = parseSel(state.selected);
       const hasOpp = !!state.showOpp;
-      // 帯の行は常に確保する（盤の矩形を動かさない。F1）。相手の表示が OFF の間、
-      // 相手の帯は表示スイッチだけが残る幽霊行になる
+      // 相手 OFF 時も行トラックは確保して盤の矩形を固定し、自分の帯を盤の上へ移す（F1）。
+      // 表示 ON/OFF は左ドックの駒の見出しで行う
       e.bandOpp.dataset.empty = hasOpp ? 'false' : 'true';
-      e.showOpp.checked = hasOpp;
       if (!hasOpp) {
         const stageKey = 'opp|(なし)';
         if (stageKey !== this._stageKeys.opp) {

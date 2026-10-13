@@ -59,7 +59,6 @@
       barOpp: $('cbarOpp'), barMe: $('cbarMe'),
       nameOpp: $('nameOpp'), subOpp: $('subOpp'), nameMe: $('nameMe'), subMe: $('subMe'),
       handOpp: $('handOpp'), handMe: $('handMe'),
-      showOpp: $('showOpp'),
       rail: $('pickRail'),
       detail: $('detail'),
     },

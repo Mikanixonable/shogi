@@ -1,5 +1,7 @@
-// 統合画面の左ドック: 「自分／相手」のタブで切り替える1枚の面。
-// 相手タブから相手の表示を ON にできる。面は囲い／戦法・はずす・絞り込み・一覧からなる。
+// 統合画面の左ドック: 「自分／相手」で切り替える1枚の面。
+// 側の切り替えはドックの右端（盤との境）に立てた駒の見出し（バインダー）で行う。
+// 盤と同じく上=相手（先が下の駒）・下=自分（先が上の駒）。相手の見出しで相手の表示を ON にでき、
+// 角の × で OFF にする。面は囲い／戦法・はずす・絞り込み・一覧からなる。
 // 戦略（居飛車／振り飛車）の絞り込みは一覧の表示を絞るだけで制約にはならない
 // （戦略は選んだ戦法から導く）。見ている側・層は state.selected が持つ。
 // 計画書 S6 で分割: 一覧の中身の構築は dock-grids.js、
@@ -42,10 +44,7 @@ window.Kakoi = window.Kakoi || {};
       el.innerHTML =
         `<div class="dk">` +
         `<div class="dk-top">` +
-        `<div class="dk-side-controls"><div class="seg dk-who" role="group" aria-label="側の切り替え">` +
-        `<button type="button" data-value="me">自分 ▲</button>` +
-        `<button type="button" data-value="opp">相手 △</button></div>` +
-        `<button type="button" class="dk-opp-off" aria-label="相手の表示を OFF にする" title="相手の表示を OFF にする" hidden>OFF</button></div>` +
+        `<div class="dk-title"><b></b><small></small></div>` +
         // 凡例（U6）: ✕◎△点線の読み方を開く小さな ? ボタン
         `<button type="button" class="dk-legend" aria-expanded="false" ` +
         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
@@ -65,20 +64,29 @@ window.Kakoi = window.Kakoi || {};
         `</select></label>` +
         `</div>` +
         `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
-        `</section></div>`;
+        `</section></div>` +
+        // 駒の見出し（バインダー）: 上=相手・下=自分。相手の駒の角の × で相手の表示を OFF にする
+        `<div class="dk-binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">` +
+        `<button type="button" role="tab" class="dk-pc" data-who="opp"><span class="body" aria-hidden="true"></span>` +
+        `<span class="v"><b>相手</b><small>後手 △</small></span></button>` +
+        `<button type="button" class="dk-pc-x" aria-label="相手の表示を OFF にする" title="相手を盤から下げる（表示 OFF）">×</button>` +
+        `<button type="button" role="tab" class="dk-pc" data-who="me"><span class="body" aria-hidden="true"></span>` +
+        `<span class="v"><b>自分</b><small>先手 ▲</small></span></button>` +
+        `</div>`;
       this.root = el.firstElementChild;
       this.body = this.root.querySelector('.dk-body');
-      this.oppBtn = this.root.querySelector('.dk-who [data-value="opp"]');
-      this.oppOffBtn = this.root.querySelector('.dk-opp-off');
+      this.title = this.root.querySelector('.dk-title');
+      this.binder = el.querySelector('.dk-binder');
+      this.pcs = { me: this.binder.querySelector('[data-who="me"]'), opp: this.binder.querySelector('[data-who="opp"]') };
+      this.oppOffBtn = this.binder.querySelector('.dk-pc-x');
       this.clearBtn = this.root.querySelector('.dk-clear');
-      this.whoSeg = new K.Segmented(this.root.querySelector('.dk-who'), v => h.onSelect(v, this.kind));
+      this._bindBinder();
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
         this.filter[this.who] = v;
         if (this._last) this.update(this._last.state, this._last.S);
       });
       this.clearBtn.addEventListener('click', () => h.onClear(this.who));
-      this.oppOffBtn.addEventListener('click', () => h.onToggleOpponent(false));
       this.sortSel = this.root.querySelector('.dk-sort select');
       this.sortWrap = this.root.querySelector('.dk-sort');
       this.sortSel.value = this.sort;
@@ -103,6 +111,22 @@ window.Kakoi = window.Kakoi || {};
       for (const c of K.CASTLES) this._pos.set(c.id, castlePos(c));
       this._bindEvents();
       this._bindLegend();
+    }
+
+    // ---------- 駒の見出し: 押すとその側の面へ（相手が OFF なら表示して開く）。縦のタブなので ↑=相手・↓=自分 ----------
+    _bindBinder() {
+      this.binder.addEventListener('click', e => {
+        if (e.target.closest('.dk-pc-x')) { this.h.onToggleOpponent(false); return; }
+        const pc = e.target.closest('.dk-pc');
+        if (pc) this.h.onSelect(pc.dataset.who, this.kind);
+      });
+      this.binder.addEventListener('keydown', e => {
+        if (!e.target.closest('.dk-pc') || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+        e.preventDefault();
+        const who = e.key === 'ArrowUp' ? 'opp' : 'me';
+        this.h.onSelect(who, this.kind);
+        this.pcs[who].focus();
+      });
     }
 
     // ---------- 凡例の ? ボタン（U6）: ✕◎△点線の読み方をポップオーバーで出す ----------
@@ -197,9 +221,16 @@ window.Kakoi = window.Kakoi || {};
       const kind = KINDS.includes(sel.kind) ? sel.kind : 'castle';
       this.who = who; this.kind = kind;
       this.root.dataset.who = who;
-      this.whoSeg.setValue(who);
-      this.oppBtn.disabled = false;
-      this.oppBtn.title = showOpp ? '' : 'クリックすると相手の局面を表示します';
+      this.el.dataset.who = who;
+      this.title.firstChild.textContent = who === 'opp' ? '相手' : '自分';
+      this.title.lastChild.textContent = who === 'opp' ? '後手 △' : '先手 ▲';
+      this.binder.dataset.show = String(showOpp);
+      for (const w of ['me', 'opp']) {
+        this.pcs[w].setAttribute('aria-selected', String(w === who));
+        this.pcs[w].tabIndex = w === who ? 0 : -1;   // roving: Tab で入るのは開いている側だけ
+      }
+      this.pcs.opp.querySelector('b').textContent = showOpp ? '相手' : '＋相手';
+      this.pcs.opp.title = showOpp ? '相手の面を開く' : '相手を盤に表示して開く';
       this.oppOffBtn.hidden = !showOpp;
       this.tabSeg.setValue(kind);
       this.sortWrap.hidden = kind !== 'castle';   // 戦法は筋の表のまま（並べ方は囲いだけ）
