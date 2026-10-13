@@ -174,8 +174,29 @@ async function main() {
         }
       }
       await page.setViewportSize({ width: 390, height: 844 });
-      await setView(page, 'castle'); await wait(250);
-      await checkFit(page, 390);
+      // モバイル: 各画面で横スクロールなし＋盤は幅いっぱい（戦法の周期表があっても潰れない）
+      for (const v of VIEWS) {
+        await setView(page, v); await wait(250);
+        await checkFit(page, 390);
+        if (v !== 'cluster') {
+          const bw = await page.evaluate(() => Math.round(document.querySelector('#board').getBoundingClientRect().width));
+          ok(bw >= 300, `w=390 ${v} 盤が幅いっぱい`, `${bw}px`);
+        }
+      }
+      // モバイル: 表示設定は歯車で開閉する
+      const tools = await page.evaluate(() => {
+        const btn = document.querySelector('#toolsToggle'), panel = document.querySelector('#tools');
+        const hidden = getComputedStyle(panel.querySelector('.setting')).display === 'none' || panel.offsetHeight === 0;
+        btn.click();
+        const open = panel.classList.contains('open') && panel.offsetHeight > 0;
+        btn.click();
+        const closed = !panel.classList.contains('open');
+        return { shown: getComputedStyle(btn).display !== 'none', hidden, open, closed };
+      });
+      ok(tools.shown && tools.hidden && tools.open && tools.closed, 'w=390 表示設定の開閉', JSON.stringify(tools));
+      await setView(page, 'cluster'); await wait(300);
+      const cb = await page.evaluate(() => Math.round(document.querySelector('#clusterStage .cl-body').getBoundingClientRect().height));
+      ok(cb >= 300, `w=390 分類マップに十分な高さ`, `${cb}px`);
       await page.close();
       ok(errs.length === 0, 'JSエラー・404なし', errs.slice(0, 5).join(' | '));
     }
