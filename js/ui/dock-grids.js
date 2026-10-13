@@ -5,9 +5,9 @@
 //     1マス=主役の駒の最終マス（lead.square）。variantOf の派生は親タイルの下の
 //     チップに束ねる。アイコンは経路から自動生成する K.tacticGlyph（§4-3）。
 //     列の配置は tacticNav.placeTactics（周期表と共有の純関数）
-//   - 囲いタイル: CASTLE_FAMILIES ごとの折りたたみブロック。サムネイルは玉・金・銀の
-//     外接矩形＋余白0.5マスで切り出し、囲いごとに最大化して描く（F3: 共通倍率はやめた。
-//     大きさの比較は右ドックの盤で行う）。相手の面は180度回転（字は正立）（§4-4）
+//   - 囲いタイル: CASTLE_FAMILIES ごとの折りたたみブロック。サムネイルは玉側の隅の
+//     固定窓（6筋×4段）で歩の壁・周辺の駒ごと見せる（lab/shogi と同じ方式。中央寄りの
+//     囲いは窓をずらす。相手の面は180度回転・字は正立）（§4-4）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -133,7 +133,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 囲いグリッドを組み立てる（系統ごとの折りたたみブロック＋切り出しサムネイル。§4-4/F3）
+   * 囲いグリッドを組み立てる（系統ごとの折りたたみブロック＋固定窓サムネイル。§4-4）
    * @param {{ _pos:Map }} ctx 共有コンテキスト（DockView）
    * @param {'me'|'opp'} who
    */
@@ -158,14 +158,13 @@ window.Kakoi = window.Kakoi || {};
       cards.className = 'dk-cards';
       for (const c of members) {
         const pos = ctx._pos.get(c.id);
-        const box = K.miniCropBox(pos, flip);
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'dk-item dk-card';
         b.dataset.who = who; b.dataset.kind = 'castle'; b.dataset.id = c.id;
         b.innerHTML =
           `<span class="thumb" aria-hidden="true"><span class="sc">` +
-          K.miniBoardSVG(pos, c.side, { crop: 'king-golds-silvers', flip, box }) +
+          K.miniBoardSVG(pos, c.side, { flip }) +
           `</span></span>` +
           `<span class="nm">${esc(c.short || c.name)}</span>` +
           `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-csc"></span></span>`;
