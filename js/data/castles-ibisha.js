@@ -340,7 +340,7 @@ Kakoi.CASTLES.push(
     filler: '香99 桂89 角68 金58 歩56 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     tags: ['相居飛車', '持久戦'],
-    desc: '金矢倉の6七金を銀に替えた形（玉88・銀77・金78・銀67）[[wj-ginyagura|sj-yagura|wj-yagura]]。銀は上方向への利きが強いので上部・玉頭への耐性は金矢倉以上だが、銀の真下には利かないため6七の底（5八・7八方面）が弱点になる[[wj-ginyagura|wj-yagura]]。',
+    desc: '金矢倉の6七金を銀に替えた形（玉8八・銀7七・金7八・銀6七）[[wj-ginyagura|sj-yagura|wj-yagura]]。銀は上方向への利きが強いので上部・玉頭への耐性は金矢倉以上だが、銀の真下には利かないため6七の底（5八・7八方面）が弱点になる[[wj-ginyagura|wj-yagura]]。',
     ratings: { hard: 4, wide: 3, top: 5, side: 3, quick: 2 },
     pros: [
       { t: '上部（正面）からの攻めに非常に強い[[wj-ginyagura]]', sq: ['77', '67', '76', '66'] },
@@ -366,7 +366,7 @@ Kakoi.CASTLES.push(
     filler: '角88 香99 桂89 銀26 歩56 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     tags: ['相居飛車', '急戦矢倉'],
-    desc: '玉を7八に止め、右側だけ矢倉の形（銀77・金68・金67）に組んだ囲い[[wj-yagura|we-fortress]]。天野矢倉とも呼ばれ、急戦矢倉や角換わり系の将棋で現れる[[wj-yagura]]。本図鑑のボナンザ囲いはこの形の6七金を5八に残した変形で、両者は元の形と派生の関係にある[[wj-bonanza]]（「ボナンザ囲い」の項も参照）。',
+    desc: '玉を7八に止め、右側だけ矢倉の形（銀7七・金6八・金6七）に組んだ囲い[[wj-yagura|we-fortress]]。天野矢倉とも呼ばれ、急戦矢倉や角換わり系の将棋で現れる[[wj-yagura]]。本図鑑のボナンザ囲いはこの形の6七金を5八に残した変形で、両者は元の形と派生の関係にある[[wj-bonanza]]（「ボナンザ囲い」の項も参照）。',
     ratings: { hard: 3, wide: 3, top: 4, side: 3, quick: 3 },
     pros: [
       { t: '金矢倉より少ない手数で組める[[wj-yagura]]' },
@@ -392,7 +392,7 @@ Kakoi.CASTLES.push(
     filler: '角88 香99 桂89 銀26 歩56 歩47 歩37',
     flex: [{ sq: '77', to: ['66', '86'] }],
     tags: ['相居飛車', '急戦矢倉'],
-    desc: '玉78・銀77・金67・金58で組む簡易な矢倉[[wj-doiyagura|jsf-kakoi77]]。土居市之助名誉名人が好んで用いたことに由来する[[wj-doiyagura]]。金矢倉より手数を省け、左金は8段目に残して中央を広くカバーする[[wj-doiyagura|wj-yagura]]。',
+    desc: '玉7八・銀7七・金6七・金5八で組む簡易な矢倉[[wj-doiyagura|jsf-kakoi77]]。土居市之助名誉名人が好んで用いたことに由来する[[wj-doiyagura]]。金矢倉より手数を省け、左金は8段目に残して中央を広くカバーする[[wj-doiyagura|wj-yagura]]。',
     ratings: { hard: 3, wide: 3, top: 3, side: 3, quick: 3 },
     pros: [
       { t: '手数が少なく、矢倉以外の展開にも転じやすい[[wj-doiyagura|jsf-kakoi77]]' },
@@ -417,14 +417,14 @@ Kakoi.CASTLES.push(
     shell: '歩97 歩87 歩76 歩66',
     filler: '香99 角68 銀26 歩56 歩47 歩37',
     tags: ['相居飛車', '持久戦', '一段玉'],
-    desc: '玉を8九に据え、銀88と桂77で屋根を作る一段玉型の矢倉[[wj-kikusui|wj-yagura]]。桂が8九・9七の両方を守るため上部と端への耐性が高い[[wj-kikusui]]。反面、前線に出た7七の桂が攻めの焦点になりやすい[[wj-kikusui]]。',
+    desc: '玉を8九に据え、銀8八と桂7七で屋根を作る一段玉型の矢倉[[wj-kikusui|wj-yagura]]。桂が8九・9七の両方を守るため上部と端への耐性が高い[[wj-kikusui]]。反面、前線に出た7七の桂が攻めの焦点になりやすい[[wj-kikusui]]。',
     ratings: { hard: 4, wide: 2, top: 5, side: 4, quick: 2 },
     pros: [
-      { t: '桂77が9七・8九を守り、上部と端の両方に強い[[wj-kikusui]]', sq: ['77', '97', '89'] },
-      { t: '銀88・金78・金67の連結がよい', sq: ['88', '78', '67'] },
+      { t: '桂7七が9七・8九を守り、上部と端の両方に強い[[wj-kikusui]]', sq: ['77', '97', '89'] },
+      { t: '銀8八・金7八・金6七の連結がよい', sq: ['88', '78', '67'] },
     ],
     cons: [
-      { t: '桂77を攻められると手を戻されやすい[[wj-kikusui]]', sq: ['77', '76'] },
+      { t: '桂7七を攻められると手を戻されやすい[[wj-kikusui]]', sq: ['77', '76'] },
       { t: '組むのに手数がかかる' },
     ],
     attacks: [
@@ -441,11 +441,11 @@ Kakoi.CASTLES.push(
     shell: '歩97 歩87 歩76 歩66',
     filler: '香99 角68 歩56 歩47 歩37',
     tags: ['相居飛車', '持久戦', '一段玉'],
-    desc: '玉89を銀88・銀79で挟み、金78・金67・桂77で前面を固める一段玉型の囲い[[wj-millennium|sj-millennium|wj-yagura]]。2000年（ミレニアム）前後に流行した[[wj-millennium]]。下段まで金銀が埋まり、角打ちの隙が少ない[[wj-millennium|sj-millennium]]。',
+    desc: '玉8九を銀8八・銀7九で挟み、金7八・金6七・桂7七で前面を固める一段玉型の囲い[[wj-millennium|sj-millennium|wj-yagura]]。2000年（ミレニアム）前後に流行した[[wj-millennium]]。下段まで金銀が埋まり、角打ちの隙が少ない[[wj-millennium|sj-millennium]]。',
     ratings: { hard: 4, wide: 3, top: 4, side: 4, quick: 3 },
     pros: [
       { t: '金銀4枚が玉の周囲に集まり隙が少ない[[wj-millennium|sj-millennium]]', sq: ['88', '79', '78', '67'] },
-      { t: '桂77が上部（8九・9七）をカバーする', sq: ['77', '89', '97'] },
+      { t: '桂7七が上部（8九・9七）をカバーする', sq: ['77', '89', '97'] },
     ],
     cons: [
       { t: '玉が8筋に近く、8筋の突破や桂馬の吊り上げに注意', sq: ['87', '88', '89'] },
@@ -466,7 +466,7 @@ Kakoi.CASTLES.push(
     shell: '歩97 歩87 歩76 歩66',
     filler: '角68 銀26 歩56 歩47 歩37',
     tags: ['相居飛車', '持久戦', '堅さ最強クラス'],
-    desc: '玉を9九に潜らせつつ、前面は矢倉と同じ銀77・金78・金67を残す形[[wj-yagura-anaguma|wj-ibisha-anaguma]]。穴熊の低い堅さに矢倉の上部の厚みを併せ持つが、その分だけ組み上がるまでの手数は多い[[wj-yagura-anaguma|wj-anaguma]]。',
+    desc: '玉を9九に潜らせつつ、前面は矢倉と同じ銀7七・金7八・金6七を残す形[[wj-yagura-anaguma|wj-ibisha-anaguma]]。穴熊の低い堅さに矢倉の上部の厚みを併せ持つが、その分だけ組み上がるまでの手数は多い[[wj-yagura-anaguma|wj-anaguma]]。',
     ratings: { hard: 5, wide: 2, top: 4, side: 5, quick: 1 },
     pros: [
       { t: '王手がかかりにくく、終盤の攻め合いに強い[[wj-ibisha-anaguma|wj-anaguma]]', sq: ['99', '98', '89'] },
@@ -491,7 +491,7 @@ Kakoi.CASTLES.push(
     shell: '歩97 歩87 歩76',
     filler: '角77 歩66 歩56 歩47 歩37',
     tags: ['相居飛車', '持久戦', '堅さ最強クラス'],
-    desc: '松尾亨八段が得意とした穴熊の変形[[wj-matsuo-anaguma]]。通常の穴熊から右側をさらに強化し、銀79・金78・金67と金銀4枚で前面を厚くした形[[wj-matsuo-anaguma|wj-anaguma]]。7筋・6筋方面からの攻めに強い[[wj-matsuo-anaguma]]。',
+    desc: '松尾亨八段が得意とした穴熊の変形[[wj-matsuo-anaguma]]。通常の穴熊から右側をさらに強化し、銀7九・金7八・金6七と金銀4枚で前面を厚くした形[[wj-matsuo-anaguma|wj-anaguma]]。7筋・6筋方面からの攻めに強い[[wj-matsuo-anaguma]]。',
     ratings: { hard: 5, wide: 1, top: 4, side: 5, quick: 1 },
     pros: [
       { t: '金銀4枚が連結し、前面・上部ともに厚い[[wj-matsuo-anaguma]]', sq: ['88', '79', '78', '67'] },
@@ -516,7 +516,7 @@ Kakoi.CASTLES.push(
     filler: '角68 歩66 歩56 歩47 歩37',
     note: '【要確認】配置は出典の図と照合が必要。銀を87・77と縦に並べる形のほか、6七銀型などの記述がある[[wj-big4|sj-big4]]。',
     tags: ['相居飛車', '持久戦', '堅さ最強クラス'],
-    desc: '金88・金78に銀87・銀77と、金銀4枚を玉の周囲に集めた穴熊の変形[[wj-big4|sj-big4|wj-anaguma]]。「大駒4枚で玉を固める」ことからこの名がある[[wj-big4|sj-big4]]。陣形は低く固いが、銀が縦に並ぶぶん上部は見た目ほど厚くない[[wj-big4]]。',
+    desc: '金8八・金7八に銀8七・銀7七と、金銀4枚を玉の周囲に集めた穴熊の変形[[wj-big4|sj-big4|wj-anaguma]]。「大駒4枚で玉を固める」ことからこの名がある[[wj-big4|sj-big4]]。陣形は低く固いが、銀が縦に並ぶぶん上部は見た目ほど厚くない[[wj-big4]]。',
     ratings: { hard: 5, wide: 1, top: 3, side: 5, quick: 1 },
     pros: [
       { t: '金銀4枚が玉を覆い、横からの攻めにとても強い', sq: ['88', '78', '87', '77'] },
@@ -540,7 +540,7 @@ Kakoi.CASTLES.push(
     core: '玉87 銀78 金69 金58',
     shell: '歩96 歩86 歩76 歩66 歩56',
     filler: '角77 銀26 香99 桂89 歩47 歩37',
-    note: '【要確認】金の位置に2説がある。本データは金69・金58型。金48型・金67型（四枚美濃へ発展する形）の記述もある[[wj-tenshukaku]]。',
+    note: '【要確認】金の位置に2説がある。本データは金6九・金5八型。金4八型・金6七型（四枚美濃へ発展する形）の記述もある[[wj-tenshukaku]]。',
     tags: ['対振り飛車', '持久戦'],
     desc: '左美濃の玉を8八から8七へ一段上げた形[[wj-tenshukaku|wj-hidarimino]]。玉が高くそびえる見た目から天守閣の名がある[[wj-tenshukaku]]。玉頭への当たりを遠ざけるが、8九・9九の底が薄くなる[[wj-tenshukaku]]。',
     ratings: { hard: 3, wide: 3, top: 3, side: 4, quick: 3 },
@@ -570,7 +570,7 @@ Kakoi.CASTLES.push(
     ratings: { hard: 4, wide: 3, top: 4, side: 4, quick: 2 },
     pros: [
       { t: '金銀4枚で上部・横の両方に強い[[wj-yonmaimino]]', sq: ['78', '77', '69', '67'] },
-      { t: '銀77が玉頭（8七）と7筋をカバーする', sq: ['77', '87', '76'] },
+      { t: '銀7七が玉頭（8七）と7筋をカバーする', sq: ['77', '87', '76'] },
     ],
     cons: [
       { t: '組むのに手数がかかる' },
@@ -615,7 +615,7 @@ Kakoi.CASTLES.push(
     filler: '角79 香99 桂89 歩37',
     note: '【要確認】8八銀の位置に2説ある（7九銀とする記述もある[[wj-nakahara]]）。本データはWikipedia日本語版の図（8八銀・4八銀）に従う。',
     tags: ['相居飛車', '相掛かり・横歩取り'],
-    desc: '中原誠名人が相掛かりで多用した囲い[[wj-nakahara]]。玉69・金78・金59・銀48と駒を低く並べ、8八にも銀を置く[[wj-nakahara]]。陣形が低いため飛車打ちや桂馬の攻めに強く、左右の逃げ道も広い[[wj-nakahara|wj-kakoi]]。',
+    desc: '中原誠名人が相掛かりで多用した囲い[[wj-nakahara]]。玉6九・金7八・金5九・銀4八と駒を低く並べ、8八にも銀を置く[[wj-nakahara]]。陣形が低いため飛車打ちや桂馬の攻めに強く、左右の逃げ道も広い[[wj-nakahara|wj-kakoi]]。',
     ratings: { hard: 3, wide: 4, top: 2, side: 4, quick: 4 },
     pros: [
       { t: '陣形が低く、自陣への飛車打ちに強い[[wj-nakahara]]', sq: ['69', '59', '48'] },

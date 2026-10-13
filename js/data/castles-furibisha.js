@@ -167,7 +167,7 @@ Kakoi.CASTLES.push(
     shell: '歩17 歩26 歩37 歩46',
     filler: '銀67',
     tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
-    desc: '振り飛車穴熊の前面を銀冠型（銀27・金38・金47）にした形[[wj-furibisha-anaguma]]。玉頭に銀がかぶさるため上部からの攻めに強く、穴熊の堅さと銀冠の上部耐性を併せ持つ[[wj-furibisha-anaguma|wj-anaguma]]。',
+    desc: '振り飛車穴熊の前面を銀冠型（銀2七・金3八・金4七）にした形[[wj-furibisha-anaguma]]。玉頭に銀がかぶさるため上部からの攻めに強く、穴熊の堅さと銀冠の上部耐性を併せ持つ[[wj-furibisha-anaguma|wj-anaguma]]。',
     ratings: { hard: 5, wide: 4, top: 5, side: 5, quick: 1 },
     pros: [
       { t: '上部・横ともに最強クラスの堅さ', sq: ['27', '38', '47', '19'] },
@@ -192,7 +192,7 @@ Kakoi.CASTLES.push(
     leave: '金58',
     filler: '金49 銀67 香19 桂29',
     tags: ['対居飛車', '中飛車', '急戦向き'],
-    desc: '玉28・金38・銀47の3枚で組む簡易な美濃[[wj-kimuramino|sj-kimuramino]]。木村義雄十四世名人が中飛車で好んで用いたことに由来する[[wj-kimuramino|wj-nakabisha]]。左金を使わないため、5筋に飛車のいる中飛車の陣形と両立しやすい[[wj-kimuramino|wj-nakabisha]]。',
+    desc: '玉2八・金3八・銀4七の3枚で組む簡易な美濃[[wj-kimuramino|sj-kimuramino]]。木村義雄十四世名人が中飛車で好んで用いたことに由来する[[wj-kimuramino|wj-nakabisha]]。左金を使わないため、5筋に飛車のいる中飛車の陣形と両立しやすい[[wj-kimuramino|wj-nakabisha]]。',
     ratings: { hard: 2, wide: 3, top: 3, side: 3, quick: 4 },
     pros: [
       { t: '少ない手数で組め、中飛車の陣形と両立する[[wj-kimuramino|wj-nakabisha]]', sq: ['28', '38', '47'] },
@@ -217,7 +217,7 @@ Kakoi.CASTLES.push(
     shell: '歩16 歩27 歩37 歩47',
     filler: '銀67 香19 桂29',
     tags: ['相振り飛車', '持久戦'],
-    desc: '相振り飛車の代表的な囲い[[wj-kinmusou|sj-kinmusou]]。金48・金58と金2枚を横に並べ（「金無双」）、玉38・銀28で固める[[wj-kinmusou|sj-kinmusou]]。横からの攻めに強く、上部への備えもある[[wj-kinmusou]]。',
+    desc: '相振り飛車の代表的な囲い[[wj-kinmusou|sj-kinmusou]]。金4八・金5八と金2枚を横に並べ（「金無双」）、玉3八・銀2八で固める[[wj-kinmusou|sj-kinmusou]]。横からの攻めに強く、上部への備えもある[[wj-kinmusou]]。',
     ratings: { hard: 4, wide: 3, top: 3, side: 4, quick: 2 },
     pros: [
       { t: '金2枚が横に並び、飛車など横からの攻めに強い[[wj-kinmusou|sj-kinmusou]]', sq: ['48', '58', '59'] },
@@ -241,7 +241,7 @@ Kakoi.CASTLES.push(
     shell: '歩17 歩27 歩36 歩46',
     filler: '銀67 香19 桂29',
     tags: ['相振り飛車', '持久戦'],
-    desc: '金矢倉を左右反転して右辺に組む形で、主に相振り飛車で使われる[[wj-migiyagura|sj-migiyagura]]。玉28を銀37・金38・金47で囲い、上部への厚みは矢倉譲り[[wj-migiyagura|wj-yagura]]。',
+    desc: '金矢倉を左右反転して右辺に組む形で、主に相振り飛車で使われる[[wj-migiyagura|sj-migiyagura]]。玉2八を銀3七・金3八・金4七で囲い、上部への厚みは矢倉譲り[[wj-migiyagura|wj-yagura]]。',
     ratings: { hard: 4, wide: 2, top: 5, side: 3, quick: 2 },
     pros: [
       { t: '上部からの攻めに強い（矢倉と同じ構造）[[wj-migiyagura|wj-yagura]]', sq: ['37', '47', '36', '46'] },
