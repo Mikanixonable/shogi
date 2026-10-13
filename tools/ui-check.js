@@ -114,7 +114,7 @@ async function sweepBoard(page, expect) {
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
     return document.querySelector('#bandOpp').dataset.empty === 'true'
-      ? getComputedStyle(document.querySelector('#bandOpp')).display === 'none' && me.bottom <= board.top
+      ? getComputedStyle(document.querySelector('#bandOpp')).visibility === 'hidden' && me.bottom <= board.top
       : opp.bottom <= board.top && board.bottom <= me.top;
   });
   r.boardBandGaps = await page.evaluate(() => {
@@ -273,7 +273,10 @@ async function sweepBoard(page, expect) {
   // 相手の駒の見出しを押して、相手の表示 ON と相手側への選択を同時に行う
   r.oppOffInit = await page.evaluate(() => !__kakoi.store.state.showOpp
     && document.querySelector('#pickRail .dk-binder').dataset.show === 'false');
-  await page.click(`${DOCK} .dk-pc[data-who="opp"]`); await wait(450);
+  await page.click(`${DOCK} .dk-pc[data-who="opp"]`);
+  r.oppOnAnimation = await page.evaluate(() => document.querySelector('#bandMe').getAnimations()
+    .some(animation => animation.playState === 'running'));
+  await wait(450);
   r.t5 = await snap(page);
   r.rects.push(r.t5.rect);
   r.boardOrderOppOn = await page.evaluate(() => {
@@ -300,7 +303,10 @@ async function sweepBoard(page, expect) {
   r.t5b = await snap(page);
   r.rects.push(r.t5b.rect);
   r.oppSel = !!r.t5b.slots.opp.tactic && r.t5b.selected === 'opp.tactic';
-  await page.click(`${DOCK} .dk-pc-x`); await wait(350);
+  await page.click(`${DOCK} .dk-pc-x`);
+  r.oppOffAnimation = await page.evaluate(() => document.querySelector('#bandMe').getAnimations()
+    .some(animation => animation.playState === 'running'));
+  await wait(350);
   r.oppDockOff = await page.evaluate(() => {
     const st = __kakoi.store.state;
     return !st.showOpp && !st.selected.startsWith('opp.')
@@ -589,7 +595,8 @@ async function main() {
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
       ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
-      ok(b.oppDockOff && b.oppDockOn, '左ドックの OFF で相手を非表示にし、相手タブから再表示できる', '');
+      ok(b.oppDockOff && b.oppDockOn && b.oppOnAnimation && b.oppOffAnimation,
+        '左ドックの ON/OFF で表示位置がアニメーションし、再表示もできる', '');
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
       ok(b.toolsEscape && b.toolsOutside, '表示設定は Escape とパネル外クリックで閉じる', '');
       ok(b.threatOff && b.threatPref, '脅威の帯は表示設定のスイッチ（localStorage の好み。URL には載らない）', `${b.t6 && b.t6.threats}本`);
