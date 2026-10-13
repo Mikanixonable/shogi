@@ -33,9 +33,9 @@ window.Kakoi = window.Kakoi || {};
   class MatchupDetailView {
     /**
      * @param {HTMLElement} el `#matchupDetail`（.detail-body）
-     * @param {{ onHover:(squares:string[], tone:string)=>void, onUndo?:()=>void }} handlers
+     * @param {{ onHover:(squares:string[], tone:string)=>void }} handlers
      */
-    constructor(el, { onHover, onUndo }) {
+    constructor(el, { onHover }) {
       this.el = el;
       el.addEventListener('mouseover', e => {
         const t = e.target.closest('[data-sq]');
@@ -45,30 +45,22 @@ window.Kakoi = window.Kakoi || {};
         const t = e.target.closest('[data-sq]');
         if (t && !t.contains(e.relatedTarget)) onHover([], null);
       });
-      if (onUndo) el.addEventListener('click', e => { if (e.target.closest('.mu-undo')) onUndo(); });
     }
 
     /**
      * @param {{ me:object, opp:object, show:{opp:boolean, threat:boolean}, threat:?object,
      *   fit:?number, meTactic:?object, meCastle:?object, oppTactic:?object, oppCastle:?object,
      *   meLabel:string, oppLabel:string, pairing:?object, trio:Array, contacts:Array,
-     *   flexed:Array, sources:Array, autoNote:?string }} d モードが組み立てた表示用データ
+     *   flexed:Array, sources:Array }} d モードが組み立てた表示用データ
      */
     render(d) {
       this.el.innerHTML = [
-        d.autoNote ? this._autoNote(d.autoNote) : '',
         this._head(d),
         d.show.opp && d.threat ? this._weights(d) : '',
         d.show.opp && d.fit != null ? this._fitness(d) : '',
         this._reasons(d),
         this._sources(d),
       ].filter(Boolean).join('');
-    }
-
-    // 自動差し替えの記録: 選択で両立しない層を直した通知。次の選択で内容が変わるまで残す
-    _autoNote(msg) {
-      return `<div class="mu-note"><span class="mu-note-t">${esc(msg)}</span>` +
-        `<button type="button" class="mu-undo">元に戻す</button></div>`;
     }
 
     // 戦型の大見出しと、自分／相手の3層の併記
