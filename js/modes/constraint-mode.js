@@ -1,7 +1,6 @@
 // 対局図（唯一の画面）のコントローラ（計画書 S6 の ConstraintController）:
 // コマンド（スロットの選択・解除・相手の表示・リセット）とホバー予告、トーストを持つ。
 // 描画は board-screen.js の BoardScreen、盤上の矢印は keyboard-nav.js、
-// 再生は tactic-playback.js（store.play）へ分けた。
 //   - 盤: constraints.sides() の両側を compose.position/merge で合成。相手の表示が OFF のときは後手を描かない
 //   - 制約バー: 各側の戦法・囲いのチップ（×で解除・クリックで選択）＋既定の層＋導出ラベル（戦型）
 //   - 左ドック: 自分／相手のタブで1枚の面を切り替える DockView。選択はすべてスロットの置き換え
@@ -16,14 +15,13 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const K = window.Kakoi;
   const { mirrorSq } = K.notation;
-  const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const parseSel = K.constraints.parseSel;
 
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
      *   els: stage, bandOpp, bandMe, barOpp, barMe, nameOpp, subOpp, nameMe, subMe,
-     *        legend, handOpp, handMe, playBtn, showOpp, boardwrap, rail, detail
+     *        legend, handOpp, handMe, showOpp, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
       Object.assign(this, { repo, store, board, overlay, els });
@@ -60,18 +58,13 @@ window.Kakoi = window.Kakoi || {};
         onAttack: attackId => this.store.set({ attackId }),
         onSetConstraint: (w, k, id) => this._set(w, k, id),
       });
-      // 再生（S6）: 状態は store.play（非永続）に昇格。ボタンの見た目だけここで面倒を見る
-      this.playback = new K.TacticPlayback(store, {
-        onChange: playing => this._paintPlayBtn(playing),
-      });
       // 「見える半分」は BoardScreen に委譲（S6）
       this.screen = new K.BoardScreen({
         els, board, overlay,
         bars: this.bars, detail: this.detail,
-        repo, rows: this.rows, playback: this.playback,
+        repo, rows: this.rows,
         nameOf: (w, k, id) => K.lookup.nameOf(k, id),
       });
-      els.playBtn.addEventListener('click', () => this._onPlay());
       els.showOpp.addEventListener('change', () => this._setShowOpp(els.showOpp.checked));
       document.addEventListener('keydown', e => this._onKey(e));
     }
@@ -125,7 +118,6 @@ window.Kakoi = window.Kakoi || {};
     reset() {
       const s = this.store.state;
       if (!s.showOpp && !hasAny(s.slots)) return;
-      this.playback.stop();
       this.store.set({
         slots: K.constraints.emptySlots(), showOpp: false, attackId: null,
         selected: K.constraints.normalizeSelected(null, false, s.dockTab),
@@ -184,31 +176,6 @@ window.Kakoi = window.Kakoi || {};
           || changed.has('play')) {
         this.dock.update(state, d.S);
       }
-    }
-
-    // ---------- 再生（状態は store.play。ボタンは play が消えると描き直される） ----------
-    _tacticListFor(who) {
-      const s = this.store.state;
-      const st = K.constraints.sides(s.slots, s.showOpp)[who];
-      return this.rows.filter(r => r.family.side === st.strategy).flatMap(r => r.tactics);
-    }
-
-    _onPlay() {
-      const sel = parseSel(this.store.state.selected);
-      if (!sel || sel.kind !== 'tactic') return;
-      const list = this._tacticListFor(sel.who);
-      if (reducedMotion()) {
-        const s = this.store.state;
-        const st = K.constraints.sides(s.slots, s.showOpp)[sel.who];
-        const i = list.findIndex(t => t.id === (st && st.tacticId));
-        if (list.length) this._set(sel.who, 'tactic', list[(i + 1 + list.length) % list.length].id);
-      } else if (this.playback.playing) this.playback.stop();
-      else this.playback.start(sel.who, list);
-    }
-
-    _paintPlayBtn(playing) {
-      this.els.playBtn.textContent = reducedMotion() ? '次の戦法へ' : playing ? '停止' : '順に再生';
-      this.els.playBtn.setAttribute('aria-pressed', playing);
     }
 
     // ---------- キーボード（U3） ----------

@@ -59,7 +59,6 @@
       barOpp: $('cbarOpp'), barMe: $('cbarMe'),
       nameOpp: $('nameOpp'), subOpp: $('subOpp'), nameMe: $('nameMe'), subMe: $('subMe'),
       legend: $('legend'), handOpp: $('handOpp'), handMe: $('handMe'),
-      playBtn: $('playBtn'),
       showOpp: $('showOpp'),
       rail: $('pickRail'),
       detail: $('detail'),

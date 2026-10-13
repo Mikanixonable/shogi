@@ -10,13 +10,13 @@ Kakoi.MANIFEST = (() => {
     'js/ui/piece-layer-dom.js', 'js/ui/piece-layer-3d.js', 'js/ui/board-view.js', 'js/ui/overlay-view.js',
     'js/ui/toolbar-view.js',
     'js/ui/detail-sections.js', 'js/ui/board-detail-view.js',
-    'js/ui/tactic-nav.js', 'js/ui/tactic-player.js',
+    'js/ui/tactic-nav.js',
     'js/ui/theme-toggle.js', 'js/ui/tools-toggle.js', 'js/ui/toast.js', 'js/ui/hash-link.js',
     'js/ui/constraint-bar.js', 'js/ui/roving.js',
     'js/ui/dock-grids.js', 'js/ui/dock-badges.js', 'js/ui/dock-view.js',
     'js/ui/about-modal.js',
   ];
-  const modes = ['js/modes/keyboard-nav.js', 'js/modes/tactic-playback.js', 'js/modes/board-screen.js', 'js/modes/constraint-mode.js'];
+  const modes = ['js/modes/keyboard-nav.js', 'js/modes/board-screen.js', 'js/modes/constraint-mode.js'];
   const app = ['js/app.js'];
   return { core, data, vendor, logic, ui, modes, app, order: [...core, ...data, ...vendor, ...logic, ...ui, ...modes, ...app] };
 })();

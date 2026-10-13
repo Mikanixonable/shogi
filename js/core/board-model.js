@@ -12,20 +12,14 @@ window.Kakoi = window.Kakoi || {};
 
   /**
    * @param {{me:{tactic,castle}, opp:{tactic,castle}}} slots 各側の固定スロット
-   * @param {{ tactic?:string|null, who?:'me'|'opp'|null }} [override]
-   *   表示だけの差し替え（再生中の実効戦法）。スロットは書き換えない
    * @param {boolean} [showOpp=true] 相手を表示するか。false のとき oppPos・threat・labels は空
    * @returns {{ S:{me:Object, opp:Object},
    *   mePos:Object, oppPos:Object|null, merged:{position:Object, contacts:Array},
    *   threat:Object|null, labels:Array, ng:{me:Object, opp:Object} }}
    *   S は両側の実効状態（相手の表示が OFF でも opp を持つ）。ng は両立しない明示選択の理由
    */
-  function deriveBoard(slots, override, showOpp = true) {
+  function deriveBoard(slots, showOpp = true) {
     const S = K.constraints.sides(slots, showOpp);
-    const o = override || {};
-    if (o.tactic && o.who && S[o.who]) {
-      S[o.who] = { ...S[o.who], tacticId: o.tactic };
-    }
     const mePos = K.compose.position({
       strategy: S.me.strategy, tacticId: S.me.tacticId, castleId: S.me.castleId, side: 'sente',
     });

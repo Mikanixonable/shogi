@@ -476,16 +476,13 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   // deriveBoard: 相手の表示 OFF なら後手・脅威・ラベルを出さない。ON なら両側を合成する
   {
     const sl = mk('ibisha-base', 'yagura', 'shikenbisha', 'mino');
-    const off = K.deriveBoard(sl, {}, false), on = K.deriveBoard(sl, {}, true);
+    const off = K.deriveBoard(sl, false), on = K.deriveBoard(sl, true);
     ok(off.oppPos === null && off.threat === null && off.labels.length === 0
       && !off.merged.position.pieces.some(x => x.owner === 'gote'),
     'deriveBoard:相手 OFF は後手の駒・脅威・ラベルなし', jstr(off.labels));
     ok(on.oppPos && on.threat && on.labels.length > 0 && on.merged.position.pieces.some(x => x.owner === 'gote'),
       'deriveBoard:相手 ON は両側を合成', '');
     ok(jstr(off.S.opp) === jstr(CS.sides(sl, false).opp), 'deriveBoard:S は相手 OFF でも opp を持つ', '');
-    // 再生の差し替えは表示だけ（スロットは変えない）
-    const pl = K.deriveBoard(sl, { tactic: 'bougin', who: 'me' }, false);
-    ok(pl.S.me.tacticId === 'bougin' && sl.me.tactic === 'ibisha-base', 'deriveBoard:再生の差し替えは表示だけ', '');
   }
 
   // compat.judge の対敵軸（§3-1）: level は変えず vs に乗せる。層ごとに候補別の尺度
