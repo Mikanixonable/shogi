@@ -9,7 +9,11 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
 
 /* ===== 左: 自分／相手の選択 ===== */
 #matchupRail { padding:16px 18px; gap:14px; }
+/* .mu-side は pane-fill（縦flex）の子。flex の既定では縮んで中身が隣のセクションに
+   重なって見えるので、自分側だけ内部スクロールにし、相手側は縮めず下端に置く */
 .mu-side { display:flex; flex-direction:column; gap:8px; min-height:0; }
+.mu-side[data-side="me"] { flex:1 1 auto; overflow:auto; }
+.mu-side[data-side="opp"] { flex:none; }
 .mu-h { margin:0; font-size:11px; letter-spacing:.2em; color:var(--muted); font-weight:600;
         display:flex; align-items:center; gap:10px; }
 .mu-h::after { content:""; flex:1; height:1px; background:var(--line); }
@@ -87,6 +91,8 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
 /* ===== narrow ===== */
 @media (max-width:980px) {
   #matchupRail { padding:12px 14px; }
+  /* ページ全体でスクロールするので内側の枠はスクロールさせない（pane-fill と同じ規則） */
+  .mu-side[data-side="me"] { overflow:visible; }
   .mu-sel select { width:100%; }
   .toast { left:12px; right:12px; max-width:none; transform:translateY(8px); }
   .toast.on { transform:translateY(0); }
