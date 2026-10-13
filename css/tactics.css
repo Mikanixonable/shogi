@@ -15,6 +15,18 @@ body[data-view="board"] .boardwrap[data-pt="on"] .ptable {
 }
 /* 相手の戦法を選んでいるときは、筋を盤の絶対座標に合わせて反転してある目印 */
 body[data-view="board"] .ptable[data-side="opp"] { outline:1px dashed var(--line-2); outline-offset:3px; }
+/* 見出し（側の明示）ともう一方の戦略の折りたたみ（§4-5） */
+.pt-cap { display:flex; align-items:center; gap:10px; margin:0 2px;
+          font-size:11px; letter-spacing:.16em; color:var(--muted); font-weight:600; }
+.pt-cap::after { content:""; flex:1; height:1px; background:var(--line); }
+.pt-cap small { letter-spacing:.04em; font-weight:400; }
+.pt-fold { cursor:pointer; margin:0 2px; border:1px dashed var(--line); background:none;
+           font-size:11px; color:var(--muted); letter-spacing:.06em;
+           transition:color .2s, border-color .2s; }
+.pt-fold:hover { color:var(--fg); border-color:var(--line-2); }
+/* 折りたたみを開いた「もう一方の戦略」の行は cascade 見た目（選ぶと戦略が連鎖する） */
+.pt-cell.pt-off, .pt-empty.pt-off, .pt-tile.pt-off { opacity:.55; }
+.pt-cell.pt-off { border-style:dashed; }
 .pt-cell, .pt-empty { min-width:0; margin:0 2px; display:flex; align-items:center; justify-content:center; text-align:center; }
 .pt-empty { color:var(--muted); opacity:.4; font:10px/1 var(--font-n); border:1px solid var(--line); }
 .pt-cell { container-type:inline-size; padding:0; cursor:pointer; border:1px solid var(--line); background:none;

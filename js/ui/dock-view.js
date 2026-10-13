@@ -52,7 +52,7 @@ window.Kakoi = window.Kakoi || {};
       el.innerHTML =
         `<div class="dk" style="--dock-split:.5">` +
         this._paneHtml('top', true) +
-        `<div class="dk-sep" role="separator" tabindex="0" aria-orientation="vertical" ` +
+        `<div class="dk-sep" role="separator" tabindex="0" aria-orientation="horizontal" ` +
         `aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" ` +
         `aria-label="上下の面の高さ（↑↓キーで調節・ダブルクリックで半分に戻す）"></div>` +
         this._paneHtml('bottom', false) +
@@ -60,6 +60,8 @@ window.Kakoi = window.Kakoi || {};
       this.root = el.firstElementChild;
       this.sep = this.root.querySelector('.dk-sep');
       this.tacticRows = K.tacticNav.tacticRows(K.TACTIC_FAMILIES, K.TACTICS);
+      // バッジ評価のメモ（§3-2）: 制約リストが同じ間は候補ごとの preview/judge 結果を使い回す
+      this._badgeMemo = { key: '', map: new Map() };
 
       // 囲いの局面と切り出し範囲は1回だけ組み立てる。共通倍率は最大の外接矩形に合わせる（§4-4 Q3）
       this._pos = new Map();
@@ -417,12 +419,32 @@ window.Kakoi = window.Kakoi || {};
       const eff = st || { strategy: null, tacticId: null, castleId: null };
       const other = who === 'me' ? S.opp : S.me;
 
+      // 候補ごとの preview + judge をメモして使い回す（§3-2: 制約リストが同じ間は
+      // バッジの答えは変わらない。selected/dock の変更で再評価しない）
+      const mkey = `${who}|${JSON.stringify(list)}|${JSON.stringify(
+        other ? [other.strategy, other.tacticId, other.castleId] : null)}`;
+      if (this._badgeMemo.key !== mkey) this._badgeMemo = { key: mkey, map: new Map() };
+      const memo = this._badgeMemo.map;
+      // judge の土台は「候補を置いた後」の側（sides(pv.list)）を使う。
+      // その側に制約が無くても（opp=null）、候補から推論した戦略で評価されるので
+      // 「駒が足りない」といった嘘の ng 理由が出ない（空の {strategy:null} では全囲いが COUNT ng になる）
+      const evalOf = (kind, id) => {
+        const k = `${kind}|${id}`;
+        let v = memo.get(k);
+        if (!v) {
+          const pv = K.constraints.preview(list, { type: 'set', who, kind, id });
+          const jS = K.constraints.sides(pv.list)[who] || eff;
+          v = { pv, j: K.compat.judge(jS, kind, id, other) };
+          memo.set(k, v);
+        }
+        return v;
+      };
+
       // 戦略セグ（常時表示。選択肢にも2軸のバッジをつける）
       pane.segStrategy.setValue(st ? st.strategy : null);
       for (const b of pane.segStrategy.el.querySelectorAll('button')) {
         const id = b.dataset.value;
-        const pv = K.constraints.preview(list, { type: 'set', who, kind: 'strategy', id });
-        const j = K.compat.judge(eff, 'strategy', id, other);
+        const { pv, j } = evalOf('strategy', id);
         const cur = !!st && st.strategy === id;
         this._badge(b, pv.changed, j, cur && st.implied.strategy);
         const tip = this._tip(j, pv.changed);
@@ -430,8 +452,7 @@ window.Kakoi = window.Kakoi || {};
       }
 
       for (const it of pane.cur.items) {
-        const j = K.compat.judge(eff, it.kind, it.id, other);
-        const pv = K.constraints.preview(list, { type: 'set', who, kind: it.kind, id: it.id });
+        const { pv, j } = evalOf(it.kind, it.id);
         const cur = !!st && eff[FIELD[it.kind]] === it.id;
         it.el.setAttribute('aria-current', cur ? 'true' : 'false');
         this._badge(it.el, pv.changed, j, cur && st.implied[it.kind]);

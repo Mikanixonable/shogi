@@ -304,12 +304,21 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
     ok(yagura.some(x => x.id === 'yagura'), 'constraints:labels 矢倉（囲い系統）', jstr(yagura));
   }
 
-  // compat.judge の対敵軸（§3-1）: level は変えず vs に乗せる
+  // compat.judge の対敵軸（§3-1）: level は変えず vs に乗せる。層ごとに候補別の尺度
   {
-    const j = K.compat.judge({ strategy: 'furibisha', tacticId: 'mukaibisha' }, 'castle', 'mino',
+    // 戦法: against[相手の戦略]（向かい飛車は対居飛車 good）
+    const jt = K.compat.judge({ strategy: 'furibisha', castleId: 'mino' }, 'tactic', 'mukaibisha',
       { strategy: 'ibisha', tacticId: 'ibisha-base' });
-    ok(j.vs && j.vs.strategy === 'good' && j.vs.level === 'good',
-      'compat:vs 軸（向かい飛車は対居飛車 good）', jstr(j.vs));
+    ok(jt.vs && jt.vs.level === 'good' && jt.vs.strategy === 'good',
+      'compat:vs 戦法（向かい飛車は対居飛車 good）', jstr(jt.vs));
+    // 囲い: fitness の帯。この組み合わせで美濃は最高から1.0以上低い下位帯 → bad、銀冠穴熊は上位帯 → good
+    const jc = K.compat.judge({ strategy: 'furibisha', tacticId: 'mukaibisha' }, 'castle', 'mino',
+      { strategy: 'ibisha', tacticId: 'ibisha-base' });
+    ok(jc.vs && jc.vs.level === 'bad' && /相性スコア/.test(jc.vs.reasons[0].text),
+      'compat:vs 囲い（fitness 下位帯は bad）', jstr(jc.vs));
+    const jg = K.compat.judge({ strategy: 'furibisha', tacticId: 'mukaibisha' }, 'castle', 'ginkananaguma',
+      { strategy: 'ibisha', tacticId: 'ibisha-base' });
+    ok(jg.vs && jg.vs.level === 'good', 'compat:vs 囲い（fitness 上位帯は good）', jstr(jg.vs));
     const j2 = K.compat.judge({ strategy: 'ibisha', tacticId: 'ibisha-base' }, 'tactic', 'ibisha-base', null);
     ok(j2.vs === null, 'compat:vs 相手がいなければ null', jstr(j2));
   }

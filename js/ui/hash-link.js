@@ -40,12 +40,12 @@ window.Kakoi = window.Kakoi || {};
     const put = (k, v) => { if (v !== null && v !== undefined && v !== '') p.set(k, v); };
     put('v', state.view);
     const list = Array.isArray(state.constraints) ? state.constraints : [];
-    if (list.length) {
-      p.set('k', list
-        .filter(e => WHO_LETTER[e.who] && LAYER_LETTER[e.kind])
-        .map(e => `${WHO_LETTER[e.who]}${LAYER_LETTER[e.kind]}:${e.id}`)
-        .join(','));
-    }
+    // k= は空でも書く: 制約を全部外した状態も「新形式の空リスト」として往復できるように
+    // （書かないと旧形式と区別できず、開いた側が自分の保存値で上書きされてしまう）
+    p.set('k', list
+      .filter(e => WHO_LETTER[e.who] && LAYER_LETTER[e.kind])
+      .map(e => `${WHO_LETTER[e.who]}${LAYER_LETTER[e.kind]}:${e.id}`)
+      .join(','));
     put('sel', encodeSel(state.selected));
     put('cf', state.clusterFamily);
     if (state.showThreat === false) put('mw', '0'); // 脅威の帯スイッチ（旧形式と同じキー。消しているときだけ書く）
@@ -104,6 +104,7 @@ window.Kakoi = window.Kakoi || {};
       if (p.has('c')) list.push({ who: 'me', kind: 'castle', id: p.get('c') });
       out.constraints = list;
       out.selected = 'me.castle';
+      if (p.get('mw') === '0') out.showThreat = false;
       return out;
     }
     if (v === 'tactic') {
@@ -114,6 +115,7 @@ window.Kakoi = window.Kakoi || {};
       if (p.has('tc')) list.push({ who: 'me', kind: 'castle', id: p.get('tc') });
       out.constraints = list;
       out.selected = 'me.tactic';
+      if (p.get('mw') === '0') out.showThreat = false;
       return out;
     }
     const hasMu = v === 'matchup'
@@ -147,12 +149,13 @@ window.Kakoi = window.Kakoi || {};
   function read(state) {
     try {
       const h = location.hash.replace(/^#/, '');
-      if (!h) return;
+      if (!h) return undefined;
       const patch = parseHash(h);
       for (const k of ['view', 'constraints', 'selected', 'showThreat', 'clusterFamily']) {
         if (patch[k] !== undefined) state[k] = patch[k];
       }
-    } catch { /* 壊れたハッシュで起動を止めない */ }
+      return patch;   // 呼び出し側が「ハッシュが何を指定したか」を知れるよう返す
+    } catch { return undefined; /* 壊れたハッシュで起動を止めない */ }
   }
 
   /** store を購読し、状態が変わるたびにハッシュを書き換える（replaceState なので履歴は積まない） */
