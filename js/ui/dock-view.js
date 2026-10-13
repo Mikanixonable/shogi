@@ -19,6 +19,13 @@ window.Kakoi = window.Kakoi || {};
   // 一覧の並べ方は表示の好み（盤面の状態ではない）なのでここで localStorage に持つ
   const PREF = 'shogi-castle:dock';
   const loadPref = () => { try { return JSON.parse(localStorage.getItem(PREF)) || {}; } catch { return {}; } };
+  // 上部の操作の小物: 層タブのアイコン・戦略の丸印・並べ方のアイコン
+  const TAB_ICON = {
+    castle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>',
+    tactic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20L20 4M13 4h7v7"/></svg>',
+  };
+  const STRAT_MARK = { ibisha: '居', furibisha: '振' };
+  const SORT_ICON = { family: '▦', tree: '⑂', hard: '★', top: '↑', side: '↔' };
 
   class DockView {
     /**
@@ -50,22 +57,27 @@ window.Kakoi = window.Kakoi || {};
         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
         `<section class="dk-pane">` +
         `<header class="dk-pane-h">` +
+        // 層: 塗りの大きな2択（アイコン付き）
         `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
-        `<button type="button" data-value="castle">囲い</button>` +
-        `<button type="button" data-value="tactic">戦法</button></div></header>` +
-        `<div class="seg small wide dk-strategy" role="group" aria-label="戦略で絞り込む">` +
-        STRATEGY_IDS.map(id => `<button type="button" data-value="${id}">${esc(K.STRATEGIES[id].label)}</button>`).join('') +
+        `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
+        `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
+        `<div class="dk-filter-row">` +
+        // 戦略: 「居／振」の丸印を添えた朱のピル
+        `<div class="seg dk-strategy" role="group" aria-label="戦略で絞り込む">` +
+        STRATEGY_IDS.map(id => `<button type="button" data-value="${id}"><b aria-hidden="true">${STRAT_MARK[id]}</b>` +
+          `${esc(K.STRATEGIES[id].label)}</button>`).join('') +
         `</div>` +
-        // 並べ方（囲いのみ）
-        `<div class="dk-tools">` +
-        `<label class="dk-sort">並べ方<select aria-label="囲いの並べ方">` +
-        K.dockGrids.CASTLE_SORTS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('') +
-        `</select></label>` +
+        // 並べ方（囲いのみ）: 戦略ピルの横にアイコンを並べ、開かずに選べるようにする
+        `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
+        K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
+          `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
+        `</div></div>` +
         `</div>` +
         `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
         `</section></div>` +
         // 駒の見出し（バインダー）: 上=相手・下=自分。相手の駒の角の × で相手の表示を OFF にする
         `<div class="dk-binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">` +
+        `<span class="dk-pc-ghost" aria-hidden="true"></span>` +
         `<button type="button" role="tab" class="dk-pc" data-who="opp"><span class="body" aria-hidden="true"></span>` +
         `<span class="v"><b>相手</b><small>後手 △</small></span></button>` +
         `<button type="button" class="dk-pc-x" aria-label="相手の表示を OFF にする" title="相手を盤から下げる（表示 OFF）">×</button>` +
@@ -89,14 +101,17 @@ window.Kakoi = window.Kakoi || {};
         if (this._last) this.update(this._last.state, this._last.S);
       });
       this.clearBtn.addEventListener('click', () => h.onClear(this.who));
-      this.sortSel = this.root.querySelector('.dk-sort select');
-      this.sortWrap = this.root.querySelector('.dk-sort');
-      this.sortSel.value = this.sort;
+      this.sortWrap = this.root.querySelector('.dk-tools');
       const savePref = () => {
         try { localStorage.setItem(PREF, JSON.stringify({ sort: this.sort })); } catch { /* 無視 */ }
         if (this._last) this.update(this._last.state, this._last.S);
       };
-      this.sortSel.addEventListener('change', () => { this.sort = this.sortSel.value; savePref(); });
+      this.sortSeg = new K.Segmented(this.root.querySelector('.dk-sort-seg'), v => {
+        this.sort = v;
+        this.sortSeg.setValue(v);
+        savePref();
+      });
+      this.sortSeg.setValue(this.sort);
       // タイル・チップは roving tabindex（U3）。矢印でフォーカスを移し Enter で選ぶ
       this.roving = K.roving.attach(this.body, '.dk-item');
       this.views = {};   // `${who}:${kind}` → 一覧の中身（構築は1回だけ。update では属性だけを書き換える）
@@ -146,9 +161,10 @@ window.Kakoi = window.Kakoi || {};
         pop.setAttribute('role', 'note');
         pop.innerHTML =
           `<b>記号の見方</b><ul>` +
-          `<li><span class="lg-ex lg-sel">名称</span>選択中（朱の下線）</li>` +
-          `<li><b>◎</b>相手との相性がよい／<b>△</b>苦手</li>` +
-          `<li><b>✕</b>＋点線の枠：いまの組み合わせとは両立しない</li>` +
+          `<li><span class="lg-ex lg-sel">名称</span>選択中（朱の枠と ✓）</li>` +
+          `<li><span class="lg-badge lg-good">◎</span>相手との相性がよい／<span class="lg-badge lg-bad">△</span>苦手</li>` +
+          `<li><span class="lg-badge lg-ng">✕</span>＋点線の枠：いまの組み合わせとは両立しない</li>` +
+          `<li><span class="lg-ex lg-fam">名称</span>左の帯・下線の色：系統（戦法は主役の駒）</li>` +
           `<li><span class="lg-ex lg-imp">名称</span>点線の項目：既定値（未選択のため補った値）</li>` +
           `<li><span class="lg-ex">↳ 名称</span>派生の戦法</li>` +
           `<li><span class="lg-ex lg-basic">名称</span>朱の印：基本の形</li>` +

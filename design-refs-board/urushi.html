@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>溜塗と蒔絵</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+/* 04 溜塗と蒔絵 — 木目がうっすら透ける溜塗の盤に、金の蒔絵の罫線と梨子地の金粉。
+   漆の深い艶には障子の映り込みが光源と一緒に動く。駒は黒漆の胴に螺鈿の面。
+   派手さではなく「静かに光る」洗練を狙う案 */
+:root {
+  --S:54px; --M:calc(var(--S) * .46); --T:calc(var(--S) * .7); --LEG:calc(var(--S) * .35); --PT:4;
+  --rad:5px; --rad-b:5px; --dai-rad:6px;
+  --env:#ece4d4; --env-glow:.3; --env-vig:.18; --ground-op:.4;
+  --env-tex:repeating-linear-gradient(90deg, rgba(120,90,50,.035) 0 1px, transparent 1px 7px);
+  --ln:url(#gold); --lw:1.6px;
+  --pc-side:#140604; --pc-shadow:#000; --pc-shadow-op:.6; --bev:7%;
+  --pc-ring:linear-gradient(var(--la), #f3e7c9 0%, #c9a24f 30%, #6b4a17 70%, #2a1606 100%);
+  --pc-ink:#120806; --pc-ink-g:#1d2850;
+  --pc-font:800 calc(var(--S) * .42)/1 var(--font-d);
+  --ov-col:#f0c060; --last:rgba(240,192,96,.16);
+}
+:root[data-theme="dark"] { --env:#0f0d0b; --env-glow:.08; --env-vig:.6; --ground-op:.85;
+  --env-tex:repeating-linear-gradient(90deg, rgba(255,240,210,.02) 0 1px, transparent 1px 7px); }
+
+/* 溜塗: 透けた木目（screen）＋梨子地の金粉＋光源側の深い艶＋障子の映り込み */
+.slab > .topf, .dai > .topf { background:linear-gradient(var(--la), #74291a, #45120a 55%, #210604);
+  box-shadow:inset 0 0 0 1px rgba(255,200,150,.12), inset calc(var(--lx) * -2px) calc(var(--ly) * -2px) 2px rgba(255,220,190,.25); }
+.topf .tex { mix-blend-mode:screen; opacity:.5; }
+.slab > .topf::before, .dai > .topf::before { content:""; position:absolute; inset:0; background:var(--nashiji); pointer-events:none; opacity:.55; }
+.slab > .topf::after, .dai > .topf::after { content:""; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(90deg, rgba(255,246,232,.42) 0 calc(var(--S) * .78), transparent calc(var(--S) * .78) calc(var(--S) * .84));
+  -webkit-mask-image:repeating-linear-gradient(0deg, #000 0 calc(var(--S) * 1.2), transparent calc(var(--S) * 1.2) calc(var(--S) * 1.27)),
+                     radial-gradient(28% 34% at calc(50% + var(--lx) * 38%) calc(50% + var(--ly) * 38%), #000 30%, transparent 100%);
+  -webkit-mask-composite:source-in; mask-composite:intersect; }
+.dai > .topf::after { background-size:auto; opacity:.6; }
+.lines { filter:drop-shadow(0 0 1.5px rgba(255,200,90,.45)) drop-shadow(calc(var(--lx) * -1px) calc(var(--ly) * -1px) .5px rgba(0,0,0,.6)); }
+.hoshi { width:calc(var(--S) * .13); background:radial-gradient(circle at calc(50% + var(--lx) * 28%) calc(50% + var(--ly) * 28%), #fff3c4, #d6a845 50%, #6d4a12);
+         box-shadow:0 0 6px rgba(255,200,90,.5); }
+.flab, .rlab { font:600 calc(var(--S) * .21)/1 var(--font-n); color:#cfa65a; opacity:.9; }
+.rlab { font:500 calc(var(--S) * .17)/1 var(--font-d); }
+
+/* 木口: 黒漆、上端に一本の金線 */
+.front .edge { background:linear-gradient(#a06a3a 0, #2a0a05 4%, #3d0f08 8%, #d1a24c 11%, #f0d48a 12.5%, #a77a2a 14%, #3a0d07 16%, #220604 70%, #120302); }
+.legs svg { width:100%; height:100%; display:block; }
+
+/* 駒: 黒漆の胴に螺鈿の面（虹色は光の角度で回る） */
+.pc .fc::before { background:
+  conic-gradient(from var(--la) at 35% 30%, rgba(255,150,190,.2), rgba(120,190,255,.22), rgba(140,240,200,.2), rgba(255,226,140,.22), rgba(255,150,190,.2)),
+  var(--pearl), linear-gradient(var(--la), #fbf8f2, #e6e0d8 70%, #d6cec4); background-blend-mode:normal, multiply, normal; }
+.pc .fc span { text-shadow:calc(var(--lx) * .8px) calc(var(--ly) * .8px) 0 rgba(255,255,255,.7), calc(var(--lx) * -.6px) calc(var(--ly) * -.6px) .5px rgba(0,0,0,.4); }
+.pc.sz-k .fc span { font-size:calc(var(--S) * .46); }
+.pc.sz-s .fc span { font-size:calc(var(--S) * .36); }
+.dai > .topf { box-shadow:inset 0 0 0 2px #b88a37, inset 0 0 0 3px #3a0d07, inset calc(var(--lx) * -2px) calc(var(--ly) * -2px) 3px rgba(255,220,190,.25); }
+.dai .hand b { color:#e1bd71; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f6dc93"/><stop offset=".3" stop-color="#c9963a"/><stop offset=".55" stop-color="#ffe9a8"/><stop offset=".8" stop-color="#a87a28"/><stop offset="1" stop-color="#e8c56e"/>
+  </linearGradient></defs>
+</svg>
+<section class="hero">
+  <div>
+    <h2><span class="no">04</span>溜塗と蒔絵<small>TAME-NURI · MAKI-E</small></h2>
+    <p class="lead">木目がうっすら透ける溜塗の盤に、金の蒔絵で引いた罫線と梨子地の金粉。漆の深い艶には障子の映り込みが浮かび、光源を動かすと一緒に滑る。駒は黒漆の胴に螺鈿の面で、虹色が光の角度で回る。派手さではなく、静かに光る洗練。</p>
+    <ul class="kw"><li>洗練</li><li>艶</li><li>静かな華やかさ</li><li>映り込み</li><li>ダーク向き</li></ul>
+  </div>
+  <div class="swatches">
+    <span style="background:#45120a" data-n="溜塗"></span><span style="background:#d6a845" data-n="金"></span>
+    <span style="background:linear-gradient(135deg,#fdfbf6,#e7dcf0,#d9eef0,#ece5d9)" data-n="螺鈿"></span><span style="background:#140604" data-n="黒漆"></span><span style="background:#ece4d4" data-n="生成り"></span>
+  </div>
+</section>
+<div class="stage"></div>
+<section class="details">
+  <dl class="spec">
+    <dt>盤面</dt><dd>赤褐色の3段グラデーション＋木目（screen で明るく透ける）＋梨子地（まばらな金の粒）。光の当たる場所に障子の格子が映り込む（mask を2枚 intersect）。</dd>
+    <dt>線</dt><dd>金蒔絵。SVG の金のグラデーションで線を引き、ごく弱い金の滲み＋光の反対側への影で漆の上に乗った厚みを出す。</dd>
+    <dt>駒</dt><dd>胴は黒漆（側面）、面は螺鈿: 真珠層の筋の肌理 × 光の角度で回る conic の虹色（soft-light）。面取りは金。字は明朝 800、後手は濃い藍。</dd>
+    <dt>縁と脚</dt><dd>木口は黒漆に一本の金線、脚の先に金具。駒台は金の縁取り。</dd>
+    <div class="sep"></div>
+    <dt>アプリへ</dt><dd>ダークテーマの盤にそのまま向く。<code>--wood-*</code> を溜塗の3色、罫線色を金に。映り込みは盤要素の <code>::after</code> 1枚で、光源はアプリでは固定でよい。立体駒は面テクスチャに真珠層＋ environment map なしの疑似虹（シェーダの視角で色相）でも近づく。</dd>
+    <dt>注意</dt><dd>盤が暗いので、ヒート（利きの数）の緑と朱枠は明るめに上げる必要がある。重ね表示の色をこの案では金寄りにしてある。</dd>
+  </dl>
+</section>
+<script src="common.js"></script>
+<script>
+const feet = (w, xs, h = 60) => `<svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
+  <defs><linearGradient id="ul" x1="0" x2="1"><stop offset="0" stop-color="#0d0302"/><stop offset=".4" stop-color="#4a160c"/><stop offset=".55" stop-color="#2a0905"/><stop offset="1" stop-color="#080201"/></linearGradient>
+  <linearGradient id="ug" x1="0" x2="1"><stop offset="0" stop-color="#7a5418"/><stop offset=".45" stop-color="#f3d68c"/><stop offset="1" stop-color="#7a5418"/></linearGradient></defs>
+  ${xs.map(x => `<path fill="url(#ul)" d="M${x - w} 0 H${x + w} L${x + w * .7} 46 H${x - w * .7}Z"/><rect fill="url(#ug)" x="${x - w * .72}" y="46" width="${w * 1.44}" height="14" rx="2"/>`).join('')}
+</svg>`;
+Ref.init({
+  light: [-.3, -.85], tilt: 20, loupe: [6.5, 6.5], loupeCap: '真上から 2.6 倍 ・ 螺鈿と梨子地',
+  boardTex: Ref.grain({ fx: .2, fy: .004, oct: 3, seed: 13, bands: 12, rgb: [255, 140, 80], a: .45, fine: .2, warp: 22 }),
+  daiTex: Ref.grain({ fx: .2, fy: .006, oct: 3, seed: 3, bands: 8, rgb: [255, 140, 80], a: .4, fine: .2, warp: 12 }),
+  boardLegs: feet(5, [10, 90]), daiLegs: feet(8, [16, 84]),
+  vars: {
+    '--clip-s': Ref.roundClip(.05), '--clip-g': Ref.roundClip(.05, true),
+    '--nashiji': Ref.tex(140, 140, `<feTurbulence type="fractalNoise" baseFrequency=".42" numOctaves="1" seed="5"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 .82  0 0 0 0 .45  0 0 0 16 -10.6"/>`),
+    '--pearl': Ref.tex(90, 90, Ref.grain({ fx: .03, fy: .16, oct: 2, seed: 17, bands: 7, rgb: [200, 190, 215], a: .55, fine: .25, warp: 26 })),
+  },
+});
+</script>
+</body>
+</html>
