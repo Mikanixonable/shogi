@@ -194,26 +194,41 @@ window.Kakoi = window.Kakoi || {};
         if (band && (band.top2.has(candidateId) || fitness >= band.max - 0.5 - 1e-9)) level = 'best';
       }
     }
-    // 対敵軸（計画書 §3-1）: 自分の実効戦法が相手に対して持つ適性。
-    //   strategy: tactic.against[相手の戦略]（従来データ）
-    //   tactic:   tactic.againstTactic[相手の実効戦法id]（§6-3 の新フィールド。{tacticId: 'good'|'ok'|'ng'}）
+    // 対敵軸（計画書 §3-1）: 層ごとに違う尺度で「相手に対して候補が合うか」を出す。
+    //   castle:   その候補の fitness の帯。上位帯（◎昇格と同じ: 上位2件または最高点−0.5以内）
+    //             を good、最高点から1.0以上低いを bad。候補ごとに値が変わる軸になる
+    //   strategy: 候補の戦略の実効戦法（既定値）が相手に持つ適性
+    //   tactic:   tactic.against[相手の戦略] ＋ againstTactic[相手の実効戦法id]（§6-3）
     // 同じ側の整合（level）とは別の軸なので level には混ぜない
     // （相性が悪くても選べる・連鎖は起きない＝要件5）。UI の対敵バッジ用に返すだけ
     let vs = null;
-    if (opp && ev.tactic && Kakoi.matchup) {
-      const oppT = tacticOf(opp);   // 相手の実効戦法（未選択なら戦略既定値）
-      const g = Kakoi.matchup.tacticFit(ev.tactic, opp.strategy || null);  // 'good'|'ok'|'ng'
-      const at = oppT && ev.tactic.againstTactic ? ev.tactic.againstTactic[oppT.id] : null;
-      const vReasons = [];
-      const gp = g === 'good' ? 'good' : g === 'ng' ? 'bad' : 'neutral';
-      const ap = at === 'best' || at === 'good' ? 'good' : at === 'ng' ? 'bad' : at === 'ok' ? 'neutral' : null;
-      if (g !== 'ok') vReasons.push({ code: 'AGAINST', text: `対${strategyLabel(opp.strategy)}は${g === 'good' ? '得意' : '苦手'}` });
-      if (ap != null && at) vReasons.push({ code: 'AGAINST_TACTIC', text: `対${oppT.name}は${ap === 'good' ? '得意' : ap === 'bad' ? '苦手' : '五分'}` });
-      vs = {
-        strategy: g, tactic: at || null,
-        level: (gp === 'bad' || ap === 'bad') ? 'bad' : (gp === 'good' || ap === 'good') ? 'good' : 'neutral',
-        reasons: vReasons,
-      };
+    if (opp && Kakoi.matchup) {
+      if (layer === 'castle' && ev.castle) {
+        const band = fitnessBand(st, opp);
+        if (band && fitness != null) {
+          const good = band.top2.has(candidateId) || fitness >= band.max - 0.5 - 1e-9;
+          const bad = fitness <= band.max - 1.0 - 1e-9;
+          vs = {
+            level: good ? 'good' : bad ? 'bad' : 'neutral',
+            reasons: [{ code: 'FITNESS',
+              text: `対${strategyLabel(opp.strategy)}の攻めへの相性スコア ${fitness.toFixed(2)}（この組み合わせの最高は ${band.max.toFixed(2)}）` }],
+          };
+        }
+      } else if (ev.tactic) {
+        const oppT = tacticOf(opp);   // 相手の実効戦法（未選択なら戦略既定値）
+        const g = Kakoi.matchup.tacticFit(ev.tactic, opp.strategy || null);  // 'good'|'ok'|'ng'
+        const at = oppT && ev.tactic.againstTactic ? ev.tactic.againstTactic[oppT.id] : null;
+        const vReasons = [];
+        const gp = g === 'good' ? 'good' : g === 'ng' ? 'bad' : 'neutral';
+        const ap = at === 'best' || at === 'good' ? 'good' : at === 'ng' ? 'bad' : at === 'ok' ? 'neutral' : null;
+        if (g !== 'ok') vReasons.push({ code: 'AGAINST', text: `対${strategyLabel(opp.strategy)}は${g === 'good' ? '得意' : '苦手'}` });
+        if (ap != null && at) vReasons.push({ code: 'AGAINST_TACTIC', text: `対${oppT.name}は${ap === 'good' ? '得意' : ap === 'bad' ? '苦手' : '五分'}` });
+        vs = {
+          strategy: g, tactic: at || null,
+          level: (gp === 'bad' || ap === 'bad') ? 'bad' : (gp === 'good' || ap === 'good') ? 'good' : 'neutral',
+          reasons: vReasons,
+        };
+      }
     }
     return { level, reasons, moved: ev.moved, fitness, vs, _ng: ngAll };
   }

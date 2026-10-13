@@ -219,16 +219,29 @@ window.Kakoi = window.Kakoi || {};
     const norm = dedupe(list);
     if (!op || typeof op !== 'object') return { list: norm, changed: [] };
     if (op.type === 'remove') {
-      return { list: norm.filter(e => !(e.who === op.who && e.kind === op.kind)), changed: [] };
+      const out = norm.filter(e => !(e.who === op.who && e.kind === op.kind));
+      // 除去対象が無かった＆dedupe でも変わらなかった入力は参照を返す（dedupe 目的の呼び出しでは
+      // norm が短くなるので素通りで新配列を返す）
+      return { list: out.length === norm.length && norm.length === (list || []).length && Array.isArray(list) ? list : out, changed: [] };
     }
     if (op.type !== 'set' || !isEntry(op) || !isValidId(op.kind, op.id)) return { list: norm, changed: [] };
     const prev = norm.find(e => e.who === op.who && e.kind === op.kind);
-    if (prev && prev.id === op.id) return { list: norm, changed: [] }; // 同じ値への set は無操作
+    // 同じ値への set は無操作。入力が既に正規形（dedupe で変わらない）ならその参照を返す
+    if (prev && prev.id === op.id) {
+      return { list: norm.length === (list || []).length && Array.isArray(list) ? list : norm, changed: [] };
+    }
 
     const work = norm.filter(e => !(e.who === op.who && e.kind === op.kind));
     work.push({ who: op.who, kind: op.kind, id: op.id });
     const changed = [];
     cascade(work, op.who, op.kind, changed);
+    // 連鎖も起きず中身が変わらなかったときは入力の参照を返す（dedupe が常に新配列を
+    // 作るため、同値でも store.set が 'constraints' の変更として再描画を走らせるのを防ぐ）
+    if (!changed.length
+      && work.length === norm.length
+      && work.every((e, i) => e.who === norm[i].who && e.kind === norm[i].kind && e.id === norm[i].id)) {
+      return { list: norm.length === (list || []).length && Array.isArray(list) ? list : norm, changed };
+    }
     return { list: work, changed };
   }
 

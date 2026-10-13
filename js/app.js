@@ -40,7 +40,8 @@
     'shogi-castle',
   );
   // URLハッシュを保存値に重ねる（正規化より先。貼られたURLが最優先）
-  K.hashLink.read(store.state);
+  const hashPatch = K.hashLink.read(store.state);
+  const hashView = hashPatch && hashPatch.view;   // ハッシュが view を指定済みなら移行で潰さない
 
   // ---- 旧形式の保存値（localStorage の shogi-castle:*）を制約へ変換する。
   // persist キーから外したので Store は読まない。ハッシュが制約を与えていないときだけ適用する
@@ -56,13 +57,16 @@
       : kind === 'castle' ? repo.has(id) : false;
   {
     const st = store.state;
-    const empty = !Array.isArray(st.constraints) || !st.constraints.length;
+    // 制約が空 かつ ハッシュが制約を指定していない（k= の空リストは「明示的に空」なので移行しない）
+    const empty = (!Array.isArray(st.constraints) || !st.constraints.length)
+      && !(hashPatch && hashPatch.constraints !== undefined);
     const view = lg('view');
     if (empty && view === 'castle') {
       const id = lg('castleId');
       if (validId('castle', id)) {
         st.constraints = [{ who: 'me', kind: 'castle', id }];
-        st.selected = 'me.castle'; st.view = 'board';
+        st.selected = 'me.castle';
+        if (hashView === undefined) st.view = 'board';
       }
     } else if (empty && view === 'tactic') {
       const id = lg('tacticId');
@@ -71,7 +75,8 @@
         const c = lg('tacticCastleId');         // 旧戦法画面が保持していた囲い（あれば）
         if (validId('castle', c)) list.push({ who: 'me', kind: 'castle', id: c });
         st.constraints = list;
-        st.selected = 'me.tactic'; st.view = 'board';
+        st.selected = 'me.tactic';
+        if (hashView === undefined) st.view = 'board';
       }
     } else if (empty && view === 'matchup') {
       const mu = lg('matchup');
@@ -95,7 +100,7 @@
           st.selected = `${lastMe.who}.${lastMe.kind}`;
         }
         if (mu.show && mu.show.threat === false) st.showThreat = false;
-        st.view = 'board';
+        if (hashView === undefined) st.view = 'board';
       }
     }
   }

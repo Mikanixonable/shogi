@@ -300,7 +300,8 @@ async function main() {
 
       const b = await sweepBoard(page);
       ok(b.panes === 2, '左ドックは上下2面', `${b.panes}面`);
-      ok(b.sep && b.sep.orient === 'vertical' && b.sep.tab === 0 && b.sep.now >= 20 && b.sep.now <= 80,
+      // 上下に積む面の区切りバーは横方向の separator（ARIA の separator は自身の向きを示す）
+      ok(b.sep && b.sep.orient === 'horizontal' && b.sep.tab === 0 && b.sep.now >= 20 && b.sep.now <= 80,
         'ドックのスプリッタ（role=separator + aria）', JSON.stringify(b.sep));
       ok(b.items === expect.tactics + expect.castles, '左ドックの選択肢（戦法タイル＋派生チップ＋囲いカード）', `${b.items}件`);
       ok(b.tiles === expect.tacticTiles && b.vars === expect.tacticVars,

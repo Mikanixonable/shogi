@@ -58,10 +58,12 @@ window.Kakoi = window.Kakoi || {};
       els.threatSw.addEventListener('change', () => this.store.set({ showThreat: els.threatSw.checked }));
       els.playBtn.addEventListener('click', () => this._onPlay());
       this.player = new K.TacticPlayer({
-        onStep: t => this._set(this._selWho(), 'tactic', t.id),
+        onStep: t => this._applyPlayStep(t),
         onChange: playing => this._setPlaying(playing),
       });
       this._playing = false;
+      this._playTactic = null;   // 再生中の表示専用の差し替え（制約は書き換えない）
+      this._playWho = null;
       document.addEventListener('keydown', e => this._onKey(e));
     }
 
@@ -87,32 +89,50 @@ window.Kakoi = window.Kakoi || {};
     _select(who, kind) { this.store.set({ selected: `${who}.${kind}` }); }
 
     _remove(who, kind) {
-      const r = K.constraints.apply(this.store.state.constraints, { type: 'remove', who, kind });
+      const s = this.store.state;
+      const prev = { list: s.constraints, sel: s.selected };
+      const r = K.constraints.apply(s.constraints, { type: 'remove', who, kind });
       this._lastChanged = r.changed;
       const patch = { constraints: r.list };
       // selected は据え置く: 消えた層の暗黙値が同じ (who,kind) のチップとして選択を引き継ぐ。
       // ただし相手側の制約がこれで全部消えたときは、存在しない側を指さないよう握り直す
-      const sel = parseSel(this.store.state.selected);
+      const sel = parseSel(s.selected);
       if (sel && sel.who === 'opp' && !r.list.some(e => e.who === 'opp')) {
         const last = [...r.list].reverse().find(e => e.who === 'me') || r.list[r.list.length - 1];
         patch.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
       }
       this.store.set(patch);
+      // 明示制約の除去も元に戻せるようにする（実効値は既定値に落ちるだけだが選んだ履歴は消える）
+      const had = prev.list.find(e => e.who === who && e.kind === kind);
+      if (K.Toast && had) {
+        K.Toast.show(`${who === 'opp' ? '相手の' : ''}${LAYER_JA[kind]}「${this._nameOf(who, kind, had.id)}」を外しました`, {
+          host: this.els.stageH,
+          action: { label: '元に戻す', fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); } },
+        });
+      }
     }
 
     _removeSide(who) {
       this._lastChanged = null;
-      let list = this.store.state.constraints;
+      const s = this.store.state;
+      const prev = { list: s.constraints, sel: s.selected };
+      let list = s.constraints;
       for (const kind of ['strategy', 'tactic', 'castle']) {
         list = K.constraints.apply(list, { type: 'remove', who, kind }).list;
       }
       const patch = { constraints: list };
-      const sel = parseSel(this.store.state.selected);
+      const sel = parseSel(s.selected);
       if (sel && sel.who === who) {
         const last = [...list].reverse().find(e => e.who === 'me') || list[list.length - 1];
         patch.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
       }
       this.store.set(patch);
+      if (K.Toast && prev.list.length !== list.length) {
+        K.Toast.show(`${who === 'opp' ? '相手' : '自分'}の制約を全部外しました`, {
+          host: this.els.stageH,
+          action: { label: '元に戻す', fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); } },
+        });
+      }
     }
 
     /** 「相手を加える」（詳細の .mu-open）: 相手の戦略を暗黙制約として足し、相手を選択する */
@@ -128,16 +148,34 @@ window.Kakoi = window.Kakoi || {};
       if (r.changed.length) this._toastChanged(r.changed, prev);
     }
 
-    /** ホバー予告（§3-3）: preview の changed に現れる制約チップを点滅させ、関係するマスを盤に示す */
+    /** ホバー予告（§3-3）: preview の changed に現れる制約チップを点滅させ、
+     *  理由のマスと「動く予定の駒」のマスを盤に示す */
     _preview(who, kind, id) {
       const s = this.store.state;
       const p = K.constraints.preview(s.constraints, { type: 'set', who, kind, id });
       this.bar.flash(p.changed.map(c => ({ who: c.who, kind: c.kind })));
+      // judge の土台は「候補を置いた後」の側（その側が空でも候補から戦略が推論される）
+      const Sp = K.constraints.sides(p.list);
+      const st = Sp[who] || {};
+      const j = K.compat.judge(st, kind, id, who === 'me' ? Sp.opp : Sp.me);
+      const sq = new Set((j.reasons || []).flatMap(x => x.squares || []));
+      // 動く予定の駒のマス（§3-3）: いまの実効局面と候補の合成局面を比べて、
+      // core/lead の駒が増減・移動するマスを拾う（相手側は絶対座標に反転する）
       const S = K.constraints.sides(s.constraints);
-      const st = S[who] || {};
-      const j = K.compat.judge(st, kind, id, who === 'me' ? S.opp : S.me);
-      const sq = [...new Set((j.reasons || []).flatMap(x => x.squares || []))];
-      this.board.hover(sq, j.level === 'ng' ? 'bad' : 'focus');
+      const cur = S[who];
+      if (cur && Sp[who]) {
+        const mir = who === 'opp';
+        const posOf = x => K.compose.position({
+          strategy: x.strategy, tacticId: x.tacticId, castleId: x.castleId, side: 'sente',
+        }).position;
+        const a = posOf(cur), b = posOf(Sp[who]);
+        for (const x of [...a.pieces, ...b.pieces]) {
+          if (x.role !== 'core' && x.role !== 'lead') continue;
+          const ya = a.at(x.f, x.r), yb = b.at(x.f, x.r);
+          if ((ya && ya.p) !== (yb && yb.p)) sq.add(mir ? mirrorSq(`${x.f}${x.r}`) : `${x.f}${x.r}`);
+        }
+      }
+      this.board.hover([...sq], j.level === 'ng' ? 'bad' : 'focus');
     }
 
     _toastChanged(changed, prev) {
@@ -151,7 +189,7 @@ window.Kakoi = window.Kakoi || {};
         host: this.els.stageH,
         action: {
           label: '元に戻す',
-          fn: () => this.store.set({ constraints: prev.list, selected: prev.sel }),
+          fn: () => { this._lastChanged = null; this.store.set({ constraints: prev.list, selected: prev.sel }); },
         },
       });
     }
@@ -160,6 +198,7 @@ window.Kakoi = window.Kakoi || {};
     enter(state) { this.update(state, new Set(['initial', ...Object.keys(state)])); }
 
     leave() {
+      this._playTactic = null; this._playWho = null;
       this.player.stop();
       this.board.setLasting([], null);
       this.overlay.clear();
@@ -171,6 +210,10 @@ window.Kakoi = window.Kakoi || {};
     _compute(state) {
       const list = Array.isArray(state.constraints) ? state.constraints : [];
       const S = K.constraints.sides(list);
+      // 再生中は制約を書き換えず、表示の実効戦法だけを差し替える（§4-5: 連鎖・トーストを出さない）
+      if (this._playTactic && this._playWho && S[this._playWho]) {
+        S[this._playWho] = { ...S[this._playWho], tacticId: this._playTactic };
+      }
       const mePos = K.compose.position({
         strategy: S.me.strategy, tacticId: S.me.tacticId, castleId: S.me.castleId, side: 'sente',
       });
@@ -240,7 +283,8 @@ window.Kakoi = window.Kakoi || {};
         this._paintTable(state, d);
         this._renderDetail(state, d);
       }
-      if (hard || changed.has('constraints') || changed.has('showThreat') || changed.has('dock')) this.dock.update(state, d.S);
+      if (hard || changed.has('constraints') || changed.has('showThreat') || changed.has('dock')
+          || changed.has('attackId')) this.dock.update(state, d.S);
     }
 
     // 盤の駒レイヤ＋重ね表示。selected のみの更新では来ない
@@ -329,9 +373,15 @@ window.Kakoi = window.Kakoi || {};
           }
         }
       }
-      e.title.textContent = title;
-      e.reading.textContent = reading;
-      e.setup.textContent = e.setup.title = context;
+      // 見出しが変わったときだけ差し替え＋フェード（attackId など無関係な更新で再生しない）
+      const stageKey = `${title}|${reading}|${context}`;
+      if (stageKey !== this._stageKey) {
+        this._stageKey = stageKey;
+        e.title.textContent = title;
+        e.reading.textContent = reading;
+        e.setup.textContent = e.setup.title = context;
+        e.titleWrap.classList.remove('swap'); void e.titleWrap.offsetWidth; e.titleWrap.classList.add('swap');
+      }
       e.legend.innerHTML = '<i></i>' + (d.threat
         ? '朱の帯は相手の攻め筋。破線は主役の駒の動き（墨＝自分・朱＝相手）。枠のマスは両軍の接触'
         : '朱色は囲いの駒と主役の駒。破線は主役の駒の動き');
@@ -339,7 +389,6 @@ window.Kakoi = window.Kakoi || {};
       const oppH = d.oppPos ? (d.oppPos.position.hand || []) : [];
       e.hand.textContent = meH.length || oppH.length
         ? `持ち駒：${meH.length ? '▲' + meH.join('・') : ''}${meH.length && oppH.length ? '　' : ''}${oppH.length ? '△' + oppH.join('・') : ''}` : '';
-      e.titleWrap.classList.remove('swap'); void e.titleWrap.offsetWidth; e.titleWrap.classList.add('swap');
       e.threatSw.checked = state.showThreat !== false;
       e.threatWrap.hidden = !S.opp;
       const selTactic = sel && sel.kind === 'tactic';
@@ -355,12 +404,20 @@ window.Kakoi = window.Kakoi || {};
       if (!on) { this._ptKey = null; return; }
       const st = d.S[sel.who] || d.S.me;
       const rows = this.rows.filter(r => r.family.side === st.strategy);
+      const offRows = this.rows.filter(r => r.family.side !== st.strategy);
+      // 選択中が派生戦法のときは親のセルを current にする（§4-3: 派生は親に束ねる）
+      const selT = this.repo.tacticById(st.tacticId);
+      const selId = (selT && selT.variantOf) || st.tacticId;
       const key = `${sel.who}:${st.strategy}`;
       if (key !== this._ptKey) {
         this._ptKey = key;
-        this.table.render(rows, st.tacticId, { flip: sel.who === 'opp' });
+        this.table.render(rows, selId, {
+          flip: sel.who === 'opp',
+          sideLabel: sel.who === 'opp' ? '相手の戦法' : '自分の戦法',
+          offRows,
+        });
       } else {
-        this.table.select(st.tacticId);
+        this.table.select(selId);
       }
     }
 
@@ -396,13 +453,29 @@ window.Kakoi = window.Kakoi || {};
         const i = list.findIndex(t => t.id === (st && st.tacticId));
         if (list.length) this._set(sel.who, 'tactic', list[(i + 1 + list.length) % list.length].id);
       } else if (this.player.playing) this.player.stop();
-      else this.player.start(list);
+      else {
+        this._playWho = sel.who;   // 再生開始時の側を固定（途中で選択を変えても外れない）
+        this._lastChanged = null;  // 再生中の差し替え表示は連鎖ではないので、詳細の連鎖ノートは消す
+        this.player.start(list);
+      }
+    }
+
+    // 再生は表示専用: 制約リスト（＝ユーザの選んだ形）を書き換えない。
+    // _set 経由だと、再生中の戦法に合わせて囲いが静かに差し替わり・毎ステップトーストが出る
+    _applyPlayStep(t) {
+      this._playTactic = t.id;
+      // 'constraints' 相当の再描画（駒の滑走アニメ・ドック・詳細）を直接呼ぶ。store は触らない
+      if (document.body.dataset.view === 'board') this.update(this.store.state, new Set(['constraints', 'attackId']));
     }
 
     _setPlaying(playing) {
       this._playing = playing;
       this.els.playBtn.textContent = reducedMotion() ? '次の戦法へ' : playing ? '停止' : '順に再生';
       this.els.playBtn.setAttribute('aria-pressed', playing);
+      if (!playing && this._playTactic) {
+        this._playTactic = null; this._playWho = null;
+        if (document.body.dataset.view === 'board') this.update(this.store.state, new Set(['attackId']));
+      }
     }
 
     // ---------- キーボード（矢印ナビの最低限。本格化は U4） ----------
