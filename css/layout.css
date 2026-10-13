@@ -71,12 +71,11 @@ header { position:relative; }
 .rail { border-right:1px solid var(--line); }
 .detail { border-left:1px solid var(--line); position:relative; }
 
-/* 中央: 相手の帯 → 盤 → 自分の帯 → 足元。行は常に4本確保する
+/* 中央: 相手の帯 → 盤 → 自分の帯。行は常に3本確保する
    （相手の表示が OFF でも帯の行は残す。盤の矩形が変わらないようにするための固定。F1） */
 .stage .sideband[data-side="opp"] { order:0; }
 .stage .boardarea { order:1; }
 .stage .sideband[data-side="me"] { order:2; }
-.stage .stage-f { order:3; }
 
 /* ===== rail: 左ドック（自分／相手のタブで切り替える1枚の面。DockView が構造を組み立てる。css/dock.css 参照） ===== */
 .rail { display:flex; flex-direction:column; padding:16px 18px; }
@@ -84,10 +83,10 @@ header { position:relative; }
 
 /* ===== stage: 盤を見る ===== */
 /* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。中身がはみ出したら省略・横スクロール。
-   帯の行は常に4本確保する（相手の表示が OFF でも相手の帯の行は残る） */
-.stage { --band-h:56px; --foot-h:24px; display:grid; position:relative;
+   帯の行は常に2本確保する（相手の表示が OFF でも相手の帯の行は残る） */
+.stage { --band-h:56px; display:grid; position:relative;
          grid-template-columns:minmax(0,1fr);
-         grid-template-rows:var(--band-h) minmax(0,1fr) var(--band-h) var(--foot-h);
+         grid-template-rows:var(--band-h) minmax(0,1fr) var(--band-h);
          padding:18px 26px 14px; gap:10px; }
 /* 状態の帯（sideband）: 盤の上=相手・下=自分。左に側の印、その右に状態の名前。
    高さ --band-h 固定: 見出し1行＋制約チップ1行。はみ出しは省略する（F4） */
@@ -120,14 +119,6 @@ header { position:relative; }
 #handMe { left:100%; justify-content:flex-end; }
 /* 持ち駒の列の幅を常に引く（F1/F5: 駒の有無で盤が動かないよう 44px 分予約） */
 .boardwrap { margin:0 24px; }
-/* 足元: 1行固定。凡例は色見本＋短い名札だけにし、全文は title に縮める（F1/F4） */
-.stage-f { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px;
-           color:var(--muted); height:var(--foot-h); min-height:0; white-space:nowrap; }
-.stage-f .legend { display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; cursor:help; }
-.stage-f .legend i { flex:none; width:10px; height:10px; display:inline-block; }
-.stage-f .legend .lg-t { overflow:hidden; text-overflow:ellipsis; }
-.stage-f .legend i { background:var(--bad); }
-
 /* ===== detail: 解説を読む（タブなし・一続き） ===== */
 .detail { padding:16px 22px 18px; display:grid; grid-template-rows:minmax(0,1fr); gap:14px; }
 .detail-body { overflow:auto; min-height:0; display:flex; flex-direction:column; gap:16px; }
