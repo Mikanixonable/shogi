@@ -28,6 +28,9 @@ for (const f of [...M.core, ...M.data, ...M.logic]) load(f);
 for (const f of ['js/core/compose.js', 'js/core/compat.js']) {
   if (fs.existsSync(path.join(ROOT, f))) load(f);
 }
+// hash-link は ui 配属だが parseHash/buildQuery は DOM 非依存なので単体でも試す
+ctx.URLSearchParams = URLSearchParams;
+load('js/ui/hash-link.js');
 
 const K = ctx.Kakoi;
 if (!K.compose || !K.compose.position) {
@@ -375,6 +378,94 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
     ok(CS.preview(list, { type: 'remove', who: 'me', kind: 'castle' })
       === CS.preview(list, { type: 'remove', who: 'me', kind: 'castle' }),
       'constraints:preview は同じキーでキャッシュを返す');
+  }
+}
+
+// ---------- 7. hash-link: 新形式（k=/sel=）と旧形式の変換（計画書 §2） ----------
+{
+  const HL = K.hashLink;
+  ok(HL && HL.parseHash && HL.buildQuery, 'hash-link: parseHash/buildQuery がある');
+
+  // 新形式の読み取り
+  {
+    const p = HL.parseHash('v=board&k=os:furibisha,ot:shikenbisha,mc:funa&sel=mc');
+    ok(jstr(p.constraints) === jstr([
+      { who: 'opp', kind: 'strategy', id: 'furibisha' },
+      { who: 'opp', kind: 'tactic', id: 'shikenbisha' },
+      { who: 'me', kind: 'castle', id: 'funa' },
+    ]) && p.selected === 'me.castle' && p.view === 'board',
+    'hash-link:新形式 k=/sel= の読み取り', jstr(p));
+  }
+  // 旧形式 → 新しい状態への変換
+  {
+    const p = HL.parseHash('v=castle&c=yagura&t=bougin&cf=mino');
+    ok(jstr(p.constraints) === jstr([{ who: 'me', kind: 'castle', id: 'yagura' }])
+      && p.selected === 'me.castle' && p.view === 'board' && p.clusterFamily === 'mino',
+      'hash-link:旧 castle → me.castle 制約', jstr(p));
+  }
+  {
+    const p = HL.parseHash('v=tactic&t=bougin&c=funa');
+    ok(jstr(p.constraints) === jstr([{ who: 'me', kind: 'tactic', id: 'bougin' }])
+      && p.selected === 'me.tactic' && p.view === 'board',
+      'hash-link:旧 tactic → me.tactic 制約', jstr(p));
+  }
+  {
+    // pick 順（'tcs' = tactic→castle→strategy）が制約の並び順になる。mw=0 は showThreat:false
+    const p = HL.parseHash('v=matchup&ms=ibisha&mt=bougin&mc=funa&mp=tcs&os=furibisha&ot=shikenbisha&oc=mino&op=&mw=0');
+    ok(jstr(p.constraints) === jstr([
+      { who: 'me', kind: 'tactic', id: 'bougin' },
+      { who: 'me', kind: 'castle', id: 'funa' },
+      { who: 'me', kind: 'strategy', id: 'ibisha' },
+      { who: 'opp', kind: 'strategy', id: 'furibisha' },
+      { who: 'opp', kind: 'tactic', id: 'shikenbisha' },
+      { who: 'opp', kind: 'castle', id: 'mino' },
+    ]) && p.selected === 'me.strategy' && p.showThreat === false,
+      'hash-link:旧 matchup → pick 順の制約', jstr(p));
+  }
+  {
+    // mo=0 は相手の制約を全部取り除く
+    const p = HL.parseHash('v=matchup&ms=ibisha&mc=funa&os=furibisha&ot=shikenbisha&mo=0');
+    ok(p.constraints.every(e => e.who === 'me'), 'hash-link:旧 mo=0 で相手を除去', jstr(p));
+  }
+  {
+    // pick が空なら strategy,tactic,castle の順
+    const p = HL.parseHash('ms=furibisha&mt=shikenbisha&mc=mino');
+    ok(jstr(p.constraints) === jstr([
+      { who: 'me', kind: 'strategy', id: 'furibisha' },
+      { who: 'me', kind: 'tactic', id: 'shikenbisha' },
+      { who: 'me', kind: 'castle', id: 'mino' },
+    ]), 'hash-link:旧形式 pick 空は層の既定順', jstr(p));
+  }
+  // 往復: buildQuery → parseHash で同じ状態に戻る
+  {
+    const st = {
+      view: 'board',
+      constraints: [
+        { who: 'opp', kind: 'strategy', id: 'furibisha' },
+        { who: 'opp', kind: 'tactic', id: 'shikenbisha' },
+        { who: 'me', kind: 'castle', id: 'funa' },
+      ],
+      selected: 'me.castle', clusterFamily: null,
+    };
+    const q = HL.buildQuery(st);
+    const p = HL.parseHash(q);
+    ok(q.includes('k=os:furibisha,ot:shikenbisha,mc:funa') && q.includes('sel=mc'),
+      'hash-link:書き出しは新形式のみ', q);
+    ok(jstr(p.constraints) === jstr(st.constraints) && p.selected === st.selected && p.view === st.view,
+      'hash-link:ハッシュ往復で同じ状態', `${q} → ${jstr(p)}`);
+  }
+  {
+    // クラスタ系統だけの往復
+    const q = HL.buildQuery({ view: 'cluster', constraints: [], selected: 'me.castle', clusterFamily: 'yagura' });
+    const p = HL.parseHash(q);
+    ok(p.view === 'cluster' && p.clusterFamily === 'yagura', 'hash-link:cluster の往復', `${q} → ${jstr(p)}`);
+  }
+  {
+    // showThreat=false は mw=0 で往復する
+    const st = { view: 'board', constraints: [{ who: 'me', kind: 'castle', id: 'funa' }], selected: 'me.castle', showThreat: false };
+    const q = HL.buildQuery(st);
+    const p = HL.parseHash(q);
+    ok(q.includes('mw=0') && p.showThreat === false, 'hash-link:showThreat の往復（mw=0）', `${q} → ${jstr(p)}`);
   }
 }
 

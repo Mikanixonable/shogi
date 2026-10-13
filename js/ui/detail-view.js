@@ -35,7 +35,7 @@ window.Kakoi = window.Kakoi || {};
      * @param {HTMLElement} el `#detail`（.detail-body）
      * @param {{ onHover:(squares:string[], tone:string)=>void, onAttack:(id:string|null)=>void,
      *   onMatchup?:(id:string)=>void }} handlers
-     *   onMatchup: 「対局図で開く」でこの囲いを自分側にセットして対局図へ移る
+     *   onMatchup: 「相手を加えて対局図にする」（旧「対局図で開く」）ボタンの動作
      */
     constructor(el, handlers) {
       this.el = el;
@@ -58,11 +58,19 @@ window.Kakoi = window.Kakoi || {};
       bindCites(el); // 本文の [n] ホバーで出典リストの行を強調
     }
 
-    render(castle, { attackId, sources, family, subtype }) {
+    /**
+     * @param {object} castle
+     * @param {{ attackId:?string, sources:object[], family:object, subtype:?object,
+     *   matchup?:?string, head?:string }} info
+     *   matchup: 「対局図」系ボタンのラベル。null/未指定なら出さない
+     *   head: 先頭に挿入する HTML（相手がいるときの対戦相性の要約など）
+     */
+    render(castle, { attackId, sources, family, subtype, matchup = null, head = '' }) {
       this._id = castle.id;
       const citer = makeCiter(); // このパネル内で出現順の番号を振る
       this.el.innerHTML = [
-        `<button class="mu-open" data-act="matchup">対局図で開く</button>`,
+        head,
+        matchup ? `<button class="mu-open" data-act="matchup">${esc(matchup)}</button>` : '',
         this._ratings(castle.ratings),
         this._tags(castle, family, subtype),
         castle.refFamily ? `<p class="note">文献上の分類：${esc(castle.refFamily)}</p>` : '',

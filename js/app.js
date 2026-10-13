@@ -1,9 +1,11 @@
 // アプリの組み立て: 状態・共有の部品・画面ごとのモードを結び、状態の変化を有効なモードへ伝える
+// 状態は制約リスト（constraints）＋選択（selected）が中核。旧形式（castleId/tacticId/matchup）の
+// 保存値・ハッシュは起動時に制約へ変換する（計画書 §2）
 (() => {
   'use strict';
   const K = window.Kakoi;
   const $ = id => document.getElementById(id);
-  const VIEWS = ['castle', 'tactic', 'matchup', 'cluster'];
+  const VIEWS = ['board', 'cluster'];
   const debug = new URLSearchParams(location.search).has('debug');
 
   const DATA = {
@@ -23,49 +25,120 @@
 
   const repo = new K.Repository(DATA);
 
-  // 対局図の既定状態（計画書 §4-1）: 自分と相手の3層＋表示切替
-  const MATCHUP_DEFAULT = {
-    me: { strategy: 'ibisha', tacticId: 'bougin', castleId: 'funa', pick: [] },
-    opp: { strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino', pick: [] },
-    show: { opp: true, threat: true },
-  };
+  const DOCK_DEFAULT = { split: 0.5, top: { who: 'opp', tab: 'tactic' }, bottom: { who: 'me', tab: 'castle' } };
 
   const store = new K.Store(
     {
-      view: 'castle', castleId: repo.castles()[0].id, mode: 'dim', heat: false, skeleton: false, heatScope: 'core', attackId: null,
-      lastBySide: {}, familyFilter: null, tacticId: repo.tactics()[0]?.id ?? null, clusterFamily: null,
-      matchup: MATCHUP_DEFAULT,
+      view: 'board',
+      constraints: [],                      // [{who:'me'|'opp', kind:'strategy'|'tactic'|'castle', id}] 並び順＝優先度
+      selected: null,                       // 'me.castle' 形式（`{who}.{kind}`）
+      dock: DOCK_DEFAULT,
+      mode: 'dim', heat: false, skeleton: false, heatScope: 'core',
+      attackId: null, clusterFamily: null, showThreat: true,
     },
-    ['view', 'castleId', 'mode', 'heat', 'skeleton', 'heatScope', 'lastBySide', 'familyFilter', 'tacticId', 'clusterFamily', 'matchup'],
+    ['view', 'constraints', 'selected', 'dock', 'mode', 'heat', 'skeleton', 'heatScope', 'attackId', 'clusterFamily', 'showThreat'],
     'shogi-castle',
   );
   // URLハッシュを保存値に重ねる（正規化より先。貼られたURLが最優先）
   K.hashLink.read(store.state);
-  // 保存値の検証（囲い固有のものは CastleMode が行う）
-  if (!VIEWS.includes(store.state.view)) store.state.view = 'castle';
-  if (!repo.hasTactic(store.state.tacticId)) store.state.tacticId = repo.tactics()[0]?.id ?? null;
-  // matchup: 未知の戦略キー・戦法id・囲いid・pick は既定値へ戻す
+
+  // ---- 旧形式の保存値（localStorage の shogi-castle:*）を制約へ変換する。
+  // persist キーから外したので Store は読まない。ハッシュが制約を与えていないときだけ適用する
+  const lg = k => {
+    try {
+      const v = localStorage.getItem(`shogi-castle:${k}`);
+      return v == null ? undefined : JSON.parse(v);
+    } catch { return undefined; }
+  };
+  const validId = (kind, id) =>
+    kind === 'strategy' ? !!K.STRATEGIES[id]
+      : kind === 'tactic' ? repo.hasTactic(id)
+      : kind === 'castle' ? repo.has(id) : false;
   {
-    const LAYERS = ['strategy', 'tactic', 'castle'];
-    const normSide = (s, fb) => {
-      s = s && typeof s === 'object' && !Array.isArray(s) ? s : {};
-      return {
-        strategy: K.STRATEGIES[s.strategy] ? s.strategy : fb.strategy,
-        tacticId: repo.hasTactic(s.tacticId) ? s.tacticId : fb.tacticId,
-        castleId: repo.has(s.castleId) ? s.castleId : fb.castleId,
-        pick: Array.isArray(s.pick) ? s.pick.filter(l => LAYERS.includes(l)) : [],
-      };
-    };
-    const mu = store.state.matchup && typeof store.state.matchup === 'object' ? store.state.matchup : {};
-    const sh = mu.show && typeof mu.show === 'object' ? mu.show : {};
-    store.state.matchup = {
-      me: normSide(mu.me, MATCHUP_DEFAULT.me),
-      opp: normSide(mu.opp, MATCHUP_DEFAULT.opp),
-      show: { opp: sh.opp !== false, threat: sh.threat !== false },
-    };
+    const st = store.state;
+    const empty = !Array.isArray(st.constraints) || !st.constraints.length;
+    const view = lg('view');
+    if (empty && view === 'castle') {
+      const id = lg('castleId');
+      if (validId('castle', id)) {
+        st.constraints = [{ who: 'me', kind: 'castle', id }];
+        st.selected = 'me.castle'; st.view = 'board';
+      }
+    } else if (empty && view === 'tactic') {
+      const id = lg('tacticId');
+      if (validId('tactic', id)) {
+        const list = [{ who: 'me', kind: 'tactic', id }];
+        const c = lg('tacticCastleId');         // 旧戦法画面が保持していた囲い（あれば）
+        if (validId('castle', c)) list.push({ who: 'me', kind: 'castle', id: c });
+        st.constraints = list;
+        st.selected = 'me.tactic'; st.view = 'board';
+      }
+    } else if (empty && view === 'matchup') {
+      const mu = lg('matchup');
+      if (mu && typeof mu === 'object') {
+        const LAYERS = K.constraints.KINDS;
+        const sideOf = (s, who) => {
+          s = s && typeof s === 'object' ? s : {};
+          const pick = Array.isArray(s.pick) ? s.pick.filter(l => LAYERS.includes(l)) : [];
+          const order = pick.length ? [...pick, ...LAYERS.filter(l => !pick.includes(l))] : LAYERS;
+          return order.map(k => {
+            const id = k === 'strategy' ? s.strategy : k === 'tactic' ? s.tacticId : s.castleId;
+            return validId(k, id) ? { who, kind: k, id } : null;
+          }).filter(Boolean);
+        };
+        const me = sideOf(mu.me, 'me');
+        const opp = mu.show && mu.show.opp === false ? [] : sideOf(mu.opp, 'opp');
+        const list = [...me, ...opp];
+        if (list.length) {
+          st.constraints = list;
+          const lastMe = [...list].reverse().find(e => e.who === 'me') || list[list.length - 1];
+          st.selected = `${lastMe.who}.${lastMe.kind}`;
+        }
+        if (mu.show && mu.show.threat === false) st.showThreat = false;
+        st.view = 'board';
+      }
+    }
   }
 
-  // 共有の部品: 盤と重ね表示は囲い・戦法で1組を使い回す
+  // ---- 保存値・ハッシュの正規化 ----
+  {
+    const st = store.state;
+    if (!VIEWS.includes(st.view)) st.view = 'board';
+    // 制約: 形と id の正当性を確かめ、(who,kind) の重複は末尾優先で整理する
+    const valid = e => e && (e.who === 'me' || e.who === 'opp')
+      && K.constraints.KINDS.includes(e.kind) && validId(e.kind, e.id);
+    st.constraints = K.constraints.apply(
+      (Array.isArray(st.constraints) ? st.constraints : []).filter(valid),
+      { type: 'remove' },
+    ).list;
+    // dock: 形だけ整える（UI は U4 が作る）
+    const dk = st.dock && typeof st.dock === 'object' ? st.dock : {};
+    const pane = (p, fb) => {
+      p = p && typeof p === 'object' ? p : {};
+      return {
+        who: p.who === 'me' || p.who === 'opp' ? p.who : fb.who,
+        tab: ['strategy', 'tactic', 'castle'].includes(p.tab) ? p.tab : fb.tab,
+      };
+    };
+    st.dock = {
+      split: typeof dk.split === 'number' ? Math.min(.8, Math.max(.2, dk.split)) : DOCK_DEFAULT.split,
+      top: pane(dk.top, DOCK_DEFAULT.top),
+      bottom: pane(dk.bottom, DOCK_DEFAULT.bottom),
+    };
+    // selected: 'who.kind' 形式。相手側を指しているのに相手の制約が無いときは握り直す
+    if (!/^(me|opp)\.(strategy|tactic|castle)$/.test(st.selected || '')) st.selected = null;
+    if (st.selected && st.selected.startsWith('opp.') && !st.constraints.some(e => e.who === 'opp')) {
+      st.selected = null;
+    }
+    if (st.selected == null) {
+      const last = [...st.constraints].reverse().find(e => e.who === 'me') || st.constraints[st.constraints.length - 1];
+      st.selected = last ? `${last.who}.${last.kind}` : 'me.castle';
+    }
+    st.showThreat = st.showThreat !== false;
+    if (!repo.families().some(f => f.id === st.clusterFamily)) st.clusterFamily = null;
+  }
+
+  // 共有の部品: 盤と重ね表示は1組を使い回す
   const board = new K.BoardView({ board: $('board'), files: $('files'), ranks: $('ranks') });
   const overlay = new K.OverlayView($('board'));
   if (debug) window.__kakoi = { overlay, board, repo, store };
@@ -80,16 +153,17 @@
 
   const common = { repo, store, board, overlay };
   const modes = {
-    castle: new K.CastleMode({
+    board: new K.ConstraintMode({
       ...common,
       els: {
-        side: $('sideSeg'), chips: $('familyChips'), count: $('railCount'), cards: $('cards'),
-        title: $('title'), titleWrap: $('ttl'), reading: $('reading'), setup: $('setup'), legend: $('legend'), hand: $('hand'),
-        detailBody: $('detail'),
+        bar: $('constraintBar'), stageH: $('stageH'),
+        title: $('title'), titleWrap: $('ttl'), reading: $('reading'), setup: $('setup'),
+        legend: $('legend'), hand: $('hand'),
+        threatWrap: $('threatWrap'), threatSw: $('threatSw'), playBtn: $('playBtn'),
+        ptable: $('ptable'), boardwrap: $('boardwrap'), rail: $('pickRail'),
+        detail: { castle: $('detailCastle'), tactic: $('detailTactic'), misc: $('detailMisc') },
       },
     }),
-    tactic: new K.TacticMode({ ...common, els: { rail: $('tacticRail'), ptable: $('ptable'), stage: $('tacticStage'), detail: $('tacticDetail') } }),
-    matchup: new K.MatchupMode({ ...common, els: { rail: $('matchupRail'), detail: $('matchupDetail'), stage: $('matchupStage') } }),
     cluster: new K.ClusterMode({ ...common, els: { rail: $('clusterRail'), stage: $('clusterStage'), detail: $('clusterDetail') } }),
   };
 

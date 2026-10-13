@@ -1,11 +1,6 @@
-/* 対局図: 自分と相手の3層（戦略・戦法・囲い）を並べて選び、盤に両軍を重ねる画面。
+/* 対局図で育った部品: 「相手を加える」ボタン・fitness の要約・理由リスト・トースト。
+   （旧3画面は「盤」に統合。左ドックの暫定スタイルは css/constraint.css）
    「墨と余白」: 相性の印は ◎＝朱の引き締め、×＝薄く斜線。理由は必ず記号とテキストで */
-
-/* ===== 画面ごとのパネル（layout.css と同じ規則） ===== */
-body[data-view="matchup"] .view-pane[data-view~="matchup"] { display:contents; }
-body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
-  display:flex; flex-direction:column; grid-row:1 / -1; min-height:0; overflow:auto;
-}
 
 /* ===== 左: 自分／相手の選択 ===== */
 #matchupRail { padding:16px 18px; gap:14px; }
@@ -77,8 +72,7 @@ body[data-view="matchup"] .view-pane.pane-fill[data-view~="matchup"] {
 .mu-open:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 .tc-castle[data-compat="best"] { box-shadow:inset 2px 0 0 var(--accent); }
 
-/* ===== トースト: 「対局図」の右の余白に置く短い通知（フロー内・紙色の明るい帯に細い朱の筋） ===== */
-#matchupStage .stage-h { flex-wrap:wrap; row-gap:6px; }   /* 狭い幅では通知を見出しの下に落とす */
+/* ===== トースト: 見出し行に置く短い通知（フロー内・紙色の明るい帯に細い朱の筋） ===== */
 .toast { display:none; align-items:center; gap:12px; flex:1 1 280px; min-width:0; max-width:100%;
          padding:8px 14px 8px 11px; background:var(--bg); color:var(--fg);
          border:1px solid var(--line); border-left:3px solid var(--accent);
