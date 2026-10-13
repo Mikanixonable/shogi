@@ -28,6 +28,7 @@ window.Kakoi = window.Kakoi || {};
       });
       this.detail = new K.MatchupDetailView(els.detail, {
         onHover: (squares, tone) => this.board.hover(squares, tone),
+        onUndo: () => this._undoAuto(),
       });
     }
 
@@ -51,7 +52,7 @@ window.Kakoi = window.Kakoi || {};
 
     /**
      * 層を選ぶ: 最後に選んだ層を優先し、両立しない他の層は compat.resolve が差し替える。
-     * 差し替えがあったらトーストで知らせ、「元に戻す」で直前の選択状態に戻せる（計画書 §4-2）
+     * 差し替えはトーストで知らせるほか、右パネルの先頭に記録として残し、どちらからも「元に戻す」で戻せる（計画書 §4-2）
      */
     choose(side, layer, id) {
       const s = this.store.state;
@@ -59,24 +60,29 @@ window.Kakoi = window.Kakoi || {};
       if (prev[side][FIELD[layer]] === id) return;
       const other = side === 'me' ? prev.opp : prev.me;
       const r = K.compat.resolve(prev[side], layer, id, other);
-      this.store.set({ matchup: { ...prev, [side]: r.next } });
-      if (r.changed.length && K.Toast) {
+      if (r.changed.length) {
         const msg = r.changed.map(c => c.unresolved
           ? `${LAYER_JA[c.layer]}は両立する候補がなく「${this._nameOf(c.layer, c.from)}」のまま`
           : `${LAYER_JA[c.layer]}を「${this._nameOf(c.layer, c.from)}」から「${this._nameOf(c.layer, c.to)}」へ`).join('、');
-        K.Toast.show(`${msg}変更しました`, {
-          // 戻すのは自動差し替えだけ（直前の matchup 全体ではなく、差し替わった層の値と pick 順を復元する）
-          action: {
-            label: '元に戻す',
-            fn: () => {
-              const cur = this.store.state.matchup;
-              const side2 = { ...cur[side], pick: prev[side].pick };
-              for (const c of r.changed) if (!c.unresolved) side2[FIELD[c.layer]] = c.from;
-              this.store.set({ matchup: { ...cur, [side]: side2 } });
-            },
-          },
+        this._autoNote = { side, changed: r.changed, prevPick: prev[side].pick, msg: `${msg}変更しました` };
+      }
+      this.store.set({ matchup: { ...prev, [side]: r.next } });
+      if (this._autoNote && K.Toast) {
+        K.Toast.show(this._autoNote.msg, {
+          action: { label: '元に戻す', fn: () => this._undoAuto() },
         });
       }
+    }
+
+    // 戻すのは自動差し替えだけ（直前の matchup 全体ではなく、差し替わった層の値と pick 順を復元する）
+    _undoAuto() {
+      const n = this._autoNote;
+      if (!n) return;
+      const cur = this.store.state.matchup;
+      const side2 = { ...cur[n.side], pick: n.prevPick };
+      for (const c of n.changed) if (!c.unresolved) side2[FIELD[c.layer]] = c.from;
+      this._autoNote = null;
+      this.store.set({ matchup: { ...cur, [n.side]: side2 } });
     }
 
     _toggleShow(key, on) {
@@ -95,6 +101,7 @@ window.Kakoi = window.Kakoi || {};
       if (ov.threat) ov.threat(null);
       if (ov.contacts) ov.contacts(null);
       if (K.Toast) K.Toast.hide();
+      this._autoNote = null;
     }
 
     update(state, changed) {
@@ -115,6 +122,11 @@ window.Kakoi = window.Kakoi || {};
         });
         this._overlays(state, m, d);
         if (hard) {
+          // 自動差し替えの記録は、差し替わった値が現在の選択から外れた時点で消す
+          if (this._autoNote) {
+            const sideNow = m[this._autoNote.side];
+            if (this._autoNote.changed.some(c => !c.unresolved && sideNow[FIELD[c.layer]] !== c.to)) this._autoNote = null;
+          }
           this._paintStage(m, d);
           this.rail.update(state);
           this.detail.render(this._detailData(m, d));
@@ -209,6 +221,7 @@ window.Kakoi = window.Kakoi || {};
         meLabel: K.STRATEGIES[m.me.strategy].label, oppLabel: K.STRATEGIES[m.opp.strategy].label,
         pairing, trio, contacts: d.merged.contacts, flexed: d.mePos.flexed,
         sources: pairing ? pairing.sources : [],
+        autoNote: this._autoNote ? this._autoNote.msg : null,
       };
     }
   }
