@@ -3,7 +3,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { label } = Kakoi.notation;
-  const { esc, makeCiter, rich, plain, sourcesBlock, bindCites } = Kakoi.html;
+  const { esc, makeCiter, rich, plain, sourcesBlock } = Kakoi.html;
 
   class TacticDetailView {
     /**
@@ -28,7 +28,7 @@ window.Kakoi = window.Kakoi || {};
         const b = e.target.closest('.tc-castle');
         if (b) handlers.onMatchup(b.dataset.id);
       });
-      bindCites(el); // 本文の [n] ホバーで出典リストの行を強調
+      Kakoi.cites.bind(el); // 本文の [n] ホバーで出典リストの行を強調
     }
 
     /**
