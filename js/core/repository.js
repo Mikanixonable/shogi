@@ -36,11 +36,6 @@ window.Kakoi = window.Kakoi || {};
     ofFamily(familyId) { return this._castles.filter(c => c.family === familyId); }
     setupOf(castle) { return this._setups[castle.setup]; }
 
-    /** 発展の前後: from（発展元）と、この囲いを from に持つ囲いの一覧 */
-    lineageOf(castle) {
-      return { from: castle.from ? this._byId.get(castle.from) || null : null, to: this._castles.filter(c => c.from === castle.id) };
-    }
-
     /** 囲いと想定配置の出典 */
     sourcesOf(castle) {
       return this._resolveSources([...(castle.sources || []), ...(this.setupOf(castle).sources || [])]);
