@@ -9,6 +9,8 @@ window.Kakoi = window.Kakoi || {};
   const RATING_KEYS = ['hard', 'wide', 'top', 'side', 'quick'];
   const TOKEN = /^[玉飛角金銀桂香歩][1-9][1-9]$/;
   const SQ = /^[1-9][1-9]$/;
+  // [[ref]] / [[ref1|ref2]] の出典トークン（html.js の TOKEN と同じ形）
+  const CITE = /\[\[([^\][|]+(?:\|[^\][|]+)*)\]\]/g;
   const isStr = v => typeof v === 'string' && v.length > 0;
   const isArr = Array.isArray;
   const result = () => ({ errors: [], warnings: [] });
@@ -54,6 +56,28 @@ window.Kakoi = window.Kakoi || {};
   function checkSquares(list, label, errors) {
     if (!isArr(list)) { errors.push(`${label}が配列でない`); return; }
     for (const s of list) if (!SQ.test(String(s))) errors.push(`${label}不正: ${s}`);
+  }
+
+  /**
+   * 本文中の [[ref]] トークンを取り出して検査する（計画書 §7）。
+   * 各 ref は SOURCES に登録済みで、かつ declared（その項目の sources の ref 集合）に含まれること。
+   * 返り値は引用された ref の集合（照合は呼び側で未引用の警告に使う）
+   */
+  function cites(ctx, text, declared, label, errors) {
+    const out = new Set();
+    if (typeof text !== 'string' || text.indexOf('[[') < 0) return out;
+    for (const m of text.matchAll(CITE))
+      for (const ref of m[1].split('|').map(r => r.trim()).filter(Boolean)) {
+        out.add(ref);
+        if (!ctx.SOURCES || !ctx.SOURCES[ref]) errors.push(`${label}: 未登録の出典トークン ${ref}`);
+        else if (!declared.has(ref)) errors.push(`${label}: 出典トークンがsourcesに宣言されていない ${ref}`);
+      }
+    return out;
+  }
+
+  /** sources 配列から ref の集合を作る（壊れた要素はスキップ。本体の検査が別途エラーにする） */
+  function declaredRefs(sources) {
+    return new Set((isArr(sources) ? sources : []).filter(s => s && isStr(s.ref)).map(s => s.ref));
   }
 
   /** 先手の駒（盤上＋持ち駒）が全部で1組と一致するか。持ち駒は "角" のような文字列（1文字1枚）か配列 */
@@ -151,6 +175,21 @@ window.Kakoi = window.Kakoi || {};
         if (!s || !isStr(s.for)) errors.push(`sources[${i}].forなし`);
       });
       if (c.sources.length < 2) warnings.push(`sourcesが${c.sources.length}件（2件以上が望ましい）`);
+    }
+
+    // [[ref]] トークンの整合（§7）: 引用は登録・宣言済みの ref のみ。
+    // 宣言済みで未引用の ref は警告として1行に集約する（逆方向は移行中も許容）
+    {
+      const declared = declaredRefs(c.sources);
+      const cited = new Set();
+      const add = s => { for (const r of s) cited.add(r); };
+      add(cites(ctx, c.desc, declared, 'desc', errors));
+      add(cites(ctx, c.note, declared, 'note', errors));
+      (isArr(c.pros) ? c.pros : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `pros[${i}]`, errors)));
+      (isArr(c.cons) ? c.cons : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `cons[${i}]`, errors)));
+      (isArr(c.attacks) ? c.attacks : []).forEach((a, i) => add(cites(ctx, a && a.t, declared, `attacks[${i}]`, errors)));
+      const uncited = [...declared].filter(r => !cited.has(r));
+      if (uncited.length) warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
     }
   }
 
@@ -333,6 +372,13 @@ window.Kakoi = window.Kakoi || {};
           else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) errors.push(`未登録の出典: ${s.ref}`);
           if (!s || !isStr(s.for)) errors.push(`pairings[${i}].sourcesのforなし`);
         }
+        // why の [[ref]] はこの pairing の sources に宣言された ref のみ（§7）
+        {
+          const pDecl = declaredRefs(p.sources);
+          const pCited = cites(ctx, p.why, pDecl, `pairings[${i}].why`, errors);
+          const pUncited = [...pDecl].filter(r => !pCited.has(r));
+          if (pUncited.length) warnings.push(`pairings[${i}](${p.castle}): 宣言済みだが未引用の出典: ${pUncited.join(', ')}`);
+        }
         // 「◎が実は×」の検出: essential の駒と囲いの core が同じマスを要求していないか
         if (p.level === 'best' && c && essentialList.length) {
           const coreSq = new Set(pieces(c.core, `castle:${c.id}.core`, [], {}).map(x => key(x.f, x.r)));
@@ -350,6 +396,21 @@ window.Kakoi = window.Kakoi || {};
         if (!s || !isStr(s.for)) errors.push(`sources[${i}].forなし`);
       });
       if (t.sources.length < 2) warnings.push(`sourcesが${t.sources.length}件（2件以上が望ましい）`);
+    }
+
+    // [[ref]] トークンの整合（§7）: 引用は登録・宣言済みの ref のみ。
+    // 宣言済みで未引用の ref は警告として1行に集約する（逆方向は移行中も許容）
+    {
+      const declared = declaredRefs(t.sources);
+      const cited = new Set();
+      const add = s => { for (const r of s) cited.add(r); };
+      add(cites(ctx, t.desc, declared, 'desc', errors));
+      add(cites(ctx, t.context, declared, 'context', errors));
+      add(cites(ctx, t.note, declared, 'note', errors));
+      (isArr(t.pros) ? t.pros : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `pros[${i}]`, errors)));
+      (isArr(t.cons) ? t.cons : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `cons[${i}]`, errors)));
+      const uncited = [...declared].filter(r => !cited.has(r));
+      if (uncited.length) warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
     }
   }
 
