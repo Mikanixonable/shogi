@@ -104,9 +104,9 @@ async function sweepBoard(page, expect) {
   const mark = async () => r.rects.push(await boardRect(page));
   r.t0 = await snap(page);
   r.rects.push(r.t0.rect);
-  // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブは無効。ハッシュは空。画面切替・分類マップは無い
+  // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
-  r.oppTabDisabled = await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => el.disabled);
+  r.oppTabEnabled = await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled);
   r.noOldUi = await page.evaluate(() => !document.querySelector('#viewSeg, [data-view], #addOpp, #clearAll, #clearMe, #clearOpp, #skeleton, #heatScopeSeg, .dk-sep, .dk-fold, .dk-addopp, .dk-threat'));
   r.noClusterCss = await page.evaluate(() => ![...document.styleSheets].some(s => /clusters\.css/.test(s.href || '')));
   r.hashEmpty0 = r.t0.hash === '' || r.t0.hash === '#';
@@ -221,18 +221,17 @@ async function sweepBoard(page, expect) {
     && !r.t4b.chips.some(c => c.ng);
   await mark();
 
-  // 相手の表示 ON/OFF（帯のスイッチ1つ）: ON で後手の駒・相手タブが有効に
+  // 「相手 △」を押して、相手の表示 ON と相手側への選択を同時に行う
   r.oppOffInit = await page.evaluate(() => !document.querySelector('#showOpp').checked);
-  await page.click('#showOpp'); await wait(450);
+  await page.click(`${DOCK} .dk-who [data-value="opp"]`); await wait(450);
   r.t5 = await snap(page);
   r.rects.push(r.t5.rect);
   r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && !r.t5.bandOppEmpty
     && await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled)
-    && /opp=1/.test(r.t5.hash);
+    && r.t5.selected.startsWith('opp.') && /opp=1/.test(r.t5.hash);
   r.threatOn = r.t5.threats >= 1;
   r.labels = r.t5.chips.length > 0 && await page.$$eval('#cbarMe .cchip-label', els => els.length > 0);
-  // 相手タブに切り替える → 相手の面（筋が反転）・相手のスロットを選ぶ
-  await page.click(`${DOCK} .dk-who [data-value="opp"]`); await wait(300);
+  // 相手タブは相手の面（筋が反転）を選択した状態になっている
   r.oppTab = await page.evaluate(() => __kakoi.store.state.selected.startsWith('opp.')
     && document.querySelector('#pickRail .dk').dataset.who === 'opp');
   await page.click(`${DOCK} .dk-tab button[data-value="tactic"]`); await wait(250);
@@ -272,14 +271,14 @@ async function sweepBoard(page, expect) {
     await mark();
   }
 
-  // 相手の表示を OFF → 後手の駒・脅威の帯が退き、相手タブは無効、選択は自分側へ戻る（相手のスロットは残る）
+  // 相手の表示を OFF → 後手の駒・脅威の帯が退き、相手タブは有効のまま、選択は自分側へ戻る
   const oppSlots = JSON.stringify((await snap(page)).slots.opp);
   await page.click('#showOpp'); await wait(400);
   r.t8 = await snap(page);
   r.rects.push(r.t8.rect);
   r.oppOff = !r.t8.showOpp && r.t8.threats === 0 && (r.t8.canvas || r.t8.gote === 0)
     && r.t8.bandOppEmpty && r.t8.selected.startsWith('me.')
-    && await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => el.disabled)
+    && await page.$eval(`${DOCK} .dk-who [data-value="opp"]`, el => !el.disabled)
     && JSON.stringify(r.t8.slots.opp) === oppSlots;
 
   // 「はずす」（ドックの面ごとに1つ）: 見ている側の戦法・囲いを両方外し、トーストの「元に戻す」で戻る
@@ -477,7 +476,7 @@ async function main() {
       }));
 
       const b = await sweepBoard(page, expect);
-      ok(b.panes === 1 && b.oppTabDisabled, '左ドックは1枚の面（自分/相手タブ）。相手の表示が OFF なら相手タブは無効', `panes=${b.panes} oppTab無効=${b.oppTabDisabled}`);
+      ok(b.panes === 1 && b.oppTabEnabled, '左ドックは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
@@ -503,14 +502,14 @@ async function main() {
       ok(b.ngDetail, '右ドックに理由と直す候補が出る', '');
       ok(b.noToast, '連動トーストは出ない', '');
       ok(b.ngFixed, '直す候補を押すと両立する選択になる（他の層は不変）', JSON.stringify(b.t4b && b.t4b.slots));
-      ok(b.oppOffInit && b.oppOn, '相手の表示スイッチ1つで後手の駒・相手タブが出る', `${b.t5 && b.t5.hash}`);
+      ok(b.oppOffInit && b.oppOn, '相手 △ から相手表示を ON にして相手側を選べる', `${b.t5 && b.t5.hash}`);
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
       ok(b.labels, '制約バーに導出ラベル（戦型）が出る', JSON.stringify(b.t5 && b.t5.chips.filter(c => !c.kind)));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
       ok(b.threatOff && b.threatPref, '脅威の帯は表示設定のスイッチ（localStorage の好み。URL には載らない）', `${b.t6 && b.t6.threats}本`);
       ok(b.removed !== false, '×でスロットを外せる', '');
-      ok(b.oppOff, '相手を OFF → 後手の駒・帯が退き、相手タブは無効、相手のスロットは残る', JSON.stringify(b.t8 && b.t8.slots));
+      ok(b.oppOff, '相手を OFF → 後手の駒・帯が退き、相手タブは有効のまま、相手のスロットは残る', JSON.stringify(b.t8 && b.t8.slots));
       ok(b.cleared && b.undoClear, 'ドックの「はずす」で見ている側を外し、トーストの「元に戻す」で戻る', JSON.stringify(b.t9 && b.t9.slots));
       ok(b.keyNav, '矢印キーで戦法を送れる', '');
       ok(b.focusBoard && b.focusChip !== false, '矢印キーでフォーカスが保たれる（U3）',

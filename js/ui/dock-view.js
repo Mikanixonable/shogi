@@ -1,5 +1,5 @@
-// 統合画面の左ドック: 「自分／相手」のタブで切り替える1枚の面（相手を表示していないときは
-// 「相手」タブを無効にする）。面は「戦法／囲い」のタブ・はずす・戦略の絞り込み・一覧からなる。
+// 統合画面の左ドック: 「自分／相手」のタブで切り替える1枚の面。
+// 相手タブから相手の表示を ON にできる。面は戦法／囲い・はずす・絞り込み・一覧からなる。
 // 戦略（居飛車／振り飛車）の絞り込みは一覧の表示を絞るだけで制約にはならない
 // （戦略は選んだ戦法から導く）。見ている側・層は state.selected が持つ。
 // 計画書 S6 で分割: 一覧の中身の構築は dock-grids.js、
@@ -173,8 +173,8 @@ window.Kakoi = window.Kakoi || {};
       this.who = who; this.kind = kind;
       this.root.dataset.who = who;
       this.whoSeg.setValue(who);
-      this.oppBtn.disabled = !showOpp;
-      this.oppBtn.title = showOpp ? '' : '相手の表示が OFF です（相手の帯の「表示」で出す）';
+      this.oppBtn.disabled = false;
+      this.oppBtn.title = showOpp ? '' : 'クリックすると相手の局面を表示します';
       this.tabSeg.setValue(kind);
       const side = state.slots[who];
       this.clearBtn.hidden = KINDS.every(k => side[k] == null);
