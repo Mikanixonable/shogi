@@ -1,42 +1,47 @@
 /* 統合画面（board）: 制約バー・制約チップ・右ドックの先頭部品。
-   「墨と余白」: 罫線と記号で示す。色だけに頼らない（破線・◎・△・要約の文字を併記） */
+   「墨と余白」: 罫線と記号で示す。色だけに頼らない（種類名・説明・破線を併記） */
 
 /* ===== 制約バー: 見出しと盤の間。チップ1つ=スロット1つ ===== */
-/* 1行固定（帯の高さを変えない。F1）: はみ出した分は横スクロールし、右端をフェードさせる。
-   構造: .cbar-x（流れるチップ。横スクロール）＋ .cbar-lab（導出ラベル。右端に固定で褪せない） */
-.cbar { display:flex; flex-wrap:nowrap; align-items:center; gap:5px; padding:1px 0 3px; height:26px; min-height:0; overflow:hidden; }
-.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; gap:5px;
-          overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
-          mask-image:linear-gradient(to right, #000 calc(100% - 26px), transparent); }
-.cbar-x::-webkit-scrollbar { display:none; }
+/* .cbar-x は説明つきのカプセルを折り返し、.cbar-lab は導出ラベルを右端に置く */
+.cbar { display:flex; flex:1 1 auto; min-width:0; min-height:0; align-items:center; gap:8px; overflow:hidden; }
+.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-content:center; align-items:stretch; flex-wrap:wrap; gap:7px;
+          overflow:hidden; }
 .cbar-lab { display:flex; flex:none; align-items:center; gap:5px; }
 .cbar-lab:empty { display:none; }
-/* チップ: #名称 を枠で囲む。内側の選択・削除は別ボタン（入れ子の button を避けるため span の器） */
-.cchip { display:inline-flex; align-items:stretch; flex:none; font-size:12.5px; letter-spacing:.04em;
-         border:1px solid var(--line-2); background:none; color:var(--fg); }
-.cchip .cchip-b { display:inline-flex; align-items:center; gap:6px; padding:3px 4px 3px 10px;
-                  border:0; background:none; cursor:pointer; font:inherit; color:inherit; letter-spacing:inherit; }
-.cchip .cchip-b:hover { color:var(--accent); }
-.cchip-side { font-style:normal; font-size:10.5px; color:var(--muted); }
-.cchip[data-who="opp"] .cchip-side { color:var(--gote-ink); }
-/* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
-.cchip-ng { font-style:normal; font-size:11px; font-weight:700; color:var(--bad); }
+/* チップ: 種類・名前・短い説明と、独立した解除ボタンをカプセルにまとめる */
+.cchip { --chip-ink:var(--t-silver); --chip-soft:color-mix(in srgb,var(--chip-ink) 12%,var(--bg));
+         display:grid; grid-template-columns:minmax(0,1fr) 40px; align-items:center;
+         flex:1 1 320px; min-width:min(100%,300px); max-width:100%; min-height:70px; padding:7px 8px 7px 10px;
+         border:1px solid var(--line-2); border-left:4px solid var(--chip-ink); border-radius:999px;
+         background:var(--bg); color:var(--fg); }
+.cchip[data-kind="castle"] { --chip-ink:var(--accent-2); }
+.cchip .cchip-b { display:grid; grid-template-columns:72px minmax(0,1fr); align-items:center; gap:11px;
+                  min-width:0; padding:0; border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
+.cchip .cchip-b:hover .cchip-nm { color:var(--accent); }
+.cchip-type { display:grid; place-items:center; min-height:48px; padding:5px 7px; border-radius:999px;
+              background:var(--chip-soft); color:var(--chip-ink); font-size:13px; font-weight:700; letter-spacing:.04em; }
+.cchip-copy { display:flex; min-width:0; flex-direction:column; gap:2px; }
+.cchip-name-line { display:flex; min-width:0; align-items:center; gap:6px; }
+.cchip-ng { flex:none; font-style:normal; font-size:13px; font-weight:900; color:var(--bad); }
 .cchip-ng:empty { display:none; }
+.cchip-nm { min-width:0; font-size:16px; font-weight:800; line-height:1.3; }
+.cchip-desc { display:-webkit-box; overflow:hidden; color:var(--fg2); font-size:13.5px; line-height:1.35;
+              -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.cchip-x { display:grid; place-items:center; width:38px; height:38px; margin:0; border:1px solid var(--line);
+           border-radius:50%; background:none; color:var(--muted); cursor:pointer; font-size:19px; line-height:1; }
+.cchip-x:hover { border-color:var(--bad); color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); }
+/* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
 .cchip[data-ng="true"] { border-style:dashed; border-color:var(--bad); }
-.cchip-nm { font-weight:600; white-space:nowrap; }
-.cchip-x { display:grid; place-items:center; width:20px; margin-left:2px; border:0; border-left:1px solid var(--line);
-           background:none; color:var(--muted); cursor:pointer; font-size:12px; }
-.cchip-x:hover { color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); }
-/* 選択中のチップは朱の下線＋太字（U1: 朱は選択だけ。枠・面・輪は使わない） */
-.cchip[data-sel="true"] { box-shadow:inset 0 -2px 0 var(--accent); }
-.cchip[data-sel="true"] .cchip-nm { color:var(--accent); font-weight:700; }
+/* 選択中のチップは朱の輪郭で示す */
+.cchip[data-sel="true"] { border-color:var(--accent); }
+.cchip[data-sel="true"] .cchip-nm { color:var(--accent); }
 /* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
 .cchip[data-implied="true"] { border-style:dashed; border-color:var(--line); opacity:.72; }
-.cchip[data-implied="true"] .cchip-nm { font-weight:400; }
-.cchip[data-implied="true"] .cchip-nm::after { content:"既定"; margin-left:5px; font-size:9px; color:var(--muted); letter-spacing:.06em; }
+.cchip[data-implied="true"] .cchip-type::after { content:"既定"; margin-top:1px; font-size:9px; letter-spacing:.06em; }
 /* 導出ラベル（戦型など）: .cbar-lab に入る消せない灰色チップ。紙色で固定、褪せない */
-.cchip.cchip-label { border-color:var(--line); color:var(--muted); cursor:default; padding:3px 10px; background:var(--bg); }
-.cchip.cchip-label .cchip-nm { font-weight:400; white-space:nowrap; }
+.cchip.cchip-label { display:inline-flex; flex:none; min-width:0; min-height:0; max-width:none; padding:3px 9px;
+                     border:1px solid var(--line); border-radius:999px; background:var(--bg); color:var(--muted); font-size:11px; }
+.cchip.cchip-label .cchip-nm { font-size:11px; font-weight:500; white-space:nowrap; }
 
 /* ===== 右ドック（board-detail-view。U5）: 選択中の制約の説明 ===== */
 /* 先頭: 側の表示名（小）＋項目名（大）。既定値で補った層は破線の「既定」を添える */
@@ -55,6 +60,7 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 /* ===== narrow ===== */
 @media (max-width:979px) {
   #pickRail { padding:12px 14px; }
-  .cbar { height:auto; min-height:26px; flex-wrap:wrap; }
-  .cbar-x { flex-wrap:wrap; overflow:visible; mask-image:none; }
+  .cbar { min-height:70px; flex-wrap:wrap; align-content:center; overflow:visible; }
+  .cbar-x { flex:1 1 100%; overflow:visible; }
+  .cbar-lab { margin-left:auto; }
 }
