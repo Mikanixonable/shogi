@@ -1,7 +1,7 @@
 // 統合画面の左ドック: 「自分／相手」で切り替える1枚の面。
 // 側の切り替えはドックの右端（盤との境）に立てた駒の見出し（バインダー）で行う。
 // 盤と同じく上=相手（先が下の駒）・下=自分（先が上の駒）。相手の見出しで相手の表示を ON にでき、
-// 角の × で OFF にする。面は囲い／戦法・はずす・絞り込み・一覧からなる。
+// 角の × で OFF にする。面は囲い／戦法・リセット・絞り込み・一覧からなる。
 // 戦略（居飛車／振り飛車）の絞り込みは一覧の表示を絞るだけで制約にはならない
 // （戦略は選んだ戦法から導く）。見ている側・層は state.selected が持つ。
 // 計画書 S6 で分割: 一覧の中身の構築は dock-grids.js、
@@ -52,8 +52,7 @@ window.Kakoi = window.Kakoi || {};
         `<header class="dk-pane-h">` +
         `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
         `<button type="button" data-value="castle">囲い</button>` +
-        `<button type="button" data-value="tactic">戦法</button></div>` +
-        `<button type="button" class="dk-clear" title="この側の戦法と囲いをはずす">はずす</button></header>` +
+        `<button type="button" data-value="tactic">戦法</button></div></header>` +
         `<div class="seg small wide dk-strategy" role="group" aria-label="戦略で絞り込む">` +
         STRATEGY_IDS.map(id => `<button type="button" data-value="${id}">${esc(K.STRATEGIES[id].label)}</button>`).join('') +
         `</div>` +
@@ -79,7 +78,10 @@ window.Kakoi = window.Kakoi || {};
       this.binder = el.querySelector('.dk-binder');
       this.pcs = { me: this.binder.querySelector('[data-who="me"]'), opp: this.binder.querySelector('[data-who="opp"]') };
       this.oppOffBtn = this.binder.querySelector('.dk-pc-x');
-      this.clearBtn = this.root.querySelector('.dk-clear');
+      this.clearBtn = document.createElement('button');
+      this.clearBtn.type = 'button';
+      this.clearBtn.className = 'dk-clear';
+      this.clearBtn.textContent = 'リセット';
       this._bindBinder();
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
@@ -235,7 +237,11 @@ window.Kakoi = window.Kakoi || {};
       this.tabSeg.setValue(kind);
       this.sortWrap.hidden = kind !== 'castle';   // 戦法は筋の表のまま（並べ方は囲いだけ）
       const side = state.slots[who];
+      const clearHost = document.querySelector(`#stageMain .sideband[data-side="${who}"] .cbar`);
+      if (clearHost && this.clearBtn.parentElement !== clearHost) clearHost.append(this.clearBtn);
       this.clearBtn.hidden = KINDS.every(k => side[k] == null);
+      this.clearBtn.title = `${who === 'opp' ? '相手' : '自分'}の戦法・囲いをリセット`;
+      this.clearBtn.setAttribute('aria-label', this.clearBtn.title);
 
       // 絞り込みは、導出した戦略が変わったとき（戦法を選んだ・ハッシュで開いた）にそれへ合わせる
       const st = S[who];
