@@ -31,7 +31,7 @@ window.Kakoi = window.Kakoi || {};
         <div><h2 class="cl-d-t">${esc(c.name)}</h2>
           <div class="tags"><span class="tag group"><i class="cl-dot" data-family="${esc(c.family)}"></i> ${esc(fam.name)}</span>${sub ? `<span class="tag">${esc(sub.name)}</span>` : ''}</div></div>
         ${c.refFamily ? `<p class="note">文献上の分類：${esc(c.refFamily)}</p>` : ''}
-        <button class="cl-open" data-open="${esc(c.id)}">盤で開く</button>
+        <button class="cl-open" data-open="${esc(c.id)}">囲い図鑑で開く</button>
         <div class="sec"><h3>計算上のグループ</h3>
           <p class="desc">${verdict}。</p>
           ${mates.length ? `<div class="cl-chips ro">${mates.map(m => `<span class="cl-chip" data-family="${esc(m.family)}"><i class="cl-dot"></i>${esc(m.short)}</span>`).join('')}</div>` : ''}</div>
