@@ -4,19 +4,14 @@
 /* ===== header: 全体の表示設定のみ ===== */
 header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-bottom:1px solid var(--fg); flex-wrap:wrap; }
 .brand { display:flex; align-items:center; gap:12px; }
-/* 朱印の印面（トップへのリンク。ホバーで揺れて持ち上がり、押すと沈み、再読込で押し直される） */
+/* 朱印の印面（トップへのリンク。ホバーで持ち上げ、押すと沈み、再読込で押し直される） */
 .brand .mark { width:26px; height:26px; display:grid; place-items:center; font:700 14px/1 var(--font-d); color:#fbf6ea;
                background:var(--accent); transform:rotate(-3deg); animation:stamp .55s cubic-bezier(.2,.9,.3,1.3) .3s backwards;
                text-decoration:none; cursor:pointer; transition:transform .18s var(--ease); }
-.brand .mark:hover { transform:rotate(0deg) scale(1.08); animation:mark-hover .5s var(--ease); }
+.brand .mark:hover { transform:rotate(0deg) scale(1.08); }
 .brand .mark:active { transform:rotate(-7deg) scale(.82); transition-duration:.06s; }
 @keyframes stamp { from { opacity:0; transform:scale(1.7) rotate(-10deg); }
                    60% { opacity:1; transform:scale(.94) rotate(-3deg); } to { opacity:.95; transform:scale(1) rotate(-3deg); } }
-/* ホバー: 印面が持ち上がるとき、行き過ぎて反対に傾き、揺れて静止位置に収まる */
-@keyframes mark-hover { 0% { transform:rotate(-3deg) scale(1); }
-                        45% { transform:rotate(3deg) scale(1.14); }
-                        75% { transform:rotate(-1.5deg) scale(1.05); }
-                        100% { transform:rotate(0deg) scale(1.08); } }
 /* about: ロゴ横の小さな導線。文字だけのボタン、下に細い罫線 */
 .brand .about { font-size:11px; letter-spacing:.12em; color:var(--muted); background:none; border:0;
                 border-bottom:1px solid var(--line-2); padding:1px 0 2px; margin-left:4px; cursor:pointer;

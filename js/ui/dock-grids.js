@@ -5,8 +5,7 @@
 //     プロットし（自分は 9→1・相手は盤の絶対座標。列はどちらも絶対座標なので
 //     筋番号ヘッダは両面とも 9…1）、上に筋の番号を出す。
 //     1マス=主役の駒の最終マス（lead.square）。variantOf の派生は親タイルの下の
-//     チップに束ねる。アイコンは経路から自動生成する K.tacticGlyph（§4-3）。
-//     列の配置は tacticNav.placeTactics（純関数）
+//     チップに束ねる。列の配置は tacticNav.placeTactics（純関数）
 //   - 囲いタイル: CASTLE_FAMILIES ごとの折りたたみブロック。サムネイルは玉側の隅の
 //     固定窓（6筋×4段）で歩の壁・周辺の駒ごと見せる（lab/shogi と同じ方式。中央寄りの
 //     囲いは窓をずらす。相手の面は180度回転・字は正立）（§4-4）
@@ -32,8 +31,7 @@ window.Kakoi = window.Kakoi || {};
     b.dataset.who = who; b.dataset.kind = 'tactic'; b.dataset.id = t.id;
     b.style.setProperty('--n', [...(t.short || t.name)].length);   // 名前の文字数（cqw フォント用）
     if (K.tacticNav.isRare(t)) b.dataset.rare = 'true';
-    b.innerHTML = `${K.tacticGlyph(t)}` +
-      `<span class="nm">${esc(t.short || t.name)}</span>` +
+    b.innerHTML = `<span class="nm">${esc(t.short || t.name)}</span>` +
       `<span class="fb">${esc(fileBadge(t, flip))}</span>` +
       `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-csc"></span></span>`;
     return b;
