@@ -633,18 +633,16 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.apply || !K.constra
     ]) && p.selected === 'me.castle' && p.view === 'board',
     'hash-link:新形式 k=/sel= の読み取り', jstr(p));
   }
-  // 旧形式 → 新しい状態への変換
+  // 旧形式 → 新しい状態への変換（囲い・戦法は実ビューに復帰したのでタブを直接開く）
   {
     const p = HL.parseHash('v=castle&c=yagura&t=bougin&cf=mino');
-    ok(jstr(p.constraints) === jstr([{ who: 'me', kind: 'castle', id: 'yagura' }])
-      && p.selected === 'me.castle' && p.view === 'board' && p.clusterFamily === 'mino',
-      'hash-link:旧 castle → me.castle 制約', jstr(p));
+    ok(p.view === 'castle' && p.castleId === 'yagura' && p.clusterFamily === 'mino',
+      'hash-link:旧 castle → 囲いタブ', jstr(p));
   }
   {
     const p = HL.parseHash('v=tactic&t=bougin&c=funa');
-    ok(jstr(p.constraints) === jstr([{ who: 'me', kind: 'tactic', id: 'bougin' }])
-      && p.selected === 'me.tactic' && p.view === 'board',
-      'hash-link:旧 tactic → me.tactic 制約', jstr(p));
+    ok(p.view === 'tactic' && p.tacticId === 'bougin',
+      'hash-link:旧 tactic → 戦法タブ', jstr(p));
   }
   {
     // pick 順（'tcs' = tactic→castle→strategy）が制約の並び順になる。mw=0 は showThreat:false

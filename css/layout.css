@@ -76,11 +76,20 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
 
 /* ===== 画面ごとのパネル（view-pane）: 表示中の画面のものだけ、枠なし(contents)で親のグリッドに参加 ===== */
 body .view-pane { display:none; }
+body[data-view="castle"] .view-pane[data-view~="castle"],
+body[data-view="tactic"] .view-pane[data-view~="tactic"],
 body[data-view="board"] .view-pane[data-view~="board"],
 body[data-view="cluster"] .view-pane[data-view~="cluster"] { display:contents; }
 /* 親のグリッド全体を使う画面（一覧・解説・分類マップ）は箱として全行にまたがる */
+body[data-view="castle"] .view-pane.pane-fill[data-view~="castle"],
+body[data-view="tactic"] .view-pane.pane-fill[data-view~="tactic"],
 body[data-view="board"] .view-pane.pane-fill[data-view~="board"],
 body[data-view="cluster"] .view-pane.pane-fill[data-view~="cluster"] { display:flex; flex-direction:column; grid-row:1 / -1; min-height:0; overflow:auto; }
+/* 囲い・戦法タブの中央: 見出し→盤→足元の3行（帯と制約バーは対局図だけの部品） */
+body[data-view="castle"] .stage, body[data-view="tactic"] .stage { grid-template-rows:auto minmax(0,1fr) auto; }
+body[data-view="castle"] .stage .stage-f, body[data-view="tactic"] .stage .stage-f { height:auto; min-height:var(--foot-h); }
+/* 持ち駒の列は対局図だけの部品（囲い・戦法では .stage-f の .hand に出す） */
+body:not([data-view="board"]) .handcol { display:none; }
 /* 中央: 相手の帯 → 盤 → 自分の帯 → 足元。行は常に4本確保し、相手がいないときは
    自分の帯が盤の上・相手の帯は盤の下の幽霊行（＋相手を加える）に回る。
    帯の有無で盤の矩形が変わらないようにするための固定（F1） */
