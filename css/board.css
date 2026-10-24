@@ -1,54 +1,52 @@
-/* 盤と駒: 榧の柾目と太刀盛りの線、利き・ハイライト、先手後手の駒・ミニ盤 */
+/* 盤と駒: 本榧の盤（縁まで続く柾目・光の側の艶・漆を盛った太刀盛りの線）と黄楊の彫駒（design-refs-board/kaya.html）。
+   光は左上に固定（--lx/--ly/--len。js/ui/kaya-art.js の LX/LY/LEN と同じ値） */
 
 .boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
-/* 盤の外枠: 座標ラベルと盤の間に余白を置く。持ち駒列の幅（左右24pxずつ）は
-   .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
-.boardwrap { --coord-h:28px; --coord-w:28px; --coord-gap:8px;
-             --wood-1:#f5d996; --wood-2:#dba85e; --wood-line:rgba(62,37,12,.7);
-             --wood-grain:rgba(96,57,16,.065); --wood-glint:rgba(255,247,218,.3);
-             --wood-glow:rgba(255,250,231,.68); --wood-frame:#a27439; --wood-highlight:rgba(255,246,212,.42);
-             --wood-hoshi:#63431f; --wood-mark:#604522;
-             --piece-1:#f4dda9; --piece-edge:rgba(80,48,15,.72);
+/* 盤の外枠: 盤は罫の外に縁（--bm）を持ち、座標ラベルはその外に置く。#board の矩形は罫の内側だけ
+   （重ね表示・駒の座標はこの矩形の割合で決まる）。縁の分は boardwrap の padding と gap で取る。
+   持ち駒列の幅（左右24pxずつ）は .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
+.boardwrap { --coord-h:28px; --coord-w:28px; --coord-gap:8px; --bm:18px;
+             --lx:-.55; --ly:-.8; --len:1.172;
+             --wood-1:#f6d99a; --wood-mid:#e9be70; --wood-2:#d9a659; --wood-ink:#1f1208; --wood-line:rgba(31,18,8,.92);
+             --wood-glow:rgba(255,250,235,.85); --wood-grain-op:1; --wood-mark:#604522;
+             --piece-1:#f6e2ad; --piece-2:#ebcb88; --piece-edge:rgba(80,48,15,.72);
              display:grid; position:relative; grid-template-columns:minmax(0,1fr) var(--coord-w);
-             grid-template-rows:var(--coord-h) minmax(0,auto); gap:var(--coord-gap);
+             grid-template-rows:var(--coord-h) minmax(0,auto); gap:calc(var(--coord-gap) + var(--bm));
+             padding:0 0 var(--bm) var(--bm);
              width:min(calc(100cqw - 48px),
-               calc((100cqh - var(--coord-h) - var(--coord-gap)) * 9 / 9.6 + var(--coord-w) + var(--coord-gap)));
+               calc((100cqh - var(--coord-h) - var(--coord-gap) - var(--bm) * 2) * 9 / 9.6 + var(--coord-w) + var(--coord-gap) + var(--bm) * 2));
              transform:translateY(-13px); }
 :root[data-theme="dark"] .boardwrap {
-  --wood-1:#c8a56c; --wood-2:#99703c; --wood-line:rgba(48,30,11,.8);
-  --wood-grain:rgba(55,34,12,.12); --wood-glint:rgba(255,239,195,.18);
-  --wood-glow:rgba(255,241,198,.38); --wood-frame:#76542a; --wood-highlight:rgba(255,239,195,.22);
-  --wood-hoshi:#493015; --wood-mark:#4b351a; --piece-1:#eccd94; --piece-edge:rgba(62,38,15,.84);
+  --wood-1:#d6b67a; --wood-mid:#c49a58; --wood-2:#a87c42; --wood-ink:#1a0f06;
+  --wood-glow:rgba(255,241,205,.55); --wood-grain-op:.85; --wood-mark:#4b351a;
+  --piece-1:#ecd29c; --piece-2:#dbb874;
 }
 .flabels { display:grid; grid-template-columns:repeat(9,1fr); font:500 16px var(--font-d); color:var(--wood-mark); text-align:center; align-items:end; padding-bottom:4px; }
 .rlabels { display:grid; grid-template-rows:repeat(9,1fr); font:16px var(--font-d); color:var(--wood-mark); align-items:center; justify-items:center; }
+:root[data-theme="dark"] .flabels, :root[data-theme="dark"] .rlabels { color:var(--muted); }
 
-.board { position:relative; aspect-ratio:9/9.6; overflow:hidden;
-         isolation:isolate;
-         background:
-           radial-gradient(circle at 33.333% 33.333%, var(--wood-hoshi) 0 2px, transparent 2.8px),
-           radial-gradient(circle at 66.667% 33.333%, var(--wood-hoshi) 0 2px, transparent 2.8px),
-           radial-gradient(circle at 33.333% 66.667%, var(--wood-hoshi) 0 2px, transparent 2.8px),
-           radial-gradient(circle at 66.667% 66.667%, var(--wood-hoshi) 0 2px, transparent 2.8px),
-           radial-gradient(90% 70% at 30% 14%, var(--wood-glow), transparent 72%),
-           repeating-linear-gradient(90deg, transparent 0 11px, var(--wood-grain) 12px 13px, transparent 14px 31px),
-           repeating-linear-gradient(90deg, transparent 0 38px, var(--wood-glint) 39px 40px, transparent 41px 67px),
-           linear-gradient(170deg,var(--wood-1),var(--wood-2));
-         box-shadow:0 0 0 1px var(--wood-line), 0 0 0 4px var(--wood-frame),
-                    0 0 0 5px var(--wood-line), 0 10px 22px rgba(45,27,7,.28),
-                    inset 0 0 0 1px var(--wood-highlight); }
-.board::before { content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
-                 background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='360'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.16 .0035' numOctaves='3' seed='11' result='n'/%3E%3CfeColorMatrix in='n' type='matrix' values='0 0 0 0 .59 0 0 0 0 .36 0 0 0 0 .12 1.6 0 0 0 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='white' filter='url(%23g)'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-                 mix-blend-mode:multiply; opacity:.38; }
-:root[data-theme="dark"] .board::before { opacity:.28; }
+/* 盤: 地（グラデーション・柾目・艶）は罫の外の縁まで広げ、盤の厚みは光の反対へ落ちる影で出す。
+   地の層は z-index:-1（isolation の内側なので、マス・駒・重ね表示の下で盤より上） */
+.board { position:relative; aspect-ratio:9/9.6; isolation:isolate; }
+.board::before, .board::after, .board-grain { content:""; position:absolute; inset:calc(var(--bm) * -1); z-index:-1; pointer-events:none; border-radius:2px; }
+.board::before { background:linear-gradient(145.5deg, var(--wood-1), var(--wood-mid) 55%, var(--wood-2));
+                 box-shadow:0 0 0 1px rgba(60,35,10,.32),
+                            calc(var(--lx) * -9px) calc(var(--ly) * -9px) 18px rgba(45,27,7,.34),
+                            calc(var(--lx) * -2px) calc(var(--ly) * -2px) 3px rgba(45,27,7,.3),
+                            inset calc(var(--lx) * 1px) calc(var(--ly) * 1px) 0 rgba(255,246,212,.5); }
+.board-grain { width:calc(100% + var(--bm) * 2); height:calc(100% + var(--bm) * 2); mix-blend-mode:multiply; opacity:var(--wood-grain-op); }
+/* 光源の側の艶だまり */
+.board::after { background:radial-gradient(70% 55% at calc(50% + var(--lx) * 48%) calc(50% + var(--ly) * 48%), var(--wood-glow), transparent 70%);
+                mix-blend-mode:soft-light; }
+/* 太刀盛り: 漆の線は盛り上がって光る。光の側に細い照り、反対に影 */
+.board-lines { position:absolute; inset:0; width:100%; height:100%; z-index:0; overflow:visible; pointer-events:none;
+               filter:drop-shadow(calc(var(--lx) * -1.2px) calc(var(--ly) * -1.2px) .6px rgba(60,30,0,.45))
+                      drop-shadow(calc(var(--lx) * .8px) calc(var(--ly) * .8px) 0 rgba(255,236,190,.55)); }
+.board-rule { fill:none; stroke:var(--wood-line); stroke-width:1.6px; stroke-linecap:square; vector-effect:non-scaling-stroke; }
 
 .squares { position:absolute; inset:0; display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); }
 
-.sq { position:relative; z-index:1; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line);
-      box-shadow:inset 1px 0 0 var(--wood-highlight), inset 0 1px 0 var(--wood-highlight);
-      display:flex; align-items:center; justify-content:center; container-type:size; }
-.sq:nth-child(9n) { border-right:0; }
-.sq:nth-child(n+73) { border-bottom:0; }
+.sq { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; container-type:size; }
 
 /* 利きの数 */
 .sq .h { position:absolute; inset:0; background:rgba(var(--heat), calc(var(--h) * .16)); animation:fade .3s var(--ease); }
@@ -62,27 +60,19 @@
 .sq[data-tone="bad"]::before   { box-shadow:inset 0 0 0 3px var(--bad);  background:color-mix(in srgb, var(--bad) 18%, transparent); }
 @keyframes pulse { 50% { opacity:.55; } }
 
-/* 立体駒レイヤ（既定）: マス DOM と重ね表示 SVG の間に挟む盤全面の canvas。盤は表示専用なので操作は通さない */
-.pieces3d { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+/* 立体駒レイヤ（既定）: マス DOM と重ね表示 SVG の間に挟む canvas。端の駒の影が切れないよう盤の縁まで広げる。
+   盤は表示専用なので操作は通さない */
+.pieces3d { position:absolute; inset:calc(var(--bm) * -1); width:calc(100% + var(--bm) * 2); height:calc(100% + var(--bm) * 2);
+            z-index:2; pointer-events:none; }
 
-/* 駒: ?flat / WebGL 非対応時の DOM レイヤ。黄楊の木地に柾目と彫り字の陰影を添える */
-.pc { width:84%; height:90%; position:relative; z-index:1;
-      filter:drop-shadow(0 1px 0 rgba(60,40,10,.3)) drop-shadow(0 3px 2px rgba(45,26,7,.18));
+/* 駒: ?flat / WebGL 非対応時の DOM レイヤ。kayaArt が焼いた彫駒の絵を置き、盤へ2段の影を落とす
+   （接地の濃い影 + 光の反対へ伸びる柔らかい影。px はマス高 57.6px 基準を cqh に換算） */
+.pc { height:calc(100cqh * var(--k, .9)); aspect-ratio:88/100; position:relative; z-index:1;
+      filter:drop-shadow(calc(var(--lx) * var(--len) * -2.78cqh) calc(var(--ly) * var(--len) * -2.78cqh) 1.2cqh rgba(45,22,0,.55))
+             drop-shadow(calc(var(--lx) * var(--len) * -10.4cqh) calc(var(--ly) * var(--len) * -10.4cqh) 6cqh rgba(45,22,0,.32));
       transition:opacity .3s var(--ease); }
-.pc i { position:absolute; inset:0; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
-        background:var(--piece-edge); font-style:normal; }
-.pc i::before { content:""; position:absolute; inset:1px; clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%);
-        background:
-          linear-gradient(145deg, rgba(255,255,255,.42), transparent 48%, rgba(128,83,30,.11)),
-          repeating-linear-gradient(90deg, transparent 0 9px, rgba(132,89,34,.1) 10px 11px, transparent 12px 25px),
-          var(--piece-1); }
-.pc i span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-top:12%;
-            font:700 min(58cqh,60cqw)/1 var(--font-d); color:var(--ink);
-            text-shadow:.8px 1px .7px rgba(48,28,8,.42), -.45px -.45px 0 rgba(255,249,230,.72); }
-.pc.core i span { color:var(--core); }
+.pc img { display:block; width:100%; height:100%; user-select:none; }
 .pc.off { opacity:.28; filter:none; }
-.pc.gote { transform:rotate(180deg); }
-.pc.gote i span { color:var(--gote-ink); }
 
 /* ミニ盤（左のカード） */
 .mini-bg { fill:url(#wood); }
@@ -124,7 +114,8 @@
 /* 狭い画面: 高さで収める必要がない（ページ全体がスクロールする）ので、盤は幅いっぱいに。
    高さ方向の container 指定を外して boardarea が内容の高さを取れるようにする（cqw は残る） */
 @media (max-width:979px) {
-  .boardwrap { --coord-h:24px; --coord-w:17px; --coord-gap:5px; }
+  /* 縁は細く（5px）し、座標ラベルとの間（--coord-gap）に重ねて描く。盤の幅は縁の分を削らない（≥300px を保つ） */
+  .boardwrap { --coord-h:24px; --coord-w:17px; --coord-gap:5px; --bm:5px; padding:0; gap:var(--coord-gap); }
   .boardarea { container-type:inline-size; align-items:center; }
   /* 段ラベルを細め（14px）にし、持ち駒列の margin を22pxずつに詰める */
   .boardwrap { width:calc(100cqw - 44px); transform:none; }

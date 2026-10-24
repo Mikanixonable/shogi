@@ -7,7 +7,7 @@ Kakoi.MANIFEST = (() => {
   const logic = ['js/core/lookup.js', 'js/core/lru.js', 'js/core/html.js', 'js/core/position.js', 'js/core/defaults.js', 'js/core/matchup.js', 'js/core/compose.js', 'js/core/compat.js', 'js/core/constraints.js', 'js/core/board-model.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/validate.js', 'js/core/piece-match.js'];
   const ui = [
     'js/ui/store.js', 'js/ui/segmented.js', 'js/ui/mini-board.js', 'js/ui/family-glyph.js', 'js/ui/cites.js',
-    'js/ui/piece-layer-dom.js', 'js/ui/piece-layer-3d.js', 'js/ui/board-view.js', 'js/ui/overlay-view.js',
+    'js/ui/kaya-art.js', 'js/ui/piece-layer-dom.js', 'js/ui/piece-layer-3d.js', 'js/ui/board-view.js', 'js/ui/overlay-view.js',
     'js/ui/toolbar-view.js',
     'js/ui/detail-sections.js', 'js/ui/board-detail-view.js',
     'js/ui/tactic-nav.js',
