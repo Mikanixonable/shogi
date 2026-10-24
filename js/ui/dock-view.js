@@ -235,7 +235,10 @@ window.Kakoi = window.Kakoi || {};
       const sel = K.constraints.parseSel(state.selected) || { who: 'me', kind: 'castle' };
       const showOpp = !!state.showOpp;
       const who = sel.who === 'opp' && !showOpp ? 'me' : sel.who;
-      const kind = KINDS.includes(sel.kind) ? sel.kind : 'castle';
+      // 選択層に対応するタブを開く。戦型（スロットを持たない情報の選択）のときは
+      // 最後に見ていた層タブの一覧をそのままにする
+      const kind = KINDS.includes(sel.kind) ? sel.kind
+        : (KINDS.includes(state.dockTab) ? state.dockTab : 'castle');
       this.who = who; this.kind = kind;
       // 側が切り替わったときだけ、押した駒のいる向きから面が入る（相手=上・自分=下）
       if (this._whoPrev && this._whoPrev !== who &&

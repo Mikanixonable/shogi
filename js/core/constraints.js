@@ -3,6 +3,7 @@
 // 選んだものを他の層が勝手に差し替えることはしない: 両立しない組み合わせはそのまま残し、
 // conflicts で理由を示し、suggest で両立する候補を返す（選ぶかどうかは使う側が決める）。
 // 戦略（居飛車／振り飛車）は制約にしない: 戦法（無ければ囲い）から導く。
+// ただし選択（'who.strategy'、右ドックでその戦型の情報を見る層）としては受ける。
 // 既定値の解決規則の権威は core/defaults.js、層のスキーマ定数（KINDS/FIELD/WHOS）は
 // core/lookup.js が唯一の定義。両立の判定は compat.judge と同じものを使う。
 window.Kakoi = window.Kakoi || {};
@@ -169,7 +170,8 @@ window.Kakoi = window.Kakoi || {};
 
   // ---------- 選択状態の文字列表現（'who.kind'） ----------
   // dock-view / board-screen / board-detail-view / constraint-mode / hash-link で共有する（S2）
-  const SEL_RE = /^(me|opp)\.(tactic|castle)$/;
+  // strategy はスロットを持たない（sides() が導く値）が、選択はできる
+  const SEL_RE = /^(me|opp)\.(tactic|castle|strategy)$/;
   /** 'me.castle' → {who:'me', kind:'castle'}。形式が違えば null */
   const parseSel = s => {
     const m = SEL_RE.exec(String(s || ''));

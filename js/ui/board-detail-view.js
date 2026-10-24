@@ -4,6 +4,8 @@
 //     ＋相性のよい囲い（◎/○・いまの囲い）＋相手との相性の相性（judge の vs 軸）
 //   - *.castle: 囲いの詳細（ペンタグラム・#タグ・発展・長所短所・攻め筋）。相手がいれば
 //     ペンタグラムに戦型の重みを重ね、fitness と効いている軸を表示する
+//   - *.strategy: 戦型の詳細（説明・導出元・その戦型の既定の戦法/囲いと囲い一覧）。
+//     戦型はスロットを持たない導出値だが、制約条件の情報として右ドックで見られる
 //   - 選んだ層が他の層と両立しないとき: 先頭近くに理由と、直す候補（1クリックで差し替え）
 //   - 共通の末尾: 両軍の接触 → 出典
 // render は self-contained: データは Kakoi.*（CASTLES/TACTICS/…）と呼び出し側の共有
@@ -16,7 +18,7 @@ window.Kakoi = window.Kakoi || {};
   const bindCites = (K.cites && K.cites.bind) || (() => {});   // ui/cites.js（S6 で core から移動）
   const Sec = () => K.detailSections; // 読み込み順に依存しないよう呼び出し時に引く
 
-  const { LAYER_JA, findTactic, findCastle, tacticFamilyOf, castleFamilyOf } = K.lookup;
+  const { LAYER_JA, FIELD, findTactic, findCastle, tacticFamilyOf, castleFamilyOf, castleSides, strategyLabel } = K.lookup;
   const WHO_JA = { me: '自分（先手・▲）', opp: '相手（後手・△）' };
   const SHORT_WHO = { me: '自分', opp: '相手' };
 
@@ -93,7 +95,8 @@ window.Kakoi = window.Kakoi || {};
       this._sel = norm;
       const st = p.st !== undefined ? p.st : S[who];
       const citer = makeCiter();
-      const b = kind === 'tactic' ? this._tactic(norm, st, S, p.showOpp, citer, p)
+      const b = sel.kind === 'strategy' ? this._strategy(sel, st, S, p.showOpp, citer, p)
+        : kind === 'tactic' ? this._tactic(norm, st, S, p.showOpp, citer, p)
         : this._castle(norm, st, S, p.showOpp, p.attackId, citer, p);
       // 共通の末尾: 両軍の接触 → 出典。接触は呼び出し側の導出（merge 済み）を受け取る（S5: 再計算しない）
       this.el.innerHTML = [b.body, Sec().contacts(p.contacts, citer), Sec().sources(b.sources, citer)]
@@ -216,6 +219,56 @@ window.Kakoi = window.Kakoi || {};
           citer) : '',
       ].filter(Boolean).join('');
       return { body, sources };
+    }
+
+    // ---------- *.strategy ----------
+    // 戦型はスロットを持たない導出値（戦法の系統→囲いの側→既定の居飛車）。説明と、
+    // この戦型を実際の制約として立てる入口（既定の戦法・囲い／この戦型の囲い一覧）を出す
+    _strategy(sel, st, S, showOpp, citer, p) {
+      const s = K.STRATEGIES[st.strategy];
+      const name = s ? s.label : strategyLabel(st.strategy);
+      const other = this._other(sel, S, showOpp);
+      const t = findTactic(st.tacticId), c = findCastle(st.castleId);
+      const imp = st.implied || {};
+      // 導出元（constraints の strategyOf と同じ順序）: 明示した戦法の系統→明示した囲いの側→既定
+      const from = t && !imp.tactic ? `戦法「${t.name}」の系統から導いています`
+        : c && !imp.castle ? `囲い「${c.name}」の側から導いています`
+        : '戦法も囲いも未選択のため、既定になっています';
+      let note = `戦型は制約スロットを持たず、戦法（無ければ囲い）から導きます。いまは${from}。`;
+      if (c && !imp.castle && !castleSides(c).includes(st.strategy)) {
+        note += `なお囲い「${c.name}」はこの戦型のものではありません（制約バーの ✕ を参照）。`;
+      }
+      // 既定の戦法・囲い: 押すとその層を制約にする（既定囲いは相手の戦略で振り分けられる）
+      const oppStrategy = other ? other.strategy : null;
+      const defs = [
+        { kind: 'tactic', id: K.defaults.defaultTacticId(st.strategy) },
+        { kind: 'castle', id: K.defaults.defaultCastleId(st.strategy, oppStrategy) },
+      ].filter(d => d.id);
+      const defChips = `<div class="vchips">` + defs.map(d => {
+        const it = d.kind === 'tactic' ? findTactic(d.id) : findCastle(d.id);
+        return `<button class="vchip" data-act="set" data-kind="${d.kind}" data-id="${esc(d.id)}"` +
+          ` aria-pressed="${st[FIELD[d.kind]] === d.id}">${esc(LAYER_JA[d.kind])}：${esc(it ? it.name : d.id)}</button>`;
+      }).join('') + `</div>`;
+      // この戦型の囲い（系統順。押すとその囲いを制約にする）
+      const castles = this.h.repo.ofSideByFamily(st.strategy);
+      const castleChips = `<div class="vchips">` + castles.map(x =>
+        `<button class="vchip" data-act="set" data-kind="castle" data-id="${esc(x.id)}"` +
+        ` aria-pressed="${st.castleId === x.id}">${esc(x.name)}</button>`).join('') + `</div>`;
+      // もう一方の戦型への切り替え方（例としてその戦型の既定戦法を挙げる）
+      const otherSide = st.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
+      const otherStrat = K.STRATEGIES[otherSide];
+      const otherTactic = otherStrat && findTactic(otherStrat.defaultTactic);
+      const body = [
+        this._head(sel, name || '（不明）'),
+        this._conflict(sel, p, citer),
+        Sec().note(note, citer),
+        s && s.desc ? Sec().desc(s.desc, citer) : '',
+        defs.length ? Sec().sec('この戦型の既定', '押すとその層を制約にする', defChips) : '',
+        castles.length ? Sec().sec('この戦型の囲い', '押すとその囲いを制約にする', castleChips) : '',
+        otherTactic ? Sec().note(`「${esc(otherStrat.label)}」にするには、左ドックでその戦型の戦法・囲いを選びます（例：${esc(otherTactic.name)}）。`) : '',
+        other && p.threat ? Sec().note(`相手と合わせた戦型は「${esc(p.threat.label)}」です（帯の間の #${esc(p.threat.label)} と同じ区分）。`) : '',
+      ].filter(Boolean).join('');
+      return { body, sources: [] };
     }
 
     // 選択中の側と向かい合う側（相手を表示していないとき、自分の向かいは無い）

@@ -12,7 +12,8 @@ window.Kakoi = window.Kakoi || {};
   const castleFamilyOf = c => c ? (Kakoi.CASTLE_FAMILIES || []).find(f => f && f.id === c.family) || null : null;
 
   // 層の日本語名（constraint-mode / board-detail-view / constraint-bar / dock-view / detail-sections で共通）
-  const LAYER_JA = { tactic: '戦法', castle: '囲い' };
+  // strategy はスロットを持たないが選択はできる（右ドックでその戦型の情報を見る層）
+  const LAYER_JA = { tactic: '戦法', castle: '囲い', strategy: '戦型' };
   // 制約モデルのスキーマ: 層の既定順・側・層 → 実効値（sides() の戻り値）のフィールド名
   const KINDS = ['tactic', 'castle'];
   const WHOS = ['me', 'opp'];

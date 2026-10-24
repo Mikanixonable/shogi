@@ -36,7 +36,6 @@
 .cchip .cchip-b { display:flex; min-width:0; align-items:center; gap:5px; padding:0 2px 0 0;
                   border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
 .cchip .cchip-b, .cchip-x { position:relative; z-index:3; }
-.cchip[data-kind="strategy"] .cchip-b { cursor:default; }
 .cchip .cchip-b:hover .cchip-nm { color:var(--accent); }
 .cchip-type { display:grid; flex:none; place-items:center; min-width:32px; height:24px; padding:0 3px;
               border-radius:999px; color:var(--chip-ink); font-size:10px; font-weight:800; letter-spacing:0; }

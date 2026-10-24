@@ -83,12 +83,14 @@ window.Kakoi = window.Kakoi || {};
       const before = this.store.state;
       this.store.set({
         selected: `${who}.${kind}`,
-        dockTab: kind,
+        // 戦型は左ドックにタブが無い（情報は右ドック）。dockTab は層タブの記憶なのでそのままにする
+        ...(K.constraints.KINDS.includes(kind) ? { dockTab: kind } : {}),
         ...(who === 'opp' && !before.showOpp ? { showOpp: true } : {}),
       });
       // 中くらいの幅では右ドックはドロワー。制約チップを選んだら開く（§4-6）
       this._openDrawer();
-      // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る）
+      // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る。
+      // 戦型はスロットを持たないので reveal は項目を持たず no-op になる）
       const s = this.store.state;
       this.dock.reveal(kind, K.constraints.sides(s.slots, s.showOpp)[who]);
     }
