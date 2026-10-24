@@ -279,6 +279,23 @@ async function sweepBoard(page, expect) {
         : parseFloat(getComputedStyle(c, '::after').width) === 15)
       && Math.abs(chips[0].getBoundingClientRect().top - chips[2].getBoundingClientRect().top) < 1;
   });
+  // 戦型チップ（先頭）: スロットではないが、押すと右ドックにその戦型の情報が出る。
+  // 選択だけなので履歴は積まず、sel=ms がハッシュに乗る
+  await page.click('#cbarMe .cchip-b[data-kind="strategy"]'); await wait(300);
+  r.strategySel = await page.evaluate(() => {
+    const st = __kakoi.store.state;
+    const d = document.querySelector('#detail');
+    const chip = document.querySelector('#cbarMe .cchip[data-kind="strategy"]');
+    const nm = chip.querySelector('.cchip-nm').textContent;
+    return st.selected === 'me.strategy'
+      && chip.dataset.sel === 'true'
+      && chip.querySelector('.cchip-b').tagName === 'BUTTON'
+      && (d.querySelector('.bd-who') || {}).textContent.includes('自分（先手・▲）の戦型')
+      && (d.querySelector('.bd-t') || {}).textContent.includes(nm)
+      && /スロットを持たず/.test(d.textContent)
+      && d.querySelectorAll('.vchip[data-act="set"]').length > 0
+      && /sel=ms/.test(location.hash);
+  });
   // 別のタイルを押す → 自分の戦法が変わる（囲いは自動では変わらない）
   const tA = r.t2.slots.me.tactic, cA = r.t2.slots.me.castle;
   await page.evaluate(() => {
@@ -429,6 +446,19 @@ async function sweepBoard(page, expect) {
     const m = document.querySelector('#cbarMe .cchip');
     return !!o && !!m && o.getBoundingClientRect().height < m.getBoundingClientRect().height;
   });
+  // 相手側の戦型チップも押せる: 右ドックに相手の戦型の情報が出る（sel=os がハッシュに乗る）
+  await page.click('#cbarOpp .cchip-b[data-kind="strategy"]'); await wait(300);
+  r.oppStrategySel = await page.evaluate(() => {
+    const st = __kakoi.store.state;
+    const d = document.querySelector('#detail');
+    const chip = document.querySelector('#cbarOpp .cchip[data-kind="strategy"]');
+    return st.selected === 'opp.strategy'
+      && chip.dataset.sel === 'true'
+      && (d.querySelector('.bd-who') || {}).textContent.includes('相手（後手・△）の戦型')
+      && (d.querySelector('.bd-t') || {}).textContent.includes(chip.querySelector('.cchip-nm').textContent)
+      && /合わせた戦型/.test(d.textContent)   // 相手がいるときは組み合わせの戦型も出る
+      && /sel=os/.test(location.hash);
+  });
   await page.click(`${DOCK} .dk-pc-x`);
   r.oppOffAnimation = await page.evaluate(() => document.querySelector('#bandOpp').getAnimations()
     .some(animation => animation.playState === 'running'));
@@ -542,6 +572,7 @@ async function sweepBoard(page, expect) {
     const h0 = (await snap(page)).hist;
     await page.click('#cbarMe .cchip-b[data-kind="castle"]'); await wait(250);
     await page.click('#cbarMe .cchip-b[data-kind="tactic"]'); await wait(250);
+    await page.click('#cbarMe .cchip-b[data-kind="strategy"]'); await wait(250);
     r.selNoPush = (await snap(page)).hist === h0;
   }
 
@@ -752,6 +783,8 @@ async function main() {
       ok(b.resetInMeBar, '丸いリセット×を自分の制約行の右端に表示', '');
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
+      ok(b.strategySel, '戦型チップを押すと右ドックに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
+      ok(b.oppStrategySel, '相手側の戦型チップも右ドックに出る（相手の面・組み合わせの戦型つき）', '');
       ok(b.dockPick, 'ドックの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
       ok(b.variantStyle, '派生戦法は分岐チップで常に表示され、表示トグルは無い', `${b.vars}件`);
       ok(b.fileHdr, '戦法グリッドの上に筋の番号（９…１）', '');
