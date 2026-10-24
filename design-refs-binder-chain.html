@@ -3,28 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>バインダーと連結チップ</title>
+<title>駒の見出しと噛み合う制約</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
 <script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
 <style>
-/* 左ドックのバインダー（自分／相手・相手の表示 ON/OFF）と、制約バーの連結チップ（戦型→囲い→戦法）の作り直し案。
-   トークンは css/theme.css「墨と余白」と同じ。各案はクリック（C はドラッグも）で動く。
-   共通の方針:
-   - 「どの面を見るか（選択）」と「相手を盤に出すか（表示）」を別の手つきに分ける
-   - 連結の可否（両立／両立しない）を、継ぎ目の形そのものと、帯の下の1行の理由で読ませる（title に隠さない）
-   - 状態が変わる瞬間に1回だけ、物の動き（打つ・裏返す・嵌まる・吊る）で手応えを返す */
+/* 左ドックの「駒の見出し」バインダー（design-refs-binder.html の E 案を作り直したもの）と、
+   盤の上の制約バー（ジグソーを土台に、相手と自分の2行・戦型を中心に囲い／戦法が左右から嵌まる形）の案。
+   トークンは css/theme.css「墨と余白」と同じ。種類の色: 戦型=墨・囲い=朱・戦法=藍（dev.md の「囲いは赤、戦術は青」）。
+   バーのピースは SVG で描く（凸凹の輪郭を clip-path では縁取れないため）。どの案もクリックで動く */
 :root {
   --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
   --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
   --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
-  --good:#4a6b3f; --bad:#c8371f;
+  --good:#4a7a3a; --bad:#c8371f;
   --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
   --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17;
   --gote-ink:#33507a; --gote-soft:rgba(51,80,122,.06);
-  --t-silver:#33507a;
+  --k-str:#1b1a17; --k-castle:#b8361f; --k-tactic:#2a5c94;
   --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
   --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
   --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
@@ -36,12 +34,12 @@
 :root[data-theme="dark"] {
   --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
   --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
-  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
-  --good:#9cbf8a; --bad:#e2563b;
+  --accent:#e2563b; --accent-2:#b89a6c; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cc78a; --bad:#ec6a50;
   --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
   --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --ink:#1b1a17;
   --gote-ink:#8ea6cf; --gote-soft:rgba(142,166,207,.08);
-  --t-silver:#8ea6cf;
+  --k-str:#ece6da; --k-castle:#ec7358; --k-tactic:#86aee0;
   color-scheme:dark;
 }
 * { box-sizing:border-box; }
@@ -66,32 +64,39 @@ button { font:inherit; color:inherit; }
 .intro { margin:28px auto 0; color:var(--fg2); font-size:13.5px; }
 .intro h2 { margin:0 0 6px; font:800 26px/1.35 var(--font-d); letter-spacing:.05em; color:var(--fg); }
 .intro ul { margin:8px 0 0; padding-left:1.3em; }
-.part { margin-top:48px; padding-top:20px; border-top:2px solid var(--fg); scroll-margin-top:60px; }
+.intro li + li { margin-top:3px; }
+.part { margin-top:52px; padding-top:20px; border-top:2px solid var(--fg); scroll-margin-top:60px; }
 .part > h2 { margin:0; font:800 22px/1.3 var(--font-d); letter-spacing:.06em; }
-.part > p { margin:4px 0 0; color:var(--fg2); font-size:13.5px; }
-section.plan { padding:30px 0 30px; border-bottom:1px solid var(--line); scroll-margin-top:60px; }
+.part > p { margin:4px 0 0; color:var(--fg2); font-size:13.5px; max-width:820px; }
+section.plan { padding:30px 0; border-bottom:1px solid var(--line); scroll-margin-top:60px; }
 section.plan h3 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:700 20px/1.3 var(--font-d); letter-spacing:.06em; }
 section.plan h3 .no { font:600 30px/1 var(--font-n); color:var(--accent); }
-section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-width:760px; }
+section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-width:800px; }
 .notes { display:grid; grid-template-columns:repeat(3,1fr); gap:6px 22px; margin-top:20px; font-size:12.5px; color:var(--fg2); }
-.bstage .notes { grid-template-columns:1fr; margin-top:0; gap:12px; }
 .notes h4 { margin:0 0 2px; font-size:11.5px; letter-spacing:.14em; color:var(--muted); }
 .notes ul { margin:0; padding-left:1.15em; }
 .try { margin:10px 0 0; font-size:12px; color:var(--muted); }
-.try kbd { font:600 11px/1 var(--font-b); padding:1px 5px; border:1px solid var(--line-2); border-radius:3px; }
+kbd { font:600 11px/1 var(--font-b); padding:1px 5px; border:1px solid var(--line-2); border-radius:3px; }
+.seg { display:inline-flex; gap:0; border:1px solid var(--line-2); border-radius:999px; padding:2px; }
+.seg button { border:0; background:none; padding:3px 12px; border-radius:999px; cursor:pointer; font-size:12px; color:var(--fg2); }
+.seg button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
 
 /* ============================================================
-   Part 1 共通: ドックの面（モック）＋バインダー＋盤の切れ端
+   Ⅰ. 駒の見出し（バインダー）
    ============================================================ */
-.bstage { display:grid; grid-template-columns:250px 260px minmax(0,1fr); column-gap:64px; align-items:start; }
-.dock { position:relative; height:380px; }
+.bstage { display:grid; grid-template-columns:240px 300px minmax(0,1fr); column-gap:76px; align-items:start; margin-top:14px; }
+.dock { position:relative; height:400px; }
 .page { position:relative; z-index:2; height:100%; display:flex; flex-direction:column; gap:8px; padding:12px 14px;
         background:var(--bg); border-right:1px solid var(--line-2); transition:background .3s; }
 .demo[data-who="opp"] .page { background:linear-gradient(var(--gote-soft),var(--gote-soft)), var(--bg); }
+/* 開いている側の半分だけ、頁の右端に色の線を通す（どの面を見ているか） */
+.page::after { content:""; position:absolute; right:-1.5px; top:50%; width:3px; height:50%; background:var(--fg);
+               transition:top .35s var(--ease), background .3s; }
+.demo[data-who="opp"] .page::after { top:0; background:var(--gote-ink); }
 .pg-h { display:flex; align-items:baseline; gap:8px; padding-bottom:5px; border-bottom:1px solid var(--line); }
-.pg-h b { font:800 20px/1.2 var(--font-d); letter-spacing:.1em; }
-.pg-h small { color:var(--muted); font-size:11px; letter-spacing:.08em; }
+.pg-h b { font:800 20px/1.2 var(--font-d); letter-spacing:.14em; }
 .demo[data-who="opp"] .pg-h b { color:var(--gote-ink); }
+.pg-h small { color:var(--muted); font-size:11px; }
 .mseg { display:flex; gap:2px; font-size:13px; }
 .mseg span { flex:1; text-align:center; padding:3px 0; color:var(--muted); letter-spacing:.14em; }
 .mseg span.on { color:var(--fg); font-weight:700; box-shadow:inset 0 -2px 0 var(--accent); }
@@ -100,8 +105,8 @@ section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-wi
 .card .th { width:48px; height:30px; position:relative;
   background:linear-gradient(var(--line) 1px, transparent 1px) 0 0/9.6px 10px,
              linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/9.6px 10px; }
-.card .th i { position:absolute; width:8px; height:8px; background:var(--fg2); clip-path:var(--pc); }
-.demo[data-who="opp"] .card .th i { background:var(--gote-ink); transform:rotate(180deg); }
+.card .th i { position:absolute; width:8px; height:8px; background:var(--k-castle); clip-path:var(--pc); opacity:.8; }
+.demo[data-who="opp"] .card .th i { transform:rotate(180deg); }
 .card.sel { outline:2px solid var(--accent); outline-offset:1px; font-weight:700; }
 .page .in { display:flex; flex-direction:column; gap:8px; }
 .page .in.from-top { animation:inTop .3s var(--ease); }
@@ -109,392 +114,280 @@ section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-wi
 @keyframes inTop { from { opacity:0; transform:translateY(-12px); } }
 @keyframes inBottom { from { opacity:0; transform:translateY(12px); } }
 
-/* バインダーの器: 面の右の罫に沿って立つ。中身は案ごと */
-.binder { position:absolute; z-index:3; top:0; bottom:0; left:100%; width:56px; }
-/* 駒形の見出し（全案共通の素地）。.body が駒の輪郭、.v が縦書きの字 */
-.tab { position:absolute; left:-1px; width:40px; height:150px; padding:0; border:0; background:none; cursor:pointer;
-       color:var(--muted); transform:translateX(-4px);
-       transition:transform .32s var(--spring), color .2s, filter .25s, opacity .2s; }
-.tab .body { position:absolute; inset:0; background:var(--line-2); clip-path:var(--pc); transition:background .2s; }
-.tab .body::after { content:""; position:absolute; inset:1px; background:var(--bg); clip-path:var(--pc); transition:background .2s; }
-.tab.opp .body { transform:scaleY(-1); }
-.tab .v { position:absolute; inset:14px 0 0; display:flex; align-items:center; justify-content:center; gap:6px;
-          writing-mode:vertical-rl; font:700 15px/1 var(--font-d); letter-spacing:.3em; pointer-events:none; }
-.tab.opp .v { inset:0 0 14px; }
-.tab .v small { font:500 10px/1 var(--font-b); letter-spacing:.08em; }
-.tab:hover { color:var(--fg); }
-/* 開いている側: 盤側へ出て、生成りの駒になる */
-.demo[data-who="me"] .tab.me, .demo[data-who="opp"] .tab.opp {
-  transform:translateX(0); width:44px; color:var(--ink); filter:drop-shadow(2px 1px 4px rgba(24,18,8,.28)); z-index:2; }
-.demo[data-who="me"] .tab.me .body, .demo[data-who="opp"] .tab.opp .body { background:var(--piece-edge); }
-.demo[data-who="me"] .tab.me .body::after, .demo[data-who="opp"] .tab.opp .body::after { background:var(--piece-1); }
-.demo[data-who="opp"] .tab.opp { color:var(--gote-ink); }
-:root[data-theme="dark"] .demo[data-who="opp"] .tab.opp { color:#33507a; }
-.demo[data-who="opp"] .tab.opp .body { background:var(--gote-ink); }
+/* バインダーは stacking context を作らない（閉じた見出しを頁の下へ潜らせるため） */
+.binder { position:absolute; top:0; bottom:0; left:100%; width:64px; }
+.kt { position:absolute; left:-6px; z-index:1; width:46px; height:156px; padding:0; border:0; background:none; cursor:pointer;
+      transform:translateX(-4px); transform-origin:50% 0;
+      transition:transform .4s var(--spring), opacity .3s, filter .25s; }
+.kt.opp { top:37px; }
+.kt.me { top:207px; }
+.kt-in { position:absolute; inset:0; display:block; transform-origin:50% 50%; }
+.kt-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.kt-edge { fill:var(--line-2); transition:fill .2s; }
+.kt-face { fill:var(--bg); transition:fill .2s; }
+.kt-grain { fill:url(#grain); opacity:0; transition:opacity .2s; }
+.kt-bevel { fill:none; stroke:rgba(255,255,255,.7); stroke-width:.9; opacity:0; transition:opacity .2s; }
+.kt-tx, .kt-back { position:absolute; left:6px; right:0; display:flex; align-items:center; justify-content:center;
+                   writing-mode:vertical-rl; pointer-events:none; transition:color .2s, opacity .2s; }
+.kt-tx { font:700 16px/1 var(--font-d); letter-spacing:.45em; padding-top:.45em; color:var(--muted); }
+.kt.me .kt-tx { top:18px; bottom:4px; }
+.kt.opp .kt-tx { top:4px; bottom:18px; }
+.kt-back { top:4px; bottom:18px; font:600 10px/1.4 var(--font-b); letter-spacing:.12em; color:rgba(60,38,8,.75); opacity:0; }
+.kt:not([aria-selected="true"]):hover { transform:translateX(0); }
+.kt:not([aria-selected="true"]):hover .kt-tx { color:var(--fg); }
+.kt:not([aria-selected="true"]):hover .kt-edge { fill:var(--fg2); }
+/* 開いている面の駒: 木地・木目・面取りの光。頁の縁より前に出る */
+.kt[aria-selected="true"] { z-index:3; transform:translateX(6px); filter:drop-shadow(2px 2px 3px rgba(24,18,8,.28)); }
+.kt[aria-selected="true"] .kt-edge { fill:var(--piece-edge); }
+.kt[aria-selected="true"] .kt-face { fill:url(#wood); }
+.kt[aria-selected="true"] .kt-grain, .kt[aria-selected="true"] .kt-bevel { opacity:1; }
+.kt[aria-selected="true"] .kt-tx { color:#1b1a17; text-shadow:0 1px 0 rgba(255,255,255,.7); }
+.kt.opp[aria-selected="true"] .kt-tx { color:#2b4670; }
+.kt:active .kt-in { transform:translateX(-2px) scale(.985); }
+.kt.fx-pachi .kt-in { animation:pachi .42s var(--spring); }
+@keyframes pachi { 0% { transform:translateX(-7px); } 55% { transform:translateX(2px); } 100% { transform:none; } }
+.kt-in.fx-flip { animation:ktFlip .46s var(--ease); }
+@keyframes ktFlip { 50% { transform:scaleX(.04); } }
 
-/* 盤の切れ端（上=相手・下=自分）。相手の駒は表示 ON でぱらぱらと並ぶ */
-.mb { width:100%; max-width:260px; aspect-ratio:1/1.08; padding:4%; position:relative;
+/* OFF の手つき（3通り）: 駒台 / 伏せる / 河の留め具 */
+.tray, .fuse, .pin, .ghost { display:none; }
+.demo[data-mode="tray"] .tray { display:block; }
+.demo[data-mode="tray"][data-show="false"] .ghost { display:block; }
+.demo[data-mode="flip"][data-show="true"] .fuse { display:grid; }
+.demo[data-mode="pin"] .pin { display:block; }
+
+.tray { position:absolute; top:3px; left:-1px; z-index:4; width:44px; height:28px; padding:0; border:0; cursor:pointer; border-radius:0 5px 5px 0;
+        background:linear-gradient(135deg,var(--wood-1),var(--wood-2));
+        box-shadow:inset 0 0 0 1px var(--wood-line), inset 0 2px 4px rgba(60,40,10,.22); }
+.tray-p { position:absolute; left:50%; top:50%; width:18px; height:21px; margin:-10.5px 0 0 -9px; opacity:0;
+          transition:opacity .2s, transform .3s var(--spring); }
+.demo[data-show="false"] .tray-p { opacity:1; transition-delay:.25s, 0s; }
+.tray:hover .tray-p { transform:translateY(-2px) rotate(-8deg); }
+.tray-lb { position:absolute; inset:0; display:grid; place-items:center; font:700 9.5px/1 var(--font-b); color:rgba(60,38,8,.72); letter-spacing:.1em; }
+.tray-lb .b, .demo[data-show="false"] .tray-lb { display:none; }
+.tray:hover .tray-lb .a, .tray:focus-visible .tray-lb .a { display:none; }
+.tray:hover .tray-lb .b, .tray:focus-visible .tray-lb .b { display:inline; }
+.demo[data-mode="tray"][data-show="false"] .kt.opp { transform:translate(-4px,-33px) scale(.2); opacity:0; pointer-events:none; }
+.ghost { position:absolute; top:37px; left:-6px; z-index:1; width:46px; height:156px; padding:0; border:0; background:none; cursor:pointer; color:var(--muted); }
+.ghost svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.ghost path { fill:var(--faint); stroke:var(--line-2); stroke-dasharray:4 3; transition:stroke .2s; }
+.ghost span { position:absolute; left:6px; right:0; top:4px; bottom:18px; display:flex; align-items:center; justify-content:center;
+              writing-mode:vertical-rl; font:600 13px/1 var(--font-d); letter-spacing:.3em; }
+.ghost:hover { color:var(--fg); }
+.ghost:hover path { stroke:var(--fg); }
+
+.fuse { position:absolute; top:6px; left:9px; z-index:4; width:24px; height:24px; padding:0; border-radius:50%; place-items:center;
+        border:1px solid var(--line-2); background:var(--bg); color:var(--muted); font:700 11px/1 var(--font-d); cursor:pointer; }
+.fuse:hover { color:var(--fg); border-color:var(--fg); }
+.demo[data-mode="flip"][data-show="false"] .kt.opp { transform:translateX(1px); }
+.demo[data-mode="flip"][data-show="false"] .kt.opp .kt-edge { fill:rgba(70,45,10,.6); }
+.demo[data-mode="flip"][data-show="false"] .kt.opp .kt-face { fill:url(#woodBack); }
+.demo[data-mode="flip"][data-show="false"] .kt.opp .kt-grain { opacity:1; }
+.demo[data-mode="flip"][data-show="false"] .kt.opp .kt-tx { opacity:0; }
+.demo[data-mode="flip"][data-show="false"] .kt.opp .kt-back { opacity:1; }
+.demo[data-mode="flip"][data-show="false"] .kt.opp:hover .kt-in { transform:scaleX(.9); }
+
+.pin { position:absolute; top:190px; left:7px; z-index:4; width:20px; height:20px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; }
+.pin i { position:absolute; inset:3px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #f5e1ad, #a77a2c 72%);
+         box-shadow:0 1px 2px rgba(0,0,0,.35), 0 0 0 2px var(--bg); transition:transform .3s var(--spring), background .2s, box-shadow .2s; }
+.demo[data-show="false"] .pin i { background:var(--bg); box-shadow:inset 0 0 0 1.5px var(--line-2), 0 0 0 2px var(--bg); }
+.pin:hover i { transform:scale(1.18); }
+.demo[data-mode="pin"][data-show="false"] .kt.opp { transform:translate(-8px,-22px) rotate(-4deg); opacity:.55; }
+.demo[data-mode="pin"][data-show="false"] .kt.opp:hover { transform:translate(-4px,-14px) rotate(-2deg); opacity:.85; }
+
+/* 盤の切れ端（上=相手・下=自分）。河の高さはドックの中央と揃える */
+.mbw { margin-top:38px; }
+.mb { width:100%; aspect-ratio:1/1.08; padding:4%; position:relative;
       background:linear-gradient(135deg,var(--wood-1),var(--wood-2)); box-shadow:inset 0 0 0 1px var(--wood-line); }
 .mb .g9 { display:grid; grid-template:repeat(9,1fr)/repeat(9,1fr); height:100%;
           border-top:1px solid var(--wood-line); border-left:1px solid var(--wood-line); }
 .mb .g9 span { display:grid; place-items:center; border-right:1px solid var(--wood-line); border-bottom:1px solid var(--wood-line);
-               font:700 clamp(9px,1.6vw,13px)/1 var(--font-d); color:var(--ink); }
-.mb .g9 span.o { color:#33507a; rotate:180deg; transition:opacity .25s, translate .45s var(--spring);
-                 transition-delay:calc(var(--i) * 14ms); }
+               font:700 clamp(9px,1.5vw,14px)/1 var(--font-d); color:#1b1a17; }
+.mb .g9 span.o { color:#33507a; rotate:180deg; transition:opacity .25s, translate .45s var(--spring); transition-delay:calc(var(--i) * 14ms); }
 .mb[data-show="false"] .g9 span.o { opacity:0; translate:0 -8px; transition-delay:0s; }
-.mb .half { position:absolute; left:4%; right:4%; height:44%; pointer-events:none; transition:box-shadow .25s; }
+.mb .half { position:absolute; left:4%; right:4%; height:33.4%; pointer-events:none; transition:box-shadow .25s; }
 .mb .half.o { top:4%; } .mb .half.m { bottom:4%; }
 .mb[data-who="me"] .half.m { box-shadow:inset 0 0 0 2px var(--fg); }
 .mb[data-who="opp"] .half.o { box-shadow:inset 0 0 0 2px var(--gote-ink); }
-.mb .off { position:absolute; top:20%; left:50%; transform:translateX(-50%); padding:2px 10px; font-size:11.5px; color:var(--fg2);
+.mb .off { position:absolute; top:16%; left:50%; transform:translateX(-50%); padding:2px 10px; font-size:11.5px; color:var(--fg2);
            background:var(--bg); border:1px dashed var(--line-2); letter-spacing:.06em; white-space:nowrap; transition:opacity .2s; }
 .mb[data-show="true"] .off { opacity:0; }
 .state { margin-top:10px; font-size:12px; color:var(--muted); }
 .state b { color:var(--fg); }
+.bstage .notes { grid-template-columns:1fr; margin-top:0; gap:12px; }
+.modes { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; font-size:12px; color:var(--muted); }
 
 /* ============================================================
-   A. 駒台から打つ — OFF の相手は駒台の上。押すと見出しの位置へ飛んで「パチ」と収まる
+   Ⅱ. 噛み合う制約バー（SVG のピース）
    ============================================================ */
-.pA .kdai { position:absolute; top:0; left:-1px; width:46px; height:44px; display:grid; place-items:center;
-            background:linear-gradient(135deg,var(--wood-1),var(--wood-2)); box-shadow:inset 0 0 0 1px var(--wood-line);
-            border-radius:0 3px 3px 0; }
-.pA .kd-p { width:28px; height:32px; padding:0; border:0; cursor:pointer; position:relative; background:none;
-            transition:transform .2s var(--spring); }
-.pA .kd-p::before { content:""; position:absolute; inset:0; background:var(--piece-edge); clip-path:var(--pc); rotate:180deg; }
-.pA .kd-p::after { content:""; position:absolute; inset:1px; background:var(--piece-1); clip-path:var(--pc); rotate:180deg; }
-.pA .kd-p span { position:relative; z-index:1; font:800 14px/1 var(--font-d); color:#33507a; }
-.pA .kd-p:hover { transform:translateY(-3px) rotate(-6deg); }
-.pA[data-show="true"] .kd-p { visibility:hidden; }
-.pA .tab.opp { top:54px; }
-.pA .tab.me { top:216px; }
-/* 打つ前の見出しの場所: 点線の枡と「打つ」 */
-.pA .slot { position:absolute; top:54px; left:-1px; width:40px; height:150px; border:1px dashed var(--line-2); border-left:0;
-            display:grid; place-items:center; color:var(--muted); font:600 12px/1 var(--font-d); writing-mode:vertical-rl; letter-spacing:.4em;
-            cursor:pointer; background:repeating-linear-gradient(-45deg, var(--faint) 0 5px, transparent 5px 10px); }
-.pA .slot:hover { color:var(--fg); border-color:var(--fg); }
-.pA[data-show="true"] .slot { display:none; }
-.pA[data-show="false"] .tab.opp { visibility:hidden; }
-/* 駒台へ下げる: 見出しの頭（盤から遠い側）に小さく。駒台の方を向いた矢印 */
-.pA .lift { position:absolute; top:44px; left:30px; z-index:4; width:22px; height:22px; padding:0; border-radius:50%;
-            border:1px solid var(--line-2); background:var(--bg); color:var(--muted); cursor:pointer; font:600 12px/1 var(--font-b);
-            box-shadow:0 0 0 2px var(--bg); opacity:0; transition:opacity .2s, color .2s, border-color .2s; }
-.pA[data-show="true"] .binder:hover .lift, .pA .lift:focus-visible { opacity:1; }
-.pA .lift:hover { color:var(--fg); border-color:var(--fg); }
-.pA[data-show="false"] .lift { display:none; }
-.pA .tab.opp.land { animation:land .34s var(--spring); }
-@keyframes land { 0% { transform:translateX(0) scale(1.08); } 55% { transform:translateX(0) scale(.97); } 100% { transform:translateX(0) scale(1); } }
-.flyer { position:fixed; z-index:50; pointer-events:none; }
-.flyer::before { content:""; position:absolute; inset:0; background:var(--piece-edge); clip-path:var(--pc); rotate:180deg; }
-.flyer::after { content:""; position:absolute; inset:1px; background:var(--piece-1); clip-path:var(--pc); rotate:180deg; }
-.ripple { position:absolute; z-index:1; left:-1px; width:44px; height:150px; pointer-events:none; border:2px solid var(--gote-ink);
-          animation:ripple .5s ease-out forwards; }
-@keyframes ripple { from { opacity:.6; transform:scale(1); } to { opacity:0; transform:scale(1.25); } }
+.legend { display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:10px 8px; margin-top:16px; }
+.legend figure { margin:0; text-align:center; font-size:11.5px; color:var(--fg2); }
+.legend svg { display:block; width:100%; max-width:120px; margin:0 auto 2px; }
+.legend figcaption b { display:block; font-size:12px; color:var(--fg); }
+.lg-a { fill:color-mix(in srgb,var(--k-tactic) 12%,var(--bg)); stroke:color-mix(in srgb,var(--k-tactic) 65%,var(--bg)); stroke-width:1.3; stroke-linejoin:round; }
+.lg-s { fill:color-mix(in srgb,var(--k-str) 7%,var(--bg)); stroke:var(--k-str); stroke-width:1.4; stroke-linejoin:round; }
+.lg-b { fill:color-mix(in srgb,var(--k-castle) 12%,var(--bg)); stroke:color-mix(in srgb,var(--k-castle) 65%,var(--bg)); stroke-width:1.3; stroke-linejoin:round; }
+.lg-b.ng { fill:color-mix(in srgb,var(--bad) 14%,var(--bg)); stroke:var(--bad); }
 
-/* ============================================================
-   B. 表と裏 — OFF の相手は「伏せた駒」。押すと裏返って表になる。隠すのは角の折り返し
-   ============================================================ */
-.pB .tab.opp { top:30px; perspective:600px; }
-.pB .tab.me { top:192px; }
-.pB .tab.opp .flip { position:absolute; inset:0; transform-style:preserve-3d; transition:transform .55s var(--spring); }
-.pB .tab.opp .face { position:absolute; inset:0; backface-visibility:hidden; }
-.pB .tab.opp .back { transform:rotateY(180deg); }
-.pB .tab.opp .back .body { background:var(--wood-line); transform:scaleY(-1); }
-.pB .tab.opp .back .body::after { background:
-  repeating-linear-gradient(176deg, transparent 0 5px, rgba(70,45,10,.10) 5px 6px),
-  linear-gradient(160deg,var(--wood-1),var(--wood-2)); }
-.pB .tab.opp .back .v { color:rgba(70,45,10,.6); }
-.pB .tab.opp .back .v small { font-size:9.5px; }
-.pB[data-show="false"] .tab.opp .flip { transform:rotateY(180deg); }
-.pB[data-show="false"] .tab.opp:hover .flip { transform:rotateY(160deg); }   /* 指を掛けると少しめくれる */
-.pB .tab.opp .front .body, .pB .tab.opp .front .body::after { transition:background .2s; }
-/* 表の相手駒の色（.demo の共通規則は .flip の中まで届かないので書き直す） */
-.pB[data-who="opp"] .tab.opp .front .body { background:var(--gote-ink); }
-.pB[data-who="opp"] .tab.opp .front .body::after { background:var(--piece-1); }
-.pB[data-who="opp"] .tab.opp .front .body { transform:scaleY(-1); }
-.pB .tab.opp .front .body { transform:scaleY(-1); }
-.pB .tab.opp { width:44px; }
-.pB[data-who="me"] .tab.opp, .pB[data-show="false"] .tab.opp { width:40px; }
-/* 角の折り返し（ドッグイヤー）: 表の相手駒の左上。押すと伏せる */
-.pB .ear { position:absolute; top:30px; left:32px; z-index:4; width:20px; height:20px; padding:0; border:0; cursor:pointer;
-           background:linear-gradient(225deg, var(--bg) 0 50%, var(--wood-2) 50% 100%);
-           box-shadow:-1px 1px 2px rgba(24,18,8,.25); opacity:.0; transition:opacity .2s, width .2s var(--spring), height .2s var(--spring); }
-.pB[data-show="true"] .binder:hover .ear, .pB .ear:focus-visible { opacity:1; }
-.pB .ear:hover { width:26px; height:26px; }
-.pB[data-show="false"] .ear { display:none; }
-.pB .tab.opp.bump { animation:bump .4s var(--spring); }
-@keyframes bump { 40% { transform:translateX(3px) scale(1.04); } }
-
-/* ============================================================
-   C. 引き出し — 相手の見出しは引き出しの取っ手。引き出すと表示、押し込むと非表示（クリックでも）
-   ============================================================ */
-.pC .binder { z-index:1; }
-.pC .tab.opp { top:30px; transition:transform .38s var(--spring), color .2s, filter .25s; touch-action:none; }
-.pC .tab.me { top:192px; }
-.pC .tab.opp.dragging { transition:none; }
-.pC[data-show="false"] .tab.opp { transform:translateX(var(--pull, -28px)); filter:none; }
-.pC .tab.opp .grip { position:absolute; right:3px; top:50%; translate:0 -50%; width:5px; height:34px; pointer-events:none;
-                     background:repeating-linear-gradient(var(--muted) 0 1.5px, transparent 1.5px 5px); opacity:.8; }
-.pC[data-show="true"] .tab.opp .grip { opacity:.35; }
-.pC[data-show="false"] .tab.opp .v { opacity:0; }
-.pC[data-show="false"] .tab.opp:hover { --pull:-22px; }
-/* 引き出しの奥（面の中）に見える溝: 引き出すと見える */
-.pC .rail { position:absolute; top:42px; left:-1px; width:4px; height:126px; background:var(--line); }
-.pC .hint { position:absolute; top:30px; left:16px; width:30px; height:150px; display:flex; align-items:center; justify-content:center;
-            writing-mode:vertical-rl; font-size:10px; letter-spacing:.2em; color:var(--muted); pointer-events:none; transition:opacity .2s; }
-.pC[data-show="true"] .hint { opacity:0; }
-.pC .tab.opp.thunk { animation:thunk .3s var(--ease); }
-@keyframes thunk { 30% { transform:translateX(-31px); } }
-
-/* ============================================================
-   D. 内蔵スイッチ — 見出しの頭に小さな駒のスライドスイッチ。選択と表示を別の部品に
-   ============================================================ */
-.pD .tab.opp { top:34px; }
-.pD .tab.me { top:196px; }
-.pD .sw { position:absolute; top:4px; left:2px; z-index:4; display:flex; align-items:center; gap:5px; padding:0; border:0;
-          background:none; cursor:pointer; }
-.pD .sw .tr { position:relative; width:38px; height:22px; border-radius:11px; background:var(--line);
-              box-shadow:inset 0 0 0 1px var(--line-2); transition:background .25s; }
-.pD .sw .kn { position:absolute; left:19px; top:3px; width:16px; height:16px; transition:left .3s var(--spring); }
-.pD .sw .kn::before { content:""; position:absolute; inset:0; background:var(--piece-edge); clip-path:var(--pc); rotate:180deg; }
-.pD .sw .kn::after { content:""; position:absolute; inset:1px; background:var(--piece-1); clip-path:var(--pc); rotate:180deg; }
-.pD .sw[aria-checked="false"] .kn { left:3px; }
-.pD .sw[aria-checked="true"] .tr { background:var(--gote-ink); box-shadow:none; }
-.pD .sw .lb { font-size:9.5px; letter-spacing:.1em; color:var(--muted); white-space:nowrap; }
-.pD .sw[aria-checked="true"] .lb { color:var(--gote-ink); }
-.pD[data-show="false"] .tab.opp .body::after { background:repeating-linear-gradient(-45deg, var(--faint) 0 4px, var(--bg) 4px 8px); }
-.pD[data-show="false"] .tab.opp { opacity:.6; }
-.pD[data-show="false"] .tab.opp .v b::before { content:"＋"; }
-.pD .sw.click .kn { animation:knob .3s var(--spring); }
-@keyframes knob { 50% { scale:1.2; } }
-
-/* ============================================================
-   Part 2 共通: 制約バー（戦型 → 囲い → 戦法）
-   ============================================================ */
-.bardemo { display:flex; flex-direction:column; gap:10px; }
-.strip { position:relative; padding:18px 18px 0; border:1px solid var(--line); background:var(--bg); overflow:hidden; }
-.strip::after { content:""; display:block; height:22px; margin:14px -18px 0;
-                background:linear-gradient(135deg,var(--wood-1),var(--wood-2)); box-shadow:inset 0 1px 0 var(--wood-line); }
-.strip .who { position:absolute; top:5px; left:18px; font-size:10.5px; letter-spacing:.18em; color:var(--muted); }
-.host { min-height:56px; display:flex; align-items:center; }
-.why { min-height:22px; font-size:12.5px; color:var(--fg2); display:flex; align-items:center; gap:8px; }
-.why .ngm { flex:none; display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:var(--bad); color:#fbf6ea;
-            font:700 10px/1 var(--font-b); }
-.why .okm { flex:none; display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:var(--good); color:var(--bg);
-            font:700 10px/1 var(--font-b); }
-.why .tip { color:var(--muted); }
-.why.shake { animation:shakeX .35s; }
-.ctrl { display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted); }
+.bar { position:relative; }
+.bar .ctrl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px; font-size:12px; color:var(--muted); }
 .ctrl button { border:1px solid var(--line-2); background:none; padding:3px 11px; cursor:pointer; font-size:12px; border-radius:999px; color:var(--fg2); }
 .ctrl button:hover { border-color:var(--fg); color:var(--fg); }
 .ctrl button[aria-pressed="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
-.chain { display:flex; align-items:center; min-width:0; }
-.chain .x { display:grid; place-items:center; width:20px; height:20px; padding:0; border:0; border-radius:50%; background:none; color:var(--muted);
-            cursor:pointer; font-size:15px; line-height:1; }
-.chain .x:hover { color:var(--bad); background:color-mix(in srgb,var(--bad) 10%,transparent); }
-.chain .hit { display:flex; align-items:center; gap:6px; padding:0; border:0; background:none; cursor:pointer; color:inherit; text-align:left; }
-.chain .hit[disabled] { cursor:default; }
-.chain .ty { flex:none; font:800 10px/1 var(--font-b); letter-spacing:.06em; }
-.chain .nm { font:800 14px/1.2 var(--font-b); white-space:nowrap; }
-.chain .pc[data-kind="strategy"] { --ink:var(--accent); }
-.chain .pc[data-kind="castle"] { --ink:var(--accent-2); }
-.chain .pc[data-kind="tactic"] { --ink:var(--t-silver); }
-@keyframes shakeX { 20% { transform:translateX(-4px); } 40% { transform:translateX(4px); } 60% { transform:translateX(-2px); } 80% { transform:translateX(2px); } }
+.ctrl .sep { width:1px; height:18px; background:var(--line); margin:0 4px; }
+.ctrl .opp-t[aria-pressed="true"] { background:var(--gote-ink); border-color:var(--gote-ink); color:var(--bg); }
+.stamp { margin-left:auto; padding:2px 9px 3px; border:2px solid var(--accent); border-radius:5px; color:var(--accent);
+         font:800 13px/1.2 var(--font-d); letter-spacing:.16em; transform:rotate(-6deg) scale(.5); opacity:0;
+         transition:opacity .2s, transform .45s var(--spring); pointer-events:none; }
+.stamp.on { opacity:.92; transform:rotate(-6deg) scale(1); }
+.stage { position:relative; overflow:hidden; transition:height .42s var(--ease); }
+.svgh { position:absolute; left:0; right:0; bottom:0; }
+.svgh svg { display:block; width:100%; height:auto; overflow:visible; }
+.boardtop { height:26px; margin:0 3.33%; background:linear-gradient(135deg,var(--wood-1),var(--wood-2));
+            box-shadow:inset 0 0 0 1px var(--wood-line);
+            background-image:linear-gradient(90deg, var(--wood-line) 1px, transparent 1px), linear-gradient(135deg,var(--wood-1),var(--wood-2));
+            background-size:calc(100% / 9) 100%, 100% 100%; }
+.mapstrip svg { display:block; width:100%; height:auto; }
 
-/* ============================================================
-   1. ジグソー — 戦型で継ぎ目の形が変わる（居飛車=丸い耳・振り飛車=角の耳）。
-      両立しないピースは耳の形が合わず、浮いて傾く。外すと抜け、既定値は斜線の仮ピース
-   ============================================================ */
-.c1 .pc { position:relative; display:flex; align-items:center; gap:4px; height:40px; padding:0 12px 0 20px; margin-left:-1px;
-          z-index:var(--z); filter:drop-shadow(0 0 .7px var(--line-2)) drop-shadow(0 1px 1px rgba(24,18,8,.08));
-          transition:translate .35s var(--spring), rotate .35s var(--spring), filter .2s; }
-.c1 .pc:first-child { padding-left:12px; }
-.c1 .pc:last-child { padding-right:8px; }
-.c1 .sh { position:absolute; inset:0; z-index:-1; background:color-mix(in srgb,var(--ink) 15%,var(--bg)); }
-.c1 .pc:first-child .sh { border-radius:7px 0 0 7px; }
-.c1 .pc:last-child .sh { border-radius:0 7px 7px 0; }
-.c1 .pc:not(:first-child)[data-strat="ibisha"] .sh {
-  -webkit-mask:radial-gradient(circle 9.5px at 0 50%, #0000 95%, #000 100%);
-          mask:radial-gradient(circle 9.5px at 0 50%, #0000 95%, #000 100%); }
-.c1 .pc:not(:first-child)[data-strat="furibisha"] .sh {
-  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(50% - 7.5px) no-repeat, linear-gradient(#000 0 0) bottom/100% calc(50% - 7.5px) no-repeat,
-               linear-gradient(#000 0 0) right/calc(100% - 9px) 100% no-repeat;
-          mask:linear-gradient(#000 0 0) top/100% calc(50% - 7.5px) no-repeat, linear-gradient(#000 0 0) bottom/100% calc(50% - 7.5px) no-repeat,
-               linear-gradient(#000 0 0) right/calc(100% - 9px) 100% no-repeat; }
-.c1 .kn { position:absolute; top:50%; right:-9px; width:18px; height:18px; translate:0 -50%; border-radius:50%;
-          background:color-mix(in srgb,var(--ink) 15%,var(--bg)); }
-.c1 .pc[data-own="furibisha"] .kn { right:-8px; width:15px; height:15px; border-radius:2px; }
-.c1 .ty { color:var(--ink); }
-.c1 .pc[data-kind="strategy"] .nm { color:var(--accent); font-family:var(--font-d); }
-/* 両立しない: 浮いて傾き、後ろが押し出される＝継ぎ目に隙間 */
-.c1 .pc[data-ng="true"] { translate:5px -5px; rotate:3deg; }
-.c1 .pc[data-ng="true"] .sh, .c1 .pc[data-ng="true"] .kn { background:color-mix(in srgb,var(--bad) 13%,var(--bg)); }
-.c1 .pc[data-ng="true"] ~ .pc { translate:12px 0; }
-.c1 .pc[data-ng="true"] .ty::before { content:"✕ "; color:var(--bad); }
-/* 既定値: 斜線の仮ピース。乗ると「はめる」 */
-.c1 .pc[data-implied="true"] .sh { background:repeating-linear-gradient(135deg, var(--faint) 0 4px, transparent 4px 8px), var(--bg); }
-.c1 .pc[data-implied="true"] { filter:drop-shadow(0 0 .7px var(--muted)); }
-.c1 .pc[data-implied="true"] .nm { color:var(--muted); font-weight:500; }
-.c1 .pc[data-implied="true"] .ty::after { content:"既定"; margin-left:4px; font-weight:500; color:var(--muted); }
-.c1 .pc[data-implied="true"]:hover .ty::after { content:"＋ はめる"; color:var(--fg); }
-.c1 .pc[data-sel="true"] { translate:0 -3px; filter:drop-shadow(0 0 1.4px var(--accent)) drop-shadow(0 4px 4px rgba(24,18,8,.18)); }
-.c1 .pc:not([data-implied="true"]):not([data-kind="strategy"]):hover { translate:0 -1px; }
-.c1 .spark { position:absolute; left:-2px; top:50%; width:26px; height:26px; translate:-50% -50%; border-radius:50%;
-             border:2px solid var(--accent); opacity:0; pointer-events:none; }
-.c1 .pc.fx-snap { animation:snap1 .45s var(--spring) both; animation-delay:var(--d,0s); }
-.c1 .pc.fx-snap .spark { animation:spark .5s ease-out both; animation-delay:calc(var(--d,0s) + .18s); }
-@keyframes snap1 { 0% { transform:translate(26px,-8px) rotate(6deg); opacity:.3; } 60% { transform:translateX(-3px); opacity:1; } 100% { transform:none; } }
-@keyframes spark { 0% { opacity:.9; scale:.4; } 100% { opacity:0; scale:1.5; } }
-.c1 .pc.fx-out { animation:out1 .28s var(--ease) forwards; }
-@keyframes out1 { to { transform:translate(4px,-16px) rotate(-10deg); opacity:0; } }
-.c1 .pc.fx-ng { animation:wob .5s ease-in-out; }
-@keyframes wob { 0%,100% { transform:none; } 25% { transform:translateX(-6px); } 50% { transform:translateX(2px) rotate(-2deg); } 75% { transform:translateX(-2px); } }
+.row { transition:opacity .3s, transform .4s var(--ease); }
+.row.gone { opacity:0; transform:translateY(-16px); }
+.row.fx-in { animation:rowIn .42s var(--ease); }
+@keyframes rowIn { from { opacity:0; transform:translateY(-16px); } }
+.row.fx-flip { transform-box:view-box; transform-origin:360px 70px; animation:rowFlip .5s var(--ease); }
+@keyframes rowFlip { 0% { transform:scaleX(-1); } 45% { transform:scaleX(-.04); } 55% { transform:scaleX(.04); } 100% { transform:none; } }
+.bar[data-active="me"] .row.opp .pc, .bar[data-active="opp"] .row.me .pc { opacity:.72; }
 
-/* ============================================================
-   2. 駒の列 — 1枚ずつ将棋の駒。先端が次の駒の欠けに入る。既定値は「伏せ駒」、押すと「パチ」と打つ
-   ============================================================ */
-.c2 .pc { --cut:polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%, 10px 50%);
-          position:relative; display:flex; align-items:center; gap:6px; height:42px; padding:0 20px 0 18px; margin-left:-7px;
-          filter:drop-shadow(0 0 .6px var(--piece-edge)) drop-shadow(0 1px 1.5px rgba(24,18,8,.18));
-          transition:translate .3s var(--spring), filter .2s; }
-.c2 .pc:first-child { --cut:polygon(0 4px, 4px 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 4px 100%, 0 calc(100% - 4px)); margin-left:0; padding-left:10px; }
-.c2 .pc:last-child { --cut:polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 10px 50%); padding-right:6px; }
-.c2 .sh { position:absolute; inset:0; z-index:-1; clip-path:var(--cut); background:linear-gradient(170deg,var(--piece-1),color-mix(in srgb,var(--wood-1) 55%,var(--piece-1))); }
-.c2 .ty { writing-mode:vertical-rl; font-size:9.5px; line-height:1; letter-spacing:.08em; color:#fbf6ea; background:var(--ink); padding:4px 2px; border-radius:2px; }
-.c2 .nm { font:800 15px/1.2 var(--font-d); color:#1b1a17; letter-spacing:.04em; }
-.c2 .pc[data-kind="strategy"] .nm { color:#c8371f; }
-.c2 .x { color:rgba(27,26,23,.5); }
-/* 継ぎ目の結び（朱の点）。両立しないと離れて、ひび */
-.c2 .jn { position:relative; z-index:5; flex:none; width:0; height:42px; transition:width .3s var(--spring); }
-.c2 .jn::before { content:""; position:absolute; top:50%; left:-6px; width:7px; height:7px; translate:-50% -50%; border-radius:50%;
-                  background:var(--accent); box-shadow:0 0 0 2px var(--piece-1); transition:opacity .2s; }
-.c2 .jn[data-ok="false"] { width:16px; }
-.c2 .jn[data-ok="false"]::before { opacity:0; }
-.c2 .jn[data-ok="false"]::after { content:""; position:absolute; top:50%; left:-1px; width:12px; height:22px; translate:-50% -50%; background:var(--bad);
-                                  clip-path:polygon(55% 0, 20% 52%, 50% 52%, 35% 100%, 85% 40%, 55% 40%, 75% 0); }
-.c2 .pc[data-ng="true"] .sh { background:linear-gradient(170deg,var(--piece-1),color-mix(in srgb,var(--bad) 16%,var(--piece-1))); }
-.c2 .pc[data-ng="true"] { rotate:-2deg; }
-/* 伏せ駒（既定値）: 木地だけで字は薄い。乗ると「打つ」 */
-.c2 .pc[data-implied="true"] .sh { background:repeating-linear-gradient(174deg, transparent 0 5px, rgba(70,45,10,.09) 5px 6px), linear-gradient(170deg,var(--wood-1),var(--wood-2)); }
-.c2 .pc[data-implied="true"] .nm { color:rgba(70,45,10,.55); font-weight:600; }
-.c2 .pc[data-implied="true"] .ty { background:rgba(70,45,10,.4); }
-.c2 .pc[data-implied="true"]::after { content:"既定"; position:absolute; top:-9px; right:16px; padding:0 4px; font-size:9.5px; color:var(--muted);
-                                      background:var(--bg); border:1px dashed var(--line-2); line-height:1.4; }
-.c2 .pc[data-implied="true"]:hover::after { content:"押して打つ"; color:var(--fg); border-color:var(--fg); }
-.c2 .pc[data-implied="true"]:hover { translate:0 -2px; }
-.c2 .pc[data-sel="true"] { translate:0 -4px; filter:drop-shadow(0 0 1.4px var(--accent)) drop-shadow(0 5px 4px rgba(24,18,8,.22)); }
-.c2 .pc .pachi { position:absolute; top:-4px; left:50%; translate:-50% 0; font:800 11px/1 var(--font-d); color:var(--accent); opacity:0; pointer-events:none; }
-.c2 .pc.fx-snap { animation:drop2 .38s cubic-bezier(.3,1.6,.5,1) both; animation-delay:var(--d,0s); }
-.c2 .pc.fx-snap .pachi { animation:pachi .7s ease-out both; animation-delay:calc(var(--d,0s) + .14s); }
-@keyframes drop2 { 0% { transform:translateY(-16px) scale(1.1); opacity:.2; } 45% { transform:translateY(1px) scale(.97); opacity:1; } 100% { transform:none; } }
-@keyframes pachi { 0% { opacity:0; transform:translateY(0) scale(.6); } 25% { opacity:1; transform:translateY(-10px) scale(1.1); } 100% { opacity:0; transform:translateY(-20px); } }
-.c2 .pc.fx-out { animation:out2 .3s var(--ease) forwards; }
-@keyframes out2 { to { transform:translateY(-10px) rotateX(70deg); opacity:0; } }
-.c2 .pc.fx-ng { animation:shakeX .4s; }
+.pc { transform-box:fill-box; transform-origin:50% 50%; outline:none; transition:opacity .25s; }
+.pc path.body { fill:color-mix(in srgb,var(--kc) 10%,var(--bg)); stroke:color-mix(in srgb,var(--kc) 62%,var(--bg));
+                stroke-width:1.3; stroke-linejoin:round; transition:fill .2s, stroke .2s, stroke-width .2s; }
+.pc[data-kind="strategy"] { --kc:var(--k-str); }
+.pc[data-kind="strategy"] path.body { fill:color-mix(in srgb,var(--k-str) 7%,var(--bg)); stroke:var(--k-str); stroke-width:1.6; }
+.pc[data-kind="castle"] { --kc:var(--k-castle); }
+.pc[data-kind="tactic"] { --kc:var(--k-tactic); }
+.pc[data-hit] { cursor:pointer; }
+.pc[data-hit]:hover path.body { fill:color-mix(in srgb,var(--kc) 18%,var(--bg)); }
+.pc.ghost path.body { fill:url(#hatch); stroke:var(--muted); stroke-dasharray:4 3; }
+.pc.empty path.body { fill:transparent; stroke:var(--line-2); stroke-dasharray:3 3; }
+.pc.empty:hover path.body { fill:color-mix(in srgb,var(--kc) 7%,transparent); stroke:var(--kc); }
+.pc.ng path.body { fill:color-mix(in srgb,var(--bad) 13%,var(--bg)); stroke:var(--bad); }
+.pc.sel path.body { stroke:var(--accent); stroke-width:2.4; }
+.pc.sel { filter:drop-shadow(0 3px 3px rgba(24,18,8,.2)); }
+.pc:focus-visible path.body { stroke:var(--fg); stroke-width:2.4; }
+.pc.hl path.body { stroke:var(--fg); stroke-width:2.4; }
+.pc text, .slot text { pointer-events:none; }
+.t-kind { font:700 9px var(--font-b); letter-spacing:.14em; fill:var(--kc); text-anchor:middle; dominant-baseline:central; }
+.t-str { font:800 17px var(--font-d); fill:var(--fg); letter-spacing:.06em; text-anchor:middle; dominant-baseline:central; }
+.t-name { font:800 14px var(--font-b); fill:var(--fg); text-anchor:middle; dominant-baseline:central; }
+.t-name.t-sm { font-size:11.5px; }
+.t-sub { font:500 9.5px var(--font-b); fill:var(--muted); text-anchor:middle; dominant-baseline:central; }
+.t-ng { font:700 9.5px var(--font-b); fill:var(--bad); text-anchor:middle; dominant-baseline:central; }
+.pc.ghost .t-name, .slot.ghost .t-name { fill:var(--muted); font-weight:500; }
+.t-add { font:600 11.5px var(--font-b); fill:var(--muted); text-anchor:middle; dominant-baseline:central; letter-spacing:.06em; }
+.t-add.hint { fill:var(--accent-2); font-weight:800; }
+.pc.empty:hover .t-add, .slot:hover .t-add { fill:var(--k-tactic); }
+.gk path { fill:var(--piece-1); stroke:var(--piece-edge); stroke-width:.8; }
+.gk text { font:800 8.5px var(--font-d); fill:#1b1a17; text-anchor:middle; dominant-baseline:central; }
+.row.opp .gk text { fill:#2b4670; }
+.slot { transform-box:fill-box; transform-origin:50% 50%; cursor:pointer; outline:none; }
+.slot rect.hit { fill:transparent; stroke:none; transition:fill .2s; }
+.slot:hover rect.hit { fill:color-mix(in srgb,var(--k-tactic) 9%,transparent); }
+.slot.sel rect.hit { stroke:var(--accent); stroke-width:1.6; stroke-dasharray:4 2; }
+.slot.hl rect.hit, .slot:focus-visible rect.hit { stroke:var(--fg); stroke-width:1.6; }
+.slot-div { stroke:var(--line-2); stroke-dasharray:2 3; }
+.t-row { font:700 11px var(--font-d); letter-spacing:.3em; fill:var(--muted); writing-mode:vertical-rl; text-anchor:middle; }
+.bar[data-active="me"] .row.me .t-row, .bar[data-active="opp"] .row.opp .t-row { fill:var(--fg); }
+.seam rect { fill:var(--bg); stroke:var(--line-2); }
+.seam text { font:700 9.5px var(--font-b); fill:var(--fg2); letter-spacing:.1em; text-anchor:middle; dominant-baseline:central; }
+.mk-glint { fill:none; stroke:var(--good); stroke-width:1.6; opacity:0; transform-box:fill-box; transform-origin:50% 50%; animation:glint .7s ease-out .3s; }
+@keyframes glint { 0% { opacity:.9; transform:scale(.4); } 100% { opacity:0; transform:scale(2.2); } }
+.mk-crack { fill:none; stroke:var(--bad); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 
-/* ============================================================
-   3. 水引 — 1本の紐に札を吊る。両立しないと紐が切れて札が傾く。外すと札が落ち、既定値の札は揺れて待つ
-   ============================================================ */
-.c3 { align-items:flex-start; padding-top:2px; }
-.c3 .pc { position:relative; display:flex; flex-direction:column; align-items:center; padding-top:16px; transform-origin:50% 7px;
-          transition:rotate .5s var(--spring); }
-.c3 .pc::before { content:""; position:absolute; top:6px; left:0; right:0; height:2px; background:var(--accent); }
-.c3 .pc:first-child::before { left:50%; }
-.c3 .pc:last-child::before { right:50%; }
-.c3 .pin { position:absolute; top:3px; left:50%; width:8px; height:8px; translate:-50% 0; border-radius:50%; background:var(--bg); border:2px solid var(--accent); z-index:1; }
-.c3 .pin::after { content:""; position:absolute; top:5px; left:50%; width:1px; height:8px; translate:-50% 0; background:var(--accent-2); }
-.c3 .tag { display:flex; align-items:center; gap:4px; padding:4px 6px 4px 10px; border:1px solid var(--line-2); border-top:3px solid var(--ink);
-            background:var(--bg); box-shadow:0 2px 0 var(--line); }
-.c3 .pc[data-kind="strategy"] .tag { padding-right:10px; }
-.c3 .hit { flex-direction:column; align-items:flex-start; gap:1px; }
-.c3 .ty { color:var(--ink); font-size:9.5px; }
-.c3 .pc[data-kind="strategy"] .nm { color:var(--accent); font-family:var(--font-d); }
-.c3 .seg { position:relative; flex:none; width:22px; height:16px; }
-.c3 .seg::before { content:""; position:absolute; top:6px; left:0; right:0; height:2px; background:var(--accent);
-                   transition:clip-path .3s var(--ease); clip-path:inset(0 0 0 0); }
-.c3 .seg::after { content:""; position:absolute; top:2px; left:50%; width:18px; height:10px; translate:-50% 0; transition:opacity .2s;
-                  background:radial-gradient(circle at 28% 50%, transparent 2.2px, var(--accent) 2.4px 4.2px, transparent 4.4px),
-                             radial-gradient(circle at 72% 50%, transparent 2.2px, var(--accent) 2.4px 4.2px, transparent 4.4px); }
-.c3 .seg[data-ok="false"]::before { clip-path:polygon(0 0, 35% 0, 25% 100%, 0 100%, 0 0, 100% 0, 100% 100%, 75% 100%, 65% 0, 100% 0); background:var(--bad); }
-.c3 .seg[data-ok="false"]::after { opacity:0; }
-.c3 .pc[data-ng="true"] { rotate:7deg; }
-.c3 .pc[data-ng="true"] .tag { border-color:var(--bad); border-top-color:var(--bad); }
-.c3 .pc[data-ng="true"] .ty::before { content:"✕ "; color:var(--bad); }
-.c3 .pc[data-implied="true"] .tag { border-style:dashed; border-top:3px dashed var(--line-2); box-shadow:none; }
-.c3 .pc[data-implied="true"] .nm { color:var(--muted); font-weight:500; }
-.c3 .pc[data-implied="true"] .ty::after { content:" 既定"; color:var(--muted); font-weight:500; }
-.c3 .pc[data-implied="true"] { animation:sway 3.2s ease-in-out infinite; }
-.c3 .pc[data-implied="true"]:hover .ty::after { content:" ＋ 吊る"; color:var(--fg); }
-@keyframes sway { 0%,100% { transform:rotate(-2deg); } 50% { transform:rotate(2deg); } }
-.c3 .pc:not([data-implied="true"]):not([data-kind="strategy"]):hover { rotate:-3deg; }
-.c3 .pc[data-sel="true"] .tag { box-shadow:0 0 0 1.5px var(--accent), 0 4px 6px rgba(24,18,8,.15); }
-.c3 .pc.fx-snap { animation:swing .9s ease-out both; animation-delay:var(--d,0s); }
-@keyframes swing { 0% { transform:translateY(-14px) rotate(0); opacity:0; } 20% { transform:rotate(12deg); opacity:1; } 40% { transform:rotate(-8deg); }
-                   60% { transform:rotate(4deg); } 80% { transform:rotate(-2deg); } 100% { transform:none; } }
-.c3 .pc.fx-out { animation:fall .45s cubic-bezier(.5,0,.9,.4) forwards; }
-@keyframes fall { 30% { transform:rotate(25deg); } 100% { transform:translateY(40px) rotate(40deg); opacity:0; } }
-.c3 .pc.fx-ng { animation:swing .9s ease-out; }
+.pc.fx-snap, .slot.fx-snap { animation:snap .55s var(--spring) both; animation-delay:var(--d,0s); }
+@keyframes snap { 0% { transform:translateY(var(--sy)) rotate(5deg) scale(.96); opacity:0; } 60% { transform:translateY(calc(var(--sy) * -.1)); opacity:1; } 100% { transform:none; } }
+.pc.fx-out, .slot.fx-out { animation:out .32s var(--ease) forwards; }
+@keyframes out { to { transform:translateY(var(--sy)) rotate(-12deg); opacity:0; } }
+.pc.fx-turn { animation:turn .45s var(--ease); }
+@keyframes turn { 0% { transform:scaleX(.05); } 100% { transform:none; } }
+.pc.fx-ng { animation:wob .5s ease-in-out .25s; }
+@keyframes wob { 0%,100% { transform:none; } 25% { transform:translateX(-4px) rotate(-1.5deg); } 50% { transform:translateX(3px); } 75% { transform:translateX(-2px); } }
 
-/* ============================================================
-   4. 定位置の鍵盤 — 戦型・囲い・戦法の3つの窪みは位置が動かない。札はキーキャップで、押すと沈む。
-      既定値は窪みに刻印だけ。継ぎ目は → と ≠
-   ============================================================ */
-.c4 { gap:0; }
-.c4 .pc { display:flex; align-items:center; gap:6px; height:44px; padding:3px; border-radius:9px; background:var(--faint);
-          box-shadow:inset 0 1px 3px rgba(24,18,8,.14), inset 0 0 0 1px var(--line); }
-.c4 .ty { writing-mode:vertical-rl; color:var(--ink); padding:0 1px 0 3px; letter-spacing:.14em; }
-.c4 .cap { display:flex; align-items:center; gap:2px; height:34px; padding:0 4px 0 10px; border-radius:6px;
-           background:var(--bg); border:1px solid var(--line-2); border-bottom:4px solid color-mix(in srgb,var(--ink) 55%,var(--line-2));
-           transition:transform .08s, border-bottom-width .08s; }
-.c4 .cap:has(.hit:active) { transform:translateY(3px); border-bottom-width:1px; }
-.c4 .pc[data-kind="strategy"] .cap { border-bottom-width:1px; background:none; border-color:transparent; padding-right:10px; }
-.c4 .pc[data-kind="strategy"] .nm { color:var(--accent); font-family:var(--font-d); }
-.c4 .pc[data-kind="strategy"] .cap::after { content:"導出"; margin-left:6px; font-size:9.5px; color:var(--muted); }
-.c4 .pc[data-sel="true"] .cap { border-color:var(--accent); border-bottom-color:var(--accent); background:var(--accent-soft); }
-.c4 .pc[data-ng="true"] .cap { border-color:var(--bad); border-style:dashed; border-bottom-style:solid; }
-/* 既定値: キャップが無く、窪みに刻印 */
-.c4 .pc[data-implied="true"] .cap { background:none; border:1px dashed transparent; border-bottom-width:1px; }
-.c4 .pc[data-implied="true"] .nm { color:var(--muted); font-weight:500; text-shadow:0 1px 0 var(--bg); }
-.c4 .pc[data-implied="true"] .cap::after { content:"既定"; margin:0 6px 0 4px; font-size:9.5px; color:var(--muted); }
-.c4 .pc[data-implied="true"]:hover .cap { border-color:var(--line-2); }
-.c4 .pc[data-implied="true"]:hover .cap::after { content:"押して確定"; color:var(--fg); }
-.c4 .ar { flex:none; display:grid; place-items:center; width:26px; font:700 16px/1 var(--font-b); color:var(--muted); }
-.c4 .ar[data-ok="false"] { color:var(--bad); font-size:18px; }
-.c4 .pc.fx-snap .cap { animation:rise .4s var(--spring) both; animation-delay:var(--d,0s); }
-@keyframes rise { 0% { transform:translateY(5px) scale(.92); border-bottom-width:0; opacity:.4; } 60% { transform:translateY(-3px); } 100% { transform:none; } }
-.c4 .pc.fx-out .cap { animation:sink .25s var(--ease) forwards; }
-@keyframes sink { to { transform:translateY(6px) scale(.94); opacity:0; } }
-.c4 .ar.fx-ng { animation:shakeX .4s; }
+.why ul { list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
+.why li { display:flex; gap:8px; align-items:baseline; padding:1px 4px; border-radius:4px; }
+.why li[data-hl]:hover { background:var(--faint); }
+.why .tg { flex:none; min-width:76px; text-align:center; font-size:10.5px; font-weight:800; letter-spacing:.06em; padding:1px 6px; border-radius:3px; }
+.w-good .tg { background:color-mix(in srgb,var(--good) 16%,transparent); color:var(--good); }
+.w-bad .tg, .w-ng .tg { background:color-mix(in srgb,var(--bad) 14%,transparent); color:var(--bad); }
+.w-hint .tg { box-shadow:inset 0 0 0 1px var(--accent-2); color:var(--accent-2); }
+.w-info .tg, .w-note .tg { box-shadow:inset 0 0 0 1px var(--line-2); color:var(--muted); }
+.w-far .tg::after { content:"・離れて"; font-weight:500; }
+.why small { color:var(--muted); font-size:12px; }
+.chooser { margin-top:10px; padding-top:8px; border-top:1px dashed var(--line); display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:34px; font-size:12px; }
+.ch-h { font-weight:700; color:var(--fg2); margin-right:4px; }
+.ch-tip { color:var(--muted); }
+.chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border:1px solid var(--line-2); border-radius:999px; background:none; cursor:pointer; font-size:12px; color:var(--fg2); }
+.chip:hover { border-color:var(--fg); color:var(--fg); }
+.chip.on { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+.chip.rm { border-style:dashed; color:var(--muted); }
+.chip .sh { width:9px; height:9px; border:1.5px solid currentColor; }
+.chip .sh-round { border-radius:50%; } .chip .sh-sq { border-radius:1px; }
+.chip .m { font-style:normal; font-weight:800; font-size:11px; }
+.chip .m.good { color:var(--good); } .chip .m.bad, .chip .m.ng { color:var(--bad); }
+
+/* ===== Ⅲ. 通し ===== */
+.whole { display:grid; grid-template-columns:240px minmax(0,1fr); column-gap:84px; align-items:start; margin-top:14px; }
+.whole .dock { height:440px; }
+.whole .kt.opp { top:57px; } .whole .kt.me { top:227px; }
+.whole .ghost { top:57px; } .whole .tray { top:22px; } .whole .fuse { top:26px; } .whole .pin { top:210px; }
+.whole .main { min-width:0; }
+.whole .main .mb { max-width:380px; margin:0 auto; }
+.whole .boardtop { display:none; }
 
 /* ===== まとめ ===== */
-.sum { margin:40px 0 60px; }
+.sum { margin:40px 0 70px; }
 .sum table { width:100%; border-collapse:collapse; font-size:12.5px; }
 .sum th, .sum td { padding:7px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
 .sum th { font-weight:700; color:var(--muted); font-size:11.5px; letter-spacing:.1em; }
 .sum td:first-child { font-weight:700; white-space:nowrap; }
 .sum .pick { color:var(--accent); font-weight:700; }
 .rec { margin-top:18px; padding:14px 16px; border-left:3px solid var(--accent); background:var(--accent-soft); font-size:13.5px; }
+.rec ul { margin:6px 0 0; padding-left:1.2em; }
 
-@media (max-width:900px) {
-  .bstage { grid-template-columns:250px minmax(0,1fr); row-gap:24px; }
-  .bstage .mbw { grid-column:2; grid-row:1; }
+@media (max-width:980px) {
+  .bstage { grid-template-columns:240px minmax(0,1fr); row-gap:24px; }
   .bstage .notes { grid-column:1 / -1; }
   .notes { grid-template-columns:1fr; }
+  .whole { grid-template-columns:minmax(0,1fr); row-gap:28px; }
+  .whole .dock { width:240px; }
 }
-@media (max-width:620px) {
+@media (max-width:640px) {
   .bstage { grid-template-columns:1fr; }
-  .bstage .dock { width:230px; }
-  .bstage .mbw { grid-column:1; grid-row:auto; margin-top:12px; }
-  .strip { overflow-x:auto; }
+  .bstage .dock { width:220px; }
+  .bstage .mbw { margin-top:16px; }
+  .bar .stage { min-width:0; }
 }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf6e4"/><stop offset="1" stop-color="#ecd8ad"/></linearGradient>
+    <linearGradient id="woodBack" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dcc08a"/><stop offset="1" stop-color="#c29f63"/></linearGradient>
+    <pattern id="grain" width="46" height="11" patternUnits="userSpaceOnUse">
+      <path d="M0 4 C10 2.6 26 6.2 46 4.2" fill="none" stroke="rgba(120,80,20,.13)" stroke-width=".7"/>
+      <path d="M0 9.5 C14 8.6 30 10.6 46 9.2" fill="none" stroke="rgba(120,80,20,.08)" stroke-width=".6"/>
+    </pattern>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" style="fill:var(--bg)"/><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--line-2)" stroke-width="1.2"/>
+    </pattern>
+  </defs>
+</svg>
+
 <header class="top">
-  <h1>バインダーと連結チップ</h1>
+  <h1>駒の見出しと噛み合う制約</h1>
   <nav>
-    <a href="#part1">Ⅰ バインダー</a><a href="#bA">A 駒台</a><a href="#bB">B 表裏</a><a href="#bC">C 引き出し</a><a href="#bD">D スイッチ</a>
-    <a href="#part2">Ⅱ 連結チップ</a><a href="#c1">1 ジグソー</a><a href="#c2">2 駒の列</a><a href="#c3">3 水引</a><a href="#c4">4 鍵盤</a>
-    <a href="#sum">まとめ</a>
+    <a href="#part1">Ⅰ 駒の見出し</a>
+    <a href="#part2">Ⅱ 制約バー</a><a href="#c1">1 台座</a><a href="#c2">2 鍵と錠</a><a href="#c3">3 盤の地図</a>
+    <a href="#part3">Ⅲ 通し</a><a href="#sum">まとめ</a>
   </nav>
   <span class="sp"></span>
   <button type="button" id="themeBtn">明／暗</button>
@@ -502,168 +395,92 @@ section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-wi
 
 <div class="wrap">
   <div class="intro">
-    <h2>押した感じが伝わる、見て分かる</h2>
-    <p>左ドックのバインダー（自分／相手の切り替え・相手の表示 ON/OFF）と、制約バーの連結チップ（戦型 → 囲い → 戦法）を作り直す案です。それぞれ4案あり、どれも実際に操作できます。</p>
+    <h2>見出しは駒、制約は嵌まるピース</h2>
+    <p>左ドックのバインダーを「駒の見出し」案（<a href="design-refs-binder.html#E">design-refs-binder.html の E</a>）から作り直し、盤の上の制約バーをジグソーを土台に作り直した案です。どれも実際に操作できます。</p>
     <ul>
-      <li><b>今の困りごと</b>　バインダー: 「相手の面を開く」と「相手を盤に出す」が同じ駒に重なっていて、OFF は角の小さな × だけ。連結チップ: 継ぎ目の形（三角／四角）は戦型を表しているのに、それが読み取れない。「両立しない」の理由は title にしか出ない。</li>
-      <li><b>共通の方針</b>　① 選択と表示を別の手つきに分ける　② 両立するかどうかを継ぎ目の形と、帯の下の1行の理由で示す　③ 状態が変わる瞬間に1回だけ、物の動きで返す（ループ演出はしない。<code>prefers-reduced-motion</code> では全部止める）</li>
+      <li><b>バーの要件</b>　相手がいれば2行（上=相手・下=自分）。戦型のピースを中心に、囲いと戦法が<b>左右から</b>戦型に嵌まる（どちらが先ということはない）。戦法は飛・銀・角の筋ごとに受け口があり、<b>同時に挿せる</b>。</li>
+      <li><b>要件をこう読み替えた</b>　① 相手の行は、自分の行を<b>180°回した並び</b>にする（盤の上の駒と同じ）。そうすると<b>自分の攻め（戦法）の真上に相手の守り（囲い）</b>が、自分の囲いの真上に相手の戦法が来る。相性は、この縦の継ぎ目の嵌まり具合で読む。② 継ぎ目が嵌まる＝自分に都合のよい組み合わせ、と意味を1つに決める。③ 戦型どうしの継ぎ目は相性を判定せず、「対抗形」などの札だけを付ける。</li>
+      <li><b>連動</b>　戦型を押すと居飛車／振り飛車が入れ替わり、受け口の形が変わる。受け口がなくなった戦法は抜け落ちる。囲いは勝手に差し替えず、形が合わないまま傾いて残る（いまの <code>constraints.js</code> の「選んだものは勝手に差し替えない」と同じ）。</li>
+      <li><b>完成</b>　自分の囲いと戦法を確定し、合わない継ぎ目がなくなると、右上に落款「噛み合い」が押される（dev.md の「区切り・完成体験」）。</li>
     </ul>
+    <p class="try">相性の判定とその理由は、見た目を確かめるための仮のデータです（定跡の正確さは問わない）。</p>
   </div>
 
-  <!-- ======================= Part 1 ======================= -->
+  <!-- ======================= Ⅰ ======================= -->
   <div class="part" id="part1">
-    <h2>Ⅰ　バインダー：自分／相手と、相手の ON/OFF</h2>
-    <p>右に盤の切れ端があります。相手を ON にすると相手の駒がぱらぱらと並び、OFF にすると引っ込みます。開いている側の陣は枠で囲みます。</p>
+    <h2>Ⅰ　駒の見出し</h2>
+    <p>見出しを将棋の駒の形にした案です。自分の駒は先を上、相手の駒は先を下に向け、2枚の先がドックの中央（河）で向き合います。開いている面の駒は木地で頁より前に出て、閉じている面の駒は線だけで頁の下に少し潜ります。</p>
   </div>
 
-  <section class="plan" id="bA">
-    <h3><span class="no">A</span>駒台から打つ</h3>
-    <p class="lead">OFF の相手は、バインダーの頭にある<b>駒台</b>に置かれた1枚の駒です。押すと駒が見出しの位置まで飛んで「パチ」と収まり、相手の面が開きます。見出しの頭の <b>⤒</b> で駒台に戻ります。「盤に出す＝打つ」という将棋そのものの動きです。</p>
-    <div class="bstage demo pA" data-demo="A">
-      <div class="dock">
-        <div class="page"></div>
-        <div class="binder">
-          <div class="kdai" title="駒台（OFF の相手はここ）"><button type="button" class="kd-p" aria-label="相手を盤に出す（駒台から打つ）"><span>相</span></button></div>
-          <div class="slot" role="button" tabindex="0" aria-label="相手を盤に出す">打つ</div>
-          <button type="button" role="tab" class="tab opp" data-who="opp"><span class="body"></span><span class="v"><b>相手</b><small>後手 △</small></span></button>
-          <button type="button" class="lift" aria-label="相手を駒台へ下げる（表示 OFF）" title="駒台へ下げる（表示 OFF）">⤒</button>
-          <button type="button" role="tab" class="tab me" data-who="me"><span class="body"></span><span class="v"><b>自分</b><small>先手 ▲</small></span></button>
-        </div>
-      </div>
-      <div class="mbw"><div class="mb"></div><div class="state"></div></div>
-      <div class="notes">
-        <div><h4>直感・可読性</h4><ul><li>OFF のとき「相手の駒は駒台にある」と一目で分かる</li><li>点線の枡に「打つ」と書いてあるので、押せば何が起きるか分かる</li></ul></div>
-        <div><h4>手応え</h4><ul><li>駒が飛んで収まり、波紋が広がる</li><li>盤の上でも相手の駒が順に並んで、打った手応えが続く</li></ul></div>
-        <div><h4>注意</h4><ul><li>駒台のぶん縦が 50px ほど要る</li><li>⤒ はホバーで出るので、タッチ操作では常に出しておく必要がある</li></ul></div>
-      </div>
+  <section class="plan" id="b1">
+    <h3><span class="no">E′</span>駒の見出し（作り直し）</h3>
+    <p class="lead">原案からの主な変更: 駒の輪郭を本物の比率（肩から裾へ広がる五角形）に直し、開いている駒には<b>木地・木目・面取りの光</b>を付けた。「先手／後手」の字を外して<b>自分／相手</b>だけにした。開いている側の半分だけ、頁の右端に墨／藍の線を通す。相手を盤から外す OFF は小さな × をやめ、手つきを3通り試せるようにした。</p>
+    <div class="modes">OFF の手つき:
+      <span class="seg" role="group" aria-label="OFF の手つき">
+        <button type="button" data-mode="tray" aria-pressed="true">駒台に下げる</button>
+        <button type="button" data-mode="flip" aria-pressed="false">伏せる</button>
+        <button type="button" data-mode="pin" aria-pressed="false">河の留め具</button>
+      </span>
     </div>
-    <p class="try">試す: 駒台の「相」か点線の「打つ」を押す → 見出しにマウスを乗せて ⤒ を押す。見出しは <kbd>↑</kbd><kbd>↓</kbd> でも切り替わる。</p>
+    <div class="bstage demo" id="binderDemo">
+      <div class="dock"><div class="page"></div><div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手"></div></div>
+      <div class="mbw"><div class="mb"></div><div class="state"></div></div>
+      <div class="notes" id="modeNotes"></div>
+    </div>
+    <p class="try">試す: 駒を押して面を切り替える（<kbd>↑</kbd><kbd>↓</kbd> でも）→ 手つきを切り替えて相手を OFF／ON にする。相手の駒にフォーカスして <kbd>Delete</kbd> でも OFF。</p>
   </section>
 
-  <section class="plan" id="bB">
-    <h3><span class="no">B</span>表と裏</h3>
-    <p class="lead">OFF の相手は<b>伏せた駒</b>（木地の裏面）です。押すと3Dで裏返って表になり、そのまま相手の面が開きます。隠すときは、見出しの角の<b>折り返し</b>をめくります。マウスを乗せると駒が少しめくれて「裏返せる」ことが分かります。</p>
-    <div class="bstage demo pB" data-demo="B">
-      <div class="dock">
-        <div class="page"></div>
-        <div class="binder">
-          <button type="button" role="tab" class="tab opp" data-who="opp">
-            <span class="flip">
-              <span class="face front"><span class="body"></span><span class="v"><b>相手</b><small>後手 △</small></span></span>
-              <span class="face back"><span class="body"></span><span class="v"><b>相手</b><small>伏せ・押して表に</small></span></span>
-            </span>
-          </button>
-          <button type="button" class="ear" aria-label="相手を伏せる（表示 OFF）" title="伏せる（表示 OFF）"></button>
-          <button type="button" role="tab" class="tab me" data-who="me"><span class="body"></span><span class="v"><b>自分</b><small>先手 ▲</small></span></button>
-        </div>
-      </div>
-      <div class="mbw"><div class="mb"></div><div class="state"></div></div>
-      <div class="notes">
-        <div><h4>直感・可読性</h4><ul><li>表＝出ている、裏＝出ていない。色と言葉に頼らず、素材で状態が分かる</li><li>「伏せ」と書いて意味をはっきりさせる</li></ul></div>
-        <div><h4>手応え</h4><ul><li>ばねの効いた裏返り（少し行き過ぎて戻る）</li><li>マウスを乗せると先にめくれ、押す前から結果が予想できる</li></ul></div>
-        <div><h4>注意</h4><ul><li>折り返しが小さい。タッチでは長押しでも伏せられるようにしたい</li><li>3D の裏返りは reduced-motion では切り替えるだけにする</li></ul></div>
-      </div>
-    </div>
-    <p class="try">試す: 木地の「相手」を押す → 相手の見出しにマウスを乗せて、左上の折り返しを押す。</p>
-  </section>
-
-  <section class="plan" id="bC">
-    <h3><span class="no">C</span>引き出し</h3>
-    <p class="lead">相手の見出しは<b>引き出しの取っ手</b>です。OFF のときは面の裏に押し込まれていて、縁と ≡ の握りだけが見えます。<b>右へ引き出すと ON、左へ押し込むと OFF</b>。半分より手前で放すと元の位置に戻ります。クリックでも開け閉めできます。</p>
-    <div class="bstage demo pC" data-demo="C">
-      <div class="dock">
-        <div class="page"></div>
-        <div class="binder">
-          <span class="rail" aria-hidden="true"></span>
-          <span class="hint" aria-hidden="true">→ 引き出す</span>
-          <button type="button" role="tab" class="tab opp" data-who="opp" aria-keyshortcuts="Delete"><span class="body"></span><span class="v"><b>相手</b><small>後手 △</small></span><span class="grip"></span></button>
-          <button type="button" role="tab" class="tab me" data-who="me"><span class="body"></span><span class="v"><b>自分</b><small>先手 ▲</small></span></button>
-        </div>
-      </div>
-      <div class="mbw"><div class="mb"></div><div class="state"></div></div>
-      <div class="notes">
-        <div><h4>直感・可読性</h4><ul><li>出ている量そのものが ON/OFF を表すので、記号が要らない</li><li>押し込まれた見出しは「無い」ように見え、相手を消したことが分かりやすい</li></ul></div>
-        <div><h4>手応え</h4><ul><li>ドラッグに指が付いてきて、放すとばねで収まる</li><li>途中で放すと元に戻る（取り消せる）</li></ul></div>
-        <div><h4>注意</h4><ul><li>ドラッグできることに気づきにくい。最初だけ「→ 引き出す」を出しておく</li><li>キーボードは <kbd>Delete</kbd> で押し込む</li></ul></div>
-      </div>
-    </div>
-    <p class="try">試す: 縁の ≡ を右へドラッグする（クリックでもよい）→ 開いた相手の見出しを左へドラッグして押し込む。フォーカス中は <kbd>Delete</kbd> で OFF。</p>
-  </section>
-
-  <section class="plan" id="bD">
-    <h3><span class="no">D</span>内蔵スイッチ</h3>
-    <p class="lead">相手の見出しの頭に、<b>駒のつまみが付いた縦のスイッチ</b>を付けます。見出しは「どちらの面を開くか」、スイッチは「相手を盤に出すか」と役割を分けます。OFF の見出しは斜線で薄くなり「＋相手」と表示され、押すと ON になって面が開きます。4案の中でいちばん普通のやり方で、誤操作が起きにくい案です。</p>
-    <div class="bstage demo pD" data-demo="D">
-      <div class="dock">
-        <div class="page"></div>
-        <div class="binder">
-          <button type="button" class="sw" role="switch" aria-checked="false" aria-label="相手を盤に表示"><span class="tr"><span class="kn"></span></span><span class="lb">表示</span></button>
-          <button type="button" role="tab" class="tab opp" data-who="opp"><span class="body"></span><span class="v"><b>相手</b><small>後手 △</small></span></button>
-          <button type="button" role="tab" class="tab me" data-who="me"><span class="body"></span><span class="v"><b>自分</b><small>先手 ▲</small></span></button>
-        </div>
-      </div>
-      <div class="mbw"><div class="mb"></div><div class="state"></div></div>
-      <div class="notes">
-        <div><h4>直感・可読性</h4><ul><li>スイッチは見慣れた部品なので、説明しなくても分かる</li><li>OFF にしても相手の見出しは残るので、場所が変わらない</li></ul></div>
-        <div><h4>手応え</h4><ul><li>駒のつまみが跳ねて止まる</li><li>盤の上で相手の駒が並ぶのが一番のごほうび</li></ul></div>
-        <div><h4>注意</h4><ul><li>遊び心は控えめ。つまみを駒の形にするくらい</li><li>見出しの外にはみ出すので、盤との間に 20px ほど要る</li></ul></div>
-      </div>
-    </div>
-    <p class="try">試す: スイッチを押す・斜線の「＋相手」を押す・自分の見出しを押す。</p>
-  </section>
-
-  <!-- ======================= Part 2 ======================= -->
+  <!-- ======================= Ⅱ ======================= -->
   <div class="part" id="part2">
-    <h2>Ⅱ　連結チップ：戦型 → 囲い → 戦法</h2>
-    <p>どの案でも次の操作ができます。ピースを押すと選択（左の一覧へ連動）、× で外す（外すと既定値の仮ピースに替わる）、仮ピースを押すと確定。下のボタンで「両立しない」組み合わせにできます。理由はバーの下の1行にいつも表示されます。</p>
+    <h2>Ⅱ　噛み合う制約バー</h2>
+    <p>3案とも、ピースの形の約束は同じです。違うのは、戦法を複数どう挿すかと、2行の並べ方です。継ぎ目の形だけでなく、バーの下にいつも理由を1行ずつ出します（行にマウスを乗せると、該当するピースが縁取られる）。</p>
+    <div class="legend" id="legend"></div>
   </div>
 
   <section class="plan" id="c1">
-    <h3><span class="no">1</span>ジグソー</h3>
-    <p class="lead">継ぎ目の<b>耳の形で戦型を表します</b>（居飛車＝丸、振り飛車＝角）。両立しないピースは自分の戦型の耳を持ったまま入ってくるので、<b>形が合わずに浮いて傾き</b>、後ろのピースとの間に隙間ができます。確定すると右から滑り込んで、継ぎ目に朱の輪が光ります。</p>
-    <div class="bardemo" data-bar="c1"><div class="strip"><span class="who">自分 ▲</span><div class="host"></div></div><div class="why" aria-live="polite"></div>
-      <div class="ctrl">組み合わせ: <button data-preset="ok">居飛車・両立</button><button data-preset="ng">両立しない</button><button data-preset="furi">振り飛車</button></div></div>
+    <h3><span class="no">1</span>台座</h3>
+    <p class="lead">戦型は<b>縦に大きな六角形</b>で、行から少しはみ出す要石です。片側には囲い（五角形）が凸凹で嵌まります。もう片側には戦型から<b>台座（レール）</b>が伸びていて、飛・銀・角の<b>受け口</b>が並んでいます。戦法は台形のピースで、それぞれ台座に挿します。戦法どうしはつながっておらず隙間があるので、互いに独立していることが見て分かります。振り飛車の台座には飛の受け口しかありません。</p>
+    <div class="bar" data-plan="rail"></div>
     <div class="notes">
-      <div><h4>直感・可読性</h4><ul><li>「嵌まる／嵌まらない」は説明が要らない</li><li>耳の形と戦型の対応は、凡例に1行あれば足りる</li></ul></div>
-      <div><h4>手応え</h4><ul><li>滑り込んで行き過ぎて戻る＋朱の輪</li><li>外すときは持ち上がって抜ける</li></ul></div>
-      <div><h4>注意</h4><ul><li>mask で切り欠くので、縁取りは drop-shadow に頼ることになる（ほんの少しにじむ）</li><li>傾いたピースは字が読みにくい。傾きは 3° までにする</li></ul></div>
+      <div><h4>直感・可読性</h4><ul><li>戦法を足す＝空いた受け口にピースを挿す、という手つきがそのまま見える</li><li>振り飛車では受け口が1つしかないので、使える筋が形で分かる</li></ul></div>
+      <div><h4>手応え</h4><ul><li>挿すと下から嵌まって行き過ぎて戻り、継ぎ目に緑の輪が光る</li><li>戦型を切り替えると台座が裏返り、受け口のない戦法は落ちる</li></ul></div>
+      <div><h4>注意</h4><ul><li>ピースの数が最大で 1+1+3 枚、2行で10枚になる。幅は 720px ほど要る</li><li>相手の行は左右が逆になるので、慣れるまで「相手の戦法が左」に戸惑うかもしれない</li></ul></div>
     </div>
   </section>
 
   <section class="plan" id="c2">
-    <h3><span class="no">2</span>駒の列</h3>
-    <p class="lead">1枚ずつを<b>将棋の駒</b>にし、駒の先が次の駒の欠けに入って列になります。継ぎ目には<b>朱の結び点</b>を打ち、両立しないと駒が離れて<b>ひびの印</b>に変わります。既定値は木地の<b>伏せ駒</b>で、押すと「パチ」と打たれます。種類（戦型・囲い・戦法）は駒の左に縦書きの小さな札で示します。</p>
-    <div class="bardemo" data-bar="c2"><div class="strip"><span class="who">自分 ▲</span><div class="host"></div></div><div class="why" aria-live="polite"></div>
-      <div class="ctrl">組み合わせ: <button data-preset="ok">居飛車・両立</button><button data-preset="ng">両立しない</button><button data-preset="furi">振り飛車</button></div></div>
+    <h3><span class="no">2</span>鍵と錠</h3>
+    <p class="lead">戦法を<b>1枚の鍵</b>にまとめます。鍵の中に飛・銀・角の3つの区画があり、戦法を挿した区画だけ、相手側の縁に<b>歯</b>が生えます。相手の囲いは<b>錠</b>で、刺さる攻めの位置に溝が切られています。歯が溝に入れば「刺さる」、溝がなければ歯が欠けて「歯が立たない」。<b>歯のない溝</b>は「まだ空いている弱点」で、ここに挿せば刺さるという候補になります。行の形は 囲い｜戦型｜鍵 の3枚に固定です。</p>
+    <div class="bar" data-plan="key"></div>
     <div class="notes">
-      <div><h4>直感・可読性</h4><ul><li>盤の駒と同じ素材なので、ページ全体の世界観がそろう</li><li>点＝つながっている、ひび＝切れている、と記号が2つだけ</li></ul></div>
-      <div><h4>手応え</h4><ul><li>上から打ち下ろして沈み、「パチ」の字が浮く</li><li>選択中の駒は持ち上がって影が伸びる</li></ul></div>
-      <div><h4>注意</h4><ul><li>戦型の形（丸／角）の区別はなくなるので、戦型は字で読ませる</li><li>生成りの駒は暗いテーマで少し明るく浮く</li></ul></div>
+      <div><h4>直感・可読性</h4><ul><li>ピースが行あたり3枚で、いちばんすっきりしている</li><li>空いた溝が「次の一手」の提案になり、どう組めばよいかを考える手がかりになる</li></ul></div>
+      <div><h4>手応え</h4><ul><li>戦法を足すたびに鍵の歯が増える。「鍵が合う」気持ちよさがある</li></ul></div>
+      <div><h4>注意</h4><ul><li>戦法の名前が区画に収まらないことがある（7文字までは字間を詰める）</li><li>鍵の区画を押すことに気づきにくい。区画の境に点線を引いている</li></ul></div>
     </div>
   </section>
 
   <section class="plan" id="c3">
-    <h3><span class="no">3</span>水引</h3>
-    <p class="lead">朱の紐を1本通し、制約を<b>札として吊るします</b>。紐の結び目が「つながっている」印です。両立しないと結び目がほどけて紐が切れ、その札は<b>斜めに傾きます</b>。外すと札が落ち、既定値の札は点線の枠のまま<b>ゆっくり揺れて</b>待ちます。押すと吊られて、振り子のように揺れてから止まります。</p>
-    <div class="bardemo" data-bar="c3"><div class="strip"><span class="who">自分 ▲</span><div class="host"></div></div><div class="why" aria-live="polite"></div>
-      <div class="ctrl">組み合わせ: <button data-preset="ok">居飛車・両立</button><button data-preset="ng">両立しない</button><button data-preset="furi">振り飛車</button></div></div>
+    <h3><span class="no">3</span>盤の地図</h3>
+    <p class="lead">行の並びを<b>実際の盤の左右</b>に合わせます。囲いのピースは玉のいる側に置きます（自分の居飛車なら左、振り飛車なら右。相手は盤を回した向きで見る）。こうすると、<b>対抗形</b>では両方の玉が同じ側に寄るので、囲いどうし・戦法どうしが向かい合います。<b>相居飛車・相振り飛車</b>では、攻めの真上に相手の囲いが来ます。戦型を切り替えると行が左右に<b>裏返ります</b>。ピースは 2 と同じ形で、下の帯は盤の筋（９〜１）と、ピースの下にあたる盤の領域です。</p>
+    <div class="bar" data-plan="geo"></div>
     <div class="notes">
-      <div><h4>直感・可読性</h4><ul><li>「切れている」は遠くからでも目立つ</li><li>種類と名前を2段にできるので、名前が長くても切れにくい</li></ul></div>
-      <div><h4>手応え</h4><ul><li>振り子の減衰と落下で、いちばん遊び心がある</li></ul></div>
-      <div><h4>注意</h4><ul><li>高さが 56px 要る（今のバーは 44px）</li><li>既定値の札が揺れ続けるのは気が散るかもしれない。揺れはホバー中だけにしてもよい</li></ul></div>
+      <div><h4>直感・可読性</h4><ul><li>バーの左右がそのまま盤の左右なので、盤の上に色で領域を出す案（dev.md）とそのままつながる</li><li>対抗形では「戦法どうしがぶつかる」という将棋の実感どおりに並ぶ</li></ul></div>
+      <div><h4>手応え</h4><ul><li>戦型を変えると行がくるりと裏返る</li></ul></div>
+      <div><h4>注意</h4><ul><li>戦型で並びが変わるので、「ある程度一方向にしないと混乱する」（dev.md）に反する</li><li>対抗形では、相手の戦法と自分の囲いの関係（例: 藤井システム → 居飛車穴熊）が離れてしまい、継ぎ目に出せない。下の1行に「離れて」と書くだけになる</li></ul></div>
     </div>
   </section>
 
-  <section class="plan" id="c4">
-    <h3><span class="no">4</span>定位置の鍵盤</h3>
-    <p class="lead">戦型・囲い・戦法の<b>3つの窪みは位置が動きません</b>。明示した制約はキーキャップで、押すと<b>カチッと沈みます</b>。既定値はキャップが無く、窪みに刻まれた字だけです。継ぎ目は <b>→</b>（つながる）と <b>≠</b>（両立しない）の2種類。いちばん地味ですが、いちばん読みやすい案です。</p>
-    <div class="bardemo" data-bar="c4"><div class="strip"><span class="who">自分 ▲</span><div class="host"></div></div><div class="why" aria-live="polite"></div>
-      <div class="ctrl">組み合わせ: <button data-preset="ok">居飛車・両立</button><button data-preset="ng">両立しない</button><button data-preset="furi">振り飛車</button></div></div>
-    <div class="notes">
-      <div><h4>直感・可読性</h4><ul><li>場所が決まっているので、目で探さなくてよい</li><li>戦型は「導出」と書き、押せないことが見た目で分かる</li></ul></div>
-      <div><h4>手応え</h4><ul><li>キャップの沈み込み（:active）と、確定したときの浮き上がり</li></ul></div>
-      <div><h4>注意</h4><ul><li>連結の「パズル感」は弱い。ジグソー（1）の耳を → の代わりに使う折衷もできる</li></ul></div>
+  <!-- ======================= Ⅲ ======================= -->
+  <div class="part" id="part3">
+    <h2>Ⅲ　通しで見る：駒の見出し × 台座 × 盤</h2>
+    <p>バインダーで相手を OFF にすると、バーの相手の行が畳まれ、盤が上に詰まります（dev.md「相手がいない時は盤面位置を上に」）。バーのピースを押すと、そのピースの側の面がドックに開きます。開いている面の行は濃く、もう一方の行は少し薄く表示します。</p>
+  </div>
+  <section class="plan" id="whole">
+    <div class="whole demo" id="wholeDemo">
+      <div class="dock"><div class="page"></div><div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手"></div></div>
+      <div class="main"><div class="bar" data-plan="rail" data-whole="1"></div><div class="mb" style="margin-top:6px"></div></div>
     </div>
+    <p class="try">試す: 駒台を押して相手を下げる／戻す → バーの相手のピースを押すとドックが相手の面になる → 自分の戦型を押して振り飛車にする。</p>
   </section>
 
   <div class="sum" id="sum">
@@ -671,17 +488,22 @@ section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-wi
     <table>
       <thead><tr><th>案</th><th>直感</th><th>可読性</th><th>遊び・手応え</th><th>実装の重さ</th></tr></thead>
       <tbody>
-        <tr><td>A 駒台</td><td>◎ 打つ／下げる</td><td>○</td><td>◎ 飛んで収まる</td><td>中（FLIP 演出・縦 50px 増）</td></tr>
-        <tr><td>B 表裏</td><td class="pick">◎ 表＝出ている</td><td>◎</td><td>◎ 裏返り</td><td>小（今の駒の見出しに裏面を足すだけ）</td></tr>
-        <tr><td>C 引き出し</td><td>○ 気づくまで少しかかる</td><td>◎</td><td>◎ ドラッグとばね</td><td>中（ポインタ処理）</td></tr>
-        <tr><td>D スイッチ</td><td>◎</td><td>◎</td><td>△</td><td>小</td></tr>
-        <tr><td>1 ジグソー</td><td class="pick">◎ 嵌まる／浮く</td><td>○</td><td>◎</td><td>小（今の clip-path 連結の延長）</td></tr>
-        <tr><td>2 駒の列</td><td>○</td><td>○</td><td>◎ パチ</td><td>小</td></tr>
-        <tr><td>3 水引</td><td>◎ 切れる</td><td>○</td><td>◎◎</td><td>中（高さ 56px）</td></tr>
-        <tr><td>4 鍵盤</td><td>◎</td><td class="pick">◎◎ 定位置</td><td>○</td><td>小</td></tr>
+        <tr><td>E′ 駒台に下げる</td><td class="pick">◎ 下げる／打つ</td><td>◎ 駒台に駒が載る</td><td>◎ 駒が縮んで駒台へ</td><td>小（transform の遷移だけ）</td></tr>
+        <tr><td>E′ 伏せる</td><td>○ 裏＝出ていない</td><td>○ 伏せる場所が離れている</td><td>◎ 裏返り</td><td>小</td></tr>
+        <tr><td>E′ 河の留め具</td><td>○ 留め具だと気づくまで少しかかる</td><td>◎ 中央で目立つ</td><td>○ 外れて浮く</td><td>小</td></tr>
+        <tr><td>1 台座</td><td class="pick">◎ 挿す／抜ける</td><td>○ ピースが多い</td><td>◎</td><td>中（SVG の輪郭を組み立てる）</td></tr>
+        <tr><td>2 鍵と錠</td><td>◎ 歯と溝</td><td class="pick">◎◎ 3枚で読める</td><td>◎ 歯が増える</td><td>中</td></tr>
+        <tr><td>3 盤の地図</td><td>△ 並びが動く</td><td>○ 盤と対応する</td><td>◎ 裏返る</td><td>中（1・2 の並べ替え）</td></tr>
       </tbody>
     </table>
-    <p class="rec"><b>おすすめの組み合わせ</b>：バインダーは <b>B 表と裏</b>（今の駒の見出しを活かせて、「伏せ駒＝出ていない」が将棋の言葉で通じる）。連結チップは <b>1 ジグソー</b>の耳と傾きに、<b>4 鍵盤</b>の「定位置」と「下に1行の理由」を足した折衷。伏せ駒の木地を既定値の表示にも使えば（2 の伏せ駒）、ドックとバーで「木地＝まだ決めていない」という意味がそろいます。</p>
+    <div class="rec"><b>おすすめの組み合わせ</b>
+      <ul>
+        <li>バインダーは <b>E′ 駒台に下げる</b>。OFF にすると相手の駒が駒台に載るので、「どこへ行ったか」「どう戻すか」が同じ場所で分かる。</li>
+        <li>バーは <b>1 台座</b>のピースに、<b>2 の「歯のない溝＝空いている弱点」</b>を足す（1 の受け口にも溝の示唆は出している）。戦法の複数選択がピースの枚数として見えるのは 1 だけ。幅が足りない画面では 2 の鍵にまとめる。</li>
+        <li><b>3 盤の地図</b>はバーにはせず、盤の上の色の領域（囲い=朱・戦法=藍）として採るとよい。バーの並びは 1／2 のまま固定し、「攻めの真上に相手の守り」を崩さない。</li>
+        <li>色の約束: 戦型=墨・囲い=朱・戦法=藍。自分／相手は色ではなく<b>位置と向き</b>（上の行・逆さの駒）で分ける。相手の藍（#33507a）と戦法の藍が近いので、ドックの面の色は今より彩度を落とした方が衝突しない。</li>
+      </ul>
+    </div>
   </div>
 </div>
 
@@ -696,307 +518,653 @@ section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-wi
   });
   const replay = (el, cls) => {
     if (!el) return;
-    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls);
     el.addEventListener('animationend', () => el.classList.remove(cls), { once:true });
   };
 
-  // ================= Part 1: バインダー =================
+  // ================= Ⅰ: 駒の見出し =================
   const ME = ['香桂銀金玉金銀桂香', '　角　　　　　飛　', '歩歩歩歩歩歩歩歩歩'];
   const OPP = ['歩歩歩歩歩歩歩歩歩', '　飛　　　　　角　', '香桂銀金玉金銀桂香'];
   function boardHTML() {
     let h = '<div class="g9">', i = 0;
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
-      let ch = '', cls = '';
-      if (r <= 2) { ch = OPP[2 - r][c]; cls = 'o'; }
-      if (r >= 6) { ch = ME[8 - r][c]; }
+      let ch = '', o = false;
+      if (r <= 2) { ch = OPP[2 - r][c]; o = true; }
+      if (r >= 6) ch = ME[8 - r][c];
       if (ch === '　') ch = '';
-      h += cls && ch ? `<span class="o" style="--i:${i++}">${ch}</span>` : `<span>${ch}</span>`;
+      h += o && ch ? `<span class="o" style="--i:${i++}">${ch}</span>` : `<span>${ch}</span>`;
     }
-    return h + '</div><span class="half o"></span><span class="half m"></span><span class="off">相手は非表示</span>';
+    return h + '</div><span class="half o"></span><span class="half m"></span><span class="off">相手は盤に出ていない</span>';
   }
-  const CARDS = {
-    me: ['矢倉', '舟囲い', '美濃', '穴熊', '銀冠', '左美濃'],
-    opp: ['美濃', '高美濃', '穴熊', '金無双', '舟囲い', '矢倉'],
-  };
-  const pageHTML = who => `<div class="in"><div class="pg-h"><b>${who === 'opp' ? '相手' : '自分'}</b><small>${who === 'opp' ? '後手 △' : '先手 ▲'}</small></div>` +
+  const CARDS = { me:['舟囲い', '居飛車穴熊', '矢倉', '左美濃', '銀冠', 'エルモ'], opp:['美濃', '高美濃', '銀冠', '振り穴', '金無双', '木村美濃'] };
+  const pageHTML = who => `<div class="in"><div class="pg-h"><b>${who === 'opp' ? '相手' : '自分'}</b><small>${who === 'opp' ? '振り飛車' : '居飛車'}</small></div>` +
     `<div class="mseg"><span class="on">囲い</span><span>戦法</span></div>` +
-    `<div class="cards">${CARDS[who].map((n, i) => `<div class="card${i === 0 ? ' sel' : ''}"><span class="th"><i style="left:${10 + i * 5}px;top:${12 + (i % 2) * 8}px"></i><i style="left:${22 + i * 3}px;top:20px"></i></span>${n}</div>`).join('')}</div></div>`;
+    `<div class="cards">${CARDS[who].map((n, i) => `<div class="card${i === 0 ? ' sel' : ''}"><span class="th"><i style="left:${8 + i * 5}px;top:${12 + (i % 2) * 8}px"></i><i style="left:${22 + i * 3}px;top:20px"></i></span>${n}</div>`).join('')}</div></div>`;
 
-  function binderDemo(root, hooks = {}) {
-    const st = { who: 'me', show: false };
-    const page = root.querySelector('.page');
-    const board = root.querySelector('.mb');
-    const stateEl = root.querySelector('.state');
-    board.innerHTML = boardHTML();
+  const KOMA = 'M23 0L41.5 13L46 156H0L4.5 13Z';
+  const KOMA_IN = 'M23 2.8L39.6 14.6L43.8 153.8H2.2L6.4 14.6Z';
+  const komaSvg = flip => `<svg class="kt-svg" viewBox="0 0 46 156" preserveAspectRatio="none" aria-hidden="true"><g${flip ? ' transform="matrix(1 0 0 -1 0 156)"' : ''}>` +
+    `<path class="kt-edge" d="${KOMA}"/><path class="kt-face" d="${KOMA_IN}"/><path class="kt-grain" d="${KOMA_IN}"/><path class="kt-bevel" d="${KOMA_IN}"/></g></svg>`;
+  const miniKoma = g => `<svg viewBox="0 0 18 21" width="18" height="21" aria-hidden="true"><g transform="matrix(1 0 0 -1 0 21)">` +
+    `<path d="M9 0L15.6 3L18 21H0L2.4 3Z" fill="#fbf6ea" stroke="rgba(40,28,10,.55)" stroke-width=".8"/></g>` +
+    `<text x="9" y="9.5" text-anchor="middle" dominant-baseline="central" style="font:800 9px var(--font-d);fill:#2b4670">${g}</text></svg>`;
+  const binderHTML = () => `
+    <button type="button" class="tray" data-act="tray"><span class="tray-p">${miniKoma('相')}</span><span class="tray-lb"><span class="a">駒台</span><span class="b">↑下げる</span></span></button>
+    <button type="button" class="fuse" data-act="fuse" aria-label="相手を伏せる（盤から外す）" title="伏せる（盤から外す）">伏</button>
+    <button type="button" class="ghost" data-act="ghost" aria-label="相手を盤に出す"><svg viewBox="0 0 46 156" preserveAspectRatio="none" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 156)" d="${KOMA}"/></svg><span>＋相手</span></button>
+    <button type="button" role="tab" class="kt opp" data-who="opp"><span class="kt-in">${komaSvg(true)}<span class="kt-tx">相手</span><span class="kt-back">押して表に</span></span></button>
+    <button type="button" class="pin" data-act="pin"><i></i></button>
+    <button type="button" role="tab" class="kt me" data-who="me"><span class="kt-in">${komaSvg(false)}<span class="kt-tx">自分</span></span></button>`;
+
+  function makeBinder(root, opts = {}) {
+    const st = { who:'me', show:opts.show ?? true, mode:opts.mode || 'tray' };
+    const binder = root.querySelector('.binder'), page = root.querySelector('.page');
+    const board = root.querySelector('.mb'), stateEl = root.querySelector('.state');
+    binder.innerHTML = binderHTML();
+    if (board) board.innerHTML = boardHTML();
+    const tabO = binder.querySelector('.kt.opp'), tabM = binder.querySelector('.kt.me');
+    const tray = binder.querySelector('.tray'), pin = binder.querySelector('.pin');
     let prevWho = null;
     const sync = () => {
-      root.dataset.who = st.who; root.dataset.show = String(st.show);
-      board.dataset.who = st.who; board.dataset.show = String(st.show);
+      root.dataset.who = st.who; root.dataset.show = String(st.show); root.dataset.mode = st.mode;
+      if (board) { board.dataset.who = st.who; board.dataset.show = String(st.show); }
       if (prevWho !== st.who) {
         page.innerHTML = pageHTML(st.who);
         if (prevWho) page.firstChild.classList.add(st.who === 'opp' ? 'from-top' : 'from-bottom');
         prevWho = st.who;
       }
-      root.querySelectorAll('.tab').forEach(t => {
+      for (const t of [tabO, tabM]) {
         const on = t.dataset.who === st.who;
         t.setAttribute('aria-selected', String(on));
         t.tabIndex = on ? 0 : -1;
-      });
-      stateEl.innerHTML = `開いている面: <b>${st.who === 'opp' ? '相手' : '自分'}</b>　／　相手の表示: <b>${st.show ? 'ON' : 'OFF'}</b>`;
-      hooks.sync && hooks.sync(st);
+      }
+      tabO.setAttribute('aria-label', st.show ? '相手の面を開く' : '相手を盤に出して、相手の面を開く');
+      tray.setAttribute('aria-label', st.show ? '相手を駒台に下げる（盤から外す）' : '駒台の相手を盤に出す');
+      tray.title = st.show ? '駒台に下げる（盤から外す）' : '盤に出す';
+      pin.setAttribute('aria-label', st.show ? '留め具を外して相手を盤から外す' : '留め具を留めて相手を盤に出す');
+      pin.setAttribute('aria-pressed', String(st.show));
+      pin.title = st.show ? '留め具を外す（相手 OFF）' : '留める（相手 ON）';
+      if (stateEl) stateEl.innerHTML = `開いている面: <b>${st.who === 'opp' ? '相手' : '自分'}</b>　／　相手: <b>${st.show ? '盤に出ている' : '外している'}</b>`;
+      opts.onChange && opts.onChange(st);
     };
     const api = {
       st, sync,
-      select(who) { if (who === 'opp' && !st.show) return api.show(true); st.who = who; sync(); },
-      show(on) { st.show = on; st.who = on ? 'opp' : 'me'; sync(); },
+      select(who) {
+        if (who === 'opp' && !st.show) { api.show(true); return; }
+        if (st.who === who) return;
+        st.who = who; sync();
+        replay(who === 'opp' ? tabO : tabM, 'fx-pachi');
+      },
+      show(on) {
+        if (st.show === on) return;
+        const apply = () => {
+          st.show = on; st.who = on ? 'opp' : 'me'; sync();
+          if (on) setTimeout(() => replay(tabO, 'fx-pachi'), RM ? 0 : st.mode === 'tray' ? 330 : 0);
+        };
+        if (st.mode === 'flip' && !RM) { replay(tabO.querySelector('.kt-in'), 'fx-flip'); setTimeout(apply, 230); }
+        else apply();
+      },
+      setMode(m) { st.mode = m; sync(); },
     };
-    root.querySelector('.binder').addEventListener('keydown', e => {
-      if (!e.target.closest('.tab') || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
-      e.preventDefault();
-      const who = e.key === 'ArrowUp' ? 'opp' : 'me';
-      api.select(who);
-      root.querySelector(`.tab.${who}`).focus();
+    binder.addEventListener('click', e => {
+      const t = e.target.closest('button');
+      if (!t) return;
+      if (t.classList.contains('kt')) { api.select(t.dataset.who); return; }
+      const a = t.dataset.act;
+      if (a === 'tray' || a === 'pin') api.show(!st.show);
+      else if (a === 'ghost') api.show(true);
+      else if (a === 'fuse') api.show(false);
+    });
+    binder.addEventListener('keydown', e => {
+      if (!e.target.closest('.kt')) return;
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const who = e.key === 'ArrowUp' ? 'opp' : 'me';
+        api.select(who);
+        binder.querySelector(`.kt.${who}`).focus();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.closest('.kt.opp') && st.show) {
+        e.preventDefault(); api.show(false); tabM.focus();
+      }
     });
     sync();
     return api;
   }
 
-  // A. 駒台から打つ（FLIP: 駒台の駒の矩形 → 見出しの矩形へ飛ばす）
-  (() => {
-    const root = document.querySelector('[data-demo="A"]');
-    const kd = root.querySelector('.kd-p'), tabO = root.querySelector('.tab.opp'), binder = root.querySelector('.binder');
-    const d = binderDemo(root);
-    const fly = (from, to, done) => {
-      if (RM) { done(); return; }
-      // 飛ぶ駒は見出しの大きさで作り、駒台側は縮めて表す（見出し=big・駒台=small）
-      const back = from === tabO;
-      const big = (back ? from : to).getBoundingClientRect(), small = (back ? to : from).getBoundingClientRect();
-      const f = document.createElement('div');
-      f.className = 'flyer';
-      Object.assign(f.style, { left:`${big.left}px`, top:`${big.top}px`, width:`${big.width}px`, height:`${big.height}px`, transformOrigin:'0 0' });
-      document.body.appendChild(f);
-      const atKd = `translate(${small.left - big.left}px,${small.top - big.top}px) scale(${small.width / big.width},${small.height / big.height})`;
-      const mid = `translate(${(small.left - big.left) / 2 + 36}px,${(small.top - big.top) / 2}px) scale(.6) rotate(${back ? -18 : 15}deg)`;
-      const frames = [{ transform:atKd }, { transform:mid, offset:.55 }, { transform:'none' }];
-      if (back) frames.reverse();
-      f.animate(frames, { duration:back ? 360 : 440, easing:'cubic-bezier(.45,0,.2,1)' }).onfinish = () => { f.remove(); done(); };
-    };
-    const place = () => {
-      if (d.st.show) return;
-      kd.style.visibility = 'hidden';
-      fly(kd, root.querySelector('.slot'), () => {
-        kd.style.visibility = '';
-        d.show(true);
-        replay(tabO, 'land');
-        if (!RM) {
-          const r = document.createElement('span');
-          r.className = 'ripple'; r.style.top = '54px';
-          binder.appendChild(r);
-          r.addEventListener('animationend', () => r.remove());
-        }
-      });
-    };
-    const lift = () => {
-      if (!d.st.show) return;
-      tabO.style.visibility = 'hidden';
-      fly(tabO, kd, () => { tabO.style.visibility = ''; d.show(false); });
-    };
-    kd.addEventListener('click', place);
-    const slot = root.querySelector('.slot');
-    slot.addEventListener('click', place);
-    slot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); place(); } });
-    root.querySelector('.lift').addEventListener('click', lift);
-    root.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => d.select(t.dataset.who)));
-  })();
-
-  // B. 表と裏
-  (() => {
-    const root = document.querySelector('[data-demo="B"]');
-    const tabO = root.querySelector('.tab.opp');
-    const d = binderDemo(root, { sync: st => {
-      tabO.setAttribute('aria-label', st.show ? '相手（表）' : '相手（伏せ）。押すと表にして盤に出す');
-    } });
-    root.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-      const wasHidden = !d.st.show;
-      d.select(t.dataset.who);
-      if (t === tabO && wasHidden) setTimeout(() => replay(tabO, 'bump'), RM ? 0 : 380);
-    }));
-    root.querySelector('.ear').addEventListener('click', () => d.show(false));
-  })();
-
-  // C. 引き出し（ドラッグで translateX を追従。放したとき半分を越えていれば開く／閉じる）
-  (() => {
-    const root = document.querySelector('[data-demo="C"]');
-    const tabO = root.querySelector('.tab.opp');
-    const d = binderDemo(root);
-    const IN = -28;
-    let drag = null;
-    tabO.addEventListener('pointerdown', e => {
-      drag = { x:e.clientX, start:d.st.show ? 0 : IN, moved:false };
-      tabO.setPointerCapture(e.pointerId);
-    });
-    tabO.addEventListener('pointermove', e => {
-      if (!drag) return;
-      const dx = e.clientX - drag.x;
-      if (Math.abs(dx) > 3) drag.moved = true;
-      if (!drag.moved) return;
-      tabO.classList.add('dragging');
-      let x = drag.start + dx;
-      if (x > 0) x = Math.sqrt(x) * 2;            // 引き過ぎはゴムのように重く
-      if (x < IN) x = IN - Math.sqrt(IN - x);
-      tabO.style.transform = `translateX(${x}px)`;
-      drag.x2 = x;
-    });
-    const end = () => {
-      if (!drag) return;
-      const { moved, x2 } = drag; drag = null;
-      tabO.classList.remove('dragging');
-      tabO.style.transform = '';
-      if (!moved) return;   // クリック扱い（click で処理）
-      tabO._skipClick = true;
-      const open = x2 > IN / 2;
-      if (open !== d.st.show) { d.show(open); if (!open) replay(tabO, 'thunk'); }
-      else d.sync();
-    };
-    tabO.addEventListener('pointerup', end);
-    tabO.addEventListener('pointercancel', end);
-    tabO.addEventListener('click', () => {
-      if (tabO._skipClick) { tabO._skipClick = false; return; }
-      d.select('opp');
-    });
-    tabO.addEventListener('keydown', e => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && d.st.show) { e.preventDefault(); d.show(false); replay(tabO, 'thunk'); }
-    });
-    root.querySelector('.tab.me').addEventListener('click', () => d.select('me'));
-  })();
-
-  // D. 内蔵スイッチ
-  (() => {
-    const root = document.querySelector('[data-demo="D"]');
-    const sw = root.querySelector('.sw');
-    const d = binderDemo(root, { sync: st => {
-      sw.setAttribute('aria-checked', String(st.show));
-      root.querySelector('.tab.opp b').textContent = st.show ? '相手' : '相手';
-    } });
-    sw.addEventListener('click', () => { d.show(!d.st.show); replay(sw, 'click'); });
-    root.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-      const wasOff = t.dataset.who === 'opp' && !d.st.show;
-      d.select(t.dataset.who);
-      if (wasOff) replay(sw, 'click');
-    }));
-  })();
-
-  // ================= Part 2: 連結チップ =================
-  const KL = { strategy:'戦型', castle:'囲い', tactic:'戦法' };
-  const SL = { ibisha:'居飛車', furibisha:'振り飛車' };
-  const DEF = { ibisha:{ castle:'舟囲い', tactic:'居飛車急戦' }, furibisha:{ castle:'美濃囲い', tactic:'四間飛車' } };
-  const PRESET = {
-    ok:   { strategy:'ibisha', castle:{ name:'矢倉囲い', own:'ibisha' }, tactic:{ name:'棒銀', own:'ibisha' } },
-    ng:   { strategy:'ibisha', castle:{ name:'美濃囲い', own:'furibisha', ng:'美濃囲いは振り飛車の囲い。棒銀（居飛車）の玉の位置と合わない' },
-            tactic:{ name:'棒銀', own:'ibisha' } },
-    furi: { strategy:'furibisha', castle:{ name:'高美濃囲い', own:'furibisha' }, tactic:{ name:'四間飛車', own:'furibisha' } },
+  const MODE_NOTES = {
+    tray:[['手つき', ['頭の<b>駒台</b>を押すと、相手の駒が縮みながら駒台へ下がる。抜けた跡には点線の駒「＋相手」が残る', '駒台の駒か点線の駒を押すと、盤に出て面が開く']],
+          ['よいところ', ['「外した相手がどこへ行ったか」と「どう戻すか」が同じ場所で分かる', '将棋の「駒台に置く／打つ」がそのまま比喩になる']],
+          ['注意', ['駒台のぶん、見出しの上に 34px ほど要る', '駒台が ON のときも OFF のボタンだと気づくように、ホバーで「↑下げる」に変える']]],
+    flip:[['手つき', ['相手の駒の頭の <b>伏</b> を押すと、駒が裏返って木地の裏になる（OFF）', '裏の駒を押すと表に返って、面が開く']],
+          ['よいところ', ['表＝出ている、裏＝出ていない、と素材で状態が分かる', '駒の位置が変わらないので、レイアウトが動かない']],
+          ['注意', ['伏せる操作（伏）と駒が少し離れている', '裏返りは reduced-motion では切り替えるだけにする']]],
+    pin:[['手つき', ['2枚の駒の先のあいだ（河）にある<b>留め具</b>で、相手の駒を留める。外すと駒が浮いて傾き（OFF）、留めると戻る', '浮いた駒を押しても留まる']],
+         ['よいところ', ['OFF の操作が見出しの外の場所を取らない', '留め具は河にあるので、盤の河とも結び付く']],
+         ['注意', ['留め具が ON/OFF のスイッチだと気づくまで少しかかる（title で補う）', '押せる範囲が 20px と小さい']]],
   };
+  const binderDemo = makeBinder(document.getElementById('binderDemo'));
+  const modeNotes = document.getElementById('modeNotes');
+  const drawModeNotes = m => { modeNotes.innerHTML = MODE_NOTES[m].map(([h, li]) => `<div><h4>${h}</h4><ul>${li.map(x => `<li>${x}</li>`).join('')}</ul></div>`).join(''); };
+  drawModeNotes('tray');
+  document.querySelectorAll('.modes [data-mode]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.modes [data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    binderDemo.setMode(b.dataset.mode);
+    drawModeNotes(b.dataset.mode);
+  }));
+
+  // ================= Ⅱ: 噛み合う制約バー =================
+  const SN = { ibisha:'居飛車', furibisha:'振り飛車' };
+  const SSHAPE = { ibisha:'round', furibisha:'sq' };
+  const SHAPE_NAME = { round:'丸', sq:'角' };
+  const WN = { me:'自分', opp:'相手' };
+  const FAM = {
+    rook:   { g:'飛', n:'飛車の筋', shape:'tri' },
+    silver: { g:'銀', n:'銀の筋', shape:'dove' },
+    kaku:   { g:'角', n:'角・桂・歩の筋', shape:'dia' },
+  };
+  const FAMS = { ibisha:['rook', 'silver', 'kaku'], furibisha:['rook'] };
+  const CASTLES = {
+    funa:{ n:'舟囲い', s:'ibisha' }, anaguma:{ n:'居飛車穴熊', s:'ibisha' }, yagura:{ n:'矢倉囲い', s:'ibisha' }, hidarimino:{ n:'左美濃', s:'ibisha' },
+    mino:{ n:'美濃囲い', s:'furibisha' }, takamino:{ n:'高美濃', s:'furibisha' }, ginkan:{ n:'銀冠', s:'furibisha' }, furiana:{ n:'振り飛車穴熊', s:'furibisha' },
+  };
+  const TACTICS = {
+    base:{ n:'居飛車（2筋）', s:'ibisha', f:'rook' }, migishiken:{ n:'右四間飛車', s:'ibisha', f:'rook' }, sode:{ n:'袖飛車', s:'ibisha', f:'rook' },
+    bogin:{ n:'棒銀', s:'ibisha', f:'silver' }, hayakuri:{ n:'早繰り銀', s:'ibisha', f:'silver' }, koshikake:{ n:'腰掛け銀', s:'ibisha', f:'silver' },
+    shikake:{ n:'4五歩早仕掛け', s:'ibisha', f:'kaku' }, sujichigai:{ n:'筋違い角', s:'ibisha', f:'kaku' },
+    shiken:{ n:'四間飛車', s:'furibisha', f:'rook' }, sanken:{ n:'三間飛車', s:'furibisha', f:'rook' }, gokigen:{ n:'ゴキゲン中飛車', s:'furibisha', f:'rook' },
+    fujii:{ n:'藤井システム', s:'furibisha', f:'rook' }, mukai:{ n:'向かい飛車', s:'furibisha', f:'rook' },
+  };
+  // 相性（自分から見て good=都合がよい / bad=都合がわるい）。仮のデータ
+  const REL = {
+    atk: {   // 自分の戦法 → 相手の囲い（刺さる / 歯が立たない）
+      'bogin>mino':['good', '銀を繰り出して、美濃の脇（角の頭）を攻める'],
+      'bogin>ginkan':['bad', '銀冠は上が厚く、銀1枚の攻めでは崩れにくい'],
+      'bogin>yagura':['good', '相居飛車の棒銀は、矢倉の端と銀の頭を狙う'],
+      'shikake>mino':['good', '美濃が固まりきる前に、4筋から戦いを起こせる'],
+      'shikake>furiana':['good', '穴熊が組み上がる前の急戦が間に合う'],
+      'shikake>ginkan':['bad', '銀冠まで組まれると、早仕掛けの効き目が薄い'],
+      'migishiken>mino':['good', '4筋に飛・角・銀を集めて、美濃の脇から破る'],
+      'migishiken>furiana':['bad', '穴熊は4筋を破られても玉が遠い'],
+    },
+    def: {   // 相手の戦法 → 自分の囲い（受け止める / 破られる）
+      'shiken>funa':['good', '舟囲い＋急戦は、四間飛車に対する定跡の形'],
+      'shiken>anaguma':['good', '持久戦にして、居飛車穴熊の堅さを活かせる'],
+      'fujii>anaguma':['bad', '藤井システムは、居飛車穴熊が組み上がる前に攻めかかる'],
+      'gokigen>funa':['bad', '中飛車の5筋の攻めが、舟囲いの玉に近い'],
+      'bogin>yagura':['bad', '棒銀の端攻めが、矢倉の弱いところを突く'],
+    },
+    clash: { // 自分の戦法 ⇄ 相手の戦法（盤の地図で、戦法どうしが向かい合うとき）
+      'bogin>shiken':['good', '対四間飛車の棒銀は、定跡の一つ'],
+      'shikake>shiken':['good', '4五歩早仕掛けは、対四間飛車の代表的な急戦'],
+      'migishiken>shiken':['good', '右四間飛車は、四間飛車と同じ4筋に飛車をぶつける'],
+      'bogin>gokigen':['bad', '5筋の位を取られると、棒銀は出遅れやすい'],
+      'hayakuri>gokigen':['good', '早繰り銀で、5筋の位をとがめにいく'],
+    },
+  };
+  const TAG = { atkgood:'刺さる', atkbad:'歯が立たない', defgood:'受け止める', defbad:'破られる', clashgood:'噛み合う', clashbad:'押し負ける' };
+  const defCastle = (s, o) => s === 'furibisha' ? 'mino' : (o === 'ibisha' ? 'yagura' : 'funa');
+  const DEF_TACTIC = { ibisha:'base', furibisha:'shiken' };
+  const PRESETS = {
+    good:{ label:'好相性（対抗形）', me:{ strategy:'ibisha', castle:'funa', tactics:{ silver:'bogin', kaku:'shikake' } }, opp:{ strategy:'furibisha', castle:'mino', tactics:{ rook:'shiken' } } },
+    bad: { label:'相性が悪い', me:{ strategy:'ibisha', castle:'anaguma', tactics:{ silver:'bogin' } }, opp:{ strategy:'furibisha', castle:'ginkan', tactics:{ rook:'fujii' } } },
+    ng:  { label:'形が合わない', me:{ strategy:'ibisha', castle:'mino', tactics:{ silver:'bogin' } }, opp:{ strategy:'furibisha', castle:'mino', tactics:{ rook:'shiken' } } },
+    aii: { label:'相居飛車', me:{ strategy:'ibisha', castle:'yagura', tactics:{ silver:'bogin' } }, opp:{ strategy:'ibisha', castle:'yagura', tactics:{ silver:'koshikake' } } },
+    open:{ label:'未選択から', me:{ strategy:'ibisha', castle:null, tactics:{} }, opp:{ strategy:'furibisha', castle:null, tactics:{} } },
+  };
+  const PLANS = { rail:{ rail:true }, key:{ rail:false }, geo:{ rail:false, geo:true } };
   const clone = o => JSON.parse(JSON.stringify(o));
-  const items = s => ['strategy', 'castle', 'tactic'].map(k => k === 'strategy'
-    ? { k, name:SL[s.strategy], own:s.strategy, fixed:true }
-    : { k, own:s.strategy, ...s[k] });
-  const attrs = (it, s, i) => `data-k="${it.k}" data-kind="${it.k}" data-strat="${s.strategy}" data-own="${it.own || s.strategy}" ` +
-    `data-implied="${!!it.implied}" data-ng="${!!it.ng}" data-sel="${s.sel === it.k}" style="--z:${5 - i}"`;
-  const hit = (it, inner) => it.fixed
-    ? `<span class="hit" aria-label="戦型（戦法から導出）: ${it.name}">${inner}</span>`
-    : `<button type="button" class="hit" data-act="${it.implied ? 'fix' : 'sel'}" data-k="${it.k}" ` +
-      `aria-label="${KL[it.k]}${it.implied ? '（既定値。押して確定）' : ''}: ${it.name}${it.ng ? '。両立しない' : ''}" aria-pressed="${!it.implied && false}">${inner}</button>`;
-  const xBtn = it => it.fixed || it.implied ? '' :
-    `<button type="button" class="x" data-act="remove" data-k="${it.k}" aria-label="${KL[it.k]}「${it.name}」を外す" title="外す">×</button>`;
-  const okBetween = (a, b) => !(a.ng || b.ng);
 
-  const R = {
-    c1: s => `<div class="chain c1">${items(s).map((it, i, a) =>
-      `<div class="pc" ${attrs(it, s, i)}><span class="sh"></span>${i < a.length - 1 ? '<span class="kn"></span>' : ''}${i ? '<i class="spark"></i>' : ''}` +
-      hit(it, `<span class="ty">${KL[it.k]}</span><span class="nm">${it.name}</span>`) + xBtn(it) + `</div>`).join('')}</div>`,
-    c2: s => { const a = items(s); return `<div class="chain c2">${a.map((it, i) =>
-      (i ? `<span class="jn" data-ok="${okBetween(a[i - 1], it)}"></span>` : '') +
-      `<div class="pc" ${attrs(it, s, i)}><span class="sh"></span><em class="pachi">パチ</em>` +
-      hit(it, `<span class="ty">${KL[it.k]}</span><span class="nm">${it.name}</span>`) + xBtn(it) + `</div>`).join('')}</div>`; },
-    c3: s => { const a = items(s); return `<div class="chain c3">${a.map((it, i) =>
-      (i ? `<span class="seg" data-ok="${okBetween(a[i - 1], it)}"></span>` : '') +
-      `<div class="pc" ${attrs(it, s, i)}><span class="pin"></span><span class="tag">` +
-      hit(it, `<span class="ty">${KL[it.k]}</span><span class="nm">${it.name}</span>`) + xBtn(it) + `</span></div>`).join('')}</div>`; },
-    c4: s => { const a = items(s); return `<div class="chain c4">${a.map((it, i) =>
-      (i ? `<span class="ar" data-ok="${okBetween(a[i - 1], it)}" aria-hidden="true">${okBetween(a[i - 1], it) ? '→' : '≠'}</span>` : '') +
-      `<div class="pc" ${attrs(it, s, i)}><span class="ty">${KL[it.k]}</span><span class="cap">` +
-      hit(it, `<span class="nm">${it.name}</span>`) + xBtn(it) + `</span></div>`).join('')}</div>`; },
+  // 行のローカル座標: x=0 が戦型の中心、x<0 が囲い側。y=0 が河（2行の継ぎ目）で、y>0 が行の内側
+  const GEO = { W:720, H:140, CX:360, R:70, HX:48, HT:18, HS:12, ROW:50, PRO:12, RAILT:38, COL:288, GAP:4, KY:28 };
+
+  // 継ぎ目の凸凹（辺に沿う a・外向き v の点列。a=0 が凸の中心）
+  function featPts({ type, w, d }) {
+    switch (type) {
+      case 'round': {
+        const r = Math.min(w * .9, d * .55), n = r * .62, vc = d - r, h = Math.sqrt(r * r - n * n), v0 = Math.max(0, vc - h);
+        const t0 = Math.atan2(-h, -n), t1 = Math.atan2(-h, n) - Math.PI * 2, pts = [[-n, 0], [-n, v0]];
+        for (let i = 0; i <= 16; i++) { const t = t0 + (t1 - t0) * i / 16; pts.push([r * Math.cos(t), vc + r * Math.sin(t)]); }
+        return pts.concat([[n, v0], [n, 0]]);
+      }
+      case 'sq': return [[-w, 0], [-w, d - 1.5], [-w + 1.5, d], [w - 1.5, d], [w, d - 1.5], [w, 0]];
+      case 'tri': return [[-w, 0], [-1.3, d - .5], [1.3, d - .5], [w, 0]];
+      case 'dove': return [[-w * .55, 0], [-w, d], [w, d], [w * .55, 0]];
+      case 'dia': return [[-w * .4, 0], [-w, d * .5], [0, d], [w, d * .5], [w * .4, 0]];
+      case 'stub': return [[-w, 0], [-w, d * .32], [-w * .4, d * .44], [0, d * .24], [w * .45, d * .46], [w, d * .3], [w, 0]];
+      case 'breach': return [[-w * 1.45, 0], [-w * 1.15, d * .55], [-w * .55, d * .72], [-w * .3, d * 1.22], [w * .25, d * .86], [w * .75, d * 1.25], [w * 1.05, d * .6], [w * 1.5, d * .22], [w * 1.55, 0]];
+    }
+    return [];
+  }
+  // 時計回り（y 下向き）の多角形を、辺ごとの凸凹つきで path にする。外向きの法線は (u.y, -u.x)
+  function pathOf(start, edges, map) {
+    const out = [start];
+    let p = start;
+    for (const e of edges) {
+      const q = e.to, dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+      for (const f of (e.f || []).slice().sort((a, b) => a.at - b.at)) {
+        const c = f.at * L, s = f.out;
+        for (const [a, v] of featPts(f)) out.push([p[0] + ux * (c + a) + nx * v * s, p[1] + uy * (c + a) + ny * v * s]);
+      }
+      out.push(q); p = q;
+    }
+    out.pop();
+    return out.map((pt, i) => { const [x, y] = map(pt); return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`; }).join('') + 'Z';
+  }
+  const tw = (s, fs) => [...s].reduce((a, ch) => a + (/[\x20-\x7e]/.test(ch) ? .6 : 1) * fs, 0);
+
+  const eff = (side, oppStrat) => {
+    const s = side.strategy, fams = FAMS[s];
+    const castle = side.castle || defCastle(s, oppStrat);
+    const slots = fams.map(f => side.tactics[f] ? { f, id:side.tactics[f], implied:false } : { f, id:null, implied:false });
+    if (!slots.some(x => x.id)) {
+      const d = DEF_TACTIC[s], i = fams.indexOf(TACTICS[d].f);
+      slots[i] = { f:fams[i], id:d, implied:true };
+    }
+    return { s, fams, castle, castleImplied:!side.castle, castleNg:CASTLES[castle].s !== s, slots };
   };
 
-  function whyHTML(s) {
-    const a = items(s);
-    const ng = a.find(x => x.ng);
-    if (ng) return `<span class="ngm">✕</span><span><b>${ng.name}</b> は噛み合わない — ${ng.ng}</span>`;
-    if (s.sel) { const it = s[s.sel]; return `<span><b>${KL[s.sel]}「${it.name}」</b>を選択中 — 左の一覧で差し替え／× で外す</span>`; }
-    const imp = a.filter(x => x.implied).map(x => KL[x.k]);
-    return `<span class="okm">✓</span><span>${SL[s.strategy]}でつながっている</span>` +
-      (imp.length ? `<span class="tip">・${imp.join('と')}は既定値（押して確定）</span>` : `<span class="tip">・ピースを押すと選択、× で外す</span>`);
+  function buildScene(plan, S) {
+    const { W, H, CX, R, HX, HT, HS, ROW, PRO, RAILT, COL, GAP, KY } = GEO;
+    const showOpp = S.showOpp;
+    const E = { me:eff(S.me, showOpp ? S.opp.strategy : null), opp:eff(S.opp, S.me.strategy) };
+    const rows = {};
+    for (const who of ['me', 'opp']) {
+      const e = E[who];
+      // 横の向き: 1・2 は相手を180°回す（攻めの真上に相手の守り）。3 は玉のいる側に囲いを置く
+      const hs = plan.geo ? ((who === 'me') === (e.s === 'ibisha') ? 1 : -1) : (who === 'me' ? 1 : -1);
+      const vs = who === 'me' ? 1 : -1;
+      const map = ([x, y]) => [CX + hs * x, R + vs * y];
+      const pieces = [], tabs = [], kn = SSHAPE[e.s];
+      const n = e.fams.length, sw = COL / n;
+
+      // 囲い（五角形: 戦型の肩の斜めを埋める）
+      const cx0 = -HX - COL, c = CASTLES[e.castle];
+      pieces.push({ key:`${who}.castle`, kind:'castle', id:e.castle, implied:e.castleImplied, ng:e.castleNg && !e.castleImplied,
+        start:[cx0, 0], edges:[{ to:[-HT, 0], f:[] }, { to:[-HX, HS] }, { to:[-HX, ROW], f:[{ at:(KY - HS) / (ROW - HS), type:SSHAPE[c.s], out:-1, w:8, d:10 }] }, { to:[cx0, ROW] }, { to:[cx0, 0] }],
+        river:{ x0:cx0, x1:-HT }, hit:'castle', center:[-HX - COL / 2, ROW / 2],
+        aria:`${WN[who]}の囲い: ${c.n}${e.castleImplied ? '（既定値。押して確定）' : ''}${e.castleNg ? '。戦型と形が合わない' : ''}`,
+        labels:[{ x:cx0 + 20, y:13, t:'囲い', c:'t-kind' }, { x:-HX - COL / 2, y:28, t:c.n, c:'t-name' },
+          e.castleImplied ? { x:-HX - COL / 2, y:43, t:'既定・押して確定', c:'t-sub' } : e.castleNg ? { x:-HX - COL / 2, y:43, t:`✕ ${SN[c.s]}の囲い`, c:'t-ng' } : null] });
+
+      // 戦法
+      const slotMid = i => HX + (i + .5) * sw;
+      if (plan.rail) {
+        e.slots.forEach((sl, i) => {
+          const x0 = HX + i * sw + GAP, x1 = HX + (i + 1) * sw - GAP, mid = slotMid(i), key = `${who}.t.${sl.f}`;
+          if (!sl.id) {
+            pieces.push({ key, kind:'tactic', empty:true, fam:sl.f, start:[x0 + 6, 0], edges:[{ to:[x1 - 6, 0] }, { to:[x1, RAILT] }, { to:[x0, RAILT] }, { to:[x0 + 6, 0] }],
+              hit:'tactic', aria:`${WN[who]}の${FAM[sl.f].n}: 空き（押して挿す）`, labels:[{ x:mid, y:20, t:`＋ ${FAM[sl.f].g}`, c:'t-add' }] });
+            return;
+          }
+          const t = TACTICS[sl.id];
+          const p = { key, kind:'tactic', id:sl.id, fam:sl.f, implied:sl.implied, start:[x0 + 6, 0],
+            edges:[{ to:[x1 - 6, 0], f:[] }, { to:[x1, RAILT] }, { to:[x0, RAILT], f:[{ at:.5, type:SSHAPE[t.s], out:1, w:6, d:7 }] }, { to:[x0 + 6, 0] }],
+            river:{ x0:x0 + 6, x1:x1 - 6 }, hit:'tactic', glyph:sl.implied ? null : { x:mid, y:12, g:FAM[sl.f].g },
+            aria:`${WN[who]}の${FAM[sl.f].n}: ${t.n}${sl.implied ? '（既定値。押して確定）' : ''}`,
+            labels:[sl.implied ? { x:mid, y:12, t:'既定', c:'t-sub' } : null, { x:mid, y:27, t:t.n, c:'t-name t-sm', max:x1 - x0 - 10 }] };
+          pieces.push(p);
+          if (!sl.implied) tabs.push({ piece:p, lx:mid, fam:sl.f, id:sl.id });
+        });
+      } else {
+        const kx1 = HX + COL;
+        const p = { key:`${who}.key`, kind:'tactic', start:[HT, 0],
+          edges:[{ to:[kx1, 0], f:[] }, { to:[kx1, ROW] }, { to:[HX, ROW] }, { to:[HX, HS], f:[{ at:(ROW - KY) / (ROW - HS), type:kn, out:-1, w:8, d:10 }] }, { to:[HT, 0] }],
+          river:{ x0:HT, x1:kx1 }, slots:[], labels:[{ x:kx1 - 20, y:12, t:'戦法', c:'t-kind' }] };
+        e.slots.forEach((sl, i) => {
+          const sx0 = HX + i * sw;
+          p.slots.push({ key:`${who}.t.${sl.f}`, ...sl, x0:sx0, x1:sx0 + sw, mid:slotMid(i) });
+          if (sl.id && !sl.implied) tabs.push({ piece:p, lx:slotMid(i), fam:sl.f, id:sl.id });
+        });
+        pieces.push(p);
+      }
+
+      // 戦型（六角形の要石。行から外へはみ出す）
+      const hexEdges = [{ to:[HT, 0] }, { to:[HX, HS] }];
+      if (plan.rail) hexEdges.push({ to:[HX, RAILT] }, { to:[HX + COL, RAILT], f:e.fams.map((f, i) => ({ at:(i + .5) / n, type:kn, out:-1, w:6, d:7 })) },
+        { to:[HX + COL, ROW] }, { to:[HX, ROW] }, { to:[HX, ROW + PRO] });
+      else hexEdges.push({ to:[HX, ROW + PRO], f:[{ at:(KY - HS) / (ROW + PRO - HS), type:kn, out:1, w:8, d:10 }] });
+      hexEdges.push({ to:[-HX, ROW + PRO] }, { to:[-HX, HS], f:[{ at:(ROW + PRO - KY) / (ROW + PRO - HS), type:kn, out:1, w:8, d:10 }] }, { to:[-HT, 0] });
+      pieces.push({ key:`${who}.hex`, kind:'strategy', start:[-HT, 0], edges:hexEdges, hit:'strategy',
+        aria:`${WN[who]}の戦型: ${SN[e.s]}（押すと居飛車と振り飛車を入れ替える）`,
+        labels:[{ x:0, y:19, t:'戦型', c:'t-kind' }, { x:0, y:38, t:SN[e.s], c:'t-str', max:88 }] });
+
+      rows[who] = { who, e, hs, vs, map, pieces, tabs, slotMid };
+    }
+
+    // ---- 2行の継ぎ目: 片方の戦法の歯と、真向かいのピースの溝 ----
+    const marks = [], reasons = [], shown = new Set();
+    const span = (row, p) => { const a = row.map([p.river.x0, 0])[0], b = row.map([p.river.x1, 0])[0]; return [Math.min(a, b), Math.max(a, b)]; };
+    const across = (row, sx, pred) => row.pieces.find(p => p.river && !p.implied && pred(p) && (([lo, hi]) => sx > lo + 4 && sx < hi - 4)(span(row, p)));
+    const atOn = (p, lx) => (lx - p.river.x0) / (p.river.x1 - p.river.x0);
+    const slotAt = (row, p, sx) => p.slots && p.slots.find(s => { const lx = (sx - CX) / row.hs; return lx >= s.x0 && lx < s.x1; });
+    if (showOpp) {
+      for (const A of ['me', 'opp']) {
+        const B = A === 'me' ? 'opp' : 'me';
+        for (const tab of rows[A].tabs) {
+          const sx = rows[A].map([tab.lx, 0])[0];
+          const bp = across(rows[B], sx, () => true);
+          if (!bp) continue;
+          let mode = null, bid = null, bkey = null;
+          if (bp.kind === 'castle') { mode = A === 'me' ? 'atk' : 'def'; bid = bp.id; bkey = `${B}.castle`; }
+          else if (A === 'me') { const sl = slotAt(rows[B], bp, sx) || (bp.id ? { id:bp.id, implied:bp.implied, key:bp.key } : null); if (sl && sl.id && !sl.implied) { mode = 'clash'; bid = sl.id; bkey = sl.key; } }
+          const rel = mode && REL[mode][`${tab.id}>${bid}`];
+          if (!rel) continue;
+          const [lv, text] = rel;
+          shown.add(`${mode}:${tab.id}>${bid}`);
+          tab.piece.edges[0].f.push({ at:atOn(tab.piece, tab.lx), out:1, w:8, d:9, type:lv === 'bad' && mode !== 'def' ? 'stub' : FAM[tab.fam].shape });
+          const blx = (sx - CX) / rows[B].hs;
+          if (lv === 'good') bp.edges[0].f.push({ at:atOn(bp, blx), out:-1, w:8, d:9, type:FAM[tab.fam].shape });
+          else if (mode === 'def') bp.edges[0].f.push({ at:atOn(bp, blx), out:-1, w:8, d:9, type:'breach' });
+          marks.push({ t:lv === 'good' ? 'glint' : 'crack', x:sx, y:lv === 'good' ? R : R + 7 });
+          const tn = TACTICS[tab.id].n, bn = mode === 'clash' ? TACTICS[bid].n : CASTLES[bid].n;
+          const html = mode === 'def' ? `相手の<b>${tn}</b> → 自分の<b>${bn}</b>` : mode === 'atk' ? `自分の<b>${tn}</b> → 相手の<b>${bn}</b>` : `自分の<b>${tn}</b> ⇄ 相手の<b>${bn}</b>`;
+          reasons.push({ lv, tag:TAG[mode + lv], html, text, hl:[`${A}.t.${tab.fam}`, bkey] });
+        }
+      }
+      // 継ぎ目に出せなかった攻め／守り（盤の地図の対抗形）
+      const meE = E.me, opE = E.opp;
+      for (const sl of meE.slots) if (sl.id && !sl.implied && !opE.castleImplied) {
+        const r = REL.atk[`${sl.id}>${opE.castle}`];
+        if (r && !shown.has(`atk:${sl.id}>${opE.castle}`)) reasons.push({ lv:r[0], far:true, tag:TAG['atk' + r[0]], html:`自分の<b>${TACTICS[sl.id].n}</b> → 相手の<b>${CASTLES[opE.castle].n}</b>`, text:r[1], hl:[`me.t.${sl.f}`, 'opp.castle'] });
+      }
+      for (const sl of opE.slots) if (sl.id && !sl.implied && !meE.castleImplied) {
+        const r = REL.def[`${sl.id}>${meE.castle}`];
+        if (r && !shown.has(`def:${sl.id}>${meE.castle}`)) reasons.push({ lv:r[0], far:true, tag:TAG['def' + r[0]], html:`相手の<b>${TACTICS[sl.id].n}</b> → 自分の<b>${CASTLES[meE.castle].n}</b>`, text:r[1], hl:[`opp.t.${sl.f}`, 'me.castle'] });
+      }
+      // 空いている弱点: 自分の空いた受け口の真向かいが相手の囲いで、そこに刺さる戦法があれば、溝だけ先に切っておく
+      const me = rows.me;
+      meE.slots.forEach((sl, i) => {
+        if (sl.id) return;
+        const sx = me.map([me.slotMid(i), 0])[0];
+        const bp = across(rows.opp, sx, p => p.kind === 'castle');
+        if (!bp) return;
+        const cand = Object.keys(TACTICS).find(id => TACTICS[id].f === sl.f && TACTICS[id].s === meE.s && (REL.atk[`${id}>${bp.id}`] || [])[0] === 'good');
+        if (!cand) return;
+        bp.edges[0].f.push({ at:atOn(bp, (sx - CX) / rows.opp.hs), out:-1, w:8, d:9, type:FAM[sl.f].shape });
+        sl.hint = true;
+        reasons.push({ lv:'hint', tag:'空いた溝', html:`相手の<b>${CASTLES[bp.id].n}</b>に${FAM[sl.f].g}の溝が空いている`, text:`${TACTICS[cand].n}を挿すと刺さる`, hl:[`me.t.${sl.f}`, 'opp.castle'] });
+      });
+    }
+    for (const who of ['me', 'opp']) {
+      if (who === 'opp' && !showOpp) continue;
+      const e = E[who], c = CASTLES[e.castle];
+      if (e.castleNg && !e.castleImplied) reasons.unshift({ lv:'ng', tag:'嵌まらない', html:`${WN[who]}の<b>${c.n}</b>は${SN[c.s]}の囲い`,
+        text:`${SN[e.s]}の戦型の凸（${SHAPE_NAME[SSHAPE[e.s]]}）と形が違う`, hl:[`${who}.castle`, `${who}.hex`] });
+    }
+
+    // ---- SVG ----
+    const sel = S.sel;
+    const isSel = (who, k, fam) => sel && sel.who === who && sel.k === k && (k !== 'tactic' || sel.fam === fam);
+    const txt = (row, l) => {
+      if (!l) return '';
+      const [x, y] = row.map([l.x, l.y]), fs = l.c.includes('t-sm') ? 11.5 : l.c.includes('t-str') ? 17 : 14;
+      const len = l.max && tw(l.t, fs) > l.max ? ` textLength="${l.max}" lengthAdjust="spacingAndGlyphs"` : '';
+      return `<text class="${l.c}" x="${x.toFixed(1)}" y="${y.toFixed(1)}"${len}>${l.t}</text>`;
+    };
+    const glyph = (row, g) => { const [x, y] = row.map([g.x, g.y]);
+      return `<g class="gk" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path d="M0 -7.5L5.2 -5L6.8 7H-6.8L-5.2 -5Z"${row.who === 'opp' ? ' transform="scale(1 -1)"' : ''}/><text y=".5">${g.g}</text></g>`; };
+    const hitAttr = (row, k, fam, aria) => ` data-hit="${k}" data-who="${row.who}"${fam ? ` data-fam="${fam}"` : ''} tabindex="0" role="button" aria-label="${aria}"`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="制約バー">`;
+    for (const who of ['opp', 'me']) {
+      const row = rows[who], e = row.e;
+      svg += `<g class="row ${who}${who === 'opp' && !showOpp ? ' gone' : ''}" data-who="${who}" style="--sy:${row.vs * 16}px">`;
+      for (const p of row.pieces) {
+        const cls = ['pc'];
+        if (p.implied) cls.push('ghost');
+        if (p.empty) cls.push('empty');
+        if (p.ng) cls.push('ng');
+        if (p.hit && isSel(who, p.hit, p.fam)) cls.push('sel');
+        let off = '';
+        if (p.ng) { const [mx, my] = row.map(p.center); off = ` transform="translate(${row.hs * -5} 0) rotate(${(-2.5 * row.hs * row.vs).toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})"`; }
+        let inner = `<path class="body" d="${pathOf(p.start, p.edges, row.map)}"/>`;
+        inner += (p.labels || []).map(l => txt(row, l)).join('');
+        if (p.glyph) inner += glyph(row, p.glyph);
+        if (p.empty) { const sl = e.slots.find(s => s.f === p.fam); if (sl && sl.hint) inner = inner.replace('class="t-add"', 'class="t-add hint"'); }
+        if (p.slots) {
+          p.slots.forEach((s, i) => {
+            const [a] = row.map([s.x0 + 3, 0]), [b] = row.map([s.x1 - 3, 0]), [, ya] = row.map([0, 13]), [, yb] = row.map([0, ROW - 4]);
+            const rx = Math.min(a, b), ry = Math.min(ya, yb), rw = Math.abs(b - a), rh = Math.abs(yb - ya);
+            const scls = ['slot']; if (s.implied) scls.push('ghost'); if (isSel(who, 'tactic', s.f)) scls.push('sel');
+            const t = s.id && TACTICS[s.id];
+            inner += `<g class="${scls.join(' ')}" data-key="${s.key}"${hitAttr(row, 'tactic', s.f, `${WN[who]}の${FAM[s.f].n}: ${t ? t.n + (s.implied ? '（既定値）' : '') : '空き'}`)}>` +
+              `<rect class="hit" x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" rx="6"/>`;
+            if (i) { const [lx1, ly1] = row.map([s.x0, 15]), [lx2, ly2] = row.map([s.x0, ROW - 7]); inner += `<line class="slot-div" x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}"/>`; }
+            if (t) {
+              inner += s.implied ? txt(row, { x:s.mid, y:22, t:'既定', c:'t-sub' }) : glyph(row, { x:s.mid, y:22, g:FAM[s.f].g });
+              inner += txt(row, { x:s.mid, y:38, t:t.n, c:'t-name t-sm', max:(s.x1 - s.x0) - 14 });
+            } else inner += txt(row, { x:s.mid, y:30, t:`＋ ${FAM[s.f].g}`, c:`t-add${(e.slots.find(x => x.f === s.f) || {}).hint ? ' hint' : ''}` });
+            inner += '</g>';
+          });
+        }
+        const ha = p.hit ? hitAttr(row, p.hit, p.fam, p.aria) : '';
+        svg += `<g class="po"${off}><g class="${cls.join(' ')}" data-key="${p.key}" data-kind="${p.kind}"${ha}>${inner}</g></g>`;
+      }
+      svg += `<text class="t-row" x="11" y="${R + row.vs * 31}">${WN[who]}</text></g>`;
+    }
+    if (showOpp) {
+      const lab = E.me.s !== E.opp.s ? '対抗形' : E.me.s === 'ibisha' ? '相居飛車' : '相振り飛車', w = lab.length * 10 + 14;
+      svg += `<g class="seam"><rect x="${CX - w / 2}" y="${R - 8}" width="${w}" height="16" rx="8"/><text x="${CX}" y="${R + .5}">${lab}</text></g>`;
+    }
+    for (const m of marks) svg += m.t === 'glint' ? `<circle class="mk-glint" cx="${m.x}" cy="${m.y}" r="5"/>`
+      : `<path class="mk-crack" d="M${m.x - 7} ${m.y - 1}l3.5 3l3 -3.5l3.5 4l3.5 -2.5"/>`;
+    svg += '</svg>';
+    return { svg, E, rows, reasons };
   }
 
-  document.querySelectorAll('[data-bar]').forEach(demo => {
-    const render = R[demo.dataset.bar];
-    const host = demo.querySelector('.host'), why = demo.querySelector('.why');
-    let s = clone(PRESET.ok), busy = false;
-    const draw = fx => {
-      host.innerHTML = render(s);
-      why.innerHTML = whyHTML(s);
-      demo.querySelectorAll('[data-preset]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preset === s.preset)));
-      if (!fx) return;
-      if (fx.k === 'all') {
-        host.querySelectorAll('.pc').forEach((el, i) => { el.style.setProperty('--d', `${i * 0.08}s`); replay(el, 'fx-snap'); });
-      } else replay(host.querySelector(`.pc[data-k="${fx.k}"]`), fx.t);
-      if (fx.ng) {
-        setTimeout(() => {
-          const ngEl = host.querySelector('.pc[data-ng="true"]');
-          replay(ngEl, 'fx-ng');
-          host.querySelectorAll('.ar[data-ok="false"]').forEach(a => replay(a, 'fx-ng'));
-          replay(why, 'shake');
-        }, RM ? 0 : 320);
-      }
+  // 盤の地図（3）の下の帯: 筋（９〜１）と、各行のピースの下にあたる盤の領域
+  function mapStrip(sc) {
+    const { W, CX, HX, COL } = GEO, cols = [];
+    for (let i = 0; i < 4; i++) cols.push([CX - HX - COL + i * 72, 72, 9 - i]);
+    cols.push([CX - HX, HX * 2, 5]);
+    for (let i = 0; i < 4; i++) cols.push([CX + HX + i * 72, 72, 4 - i]);
+    let s = `<svg viewBox="0 0 ${W} 46" aria-hidden="true"><rect x="${CX - HX - COL}" y="0" width="${COL * 2 + HX * 2}" height="46" style="fill:var(--wood-2);opacity:.55"/>`;
+    for (const [x, w, n] of cols) s += `<rect x="${x}" y="0" width="${w}" height="46" style="fill:none;stroke:var(--wood-line)" stroke-width=".8"/><text x="${x + w / 2}" y="23" text-anchor="middle" dominant-baseline="central" style="font:700 11px var(--font-n);fill:rgba(60,40,10,.7)">${'０１２３４５６７８９'[n]}</text>`;
+    const band = (who, y) => {
+      const row = sc.rows[who], c = row.map([-HX - COL / 2, 0])[0] < CX ? 'L' : 'R';
+      const cx0 = c === 'L' ? CX - HX - COL : CX + HX, tx0 = c === 'L' ? CX + HX : CX - HX - COL;
+      return `<rect x="${cx0 + 4}" y="${y}" width="${COL - 8}" height="5" rx="2.5" style="fill:var(--k-castle);opacity:.75"/>` +
+        `<rect x="${tx0 + 4}" y="${y}" width="${COL - 8}" height="5" rx="2.5" style="fill:var(--k-tactic);opacity:.75"/>` +
+        `<text x="${cx0 + 10}" y="${y + (who === 'me' ? -6 : 13)}" style="font:700 9px var(--font-b);fill:var(--k-castle)">${WN[who]}の玉</text>` +
+        `<text x="${tx0 + 10}" y="${y + (who === 'me' ? -6 : 13)}" style="font:700 9px var(--font-b);fill:var(--k-tactic)">${WN[who]}の攻め</text>`;
     };
-    s.preset = 'ok';
-    host.addEventListener('click', e => {
-      const b = e.target.closest('[data-act]');
-      if (!b || busy) return;
-      const k = b.dataset.k, act = b.dataset.act;
-      if (act === 'sel') { s.sel = s.sel === k ? null : k; draw(); return; }
-      if (act === 'fix') { s[k].implied = false; s.sel = null; draw({ k, t:'fx-snap' }); return; }
-      if (act === 'remove') {
-        const el = host.querySelector(`.pc[data-k="${k}"]`);
-        const commit = () => {
-          busy = false;
-          s[k] = { name:DEF[s.strategy][k], own:s.strategy, implied:true };
-          s.sel = null; s.preset = null;
-          draw();
-        };
-        if (RM || !el) { commit(); return; }
-        busy = true;
-        el.classList.add('fx-out');
-        let done = false;
-        const fin = () => { if (!done) { done = true; commit(); } };
-        el.addEventListener('animationend', fin, { once:true });
-        setTimeout(fin, 600);
+    if (sc.showOpp) s += band('opp', 3);
+    s += band('me', 38);
+    return s + '</svg>';
+  }
+
+  function makeBar(root, opts = {}) {
+    const plan = PLANS[root.dataset.plan];
+    const S = { showOpp:true, sel:null, preset:'good', ...clone(PRESETS.good) };
+    let note = null, busy = false;
+    root.innerHTML = `<div class="ctrl">組み合わせ: ${Object.entries(PRESETS).map(([k, p]) => `<button type="button" data-preset="${k}">${p.label}</button>`).join('')}` +
+      (opts.noOppToggle ? '' : `<span class="sep"></span><button type="button" class="opp-t" data-opp>相手 ON</button>`) +
+      `<span class="stamp" aria-hidden="true">噛み合い</span></div>` +
+      `<div class="stage"><div class="svgh"></div></div>${plan.geo ? '<div class="mapstrip"></div>' : '<div class="boardtop"></div>'}` +
+      `<div class="why" aria-live="polite"></div><div class="chooser"></div>`;
+    const stage = root.querySelector('.stage'), svgh = root.querySelector('.svgh'), why = root.querySelector('.why'),
+      ch = root.querySelector('.chooser'), stamp = root.querySelector('.stamp'), strip = root.querySelector('.mapstrip');
+    let sc = null;
+    const fit = () => { stage.style.height = `${stage.clientWidth * (S.showOpp ? GEO.H : GEO.H - GEO.R + 8) / GEO.W}px`; };
+    new ResizeObserver(fit).observe(stage);
+
+    function whyHTML() {
+      const order = { ng:0, bad:1, good:2, hint:3 };
+      const rs = sc.reasons.slice().sort((a, b) => order[a.lv] - order[b.lv]);
+      const li = [];
+      if (note) li.push(`<li class="w-note"><span class="tg">外れた</span><span>${note}</span></li>`);
+      for (const r of rs) li.push(`<li class="w-${r.lv}${r.far ? ' w-far' : ''}" data-hl="${r.hl.join(' ')}"><span class="tg">${r.tag}</span><span>${r.html}<small> — ${r.text}</small></span></li>`);
+      const imp = [];
+      if (sc.E.me.castleImplied) imp.push('囲い');
+      if (sc.E.me.slots.some(s => s.implied)) imp.push('戦法');
+      if (imp.length) li.push(`<li class="w-info"><span class="tg">既定</span><span>自分の${imp.join('と')}は既定値（斜線）。押すと確定して、噛み合わせの判定に入る</span></li>`);
+      if (!li.length) li.push(`<li class="w-info"><span class="tg">—</span><span>噛み合わせに関係する組み合わせはない（継ぎ目は平ら）</span></li>`);
+      return `<ul>${li.join('')}</ul>`;
+    }
+    const fitMark = (who, k, id) => {
+      if (who !== 'me' || !S.showOpp) return '';
+      const op = sc.E.opp;
+      const lv = k === 'castle'
+        ? op.slots.filter(s => s.id && !s.implied).map(s => (REL.def[`${s.id}>${id}`] || [])[0])
+        : op.castleImplied ? [] : [(REL.atk[`${id}>${op.castle}`] || [])[0]];
+      if (lv.includes('bad')) return '<em class="m bad">✕</em>';
+      if (lv.includes('good')) return '<em class="m good">✓</em>';
+      return '';
+    };
+    function chooserHTML() {
+      const sel = S.sel;
+      if (!sel) return `<span class="ch-tip">ピースを押すと、ここに差し替えの候補が出ます。<b>戦型</b>を押すと居飛車／振り飛車が入れ替わります。✓✕ は相手と噛み合うかどうか。</span>`;
+      const who = sel.who, e = sc.E[who], side = S[who];
+      if (sel.k === 'castle') {
+        return `<span class="ch-h">${WN[who]}の囲い</span>` + Object.entries(CASTLES).map(([id, c]) =>
+          `<button type="button" class="chip${side.castle === id ? ' on' : ''}" data-pick="castle" data-id="${id}" title="${SN[c.s]}の囲い"><i class="sh sh-${SSHAPE[c.s]}"></i>${c.n}${c.s !== e.s ? '<em class="m ng">形</em>' : fitMark(who, 'castle', id)}</button>`).join('') +
+          (side.castle ? `<button type="button" class="chip rm" data-pick="castle" data-id="">外す（既定に戻す）</button>` : '');
       }
+      const list = Object.entries(TACTICS).filter(([, t]) => t.f === sel.fam && t.s === e.s);
+      return `<span class="ch-h">${WN[who]}の${FAM[sel.fam].n}</span>` + list.map(([id, t]) =>
+        `<button type="button" class="chip${side.tactics[sel.fam] === id ? ' on' : ''}" data-pick="tactic" data-id="${id}">${t.n}${fitMark(who, 'tactic', id)}</button>`).join('') +
+        (side.tactics[sel.fam] ? `<button type="button" class="chip rm" data-pick="tactic" data-id="">抜く</button>` : '');
+    }
+    function draw(fx = {}) {
+      sc = buildScene(plan, S);
+      sc.showOpp = S.showOpp;
+      svgh.innerHTML = sc.svg;
+      why.innerHTML = whyHTML();
+      ch.innerHTML = chooserHTML();
+      if (strip) strip.innerHTML = mapStrip(sc);
+      root.querySelectorAll('[data-preset]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preset === S.preset)));
+      const ot = root.querySelector('[data-opp]');
+      if (ot) { ot.setAttribute('aria-pressed', String(S.showOpp)); ot.textContent = S.showOpp ? '相手 ON' : '相手 OFF'; }
+      fit();
+      const rs = sc.reasons, explicit = !sc.E.me.castleImplied && !sc.E.me.slots.some(s => s.implied);
+      const now = explicit && !rs.some(r => r.lv === 'bad' || r.lv === 'ng') && (!S.showOpp || rs.some(r => r.lv === 'good'));
+      stamp.classList.toggle('on', now);
+      const el = k => svgh.querySelector(`[data-key="${k}"]`);
+      if (fx.keys) fx.keys.forEach((k, i) => { const x = el(k); if (x) { x.style.setProperty('--d', `${(fx.stagger || 0) * i}s`); replay(x, 'fx-snap'); } });
+      if (fx.turn) replay(el(`${fx.turn}.hex`), 'fx-turn');
+      if (fx.flipRow) replay(svgh.querySelector(`.row.${fx.flipRow}`), 'fx-flip');
+      if (fx.rowIn) replay(svgh.querySelector('.row.opp'), 'fx-in');
+      if (fx.ng) svgh.querySelectorAll('.pc.ng').forEach(x => replay(x, 'fx-ng'));
+      opts.onDraw && opts.onDraw(S);
+    }
+    const allKeys = () => [...svgh.querySelectorAll('.row:not(.gone) [data-key]')].filter(x => x.classList.contains('pc')).map(x => x.dataset.key);
+    function flipStrategy(who) {
+      const side = S[who], ns = side.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
+      const ej = Object.entries(side.tactics).filter(([, id]) => TACTICS[id].s !== ns);
+      const hsBefore = sc.rows[who].hs;
+      const commit = () => {
+        busy = false;
+        side.strategy = ns;
+        ej.forEach(([f]) => delete side.tactics[f]);
+        note = ej.length ? `${WN[who]}の${ej.map(([, id]) => `<b>${TACTICS[id].n}</b>`).join('・')}は、${SN[ns]}の戦型に受け口がないので抜けた` : null;
+        S.sel = null; S.preset = null;
+        draw({});
+        const flipped = sc.rows[who].hs !== hsBefore;
+        if (flipped) replay(svgh.querySelector(`.row.${who}`), 'fx-flip');
+        else {
+          replay(svgh.querySelector(`[data-key="${who}.hex"]`), 'fx-turn');
+          [...svgh.querySelectorAll(`.row.${who} .pc[data-kind="tactic"], .row.${who} .slot`)].forEach((x, i) => { x.style.setProperty('--d', `${.12 + i * .05}s`); replay(x, 'fx-snap'); });
+        }
+        svgh.querySelectorAll('.pc.ng').forEach(x => replay(x, 'fx-ng'));
+      };
+      if (RM || !ej.length) { commit(); return; }
+      busy = true;
+      ej.forEach(([f]) => { const x = svgh.querySelector(`[data-key="${who}.t.${f}"]`); if (x) x.classList.add('fx-out'); });
+      setTimeout(commit, 330);
+    }
+    const pick = (who, k, fam) => {
+      if (busy) return;
+      opts.onPick && opts.onPick(who);
+      note = null;
+      if (k === 'strategy') { flipStrategy(who); return; }
+      const e = sc.E[who];
+      // 既定値（斜線）のピースは押すと確定する
+      if (k === 'castle' && e.castleImplied) { S[who].castle = e.castle; S.sel = null; S.preset = null; draw({ keys:[`${who}.castle`] }); return; }
+      if (k === 'tactic') { const sl = e.slots.find(s => s.f === fam); if (sl && sl.implied) { S[who].tactics[fam] = sl.id; S.sel = null; S.preset = null; draw({ keys:[`${who}.t.${fam}`] }); return; } }
+      const same = S.sel && S.sel.who === who && S.sel.k === k && S.sel.fam === fam;
+      S.sel = same ? null : { who, k, fam };
+      draw();
+    };
+    svgh.addEventListener('click', e => { const h = e.target.closest('[data-hit]'); if (h) pick(h.dataset.who, h.dataset.hit, h.dataset.fam); });
+    svgh.addEventListener('keydown', e => {
+      const h = e.target.closest('[data-hit]');
+      if (!h) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(h.dataset.who, h.dataset.hit, h.dataset.fam); }
     });
-    host.addEventListener('keydown', e => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      const b = e.target.closest('.hit[data-act="sel"]');
-      if (!b) return;
-      e.preventDefault();
-      const x = host.querySelector(`.x[data-k="${b.dataset.k}"]`);
-      if (x) x.click();
+    why.addEventListener('mouseover', e => {
+      svgh.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
+      const li = e.target.closest('[data-hl]');
+      if (li) li.dataset.hl.split(' ').forEach(k => { const x = svgh.querySelector(`[data-key="${k}"]`); if (x) x.classList.add('hl'); });
     });
-    demo.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
-      s = clone(PRESET[b.dataset.preset]); s.preset = b.dataset.preset;
-      draw({ k:'all', ng:b.dataset.preset === 'ng' });
-    }));
+    why.addEventListener('mouseleave', () => svgh.querySelectorAll('.hl').forEach(x => x.classList.remove('hl')));
+    ch.addEventListener('click', e => {
+      const b = e.target.closest('[data-pick]');
+      if (!b || !S.sel) return;
+      const { who, fam } = S.sel, id = b.dataset.id || null;
+      let key;
+      if (b.dataset.pick === 'castle') { S[who].castle = id; key = `${who}.castle`; }
+      else { if (id) S[who].tactics[fam] = id; else delete S[who].tactics[fam]; key = `${who}.t.${fam}`; }
+      S.preset = null; note = null;
+      if (!id) S.sel = null;
+      draw({ keys:[key], ng:true });
+    });
+    root.querySelector('.ctrl').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b || busy) return;
+      if (b.dataset.preset) {
+        const p = clone(PRESETS[b.dataset.preset]);
+        Object.assign(S, { me:p.me, opp:p.opp, sel:null, preset:b.dataset.preset });
+        note = null;
+        draw({});
+        draw({ keys:allKeys(), stagger:.05, ng:true });
+      } else if ('opp' in b.dataset) api.setShowOpp(!S.showOpp);
+    });
+    const api = {
+      setShowOpp(on) {
+        if (S.showOpp === on) return;
+        if (!on && S.sel && S.sel.who === 'opp') S.sel = null;
+        if (on) { S.showOpp = true; draw({ rowIn:true }); return; }
+        const r = svgh.querySelector('.row.opp');
+        S.showOpp = false;
+        fit();
+        if (r && !RM) { r.classList.add('gone'); setTimeout(() => draw(), 300); } else draw();
+      },
+      setActive(who) { root.dataset.active = who; },
+    };
     draw();
-  });
+    return api;
+  }
+
+  // 凡例: 上下2枚の小さなピースで、形の約束を見せる
+  (() => {
+    const cell = (top, bot, cap, sub, cls = {}) => {
+      const id = ([x, y]) => [x, y];
+      const t = pathOf([14, 6], [{ to:[106, 6] }, { to:[106, 30] }, { to:[14, 30], f:top ? [{ at:.5, out:1, w:9, d:10, type:top }] : [] }, { to:[14, 6] }], id);
+      const b = pathOf([14, 30], [{ to:[106, 30], f:bot ? [{ at:.5, out:-1, w:9, d:10, type:bot }] : [] }, { to:[106, 54] }, { to:[14, 54] }, { to:[14, 30] }], id);
+      return `<figure><svg viewBox="0 0 120 60" aria-hidden="true"><path class="${cls.t || 'lg-a'}" d="${t}"/><path class="${cls.b || 'lg-b'}" d="${b}"/></svg><figcaption><b>${cap}</b>${sub}</figcaption></figure>`;
+    };
+    document.getElementById('legend').innerHTML = [
+      cell('round', 'round', '居飛車の凸＝丸', '戦型と、その囲い・戦法', { t:'lg-s' }),
+      cell('sq', 'sq', '振り飛車の凸＝角', '戦型と、その囲い・戦法', { t:'lg-s' }),
+      cell('round', 'sq', '嵌まらない', '居飛車に振り飛車の囲い', { t:'lg-s', b:'lg-b ng' }),
+      cell('tri', 'tri', '飛の歯＝三角', '飛車の筋の戦法'),
+      cell('dove', 'dove', '銀の歯＝鳩尾', '銀の筋の戦法'),
+      cell('dia', 'dia', '角の歯＝菱', '角・桂・歩の筋の戦法'),
+      cell('stub', null, '歯が立たない', '自分の攻めが通らない'),
+      cell('tri', 'breach', '破られる', '相手の攻めが通る', { b:'lg-b ng' }),
+      cell(null, 'dia', '空いた溝', 'ここに挿せば刺さる'),
+    ].join('');
+  })();
+
+  document.querySelectorAll('.bar[data-plan]:not([data-whole])').forEach(el => makeBar(el));
+
+  // ================= Ⅲ: 通し =================
+  (() => {
+    const root = document.getElementById('wholeDemo');
+    const barEl = root.querySelector('.bar');
+    let bar = null;
+    const binder = makeBinder(root, { mode:'tray', onChange:st => { if (bar) { bar.setShowOpp(st.show); bar.setActive(st.who); } } });
+    bar = makeBar(barEl, { noOppToggle:true, onPick:who => binder.select(who) });
+    bar.setShowOpp(binder.st.show); bar.setActive(binder.st.who);
+  })();
 })();
 </script>
 </body>
