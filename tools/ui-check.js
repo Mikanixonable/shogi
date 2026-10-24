@@ -16,6 +16,8 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = path.join(__dirname, 'shots');
 const SHOTS_ONLY = process.argv.includes('--shots-only');
 const WIDTHS = [1440, 1280, 1100, 1024, 390];   // 390以下はスクロール設計
+// スクリーンショットは [幅, 高さ]: 360 縦と 844×390 横（モバイル横向き）も撮る（D4）
+const SHOT_SHAPES = [[1440, 900], [1280, 900], [1100, 900], [1024, 900], [390, 844], [360, 740], [844, 390]];
 const NO_SCROLL_MIN = 980;
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.md': 'text/plain' };
@@ -872,6 +874,95 @@ async function main() {
         return { shown: getComputedStyle(btn).display !== 'none', hidden, open, inside, closed };
       });
       ok(tools.shown && tools.hidden && tools.open && tools.inside && tools.closed, 'w=390 表示設定の開閉', JSON.stringify(tools));
+
+      // ---- モバイル: 項目を選ぶと盤が残り、解説が盤の下に来る（B1/B2） ----
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.click(`${DOCK} .dk-card:not([hidden])`); await wait(900);
+      const sheet = await page.evaluate(() => {
+        const stage = document.querySelector('.stage').getBoundingClientRect();
+        const d = document.querySelector('#detail').getBoundingClientRect();
+        const b = document.querySelector('#board').getBoundingClientRect();
+        return { stageBottom: Math.round(stage.bottom), dTop: Math.round(d.top), ih: innerHeight,
+                 boardVisible: b.bottom > 0 && b.top < innerHeight,
+                 sticky: getComputedStyle(document.querySelector('.stage')).position === 'sticky',
+                 sy: Math.round(scrollY) };
+      });
+      ok(sheet.sticky && sheet.boardVisible && sheet.sy > 0
+        && sheet.dTop >= sheet.stageBottom - 8 && sheet.dTop < sheet.ih,
+        'w=390 項目を選ぶと盤が残り、解説が盤の下に来る', JSON.stringify(sheet));
+
+      // ---- w=360 縦: バインダーの重なり（A1）・ヘッダー1行（D1）・タップ領域（C1）・フェード（A3） ----
+      await page.setViewportSize({ width: 360, height: 740 }); await wait(350);
+      await checkFit(page, 360);
+      // 戦法タブに切り替えてタイル/派生チップのタップ領域も測る
+      await page.click(`${DOCK} .dk-tab button[data-value="tactic"]`); await wait(300);
+      const mob = await page.evaluate(() => {
+        const R = el => el.getBoundingClientRect();
+        const overlap = (a, b) => !(a.bottom <= b.top || b.bottom <= a.top || a.right <= b.left || b.right <= a.left);
+        const opp = R(document.querySelector('#pickRail .dk-pc[data-who="opp"]'));
+        const me = R(document.querySelector('#pickRail .dk-pc[data-who="me"]'));
+        const paneH = R(document.querySelector('#pickRail .dk-pane-h'));
+        const filter = R(document.querySelector('#pickRail .dk-filter-row'));
+        // タップ領域: 実寸に、位置が absolute の疑似要素の負の inset（当たり判定の拡張）を足す
+        const eff = el => {
+          const r = el.getBoundingClientRect();
+          let t = 0, b = 0, l = 0, rt = 0;
+          for (const pe of ['::before', '::after']) {
+            const cs = getComputedStyle(el, pe);
+            if (cs.content === 'none' || cs.position !== 'absolute') continue;
+            const n = k => { const v = parseFloat(cs[k]); return Number.isFinite(v) ? v : 0; };
+            t = Math.min(t, n('top')); b = Math.min(b, n('bottom'));
+            l = Math.min(l, n('left')); rt = Math.min(rt, n('right'));
+          }
+          return Math.min(r.width - l - rt, r.height - t - b);
+        };
+        const SELS = ['#toolsToggle', '#themeToggle', '#aboutOpen', '#pickRail .dk-tab button',
+          '#pickRail .dk-strategy button', '#pickRail .dk-sort-seg button', '#pickRail .dk-legend',
+          '#pickRail .dk-pc', '#pickRail .dk-pc-x', '#pickRail .dk-tile', '#pickRail .dk-var',
+          '#pickRail .dk-fam-h', '#cbarMe .cchip', '#cbarMe .dk-clear'];
+        const small = [];
+        for (const sel of SELS) for (const el of document.querySelectorAll(sel)) {
+          if (el.offsetParent === null || el.offsetHeight === 0) continue;   // 非表示は除外
+          const v = eff(el);
+          if (v < 44) small.push(`${sel}:${Math.round(v)}`);
+        }
+        const board = R(document.querySelector('#board'));
+        return { hdr: Math.round(R(document.querySelector('header')).height),
+                 binderFree: !overlap(opp, paneH) && !overlap(me, paneH) && !overlap(opp, filter) && !overlap(me, filter),
+                 masked: getComputedStyle(document.querySelector('#cbarMe .cbar-x')).maskImage !== 'none',
+                 impliedDot: (() => {
+                   // 「既定」の文字ではなく角の点線の印に畳まれているか（A3）
+                   const c = document.querySelector('#cbarMe .cchip[data-implied="true"] .cchip-type');
+                   if (!c) return null;
+                   const cs = getComputedStyle(c, '::after');
+                   return cs.content === '""' && cs.borderStyle.includes('dashed');
+                 })(),
+                 sortName: (document.querySelector('#pickRail .dk-sort-name') || {}).textContent || '',
+                 tnote: Kakoi.TACTIC_FAMILIES.some(f => f.note)
+                   ? document.querySelectorAll('#pickRail .dk-tnote').length > 0 : true,
+                 boardW: Math.round(board.width), iw: innerWidth, small };
+      });
+      ok(mob.binderFree, 'w=360 バインダーの駒が一覧の見出しに重ならない（A1）', '');
+      ok(mob.hdr <= 56, 'w=360 ヘッダーは1行に収まる（D1）', `高さ=${mob.hdr}px`);
+      ok(mob.small.length === 0, 'w=360 タップ領域は実効44px以上（C1）', mob.small.join(', '));
+      ok(mob.masked, 'w=360 制約バーは端のフェードで続きを示す（A3）', '');
+      ok(mob.impliedDot !== false, 'w=360 既定チップは「既定」の文字ではなく角の点線の印（A3）', '');
+      ok(mob.sortName.length > 0, 'w=360 並べ方の名前を文字で表示（B4）', '');
+      ok(mob.tnote, 'w=360 系統の注記が本文に出る（B4）', '');
+
+      // ---- 横向き 844×390（A2）: 盤が左・一覧が右で、盤は画面の高さに収まる ----
+      await page.setViewportSize({ width: 844, height: 390 }); await wait(400);
+      const land = await page.evaluate(() => {
+        const b = document.querySelector('#board').getBoundingClientRect();
+        const stage = document.querySelector('.stage').getBoundingClientRect();
+        const rail = document.querySelector('.rail').getBoundingClientRect();
+        return { boardBottom: Math.round(b.bottom), stageW: Math.round(stage.width),
+                 stageLeft: Math.round(stage.left), railLeft: Math.round(rail.left),
+                 iw: innerWidth, ih: innerHeight, sw: document.documentElement.scrollWidth };
+      });
+      ok(land.sw <= land.iw + 1, 'w=844x390 横スクロールなし', `scrollWidth=${land.sw}`);
+      ok(land.boardBottom <= land.ih + 1 && land.stageLeft < land.railLeft && land.stageW < land.iw,
+        'w=844x390 盤は左列に高さで収まる（A2）', JSON.stringify(land));
       await page.close();
 
       const resizePage = await browser.newPage({ viewport: { width: 1100, height: 850 } });
@@ -901,11 +992,11 @@ async function main() {
       const page = await browser.newPage();
       await page.addInitScript(s => { try { localStorage.setItem('shogi-theme', s); } catch (e) {} document.documentElement.dataset.theme = s; }, scheme);
       watch(page, errs);
-      for (const w of WIDTHS) {
-        await page.setViewportSize({ width: w, height: w === 390 ? 844 : 900 });
+      for (const [w, h] of SHOT_SHAPES) {
+        await page.setViewportSize({ width: w, height: h });
         await page.goto(`${base}#k=mt:shikenbisha,mc:mino,ot:bougin,oc:yagura&opp=1&sel=mc`, { waitUntil: 'networkidle' });
         await wait(500);
-        await page.screenshot({ path: path.join(SHOTS, `board-${w}-${scheme}.png`) });
+        await page.screenshot({ path: path.join(SHOTS, `board-${w}x${h}-${scheme}.png`) });
       }
       await page.close();
     }

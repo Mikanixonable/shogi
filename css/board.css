@@ -117,8 +117,18 @@
   /* 縁は細く（5px）し、座標ラベルとの間（--coord-gap）に重ねて描く。盤の幅は縁の分を削らない（≥300px を保つ） */
   .boardwrap { --coord-h:24px; --coord-w:17px; --coord-gap:5px; --bm:5px; padding:0; gap:var(--coord-gap); }
   .boardarea { container-type:inline-size; align-items:center; }
-  /* 段ラベルを細め（14px）にし、持ち駒列の margin を22pxずつに詰める */
-  .boardwrap { width:calc(100cqw - 44px); transform:none; }
+  /* 段ラベルを細め（14px）にし、持ち駒列の margin を22pxずつに詰める。
+     盤を sticky で画面上に残すので、幅は高さでも上限を掛ける（盤高 ≈ 幅×9.6/9 ≤ 40svh。B1） */
+  .boardwrap { width:min(calc(100cqw - 44px),
+                calc(37.5svh + var(--coord-w) + var(--coord-gap))); transform:none; }
   .flabels { font-size:14px; }
   .rlabels { font-size:14px; }
+}
+
+/* 横向きの短い画面（A2）: 盤は左の sticky 列で高さに収める（boardarea が残り高を持つので高さ式を戻す） */
+@media (max-width:979px) and (orientation:landscape) and (max-height:560px) {
+  .boardarea { container-type:size; }
+  .boardwrap { width:min(calc(100cqw - 44px),
+      calc((100cqh - var(--coord-h) - var(--coord-gap) - var(--bm) * 2) * 9 / 9.6
+        + var(--coord-w) + var(--coord-gap) + var(--bm) * 2)); }
 }

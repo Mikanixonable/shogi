@@ -100,7 +100,9 @@ window.Kakoi = window.Kakoi || {};
       sec.style.setProperty('--tc', PIECE_COLOR[family.piece] || 'var(--accent-2)');
       // 行見出しに乗せると系統の note（「○が主役の理由」）を出す（lab 周期表の行タイルの title と同じ）
       sec.innerHTML = `<h3 title="${esc(family.note ? `${family.name}\n${family.note}` : family.name)}">` +
-        `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>${esc(family.name)}</h3>`;
+        `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>${esc(family.name)}</h3>` +
+        // 系統の注記: 広い画面は行見出しの title、狭い画面（タッチ）は本文に出す（B4）
+        (family.note ? `<small class="dk-tnote">${esc(family.note)}</small>` : '');
       const grid = document.createElement('div');
       grid.className = 'dk-tgrid';
       // 同じ lead.square の非派生戦法は1セルに束ね、列が重なるセルは下へ送る
@@ -118,26 +120,17 @@ window.Kakoi = window.Kakoi || {};
         el.setAttribute('aria-hidden', 'true');
         put(el, d.col, 1, d.row);
       }
-      // 派生チップは親と同じ lead.square → 同じ筋の列。タイルと同じくグリッドの
-      // 筋列アイテムとして、その列の使われている行の下へ積む（§4-3）
-      const colNext = Array(10).fill(1);
-      const chipEls = [];
+      // 派生チップは親と同じ lead.square → 親タイルと同じセルに、親の直下へ積む
+      // （§4-3。セルの中に入れるので、狭い画面の縦リストでも親に隣接する）
       for (const { col, span, row, tactics: cellTs } of cells) {
         const cell = document.createElement('div');
         cell.className = 'dk-cell';
         put(cell, col, span, row);
-        for (let c = col; c < col + span; c++) colNext[c] = Math.max(colNext[c], row + 1);
         for (const t of cellTs) {
           cell.appendChild(tile(who, t, flip));
           for (const x of variantsOf.get(t.id) || [])
-            chipEls.push({ col, span, el: varChip(who, x) });
+            cell.appendChild(varChip(who, x));
         }
-      }
-      for (const ch of chipEls) {
-        let r = 0;
-        for (let c = ch.col; c < ch.col + ch.span; c++) r = Math.max(r, colNext[c]);
-        for (let c = ch.col; c < ch.col + ch.span; c++) colNext[c] = r + 1;
-        put(ch.el, ch.col, ch.span, r);
       }
       sec.appendChild(grid);
       v.on.appendChild(sec);
