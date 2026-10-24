@@ -66,7 +66,7 @@ window.Kakoi = window.Kakoi || {};
          `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
          K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
           `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
-         `</div><button type="button" class="dk-legend" aria-expanded="false" ` +
+         `</div><span class="dk-sort-name" aria-hidden="true"></span><button type="button" class="dk-legend" aria-expanded="false" ` +
          `aria-label="記号の見方" title="記号の見方">?</button></div>` +
          `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
          `</section></div>` +
@@ -97,6 +97,7 @@ window.Kakoi = window.Kakoi || {};
       });
       this.clearBtn.addEventListener('click', () => h.onClear(this.who));
       this.sortWrap = this.root.querySelector('.dk-sort-seg');
+      this.sortName = this.root.querySelector('.dk-sort-name');
       const savePref = () => {
         try { localStorage.setItem(PREF, JSON.stringify({ sort: this.sort })); } catch { /* 無視 */ }
         if (this._last) this.update(this._last.state, this._last.S);
@@ -104,9 +105,11 @@ window.Kakoi = window.Kakoi || {};
       this.sortSeg = new K.Segmented(this.root.querySelector('.dk-sort-seg'), v => {
         this.sort = v;
         this.sortSeg.setValue(v);
+        this._sortLabel();
         savePref();
       });
       this.sortSeg.setValue(this.sort);
+      this._sortLabel();
       // タイル・チップは roving tabindex（U3）。矢印でフォーカスを移し Enter で選ぶ
       this.roving = K.roving.attach(this.body, '.dk-item');
       this.views = {};   // `${who}:${kind}` → 一覧の中身（構築は1回だけ。update では属性だけを書き換える）
@@ -174,6 +177,12 @@ window.Kakoi = window.Kakoi || {};
       document.addEventListener('pointerdown', e => {
         if (pop && !e.target.closest('.dk-legend-pop') && !e.target.closest('.dk-legend')) close();
       });
+    }
+
+    // 並べ方アイコンの横に、選択中の並べ方の名前を文字で出す（B4: title はタッチで読めない）
+    _sortLabel() {
+      const cur = K.dockGrids.CASTLE_SORTS.find(x => x.id === this.sort);
+      this.sortName.textContent = cur ? cur.label : '';
     }
 
     // ---------- イベント（委譲。一覧の作り直しをまたいで有効） ----------
@@ -263,6 +272,7 @@ window.Kakoi = window.Kakoi || {};
       this.oppOffBtn.hidden = !showOpp;
       this.tabSeg.setValue(kind);
       this.sortWrap.hidden = kind !== 'castle';   // 戦法は筋の表のまま（並べ方は囲いだけ）
+      this.sortName.hidden = this.sortWrap.hidden;
       const side = state.slots[who];
       const clearHost = document.querySelector(`#stageMain .sideband[data-side="${who}"] .cbar`);
       if (clearHost && this.clearBtn.parentElement !== clearHost) clearHost.append(this.clearBtn);
@@ -327,6 +337,9 @@ window.Kakoi = window.Kakoi || {};
     // 制約チップを選んだときの連動（U5）: 種類のタブへ切り替わった一覧で、その側の実効値 st の
     // 項目までスクロールする（フォーカスは奪わず、一瞬だけ輪郭を添える）
     reveal(kind, st) {
+      // 狭い画面では一覧のスクロールはページ全体のスクロールになるので行わない
+      // （B2: 代わりに constraint-mode が解説を盤の下へ持ってくる）
+      if (matchMedia('(max-width:979px)').matches) return;
       requestAnimationFrame(() => {
         const id = st && st[FIELD[kind]];
         let t = id && this.body.querySelector(`.dk-item[data-id="${id}"]`);

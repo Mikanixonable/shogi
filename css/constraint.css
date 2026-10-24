@@ -36,7 +36,7 @@
 .cchip .cchip-b { display:flex; min-width:0; align-items:center; gap:5px; padding:0 2px 0 0;
                   border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
 .cchip .cchip-b, .cchip-x { position:relative; z-index:3; }
-.cchip .cchip-b:hover .cchip-nm { color:var(--accent); }
+@media (hover:hover) { .cchip .cchip-b:hover .cchip-nm { color:var(--accent); } }
 .cchip-type { display:grid; flex:none; place-items:center; min-width:32px; height:24px; padding:0 3px;
               border-radius:999px; color:var(--chip-ink); font-size:10px; font-weight:800; letter-spacing:0; }
 .cchip-ng { flex:none; font-style:normal; font-size:13px; font-weight:900; color:var(--bad); }
@@ -45,7 +45,7 @@
             font-size:14px; font-weight:800; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
 .cchip-x { display:grid; flex:none; place-items:center; width:22px; height:22px; margin:0; border:0;
            border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; }
-.cchip-x:hover { border-color:var(--bad); color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); }
+@media (hover:hover) { .cchip-x:hover { border-color:var(--bad); color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); } }
 /* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
 .cchip[data-sel="true"] .cchip-nm { color:var(--accent); }
 /* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
@@ -62,12 +62,21 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 .vchips { display:flex; flex-wrap:wrap; gap:6px; }
 .vchip { border:1px solid var(--line); background:none; padding:4px 12px; font-size:12px;
          letter-spacing:.05em; color:var(--fg); cursor:pointer; transition:border-color .2s, color .2s, background .2s; }
-.vchip:hover { border-color:var(--accent); color:var(--accent); }
+@media (hover:hover) { .vchip:hover { border-color:var(--accent); color:var(--accent); } }
 .vchip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
 /* ===== narrow ===== */
 @media (max-width:979px) {
   #pickRail { padding:12px 14px; }
   .cbar { overflow:visible; }
-  .cbar-x { flex:1 1 auto; overflow-x:auto; mask-image:none; }
+  /* フェードは残して「右に続きがある」ことを示し、チップ単位で吸い付くようにする（A3） */
+  .cbar-x { flex:1 1 auto; overflow-x:auto; scroll-snap-type:x proximity;
+            padding-left:2px; }
+  .cchip { height:44px; scroll-snap-align:start; }
+  .cchip-x { position:relative; }
+  .cchip-x::after { content:""; position:absolute; inset:-11px; }   /* C1: 見た目は22pxのまま当たり判定を広げる */
+  /* 「既定」の文字は幅を食うので、種類の角の点線の印だけにする（A3） */
+  .cchip-type { position:relative; }
+  .cchip[data-implied="true"] .cchip-type::after { content:""; position:absolute; top:-4px; right:-4px;
+            width:5px; height:5px; border:1px dashed var(--muted); background:var(--bg); }
 }

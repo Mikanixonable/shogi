@@ -56,6 +56,15 @@ window.Kakoi = window.Kakoi || {};
           if (handlers.onAttack) handlers.onAttack(atk.getAttribute('aria-pressed') === 'true' ? null : atk.dataset.id);
           return;
         }
+        // ホバーのない画面（タッチ）では、点線の項目をタップで盤のハイライトを切り替える（B3。
+        // 盤は sticky で見えているので、光ったマスがそのまま見える）
+        if (!matchMedia('(hover:hover)').matches) {
+          const sq = e.target.closest('[data-sq]');
+          if (sq && handlers.onHover) {
+            if (this._tapSq === sq) { this._tapSq = null; handlers.onHover([], null); }
+            else { this._tapSq = sq; handlers.onHover(sq.dataset.sq.split(' '), sq.dataset.tone || 'focus'); }
+          }
+        }
         const c = e.target.closest('[data-act="castle"]');
         if (c) {
           if (handlers.onSetConstraint) handlers.onSetConstraint(this._sel.who, 'castle', c.dataset.id);
@@ -98,6 +107,7 @@ window.Kakoi = window.Kakoi || {};
       const b = sel.kind === 'strategy' ? this._strategy(sel, st, S, p.showOpp, citer, p)
         : kind === 'tactic' ? this._tactic(norm, st, S, p.showOpp, citer, p)
         : this._castle(norm, st, S, p.showOpp, p.attackId, citer, p);
+      this._tapSq = null;   // 描き直しでタップ中の data-sq 要素は取り替わる
       // 共通の末尾: 両軍の接触 → 出典。接触は呼び出し側の導出（merge 済み）を受け取る（S5: 再計算しない）
       this.el.innerHTML = [b.body, Sec().contacts(p.contacts, citer), Sec().sources(b.sources, citer)]
         .filter(Boolean).join('');
