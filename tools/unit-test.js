@@ -305,6 +305,49 @@ for (const sid of Object.keys(K.STRATEGIES)) {
       `盤上=${got} 持ち駒香=${handKyo}`);
   }
 }
+{
+  // 玉は全8方向へ1手（STEP 未登録で GOLD_STEP に落ちると斜め後退が届かないと誤判定される。
+  // 金との対比で玉専用の定義があることも確かめる）
+  const mc = K.pieceMatch.moveCount;
+  const king1 = ['44', '54', '64', '45', '65', '46', '56', '66']
+    .every(to => mc('玉', '55', to) === 1);
+  ok(king1, 'moveCount:玉は全8方向へ1手（斜め後退ふくむ）',
+    ['46', '66'].map(to => `${to}=${mc('玉', '55', to)}`).join(','));
+  ok(mc('金', '55', '46') === 2 && mc('金', '55', '66') === 2,
+    'moveCount:金の斜め後退は2手（玉と区別できる）',
+    `46=${mc('金', '55', '46')},66=${mc('金', '55', '66')}`);
+  // 銀の滑らせコスト: 斜め前は合法手なので罰則なし。真横・真後ろより安いこと
+  const cst = K.pieceMatch.moveCost;
+  ok(cst('銀', '55', '46') != null && cst('銀', '55', '44') != null
+    && cst('銀', '55', '46') < cst('銀', '55', '45'),
+    'moveCost:銀の斜め前は罰則なし（真横より安い）',
+    `46=${cst('銀', '55', '46')},44=${cst('銀', '55', '44')},45=${cst('銀', '55', '45')}`);
+}
+{
+  // SHELL 注記: 殻の駒が届かないとき、黙って飛ばすのではなく conflicts に記録する
+  // （ng にはしない。振り飛車穴熊の歩17 は、歩16 に進んだ四間飛車からは戻れない）
+  const r = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'furianaguma' });
+  const shell = (r.conflicts || []).filter(c => c.code === 'SHELL');
+  ok(shell.length === 1 && shell[0].squares[0] === '17',
+    'compose:SHELL 歩16から歩17は置けず注記が出る', jstr(r.conflicts));
+  const j = K.compat.judge({ strategy: 'furibisha', tacticId: 'shikenbisha' }, 'castle', 'furianaguma');
+  ok(j.level !== 'ng' && j.reasons.some(x => x.code === 'SHELL'),
+    'compat:SHELL は ng ではなく理由（注記）として残る', brief(j));
+  const rMino = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino' });
+  ok(!(rMino.conflicts || []).some(c => c.code === 'SHELL'),
+    'compose:SHELL 届く殻（本美濃の歩16）には注記が出ない', jstr(rMino.conflicts));
+}
+{
+  // 右玉（migigyoku）: 桂37は桂29からしか来られないので、宣言局面は桂29を空けた
+  // 専用の想定配置（ibisha37）で桂89・桂37の2枚にする（桂29＋桂37は初期配置から到達不能）
+  const c = K.CASTLES.find(x => x.id === 'migigyoku');
+  const pos = K.Position.fromCastle(c, K.SETUPS[c.setup]);
+  const kei = pos.pieces.filter(x => x.p === '桂').map(x => `${x.f}${x.r}`).sort().join(',');
+  ok(kei === '37,89', 'data:migigyoku の宣言局面は桂89・桂37（桂29は空く）', `盤上=${kei}`);
+  const r = K.compose.position({ strategy: 'ibisha', tacticId: 'ibisha-base', castleId: 'migigyoku' });
+  const kei2 = r.position.pieces.filter(x => x.p === '桂').map(x => `${x.f}${x.r}`).sort().join(',');
+  ok(kei2 === '37,89', 'compose:migigyoku 合成後も桂89・桂37', `盤上=${kei2}`);
+}
 
 // ---------- 4. setSlot（固定スロット）: 選んだものを他の層が勝手に差し替えない ----------
 {

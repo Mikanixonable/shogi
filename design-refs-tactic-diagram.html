@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>右ドック 戦法のダイアグラムの案</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* 右ドックの戦法パネルに、囲いのペンタグラム（特徴の目安）に相当するダイアグラムを載せる4案。
+   器は 1280px 幅の実画面の右ドックと同じ（中身 約 370px）。見出し・#タグ・.sec の見出し罫は実物の CSS を写した。
+   値はすべて見本の仮値（5段階・主観）。データは js/data/tactics.js から書き出した実データ（pieces/route/essential/pace/variantOf）。 */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f;
+  --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17;
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b;
+  --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5);
+  --t-rook:#e2563b; --t-silver:#8ea6cf; --t-kaku:#9cbf8a;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); }
+body { margin:0; font:14px/1.6 var(--font-b); color:var(--fg); background:var(--bg); }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+/* ===== ページの枠 ===== */
+.top { position:sticky; top:0; z-index:30; display:flex; gap:8px 16px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 8px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 8px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.ctl { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+.seg { display:inline-flex; border:1px solid var(--line-2); }
+.seg button { border:0; background:none; padding:3px 10px; cursor:pointer; font-size:12px; color:var(--fg2); }
+.seg button + button { border-left:1px solid var(--line); }
+.seg button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+.top .theme { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; }
+
+.wrap { max-width:1120px; margin:0 auto; padding:0 16px 80px; }
+.intro { margin:24px 0 0; display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:28px; color:var(--fg2); font-size:13.5px; }
+.intro h2 { margin:0 0 6px; font:700 15px/1.4 var(--font-d); color:var(--fg); letter-spacing:.06em; }
+.intro ul { margin:6px 0 0; padding-left:1.3em; }
+.intro li { margin:2px 0; }
+.ref-now { border:1px solid var(--line); padding:12px 14px; }
+.ref-now p { margin:0 0 4px; font-size:11px; letter-spacing:.14em; color:var(--muted); }
+
+/* ===== 案 ===== */
+.opt { margin-top:56px; padding-top:22px; border-top:1px solid var(--line-2); scroll-margin-top:60px; }
+.opt > header { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+.opt-k { font:800 13px/1 var(--font-d); color:var(--accent); letter-spacing:.14em; border:1px solid var(--accent); padding:4px 7px; }
+.opt h2 { margin:0; font:800 21px/1.35 var(--font-d); letter-spacing:.06em; }
+.opt .lead { margin:6px 0 0; color:var(--fg2); flex-basis:100%; }
+.opt-body { margin-top:18px; display:grid; grid-template-columns:380px minmax(0,1fr); gap:32px; align-items:start; }
+@media (max-width:860px) { .opt-body, .intro { grid-template-columns:minmax(0,1fr); } }
+
+.notes h3 { margin:16px 0 4px; font-size:11px; letter-spacing:.2em; color:var(--muted); font-weight:600; }
+.notes h3:first-child { margin-top:0; }
+.notes p, .notes ul { margin:0; font-size:13.5px; color:var(--fg2); }
+.notes ul { padding-left:1.2em; }
+.notes li { margin:2px 0; }
+.notes code, .rec code { font:12px/1.5 ui-monospace,Menlo,monospace; background:var(--faint); padding:1px 4px; }
+.axmap { display:grid; grid-template-columns:auto auto 1fr; gap:2px 10px; font-size:12.5px; margin-top:4px; }
+.axmap b { font-weight:700; color:var(--fg); }
+.axmap span { color:var(--muted); }
+
+/* ===== 右ドックの器（実物の .detail を写す） ===== */
+.dock { border:1px solid var(--line); border-left:1px solid var(--line-2); padding:16px 22px 18px; display:flex; flex-direction:column; gap:16px; min-height:420px; position:relative; }
+.dock::before { content:"右ドック（実寸）"; position:absolute; top:-9px; left:12px; padding:0 6px; background:var(--bg); font-size:10px; letter-spacing:.14em; color:var(--muted); }
+.bd-who { margin:0 0 2px; font-size:11px; letter-spacing:.18em; color:var(--muted); }
+.bd-t { margin:0 0 4px; font:800 19px/1.35 var(--font-d); letter-spacing:.08em; }
+.tags { display:flex; flex-wrap:wrap; gap:4px 14px; }
+.tag { font-size:11.5px; color:var(--muted); letter-spacing:.06em; }
+.tag.group { color:var(--accent); font-weight:600; }
+.sec h3 { margin:0 0 8px; font-size:11px; letter-spacing:.2em; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:10px; }
+.sec h3::after { content:""; flex:1; height:1px; background:var(--line); }
+.sec h3 small { font-weight:400; letter-spacing:0; order:2; }
+.note { margin:0; font-size:12px; color:var(--muted); }
+.ghost { display:flex; flex-direction:column; gap:6px; }
+.ghost i { display:block; height:7px; background:var(--faint); border-radius:1px; }
+.ghost i:nth-child(2) { width:92%; } .ghost i:nth-child(3) { width:70%; }
+
+/* ===== ペンタグラム（実物の .penta を写す） ===== */
+.penta { display:block; width:210px; max-width:100%; height:auto; margin:0 auto; overflow:visible; }
+.penta-ring { fill:none; stroke:var(--line); stroke-width:1; }
+.penta-ring.edge { stroke:var(--line-2); }
+.penta-spoke { stroke:var(--line); stroke-width:1; }
+.penta-val { fill:var(--fg); fill-opacity:.07; stroke:var(--fg); stroke-width:1.3; stroke-linejoin:round; }
+.penta-lbl { font-size:10px; fill:var(--muted); letter-spacing:.02em; }
+.penta-lbl.hit { fill:var(--accent); font-weight:700; }
+.penta-lbl.sub { font-size:8px; }
+/* 戦法の多角形は主役の駒の系統色（左ドックのタイルと同じ --t-*） */
+.p-tac { fill:var(--tc); fill-opacity:.13; stroke:var(--tc); stroke-width:1.5; stroke-linejoin:round; }
+.p-parent { fill:none; stroke:var(--tc); stroke-opacity:.55; stroke-width:1; stroke-dasharray:3 2.5; }
+.p-castle { fill:var(--fg); fill-opacity:.05; stroke:var(--fg); stroke-width:1.1; stroke-dasharray:4 2.5; stroke-linejoin:round; }
+.p-hitdot { fill:var(--accent); }
+.p-anim { transition:all .5s var(--ease); }
+.legend { display:flex; flex-wrap:wrap; justify-content:center; gap:4px 14px; margin-top:4px; font-size:11px; color:var(--muted); }
+.legend span::before { content:""; display:inline-block; width:16px; height:0; margin-right:5px; vertical-align:middle; border-top:1.5px solid var(--tc); }
+.legend .lg-parent::before { border-top:1px dashed var(--tc); }
+.legend .lg-castle::before { border-top:1.2px dashed var(--fg); }
+
+/* 案B: 軸ごとの攻め×守り */
+.vs { list-style:none; margin:8px 0 0; padding:0; display:grid; gap:2px; font-size:12px; }
+.vs li { display:grid; grid-template-columns:5.5em 1fr 1.6em 1fr 5.5em; align-items:center; gap:6px; padding:2px 0; }
+.vs .ax-t { color:var(--fg2); text-align:right; }
+.vs .ax-c { color:var(--muted); }
+.vs .bar { height:5px; background:var(--faint); position:relative; }
+.vs .bar i { position:absolute; top:0; bottom:0; }
+.vs .bar.t i { right:0; background:var(--tc); }
+.vs .bar.c i { left:0; background:var(--fg); opacity:.45; }
+.vs .mk { text-align:center; font-weight:700; color:var(--muted); }
+.vs li.hit .mk, .vs li.hit .ax-t { color:var(--accent); }
+.vs li.hit .ax-t { font-weight:700; }
+.fit { margin:8px 0 0; font:800 22px/1 var(--font-d); text-align:center; }
+.fit small { display:block; margin-top:4px; font:400 11px/1.4 var(--font-b); color:var(--muted); }
+
+/* 案C: 攻めの地図 */
+.amap { display:block; width:100%; height:auto; }
+.am-grid { stroke:var(--line); stroke-width:.8; }
+.am-frame { fill:none; stroke:var(--line-2); stroke-width:1; }
+.am-enemy { fill:var(--faint); }
+.am-band { fill:var(--tc); fill-opacity:.09; }
+.am-coord { font-size:8.5px; fill:var(--muted); }
+.am-pc { font:500 12.5px var(--font-d); fill:var(--muted); fill-opacity:.55; }
+.am-pc.king { fill:var(--fg); fill-opacity:1; font-weight:700; }
+.am-tok { fill:var(--bg); stroke:var(--tc); stroke-width:1.3; }
+.am-tok.lead { fill:var(--tc); }
+.am-pc.ess { fill:var(--fg); fill-opacity:1; font-weight:800; }
+.am-pc.lead { fill:var(--bg); }
+.am-route { fill:none; stroke:var(--tc); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+.am-route-dot { fill:var(--tc); }
+.am-aim { fill:none; stroke:var(--accent); stroke-width:1.4; stroke-dasharray:4 3; }
+.am-target { fill:none; stroke:var(--accent); stroke-width:1.4; }
+.am-cap { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:6px; font-size:11.5px; color:var(--muted); }
+.am-cap b { color:var(--fg); font-weight:700; }
+
+/* 案D: 系統の座標図 */
+.fmap { display:grid; gap:0; border-top:1px solid var(--line-2); border-left:1px solid var(--line); font-size:10.5px; }
+.fmap > div { border-right:1px solid var(--line); border-bottom:1px solid var(--line); min-height:30px; padding:3px 2px; display:flex; flex-direction:column; gap:2px; align-items:center; justify-content:center; }
+.fmap .hd { min-height:0; padding:2px 0; color:var(--muted); font-size:10px; background:var(--faint); }
+.fmap .rh { writing-mode:vertical-rl; color:var(--muted); font-size:10px; letter-spacing:.2em; background:var(--faint); padding:4px 0; }
+.fmap .col-on { background:color-mix(in srgb, var(--tc) 7%, transparent); }
+.fmap .col-on.hd { color:var(--tc); font-weight:700; }
+.fchip { border:1px solid var(--line-2); background:var(--bg); padding:0 3px; line-height:1.55; white-space:nowrap; cursor:default; font-size:10.5px; color:var(--fg2); }
+.fchip.basic { font-weight:700; color:var(--fg); border-color:var(--fg); }
+.fchip.var { border-style:dashed; color:var(--muted); font-size:9.5px; }
+.fchip.cur { background:var(--tc); border-color:var(--tc); color:var(--bg); }
+.fchip.pick { cursor:pointer; }
+.fchip.pick:hover { border-color:var(--tc); }
+.fchip.kin { box-shadow:inset 0 -2px 0 color-mix(in srgb, var(--tc) 45%, transparent); }
+
+/* ===== 比較と推奨 ===== */
+.cmp { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+.cmp th, .cmp td { border-bottom:1px solid var(--line); padding:7px 8px; text-align:left; vertical-align:top; }
+.cmp thead th { font-size:11px; letter-spacing:.14em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--line-2); }
+.cmp td.k { font-weight:700; white-space:nowrap; }
+.rec { margin-top:14px; border-left:3px solid var(--accent); padding:4px 0 4px 16px; color:var(--fg2); }
+.rec p { margin:6px 0; }
+.rec pre { margin:8px 0; padding:10px 12px; background:var(--faint); font:12px/1.6 ui-monospace,Menlo,monospace; overflow:auto; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>右ドック・戦法のダイアグラム</h1>
+  <nav><a href="#a">A 特徴の目安</a><a href="#b">B 攻めの向き</a><a href="#c">C 攻めの地図</a><a href="#d">D 系統の座標</a><a href="#cmp">比較と推奨</a></nav>
+  <span class="sp"></span>
+  <div class="ctl">戦法 <span class="seg" id="segT"></span></div>
+  <div class="ctl">相手の囲い <span class="seg" id="segC"></span></div>
+  <button class="theme" id="theme" type="button">明暗</button>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    <div>
+      <h2>いま</h2>
+      <ul>
+        <li>囲いのパネルには <b>特徴の目安（5軸×5段階のペンタグラム）</b> があり、相手がいると戦型の重みを朱の破線で重ねる。</li>
+        <li>戦法のパネルは #タグ → 説明 → 長所短所 → 主役の駒の動き と文字だけが続き、ひと目で「どういう戦法か」がつかめない。</li>
+        <li>戦法のデータにあるのは <code>pace</code>（急戦/両用/持久）・<code>lead</code>・<code>route</code>・<code>essential</code>・<code>pairings</code>・<code>against</code> で、囲いの <code>ratings</code> に当たる数値はない。</li>
+      </ul>
+      <h2 style="margin-top:14px">この資料</h2>
+      <ul>
+        <li>上の「戦法」「相手の囲い」を切り替えると、4案すべてが同じ状態で描き直される。</li>
+        <li>A・B は新しい数値データ（仮値）が要る。C・D は既存データだけで描ける（ここでも js/data/tactics.js の実データで描いている）。</li>
+        <li>戦法の線は主役の駒の系統色（左ドックのタイルと同じ <code>--t-*</code>）、囲いは墨。朱は「効いている・刺さる」印だけに使う。</li>
+      </ul>
+    </div>
+    <div class="ref-now">
+      <p>参考：いまの囲いのペンタグラム</p>
+      <div id="refCastle"></div>
+    </div>
+  </div>
+
+  <section class="opt" id="a">
+    <header><span class="opt-k">案 A</span><h2>特徴の目安（戦法独自の5軸）</h2>
+      <p class="lead">囲いと同じ形・同じ大きさのペンタグラムを、戦法向けの5軸で描く。派生戦法には親の形を破線で重ね、「何が変わったか」を見せる。</p></header>
+    <div class="opt-body">
+      <div class="dock" id="dockA"></div>
+      <div class="notes">
+        <h3>軸（上から時計回り）</h3>
+        <div class="axmap">
+          <b>攻撃力</b><span>attack</span><span>仕掛けたあとの破壊力</span>
+          <b>速さ</b><span>speed</span><span>仕掛けまでの手数。<code>pace</code> から初期値を出せる</span>
+          <b>柔軟性</b><span>flex</span><span>急戦・持久戦や相手の作戦への対応幅</span>
+          <b>玉の安全</b><span>safety</span><span>戦法のために玉形を犠牲にしない度合い</span>
+          <b>覚えやすさ</b><span>easy</span><span>定跡の量・ハメ手への注意の少なさ</span>
+        </div>
+        <h3>良い点</h3>
+        <ul>
+          <li>初心者が知りたい問い（強い？速い？難しい？）にそのまま答える。</li>
+          <li>派生の破線が効く：藤井システムを選ぶと、四間飛車より「速さ↑・玉の安全↓・覚えやすさ↓」が形で分かる。</li>
+        </ul>
+        <h3>気になる点</h3>
+        <ul>
+          <li>軸が囲いと別物なので、相手の囲いとは重ねられない（相性は従来の文字の節に頼る）。</li>
+          <li>39戦法すべてに主観の5値が要る。「覚えやすさ」は出典で裏付けにくい。</li>
+        </ul>
+        <h3>データ</h3>
+        <p><code>ratings: { attack, speed, flex, safety, easy }</code> を tactics.js に追加。描画は detail-sections の <code>penta()</code> を軸の表を引数に取る形に広げれば流用できる。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="opt" id="b">
+    <header><span class="opt-k">案 B</span><h2>攻めの向き（囲いの5軸と対になる）</h2>
+      <p class="lead">戦法の5軸を、囲いの5軸と同じ位置に「その守りを試す攻め」として置く。相手を表示すると相手の囲いの守りを墨の破線で重ね、攻めが守りを上回る軸を朱で示す。</p></header>
+    <div class="opt-body">
+      <div class="dock" id="dockB"></div>
+      <div class="notes">
+        <h3>軸の対応（同じ頂点に置く）</h3>
+        <div class="axmap">
+          <b>崩す力</b><span>↔ 堅さ</span><span>攻めに参加する駒の厚み</span>
+          <b>押さえ込み</b><span>↔ 玉の広さ</span><span>玉の逃げ道を先に消す力</span>
+          <b>上部攻め</b><span>↔ 上部の強さ</span><span>縦（玉頭・筋）から来る攻め</span>
+          <b>横攻め</b><span>↔ 横の強さ</span><span>飛車を成り込んで横から来る攻め</span>
+          <b>速さ</b><span>↔ 組みやすさ</span><span>囲いが組み上がる前に仕掛ける力</span>
+        </div>
+        <h3>良い点</h3>
+        <ul>
+          <li>囲い＝守りの形、戦法＝攻めの形、と同じ図法で一対になる。デザイン言語として最も一貫する。</li>
+          <li>相手表示時に「なぜこの戦法がこの囲いに効くか」が図で読める。既存の対戦相性（<code>matchup.fitness</code>）と同じ考え方で、軸ごとの差をそのまま点数にできる。</li>
+          <li>囲いのパネルにも逆向きに使える（相手の戦法の攻めを重ねる）。</li>
+        </ul>
+        <h3>気になる点</h3>
+        <ul>
+          <li>「押さえ込み」は戦法ごとの差が出にくく、評価がぶれやすい。</li>
+          <li>相手なしのときは A より情報が少なく見える（攻めの向きしか語らない）。</li>
+        </ul>
+        <h3>データ</h3>
+        <p><code>attackProfile: { break, press, top, side, speed }</code>。<code>speed</code> は <code>pace</code>（rapid=4 / both=3 / slow=2）を初期値にし、上書きだけ書く。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="opt" id="c">
+    <header><span class="opt-k">案 C</span><h2>攻めの地図（盤の略図）</h2>
+      <p class="lead">囲いのサムネイルが玉と金銀をクローズアップするのと同じ考えで、戦法は「主役の駒・その道筋・狙う筋」だけを濃く描いた略図にする。新しいデータは要らない。</p></header>
+    <div class="opt-body">
+      <div class="dock" id="dockC"></div>
+      <div class="notes">
+        <h3>描くもの</h3>
+        <ul>
+          <li><b>主役の駒</b>（<code>lead</code>）を系統色の塗り、<b>必須の駒</b>（<code>essential</code>）を系統色の枠、玉を墨で。ほかの駒は薄く。</li>
+          <li><b>道筋</b>（<code>route</code>）を実線の矢印、そこから敵陣三段目までの<b>狙い</b>を朱の破線で。</li>
+          <li>主役の筋に帯を引き、敵陣（一〜三段目）をうっすら塗る。</li>
+        </ul>
+        <h3>良い点</h3>
+        <ul>
+          <li>主観の値がゼロ。全39戦法でいますぐ描ける。</li>
+          <li>「棒銀＝銀が2筋をまっすぐ上がる」という戦法の定義そのものが図になる。マスに乗せると中央の盤で光る連動も既存の <code>data-sq</code> で付く。</li>
+        </ul>
+        <h3>気になる点</h3>
+        <ul>
+          <li>中央の盤と内容が重なる。モバイルで盤が隠れたときや、相手表示で盤が混んだときに効く図。</li>
+          <li>「どれくらい強いか」は語らない。ペンタグラムとは役割が違う。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="opt" id="d">
+    <header><span class="opt-k">案 D</span><h2>系統の座標（筋 × 急戦/持久）</h2>
+      <p class="lead">同じ系統の戦法を、主役の筋（横）と急戦・持久（縦）の表に置き、いまの戦法がその中のどこにいるかを示す。押すとその戦法に切り替わる。</p></header>
+    <div class="opt-body">
+      <div class="dock" id="dockD"></div>
+      <div class="notes">
+        <h3>描くもの</h3>
+        <ul>
+          <li>列＝<code>lead.files</code>（盤と同じく9筋が左）、行＝<code>pace</code>。</li>
+          <li>基本の戦法（<code>basic</code>）は墨の太枠、派生（<code>variantOf</code>）は破線の小さい札。いまの戦法は系統色で塗る。</li>
+          <li>見本では、上で選べる戦法の札だけ押せる。</li>
+        </ul>
+        <h3>良い点</h3>
+        <ul>
+          <li>既存データだけ。初心者向けの「基本と派生の見分け」「どれが速いか」をひと目で示せる。</li>
+          <li>四間飛車 → 藤井システム（同じ6筋で急戦側へ）のように、派生が「どこへずれたか」が位置で分かる。</li>
+        </ul>
+        <h3>気になる点</h3>
+        <ul>
+          <li>左ドックの「筋ベース」表示と見た目が近く、役割が重なる。</li>
+          <li><code>pace</code> は3段階しかなく、同じ升に札が積み上がる（居飛車・銀の4筋の急戦は5枚）。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="opt" id="cmp">
+    <header><span class="opt-k">比較</span><h2>比較と推奨</h2></header>
+    <table class="cmp">
+      <thead><tr><th></th><th>新しいデータ</th><th>相手の囲いと重ねる</th><th>囲いとの一貫性</th><th>初心者の読みやすさ</th><th>中央の盤との重複</th></tr></thead>
+      <tbody>
+        <tr><td class="k">A 特徴の目安</td><td>5値×39（主観）</td><td>できない</td><td>形は同じ・軸は別</td><td>高い</td><td>なし</td></tr>
+        <tr><td class="k">B 攻めの向き</td><td>5値×39（主観。速さは pace から）</td><td>できる（軸が同じ）</td><td>最も高い</td><td>相手ありで高い</td><td>なし</td></tr>
+        <tr><td class="k">C 攻めの地図</td><td>不要</td><td>—</td><td>サムネイルと同じ考え方</td><td>高い</td><td>あり</td></tr>
+        <tr><td class="k">D 系統の座標</td><td>不要</td><td>—</td><td>低い（独自の表）</td><td>中</td><td>左ドックと重複</td></tr>
+      </tbody>
+    </table>
+    <div class="rec">
+      <p><b>推奨：B を「囲いのペンタグラム」に当たる主図にし、C を「主役の駒の動き」の節の置き換えにする。</b></p>
+      <p>B は囲いと同じ軸なので、ペンタグラムが「守り（囲い）」と「攻め（戦法）」の一対の言語になる。相手を表示したときに右ドックが一番語れるのも B。C は手順の文字列（▲3九銀 → 3八 → …）をそのまま図にしたもので、データを足さずに置き換えられる。A の「覚えやすさ」は B に入らないが、これは左ドックの基本/発展の強調で表す方が筋がよい。D は左ドックの筋ベース表示と重なるので見送り。</p>
+      <p>未決の点：飛車系の系統色 <code>--t-rook</code> が朱と同じ色なので、振り飛車の戦法では B の「刺さる軸」の朱と多角形が見分けにくい（藤井システム＋美濃で確認できる）。系統色を少しずらすか、刺さる軸の印を色ではなく形（●）で示すかを決める必要がある。</p>
+      <p>B の値は <code>pace</code> から速さを自動で埋め、残り4軸だけを各戦法に書く。値の無い戦法では B を出さず C だけにすれば、データ整備を段階的に進められる。</p>
+<pre>// js/data/tactics.js（案B）
+{ id: 'bougin', …, pace: 'rapid',
+  attackProfile: { break: 3, press: 1, top: 4, side: 2 },   // speed は pace から 4
+}
+// 相手の囲いとの軸ごとの差: hit = attackProfile[k] &gt; castle.ratings[pair[k]]
+const PAIR = { break: 'hard', press: 'wide', top: 'top', side: 'side', speed: 'quick' };</pre>
+    </div>
+  </section>
+</div>
+
+<script>
+const DATA = {"T":[{"id":"kyukenbisha","name":"九間飛車","short":"九間","family":"furibisha-rook","piece":"飛","files":[9],"square":"98","route":["28","98"],"pieces":"玉28 飛98 角77 金49 金58 銀38 銀67 桂89 桂29 香99 香19 歩96 歩87 歩76 歩66 歩57 歩47 歩37 歩27 歩17","essential":"飛98 角77","pace":"rapid","variantOf":null,"basic":false,"tags":["奇襲","相振り"],"context":"相振り飛車（角道を開けてこない振り飛車相手に有効）"},{"id":"mukaibisha","name":"向かい飛車","short":"向飛車","family":"furibisha-rook","piece":"飛","files":[8],"square":"88","route":["28","88"],"pieces":"玉28 飛88 角77 金78 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩16 歩97 歩87 歩57 歩47 歩37 歩27","essential":"飛88 角77","pace":"both","variantOf":null,"basic":true,"tags":["逆襲","飛車交換"],"context":"対居飛車"},{"id":"sankenbisha","name":"三間飛車","short":"三間","family":"furibisha-rook","piece":"飛","files":[7],"square":"78","route":["28","78"],"pieces":"玉28 飛78 角77 金58 金49 銀68 銀38 桂89 桂29 香99 香19 歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛78 角77 歩76","pace":"both","variantOf":null,"basic":true,"tags":["バランス"],"context":"対居飛車"},{"id":"ishida","name":"石田流","short":"石田流","family":"furibisha-rook","piece":"飛","files":[7],"square":"76","route":["28","78","76"],"pieces":"玉28 飛76 角88 金58 金49 銀68 銀38 桂89 桂29 香99 香19 歩75 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛76 歩75 角88","pace":"both","variantOf":null,"basic":false,"tags":["角道","位取り"],"context":"対居飛車（三間飛車からの変化）"},{"id":"hayaisida","name":"早石田","short":"早石田","family":"furibisha-rook","piece":"飛","files":[7],"square":"76","route":["28","78","76"],"pieces":"玉48 飛76 角88 金58 金49 銀68 銀38 桂89 桂29 香99 香19 歩75 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛76 歩75 角88","pace":"rapid","variantOf":"ishida","basic":false,"tags":["急戦","ハメ手"],"context":"対居飛車（三間飛車からの急戦）"},{"id":"masuda-ishida","name":"升田式石田流","short":"升田式","family":"furibisha-rook","piece":"飛","files":[7],"square":"76","route":["28","78","76"],"pieces":"玉48 飛76 角88 金78 金49 銀68 銀38 桂89 桂29 香99 香19 歩75 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛76 歩75 金78","pace":"slow","variantOf":"ishida","basic":false,"tags":["持久戦"],"context":"対居飛車（三間飛車からの持久戦型）"},{"id":"tateishi","name":"立石流","short":"立石流","family":"furibisha-rook","piece":"飛","files":[7],"square":"76","route":["28","68","66","76"],"pieces":"玉28 飛76 角88 金78 金49 銀79 銀38 桂89 桂29 香99 香19 歩96 歩87 歩75 歩65 歩57 歩47 歩37 歩27 歩16","essential":"飛76 歩75 歩65 角88","pace":"both","variantOf":"ishida","basic":false,"tags":["角道","位取り"],"context":"対居飛車（四間飛車からの変化。居飛車穴熊対策として知られる）"},{"id":"shikenbisha","name":"四間飛車","short":"四間","family":"furibisha-rook","piece":"飛","files":[6],"square":"68","route":["28","68"],"pieces":"玉28 飛68 角77 金58 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛68 角77 歩66","pace":"both","variantOf":null,"basic":true,"tags":["バランス"],"context":"対居飛車"},{"id":"fujiisystem","name":"藤井システム","short":"藤井シス","family":"furibisha-rook","piece":"飛","files":[6],"square":"68","route":["28","68"],"pieces":"玉59 飛68 角77 金58 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩65 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛68 歩65","pace":"rapid","variantOf":"shikenbisha","basic":false,"tags":["居玉","対左美濃"],"context":"対居飛車（対左美濃策）"},{"id":"kakukoukan-shiken","name":"角交換四間飛車","short":"角換四間","family":"furibisha-rook","piece":"飛","files":[6],"square":"68","route":["28","68"],"pieces":"玉28 飛68 角88 金58 金49 銀79 銀38 桂89 桂29 香99 香19 歩76 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛68 角88 歩67","pace":"both","variantOf":"shikenbisha","basic":false,"tags":["角交換"],"context":"対居飛車"},{"id":"nakabisha","name":"中飛車","short":"中飛車","family":"furibisha-rook","piece":"飛","files":[5],"square":"58","route":["28","58"],"pieces":"玉28 飛58 角77 金78 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛58 歩56","pace":"both","variantOf":null,"basic":true,"tags":["破壊力"],"context":"対居飛車"},{"id":"gokigen","name":"ゴキゲン中飛車","short":"ゴキ中","family":"furibisha-rook","piece":"飛","files":[5],"square":"58","route":["28","58"],"pieces":"玉28 飛58 角77 金78 金49 銀68 銀38 桂89 桂29 香99 香19 歩76 歩67 歩56 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛58 角77 歩56 歩67","pace":"rapid","variantOf":"nakabisha","basic":false,"tags":["角道","位取り"],"context":"対居飛車"},{"id":"tsunogin-nakabisha","name":"ツノ銀中飛車","short":"ツノ銀","family":"furibisha-rook","piece":"飛","files":[5],"square":"58","route":["28","58"],"pieces":"玉28 飛58 角77 金78 金38 銀67 銀47 桂89 桂29 香99 香19 歩96 歩87 歩76 歩66 歩57 歩46 歩36 歩27 歩16","essential":"飛58 銀67","pace":"slow","variantOf":"nakabisha","basic":false,"tags":["持久戦"],"context":"対居飛車（中飛車の持久戦型）"},{"id":"gosuji-kuraidori","name":"5筋位取り中飛車","short":"位取中","family":"furibisha-rook","piece":"飛","files":[5],"square":"58","route":["28","58"],"pieces":"玉28 飛58 角77 金78 金49 銀67 銀38 桂89 桂29 香99 香19 歩76 歩66 歩55 歩16 歩97 歩87 歩47 歩37 歩27","essential":"飛58 歩55","pace":"both","variantOf":"nakabisha","basic":false,"tags":["位取り"],"context":"対居飛車（中飛車からの位取り）"},{"id":"ikkenbisha","name":"一間飛車","short":"一間","family":"furibisha-rook","piece":"飛","files":[1],"square":"18","route":["28","18"],"pieces":"玉28 飛18 角77 金58 金49 銀67 銀38 桂89 桂29 香99 香19 歩96 歩87 歩76 歩66 歩56 歩47 歩37 歩27 歩15","essential":"飛18 歩15","pace":"slow","variantOf":null,"basic":false,"tags":["奇襲","端攻め"],"context":"対居飛車"},{"id":"koshikakegin","name":"腰掛け銀","short":"腰掛銀","family":"ibisha-silver","piece":"銀","files":[5],"square":"56","route":["39","38","47","56"],"pieces":"玉79 金78 金58 銀77 銀56 飛28 桂89 桂37 香99 香19 歩96 歩76 歩66 歩46 歩36 歩16 歩87 歩57 歩25","essential":"銀56 歩57 歩46 飛28","pace":"both","variantOf":null,"basic":true,"tags":["本格派"],"context":"角換わり、相掛かり、矢倉、対振り飛車(右四間飛車と併用)"},{"id":"hayakurigin","name":"早繰り銀","short":"早繰銀","family":"ibisha-silver","piece":"銀","files":[4,3],"square":"46","route":["39","38","37","46"],"pieces":"玉69 金78 金49 銀77 銀46 角79 飛28 桂89 桂29 香99 香19 歩76 歩56 歩35 歩25 歩97 歩87 歩67 歩47 歩17","essential":"銀46 歩35 飛28","pace":"rapid","variantOf":null,"basic":true,"tags":["急戦"],"context":"相矢倉(急戦矢倉)、角換わり、相掛かり(中原流)、一手損角換わり対策"},{"id":"chousoku37gin","name":"超速▲3七銀","short":"超速","family":"ibisha-silver","piece":"銀","files":[4,3],"square":"46","route":["39","48","37","46"],"pieces":"玉69 金78 金49 銀77 銀46 角79 飛28 桂89 桂29 香99 香19 歩76 歩56 歩35 歩25 歩97 歩87 歩67 歩47 歩17","essential":"銀46 歩35","pace":"rapid","variantOf":"hayakurigin","basic":false,"tags":["急戦","対ゴキゲン"],"context":"対振り飛車（対ゴキゲン中飛車）"},{"id":"gin46-hidari","name":"4六銀左","short":"4六銀左","family":"ibisha-silver","piece":"銀","files":[4,3],"square":"46","route":["79","68","57","46"],"pieces":"玉69 金78 金49 銀39 銀46 角79 飛28 桂89 桂29 香99 香19 歩76 歩56 歩35 歩25 歩97 歩87 歩67 歩47 歩17","essential":"銀46","pace":"rapid","variantOf":"hayakurigin","basic":false,"tags":["急戦","対ゴキゲン"],"context":"対振り飛車（対ゴキゲン中飛車）"},{"id":"yamada-jouseki","name":"山田定跡","short":"山田","family":"ibisha-silver","piece":"銀","files":[4,3],"square":"46","route":["39","38","37","46"],"pieces":"玉69 金78 金49 銀77 銀46 角79 飛28 桂89 桂29 香99 香19 歩76 歩56 歩45 歩35 歩25 歩97 歩87 歩67 歩17","essential":"銀46 歩45","pace":"rapid","variantOf":"hayakurigin","basic":false,"tags":["急戦","対ゴキゲン"],"context":"対振り飛車（対ゴキゲン中飛車の定跡）"},{"id":"kanikanigin","name":"カニカニ銀","short":"カニカニ","family":"ibisha-silver","piece":"銀","files":[4],"square":"46","route":["39","48","57","46"],"pieces":"玉59 金69 金49 銀77 銀46 角88 飛28 桂89 桂29 香99 香19 歩96 歩87 歩76 歩67 歩56 歩47 歩37 歩25 歩17","essential":"銀46 銀77","pace":"rapid","variantOf":null,"basic":false,"tags":["急戦","矢倉"],"context":"相居飛車（急戦矢倉の一種）"},{"id":"bougin","name":"棒銀","short":"棒銀","family":"ibisha-silver","piece":"銀","files":[2],"square":"26","route":["39","38","27","26"],"pieces":"玉78 金68 金58 銀57 銀26 角88 飛28 桂89 桂29 香99 香19 歩96 歩76 歩56 歩46 歩35 歩25 歩87 歩67 歩17","essential":"銀26 歩25 飛28","pace":"rapid","variantOf":null,"basic":true,"tags":["急戦"],"context":"対振り飛車(特に四間飛車)、相居飛車(相掛かり/角換わり/矢倉)"},{"id":"genshibougin","name":"原始棒銀","short":"原始棒銀","family":"ibisha-silver","piece":"銀","files":[2],"square":"26","route":["39","38","27","26"],"pieces":"玉59 金69 金49 銀57 銀26 角88 飛28 桂89 桂29 香99 香19 歩96 歩76 歩56 歩46 歩35 歩25 歩87 歩67 歩17","essential":"銀26 歩25 飛28","pace":"rapid","variantOf":"bougin","basic":false,"tags":["急戦","古典"],"context":"対振り飛車、相居飛車"},{"id":"hineribisha","name":"ひねり飛車","short":"ひねり","family":"ibisha-rook","piece":"飛","files":[8],"square":"86","route":["28","26","36","86"],"pieces":"玉48 飛86 角88 金78 金49 銀68 銀38 桂89 桂29 香99 香19 歩96 歩87 歩75 歩67 歩57 歩47 歩37","essential":"飛86","pace":"both","variantOf":null,"basic":false,"tags":["持久戦","相掛かり"],"context":"相掛かり（居飛車同士）"},{"id":"hineri-76hi","name":"ひねり飛車 7六飛型","short":"7六飛型","family":"ibisha-rook","piece":"飛","files":[8],"square":"86","route":["28","26","76","86"],"pieces":"玉48 飛86 角88 金78 金49 銀68 銀38 桂89 桂29 香99 香19 歩96 歩87 歩75 歩67 歩57 歩47 歩37","essential":"飛86 歩75","pace":"both","variantOf":"hineribisha","basic":false,"tags":["持久戦"],"context":"相掛かり（居飛車同士）"},{"id":"naka-ibisha","name":"矢倉中飛車","short":"矢中飛車","family":"ibisha-rook","piece":"飛","files":[5],"square":"59","route":["28","29","59"],"pieces":"玉69 金67 金78 銀77 銀48 角79 飛59 桂89 桂37 香99 香19 歩76 歩66 歩56 歩36 歩26 歩15 歩97 歩87 歩47","essential":"飛59 歩56","pace":"rapid","variantOf":null,"basic":false,"tags":["急戦"],"context":"相矢倉(急戦矢倉の一種)"},{"id":"migishiken","name":"右四間飛車","short":"右四間","family":"ibisha-rook","piece":"飛","files":[4],"square":"48","route":["28","48"],"pieces":"玉78 金69 金58 銀79 銀56 飛48 角88 桂89 桂37 香99 香19 歩96 歩76 歩46 歩36 歩26 歩87 歩67 歩57 歩17","essential":"飛48 歩46 銀56","pace":"rapid","variantOf":null,"basic":false,"tags":["急戦"],"context":"対四間飛車、対矢倉(急戦矢倉)、角換わり腰掛け銀の変化"},{"id":"sodebisha","name":"袖飛車","short":"袖飛車","family":"ibisha-rook","piece":"飛","files":[3],"square":"38","route":["28","38"],"pieces":"玉59 金69 金49 銀79 銀46 飛38 角88 桂89 桂29 香99 香19 歩76 歩66 歩56 歩36 歩97 歩87 歩47 歩27 歩17","essential":"飛38","pace":"rapid","variantOf":null,"basic":false,"tags":["急戦"],"context":"対居飛車、対振り飛車(加藤流等)"},{"id":"ibisha-base","name":"居飛車（2筋）","short":"2筋","family":"ibisha-rook","piece":"飛","files":[2],"square":"28","route":["28"],"pieces":"玉59 飛28 角88 金69 金49 銀79 銀39 桂89 桂29 香99 香19 歩97 歩87 歩77 歩67 歩57 歩47 歩37 歩27 歩17","essential":"飛28","pace":"both","variantOf":null,"basic":false,"tags":["基本"],"context":"相居飛車、対振り飛車"},{"id":"suzumezashi","name":"雀刺し","short":"雀刺し","family":"ibisha-rook","piece":"飛","files":[1],"square":"18","route":["28","18"],"pieces":"玉88 飛18 角68 金78 金67 銀77 銀48 桂89 桂25 香99 香17 歩96 歩87 歩76 歩66 歩56 歩47 歩36 歩26 歩15","essential":"飛18 香17 桂25 角68","pace":"slow","variantOf":null,"basic":false,"tags":["端攻め","矢倉"],"context":"相矢倉（矢倉3七桂型からの端攻め）"},{"id":"onigoroshi","name":"鬼殺し","short":"鬼殺し","family":"ibisha-kakukeifu","piece":"桂","files":[6],"square":"65","route":["89","77","65"],"pieces":"玉59 飛28 角88 金69 金49 銀79 銀39 桂65 桂29 香99 香19 歩97 歩87 歩75 歩67 歩57 歩47 歩37 歩27 歩17","essential":"桂65 歩75","pace":"rapid","variantOf":null,"basic":false,"tags":["奇襲"],"context":"対居飛車（奇襲）"},{"id":"sujichigaikaku","name":"筋違い角","short":"筋違角","family":"ibisha-kakukeifu","piece":"角","files":[4],"square":"45","route":["45"],"pieces":"玉59 飛28 角45 金69 金49 銀77 銀39 桂89 桂29 香99 香19 歩97 歩87 歩76 歩67 歩57 歩47 歩37 歩17","essential":"角45","pace":"both","variantOf":null,"basic":false,"tags":["奇襲","角換わり"],"context":"角換わり（角交換後に筋違いの地点へ打つ）"},{"id":"shigofu-hayajikake","name":"4五歩早仕掛け","short":"4五歩","family":"ibisha-kakukeifu","piece":"歩","files":[4],"square":"45","route":["47","46","45"],"pieces":"玉69 飛28 角77 金78 金58 銀79 銀39 桂89 桂29 香99 香19 歩96 歩87 歩76 歩67 歩57 歩45 歩37 歩25 歩17","essential":"歩45 歩25","pace":"rapid","variantOf":null,"basic":false,"tags":["急戦","相掛かり"],"context":"相掛かり"},{"id":"ureshino","name":"嬉野流","short":"嬉野流","family":"ibisha-kakukeifu","piece":"角","files":[7],"square":"79","route":["88","79"],"pieces":"玉59 金78 金49 銀46 銀48 角79 飛28 桂89 桂29 香99 香19 歩97 歩87 歩77 歩67 歩56 歩47 歩37 歩25 歩17","essential":"角79 銀46","pace":"rapid","variantOf":null,"basic":false,"tags":["奇襲","引き角"],"context":"相居飛車・対振り飛車（総合）"},{"id":"shin-ureshino","name":"新嬉野流","short":"新嬉野","family":"ibisha-kakukeifu","piece":"角","files":[7],"square":"79","route":["88","79"],"pieces":"玉69 金78 金49 銀57 銀48 角79 飛28 桂89 桂29 香99 香19 歩97 歩87 歩77 歩67 歩56 歩47 歩37 歩25 歩17","essential":"角79 銀57","pace":"rapid","variantOf":"ureshino","basic":false,"tags":["奇襲","引き角"],"context":"相居飛車・対振り飛車（総合）"},{"id":"maid-system","name":"メイドシステム","short":"メイド","family":"ibisha-kakukeifu","piece":"角","files":[7],"square":"79","route":["88","79"],"pieces":"玉88 金69 金58 銀78 銀39 角79 飛28 桂89 桂29 香99 香19 歩96 歩87 歩77 歩67 歩57 歩47 歩37 歩26 歩16","essential":"角79 歩77","pace":"both","variantOf":null,"basic":false,"tags":["引き角","総合戦法"],"context":"総合（対居飛車は向かい飛車へ転換、対振り飛車は左美濃＋引き角）"},{"id":"torisashi","name":"鳥刺し","short":"鳥刺し","family":"ibisha-kakukeifu","piece":"角","files":[7],"square":"79","route":["88","79"],"pieces":"玉78 角79 金69 金48 銀46 銀38 飛28 桂89 桂29 香99 香19 歩96 歩87 歩77 歩67 歩56 歩47 歩36 歩25 歩17","essential":"角79 銀46","pace":"rapid","variantOf":null,"basic":false,"tags":["急戦","引き角","端攻め"],"context":"対振り飛車（舟囲い系の急戦）"},{"id":"iijima-hikikaku","name":"飯島流引き角","short":"引き角","family":"ibisha-kakukeifu","piece":"角","files":[7],"square":"79","route":["88","79"],"pieces":"玉88 金69 金58 銀78 銀46 角79 飛28 桂89 桂29 香99 香19 歩96 歩87 歩77 歩67 歩56 歩47 歩37 歩26 歩16","essential":"角79 歩77","pace":"slow","variantOf":null,"basic":false,"tags":["引き角","持久戦"],"context":"対振り飛車（持久戦）"},{"id":"morishita-system","name":"森下システム","short":"森下S","family":"ibisha-kakukeifu","piece":"角","files":[6],"square":"68","route":["88","79","68"],"pieces":"玉69 金78 金67 銀77 銀48 角68 飛28 桂89 桂29 香99 香19 歩97 歩87 歩76 歩66 歩56 歩47 歩36 歩27 歩17","essential":"角68","pace":"slow","variantOf":null,"basic":false,"tags":["矢倉","様子見"],"context":"相矢倉（現代矢倉24手組みから）"}],"F":[{"id":"furibisha-rook","name":"振り飛車：飛車の筋","side":"furibisha","piece":"飛"},{"id":"ibisha-silver","name":"居飛車：銀の筋","side":"ibisha","piece":"銀"},{"id":"ibisha-rook","name":"居飛車：飛車の筋","side":"ibisha","piece":"飛"},{"id":"ibisha-kakukeifu","name":"居飛車：角・桂・歩の筋","side":"ibisha","piece":"角"}]};
+(() => {
+  'use strict';
+  const { T, F } = DATA;
+  const byId = Object.fromEntries(T.map(t => [t.id, t]));
+  const famOf = t => F.find(f => f.id === t.family);
+  const famColor = t => t.family === 'ibisha-silver' ? 'var(--t-silver)' : t.family === 'ibisha-kakukeifu' ? 'var(--t-kaku)' : 'var(--t-rook)';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const KAN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const label = sq => `${sq[0]}${KAN[+sq[1]]}`;
+  const PACE_JA = { rapid: '急戦', both: '両用', slow: '持久' };
+
+  // ---- 見本の仮値（5段階・主観） ----
+  const SAMPLES = ['bougin', 'koshikakegin', 'migishiken', 'shikenbisha', 'fujiisystem', 'hayaisida'];
+  const RA = {   // 案A: attack, speed, flex, safety, easy
+    bougin:       { attack: 4, speed: 4, flex: 2, safety: 3, easy: 5 },
+    koshikakegin: { attack: 4, speed: 2, flex: 4, safety: 4, easy: 2 },
+    migishiken:   { attack: 5, speed: 4, flex: 2, safety: 3, easy: 4 },
+    shikenbisha:  { attack: 3, speed: 3, flex: 4, safety: 4, easy: 4 },
+    fujiisystem:  { attack: 4, speed: 5, flex: 3, safety: 1, easy: 1 },
+    hayaisida:    { attack: 4, speed: 5, flex: 2, safety: 2, easy: 2 },
+    ishida:       { attack: 3, speed: 3, flex: 4, safety: 3, easy: 3 },
+  };
+  const RB = {   // 案B: break, press, top, side（speed は pace から。上書きのみ）
+    bougin:       { break: 3, press: 1, top: 4, side: 2 },
+    koshikakegin: { break: 4, press: 3, top: 4, side: 2 },
+    migishiken:   { break: 5, press: 2, top: 5, side: 2 },
+    shikenbisha:  { break: 3, press: 2, top: 2, side: 3 },
+    fujiisystem:  { break: 3, press: 2, top: 4, side: 2, speed: 5 },
+    hayaisida:    { break: 2, press: 1, top: 3, side: 4, speed: 5 },
+    ishida:       { break: 3, press: 2, top: 3, side: 4 },
+  };
+  const PACE_SPEED = { rapid: 4, both: 3, slow: 2 };
+  const profileB = t => RB[t.id] ? { speed: PACE_SPEED[t.pace], ...RB[t.id] } : null;
+
+  const CASTLES = {
+    mino:    { name: '美濃囲い', ratings: { hard: 3, wide: 3, top: 2, side: 4, quick: 4 } },
+    funa:    { name: '舟囲い', ratings: { hard: 2, wide: 3, top: 1, side: 3, quick: 5 } },
+    yagura:  { name: '矢倉', ratings: { hard: 4, wide: 3, top: 5, side: 3, quick: 2 } },
+    anaguma: { name: '居飛車穴熊', ratings: { hard: 5, wide: 1, top: 3, side: 5, quick: 1 } },
+  };
+
+  const AX_CASTLE = [['hard', '堅さ'], ['wide', '玉の広さ'], ['top', '上部の強さ'], ['side', '横の強さ'], ['quick', '組みやすさ']];
+  const AX_A = [['attack', '攻撃力'], ['speed', '速さ'], ['flex', '柔軟性'], ['safety', '玉の安全'], ['easy', '覚えやすさ']];
+  const AX_B = [['break', '崩す力'], ['press', '押さえ込み'], ['top', '上部攻め'], ['side', '横攻め'], ['speed', '速さ']];
+  const PAIR = { break: 'hard', press: 'wide', top: 'top', side: 'side', speed: 'quick' };
+
+  const state = { t: 'bougin', c: '' };
+
+  // ---- ペンタグラム（detail-sections の penta と同じ幾何） ----
+  const RADAR = { cx: 102, cy: 74, r: 42, viewBox: '0 0 200 136' };
+  const RADAR_LABEL = [[0, -12, 'middle'], [10, -3, 'start'], [4, 18, 'middle'], [-4, 18, 'middle'], [-10, -3, 'end']];
+  const vertex = (i, rad) => { const a = (-90 + i * 72) * Math.PI / 180; return [RADAR.cx + rad * Math.cos(a), RADAR.cy + rad * Math.sin(a)]; };
+  const num = n => Math.round(n * 10) / 10;
+  const pts = (axes, vals) => axes.map(([k], i) => vertex(i, RADAR.r * Math.min(5, Math.max(0, vals[k] || 0)) / 5).map(num).join(',')).join(' ');
+  function penta(axes, layers, { hits = new Set(), sub = null, aria = '特徴' } = {}) {
+    const rings = [1, 2, 3, 4, 5].map(l => `<polygon class="penta-ring${l === 5 ? ' edge' : ''}" points="${axes.map((_, i) => vertex(i, RADAR.r * l / 5).map(num).join(',')).join(' ')}"/>`).join('');
+    const spokes = axes.map((_, i) => { const [x, y] = vertex(i, RADAR.r).map(num); return `<line class="penta-spoke" x1="${RADAR.cx}" y1="${RADAR.cy}" x2="${x}" y2="${y}"/>`; }).join('');
+    const polys = layers.filter(Boolean).map(l => `<polygon class="${l.cls}" points="${pts(axes, l.vals)}"/>`).join('');
+    const dots = [...hits].map(k => { const i = axes.findIndex(a => a[0] === k); const top = layers[layers.length - 1].vals; const [x, y] = vertex(i, RADAR.r * top[k] / 5).map(num); return `<circle class="p-hitdot" cx="${x}" cy="${y}" r="2.6"/>`; }).join('');
+    const labels = axes.map(([k, name], i) => {
+      const [x, y] = vertex(i, RADAR.r).map(num); const [dx, dy, anchor] = RADAR_LABEL[i];
+      const s = sub ? `<tspan class="penta-lbl sub" x="${num(x + dx)}" dy="10">${esc(sub[k] || '')}</tspan>` : '';
+      return `<text class="penta-lbl${hits.has(k) ? ' hit' : ''}" x="${num(x + dx)}" y="${num(y + dy - (sub && i === 0 ? 8 : 0))}" text-anchor="${anchor}">${name}${s}</text>`;
+    }).join('');
+    return `<svg class="penta" viewBox="${sub ? '0 -8 200 152' : RADAR.viewBox}" role="img" aria-label="${esc(aria)}">${rings}${spokes}${polys}${dots}${labels}</svg>`;
+  }
+  const sec = (title, small, body) => `<div class="sec"><h3>${title}${small ? `<small>${small}</small>` : ''}</h3>${body}</div>`;
+
+  // ---- パネルの共通の頭（実物の _head＋tacticTags） ----
+  function head(t) {
+    const f = famOf(t);
+    const tags = [`<span class="tag group">#${esc(f.name)}</span>`, `<span class="tag">#${PACE_JA[t.pace]}</span>`,
+      ...t.tags.filter(x => x !== PACE_JA[t.pace]).map(x => `<span class="tag">#${esc(x)}</span>`)];
+    return `<div><p class="bd-who">自分（先手・▲）の戦法</p><h2 class="bd-t">${esc(t.name)}</h2></div><div class="tags">${tags.join('')}</div>`;
+  }
+  const ghost = '<div class="ghost"><i></i><i></i><i></i></div>';
+
+  // ---- 案A ----
+  function renderA(t) {
+    const v = RA[t.id];
+    const parent = t.variantOf && RA[t.variantOf] ? byId[t.variantOf] : null;
+    const body = v ? penta(AX_A, [parent ? { cls: 'p-parent', vals: RA[parent.id] } : null, { cls: 'p-tac p-anim', vals: v }], { aria: '戦法の特徴の目安' }) +
+      (parent ? `<div class="legend"><span>${esc(t.name)}</span><span class="lg-parent">親：${esc(parent.name)}</span></div>` : '')
+      : '<p class="note">値が未登録</p>';
+    return head(t) + sec('特徴の目安', '5段階・主観', body) +
+      (parent ? `<p class="note">${esc(parent.name)}から ${diffText(AX_A, RA[parent.id], v)}</p>` : '') + ghost;
+  }
+  function diffText(axes, a, b) {
+    const d = axes.filter(([k]) => a[k] !== b[k]).map(([k, n]) => `${n}${b[k] > a[k] ? '↑' : '↓'}`);
+    return d.length ? d.join('・') : '変化なし';
+  }
+
+  // ---- 案B ----
+  function renderB(t) {
+    const v = profileB(t);
+    if (!v) return head(t) + '<p class="note">値が未登録</p>';
+    const c = state.c ? CASTLES[state.c] : null;
+    let body, after = '';
+    if (c) {
+      const cv = Object.fromEntries(AX_B.map(([k]) => [k, c.ratings[PAIR[k]]]));
+      const hits = new Set(AX_B.filter(([k]) => v[k] > cv[k]).map(([k]) => k));
+      body = penta(AX_B, [{ cls: 'p-castle', vals: cv }, { cls: 'p-tac p-anim', vals: v }], { hits, aria: '攻めの向きと相手の囲いの守り' }) +
+        `<div class="legend"><span>${esc(t.name)}の攻め</span><span class="lg-castle">相手の${esc(c.name)}の守り</span></div>`;
+      const rows = AX_B.map(([k, n]) => {
+        const cn = AX_CASTLE.find(a => a[0] === PAIR[k])[1];
+        const hit = v[k] > cv[k];
+        return `<li class="${hit ? 'hit' : ''}"><span class="ax-t">${n}</span><span class="bar t"><i style="width:${v[k] * 20}%"></i></span>` +
+          `<span class="mk">${v[k] > cv[k] ? '＞' : v[k] < cv[k] ? '＜' : '＝'}</span><span class="bar c"><i style="width:${cv[k] * 20}%"></i></span><span class="ax-c">${cn}</span></li>`;
+      }).join('');
+      after = sec(`${esc(c.name)}への刺さり`, '朱＝攻めが守りを上回る軸',
+        `<p class="fit">${hits.size}<span style="font-size:13px"> / 5 軸</span><small>攻め − 守り の合計 ${sum(AX_B, k => v[k] - cv[k])}</small></p><ul class="vs">${rows}</ul>`);
+    } else {
+      const sub = Object.fromEntries(AX_B.map(([k]) => [k, '↔ ' + AX_CASTLE.find(a => a[0] === PAIR[k])[1]]));
+      body = penta(AX_B, [{ cls: 'p-tac p-anim', vals: v }], { sub, aria: '攻めの向き' }) +
+        `<p class="note" style="text-align:center;margin-top:4px">相手を表示すると、相手の囲いの守りを重ねます</p>`;
+    }
+    return head(t) + sec('攻めの向き', '5段階・主観・囲いの軸と対', body) + after + (c ? '' : ghost);
+  }
+  const sum = (axes, fn) => { const s = axes.reduce((a, [k]) => a + fn(k), 0); return (s > 0 ? '+' : '') + s; };
+
+  // ---- 案C ----
+  function renderC(t) {
+    const cell = 30, ox = 4, oy = 14, W = ox + cell * 9 + 16, H = oy + cell * 9 + 4;
+    const cx = f => ox + (9 - f) * cell + cell / 2, cy = r => oy + (r - 1) * cell + cell / 2;
+    const ess = new Set(t.essential.split(' ').map(s => s.slice(-2) + s[0]));
+    const pcs = t.pieces.split(' ').map(s => ({ p: s[0], sq: s.slice(-2) }));
+    const leadSq = t.square, lf = +leadSq[0];
+    let g = `<rect class="am-enemy" x="${ox}" y="${oy}" width="${cell * 9}" height="${cell * 3}"/>`;
+    g += `<rect class="am-band" x="${ox + (9 - lf) * cell}" y="${oy}" width="${cell}" height="${cell * 9}"/>`;
+    for (let i = 1; i < 9; i++) g += `<line class="am-grid" x1="${ox + i * cell}" y1="${oy}" x2="${ox + i * cell}" y2="${oy + cell * 9}"/><line class="am-grid" x1="${ox}" y1="${oy + i * cell}" x2="${ox + cell * 9}" y2="${oy + i * cell}"/>`;
+    g += `<rect class="am-frame" x="${ox}" y="${oy}" width="${cell * 9}" height="${cell * 9}"/>`;
+    for (let f = 9; f >= 1; f--) g += `<text class="am-coord" x="${cx(f)}" y="${oy - 4}" text-anchor="middle">${f}</text>`;
+    for (let r = 1; r <= 9; r++) g += `<text class="am-coord" x="${ox + cell * 9 + 5}" y="${cy(r) + 3}">${KAN[r]}</text>`;
+    // 狙い: 主役のマスから同じ筋の三段目まで
+    const lr = +leadSq[1];
+    if (lr > 3) {
+      g += `<line class="am-aim" x1="${cx(lf)}" y1="${cy(lr) - cell * .42}" x2="${cx(lf)}" y2="${cy(3) + cell * .36}"/>`;
+      g += `<rect class="am-target" x="${cx(lf) - cell / 2 + 2}" y="${cy(3) - cell / 2 + 2}" width="${cell - 4}" height="${cell - 4}"/>`;
+    }
+    // 道筋
+    if (t.route.length > 1) {
+      const p = t.route.map(s => `${cx(+s[0])},${cy(+s[1])}`).join(' ');
+      g += `<polyline class="am-route" points="${p}" marker-end="url(#amArrow)"/>`;
+      g += `<circle class="am-route-dot" cx="${cx(+t.route[0][0])}" cy="${cy(+t.route[0][1])}" r="3"/>`;
+    }
+    // 駒
+    for (const { p, sq } of pcs) {
+      const x = cx(+sq[0]), y = cy(+sq[1]);
+      const isLead = sq === leadSq, isEss = ess.has(sq + p);
+      if (isLead || isEss) g += `<rect class="am-tok${isLead ? ' lead' : ''}" x="${x - 12}" y="${y - 12}" width="24" height="24" rx="2"/>`;
+      const cls = isLead ? 'am-pc ess lead' : isEss ? 'am-pc ess' : p === '玉' ? 'am-pc king' : 'am-pc';
+      g += `<text class="${cls}" x="${x}" y="${y + 4.5}" text-anchor="middle" data-sq="${sq}">${p}</text>`;
+    }
+    const defs = `<defs><marker id="amArrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${famColor(t)}"/></marker></defs>`;
+    const svg = `<svg class="amap" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t.name)}の攻めの地図">${defs}${g}</svg>`;
+    const cap = `<div class="am-cap"><span>主役 <b>▲${label(leadSq)}${esc(t.piece)}</b></span><span>狙う筋 <b>${lf}筋</b></span><span>必須 <b>${t.essential.split(' ').map(s => label(s.slice(-2)) + s[0]).join(' ')}</b></span></div>`;
+    return head(t) + sec('攻めの地図', '駒に乗せると盤で光る', svg + cap) + ghost;
+  }
+
+  // ---- 案D ----
+  function renderD(t) {
+    const fam = famOf(t);
+    const list = T.filter(x => x.family === t.family);
+    const used = new Set(list.flatMap(x => x.files));
+    const files = [9, 8, 7, 6, 5, 4, 3, 2, 1];
+    const cols = `22px ${files.map(f => used.has(f) ? 'minmax(0,auto)' : '12px').join(' ')}`;
+    const curFile = +t.square[0];
+    let h = `<div class="fmap" style="grid-template-columns:${cols}"><div class="hd"></div>` +
+      files.map(f => `<div class="hd${f === curFile ? ' col-on' : ''}">${f}</div>`).join('');
+    for (const pace of ['rapid', 'both', 'slow']) {
+      h += `<div class="rh">${PACE_JA[pace]}</div>`;
+      for (const f of files) {
+        // 複数の筋にまたがる戦法（早繰り銀 4,3）は先頭の筋（lead.square の筋）に置く
+        const items = list.filter(x => x.pace === pace && +x.square[0] === f);
+        const chips = items.map(x => {
+          const cls = ['fchip', x.basic ? 'basic' : '', x.variantOf ? 'var' : '', x.id === t.id ? 'cur' : '',
+            SAMPLES.includes(x.id) && x.id !== t.id ? 'pick' : '', x.variantOf === (t.variantOf || t.id) || x.id === t.variantOf ? 'kin' : ''].filter(Boolean).join(' ');
+          const title = x.variantOf ? `${x.name}（${byId[x.variantOf].name}の派生）` : x.name;
+          return `<span class="${cls}" data-id="${x.id}" title="${esc(title)}">${esc(x.short)}</span>`;
+        }).join('');
+        h += `<div class="${f === curFile ? 'col-on' : ''}">${chips}</div>`;
+      }
+    }
+    h += '</div>';
+    const legend = `<div class="legend" style="margin-top:6px"><span style="--tc:var(--fg)">太枠＝基本</span><span class="lg-parent">破線＝派生</span><span>下線＝同じ派生のなかま</span></div>`;
+    return head(t) + sec(`${esc(fam.name)}の座標`, '押すとその戦法へ', h + legend) + ghost;
+  }
+
+  // ---- 参考：いまの囲いのペンタグラム ----
+  function renderRef() {
+    const c = CASTLES[state.c] || CASTLES.mino;
+    document.getElementById('refCastle').innerHTML =
+      penta(AX_CASTLE, [{ cls: 'penta-val', vals: c.ratings }], { aria: '囲いの特徴の目安' }) +
+      `<p class="note" style="text-align:center">${esc(c.name)}</p>`;
+  }
+
+  // ---- 切替 ----
+  function render() {
+    const t = byId[state.t];
+    const tc = famColor(t);
+    for (const [id, fn] of [['dockA', renderA], ['dockB', renderB], ['dockC', renderC], ['dockD', renderD]]) {
+      const el = document.getElementById(id);
+      el.style.setProperty('--tc', tc);
+      el.innerHTML = fn(t);
+    }
+    renderRef();
+    for (const b of document.querySelectorAll('#segT button')) b.setAttribute('aria-pressed', b.dataset.id === state.t);
+    for (const b of document.querySelectorAll('#segC button')) b.setAttribute('aria-pressed', b.dataset.id === state.c);
+  }
+  document.getElementById('segT').innerHTML = SAMPLES.map(id => `<button type="button" data-id="${id}">${esc(byId[id].short)}</button>`).join('');
+  document.getElementById('segC').innerHTML = `<button type="button" data-id="">なし</button>` +
+    Object.entries(CASTLES).map(([id, c]) => `<button type="button" data-id="${id}">${esc(c.name.replace('囲い', '').replace('居飛車', '居'))}</button>`).join('');
+  document.getElementById('segT').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.t = b.dataset.id; render(); } });
+  document.getElementById('segC').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.c = b.dataset.id; render(); } });
+  document.getElementById('dockD').addEventListener('click', e => { const c = e.target.closest('.fchip.pick'); if (c) { state.t = c.dataset.id; render(); } });
+  document.getElementById('theme').addEventListener('click', () => {
+    const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('shogi-theme', r.dataset.theme); } catch (e) {}
+  });
+  render();
+})();
+</script>
+</body>
+</html>

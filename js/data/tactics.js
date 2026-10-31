@@ -521,6 +521,7 @@ Kakoi.TACTICS = [
     against: { furibisha: 'good' },
     againstTactic: { gokigen: 'good' },
     pairings: [
+      { castle: 'funa57gin', level: 'best', why: '左銀を5七→4六と繰り出す4六銀左戦法の母型になる舟囲い[[wj-ibisha-funakyusen]]', sources: [{ ref: 'wj-ibisha-funakyusen', for: '組み合わせ' }] },
       { castle: 'funa', level: 'ok', why: '対振り飛車の急戦で用いられる基本的な囲い' },
     ],
     tags: ['急戦', '対ゴキゲン'],
@@ -544,6 +545,7 @@ Kakoi.TACTICS = [
     against: { furibisha: 'ok' },
     againstTactic: { gokigen: 'ok' },
     pairings: [
+      { castle: 'funa57gin', level: 'best', why: '5七銀型の構えが山田定跡の土台になる（▲4五歩の早仕掛け）[[wj-ibisha-funakyusen]]', sources: [{ ref: 'wj-ibisha-funakyusen', for: '組み合わせ' }] },
       { castle: 'funa', level: 'ok', why: '対振り飛車の急戦で用いられる基本的な囲い' },
     ],
     tags: ['急戦', '対ゴキゲン'],
@@ -596,6 +598,7 @@ Kakoi.TACTICS = [
     againstTactic: { shikenbisha: 'good', gokigen: 'ng' },
     pairings: [
       { castle: 'funa68kin', level: 'best', why: '金を6八に上げて上部を守る棒銀の代表的な構え[[joutatsu-bougin|wj-bougin]]', sources: [{ ref: 'joutatsu-bougin', for: '組み合わせ' }, { ref: 'wj-bougin', for: '組み合わせ' }] },
+      { castle: 'funa57gin', level: 'ok', why: '5七銀型の舟囲いに右銀を繰り出す棒銀の構え[[wj-ibisha-funakyusen|joutatsu-funakakoi]]', sources: [{ ref: 'wj-ibisha-funakyusen', for: '組み合わせ' }, { ref: 'joutatsu-funakakoi', for: '組み合わせ' }] },
       { castle: 'funa', level: 'best', why: '対振り飛車の急戦の定番[[joutatsu-bougin|wj-bougin]]', sources: [{ ref: 'joutatsu-bougin', for: '組み合わせ' }, { ref: 'wj-bougin', for: '組み合わせ' }] },
       { castle: 'yagura', level: 'best', why: '相居飛車の矢倉棒銀[[joutatsu-bougin|wj-yagura]]', sources: [{ ref: 'joutatsu-bougin', for: '組み合わせ' }, { ref: 'wj-yagura', for: '組み合わせ' }] },
       { castle: 'kani', level: 'ok', why: '棒銀と併せて紹介される待機策の囲い[[joutatsu-bougin]]', sources: [{ ref: 'joutatsu-bougin', for: '組み合わせ' }] },

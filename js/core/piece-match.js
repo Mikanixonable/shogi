@@ -12,7 +12,7 @@ window.Kakoi = window.Kakoi || {};
   // 後手の駒は (f,r)→(10−f,10−r) で回転して置く（compose.mirror と同じ変換）。
   // コスト計算にも同じ回転をかけると、後手の「前」（段が増える向き）が
   // moveCost の前提する先手の「前」（段が減る向き）と一致する
-  const mir = s => `${10 - +s[0]}${10 - +s[1]}`;
+  const mir = Kakoi.notation.mirrorSq;
 
   /**
    * 駒を from → to へ滑らせる不自然さ（マス単位）。null は滑らせない（消滅＋出現にする）
@@ -37,8 +37,8 @@ window.Kakoi = window.Kakoi || {};
         if (dR >= 0) return null;
         if (!(Math.abs(dF) === 1 && dR === -2)) c += .8;
         break;
-      case '銀': // 真横・真後ろは一手では行けないので緩く罰則（斜め後退は可）
-        if (back !== side) c += .9;
+      case '銀': // 真横・真後ろは一手では行けないので緩く罰則（斜め前・斜め後ろは可）
+        if ((dR === 0 && side) || (back && dF === 0)) c += .9;
         break;
       case '飛': // 縦横の直線上は自然な滑走（長距離も可）、それ以外は回り道として罰則
         c = (side && dR !== 0) ? dist + 1.6 : dist * .55;
@@ -55,6 +55,8 @@ window.Kakoi = window.Kakoi || {};
   // 盤上の障害物を無視した BFS。先手視点（段が減る向きが前）。上限8手、届かなければ Infinity。
   // moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、届くかどうかは自分で判定する
   const STEP = {
+    玉: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]], // 全8方向。
+                     // 登録が無いと GOLD_STEP に落ち、斜め後退が届かないと誤判定される
     歩: [[0, -1]],
     香: [[0, -1]],   // 前へしか進めない（RAY との組み合わせで同じ筋の前方へ滑走。GOLD_STEP への
                      // フォールバックを防ぐ＝横・後退・斜めに「届く」と誤判定しない）
@@ -65,7 +67,7 @@ window.Kakoi = window.Kakoi || {};
   };
   const GOLD_STEP = [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]];
   const RAY = { 香: 1, 角: 1, 飛: 1 };
-  const stepOf = p => STEP[p] || GOLD_STEP;   // 玉・金（・未登録の駒）は金の動き
+  const stepOf = p => STEP[p] || GOLD_STEP;   // 金（・未登録の駒）は金の動き
   const MAX_PLY = 8;
   const mcMemo = new Map();                    // `${p}:${from}` → Map(toKey → 手数)
   function bfsCount(p, from) {
@@ -172,5 +174,5 @@ window.Kakoi = window.Kakoi || {};
     return { ...m, after: next, lead, path: lead >= 0 ? trace.path : null };
   }
 
-  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, pair, plan, routeMs };
+  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, plan, routeMs };
 })();

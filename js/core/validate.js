@@ -7,6 +7,7 @@ window.Kakoi = window.Kakoi || {};
   // 先手の駒の総数（盤上＋持ち駒）
   const FULL_SET = { 玉: 1, 飛: 1, 角: 1, 金: 2, 銀: 2, 桂: 2, 香: 2, 歩: 9 };
   const RATING_KEYS = ['hard', 'wide', 'top', 'side', 'quick'];
+  const TACTIC_RATING_KEYS = ['attack', 'speed', 'flex', 'safety', 'easy'];
   const TOKEN = /^[玉飛角金銀桂香歩][1-9][1-9]$/;
   const SQ = /^[1-9][1-9]$/;
   // [[ref]] / [[ref1|ref2]] の出典トークン（html.js の TOKEN と同じ形）
@@ -351,6 +352,13 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
+    if (t.ratings !== undefined) {
+      if (!t.ratings || typeof t.ratings !== 'object') errors.push('ratingsがオブジェクトでない');
+      else for (const k of TACTIC_RATING_KEYS) {
+        const v = t.ratings[k];
+        if (!Number.isInteger(v) || v < 1 || v > 5) errors.push(`ratings.${k}が1..5の整数でない: ${v}`);
+      }
+    }
     const sente = pieces(t.pieces, 'pieces', errors, { owner: 'sente', role: 'tactic' });
     dupAndNifu(sente, '', errors);
     deadSquares(sente, 'sente', '先手', errors);
@@ -396,7 +404,7 @@ window.Kakoi = window.Kakoi || {};
         // overrides: ○/◎ が上書きできる衝突コードの明示（L2）。
         // SIDE / KING_ROOK / SAME_WING は原則なので上書き対象から外す
         if (p.overrides !== undefined) {
-          const OK = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT', 'HAND']);
+          const OK = new Set(['SQUARE', 'PAWN', 'COUNT', 'HAND']);
           if (!isArr(p.overrides) || !p.overrides.length) errors.push(`pairings[${i}].overridesが空の配列`);
           else for (const code of p.overrides) {
             if (!isStr(code) || !OK.has(code)) errors.push(`pairings[${i}].overrides不正: ${code}`);

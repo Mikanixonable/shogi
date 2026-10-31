@@ -36,8 +36,7 @@ window.Kakoi = window.Kakoi || {};
   /**
    * 戦略・戦法・囲いの3層を合成した局面を返す。
    * @param {{strategy?:string, tacticId?:string, castleId?:string,
-   *          side?:'sente'|'gote', priority?:'tactic'|'castle',
-   *          oppStrategy?:string}} opts
+   *          side?:'sente'|'gote', oppStrategy?:string}} opts
    *   oppStrategy: 囲い未選択のとき戦略テンプレートの既定囲いを振り分けるのに使う
    * @returns {{position: Kakoi.Position,
    *            conflicts: Array<{code:string, squares?:string[], text:string}>,
@@ -45,7 +44,7 @@ window.Kakoi = window.Kakoi || {};
    */
   function position(opts = {}) {
     const { strategy = null, tacticId = null, castleId = null,
-      side = 'sente', priority = 'tactic', oppStrategy = null } = opts;
+      side = 'sente', oppStrategy = null } = opts;
     const tactic = tacticId ? findTactic(tacticId) : null;
     const castle = castleId ? findCastle(castleId) : null;
 
@@ -84,8 +83,6 @@ window.Kakoi = window.Kakoi || {};
         if (x) locked.add(x);
       }
     }
-    const castleWins = priority === 'castle'; // 最後に選んだ層が勝つ（計画書 §3-1）
-
     // 盤上で筋 f にいる先手の歩（ex を除く）。持ち駒の歩を打つと二歩になるかの判定用
     const pawnOnFile = (f, ex) => pieces.some(x => x !== ex && x.owner === 'sente' && x.p === '歩' && x.f === f);
 
@@ -172,15 +169,6 @@ window.Kakoi = window.Kakoi || {};
             continue;
           }
           if (on && locked.has(on)) {                    // ロック駒（essential/主役）と衝突
-            if (castleWins) {
-              // 囲いを優先: ロック駒は持ち駒へ。衝突の事実は SQUARE として記録する
-              conflicts.push({ code: 'SQUARE', squares: [S],
-                text: `${label(t.f, t.r)}で${on.p}（戦法の必須）と${t.p}が重なり囲いを優先` });
-              displace(on);
-              const placed = sourcePlace(t.p, t.f, t.r, 'core');
-              if (placed) assigned.add(placed); else countFailed.push(t);
-              continue;
-            }
             if (!tryFlex(t, t.f, t.r)) {
               conflicts.push({ code: 'SQUARE', squares: [S],
                 text: `${label(t.f, t.r)}で${on.p}と${t.p}が重なる` });
@@ -262,13 +250,19 @@ window.Kakoi = window.Kakoi || {};
 
       const placeShell = () => {
         // 7. castle.shell: 囲いの前線の歩など。ロック済みのマスは戦法の駒を残して飛ばす
-        //    （殻は戦法を追い出さない）。filler は置かない
+        //    （殻は戦法を追い出さない）。filler は置かない。
+        //    置けない殻は盤を壊さず飛ばすが、宣言どおりに置けなかった事実は SHELL として
+        //    記録する（歩が前に進みすぎて戻れない場合など。ng にはしない注記）
         for (const t of parsePieces(castle.shell)) {
           const on = at(t.f, t.r);
           if (on && locked.has(on)) continue;
           if (on && on.p === t.p) { assigned.add(on); continue; } // role はそのまま
           if (on && assigned.has(on)) continue;                    // 確定済みの core は動かせない
-          if (!canSource(t.p, t.f, t.r, on)) continue;             // 置けない殻はあきらめる
+          if (!canSource(t.p, t.f, t.r, on)) {
+            conflicts.push({ code: 'SHELL', squares: [sq(t.f, t.r)],
+              text: `${label(t.f, t.r)}に${t.p}を置けず殻を省略` });
+            continue;
+          }
           if (on) displace(on);
           assigned.add(sourcePlace(t.p, t.f, t.r, 'support'));
         }
@@ -359,7 +353,7 @@ window.Kakoi = window.Kakoi || {};
     oppPos = oppPos && oppPos.position ? oppPos.position : oppPos;
     const pieces = [...((mePos && mePos.pieces) || []), ...((oppPos && oppPos.pieces) || [])]
       .map(x => ({ ...x }));
-    const hand = [...((mePos && mePos.hand) || []), ...((oppPos && oppPos.hand) || [])];
+    // 持ち駒は側の区別が付かないので連結しない（表示は各側の position から読む）
     const occ = new Map();
     for (const x of pieces) {
       const k = key(x.f, x.r);
@@ -398,10 +392,10 @@ window.Kakoi = window.Kakoi || {};
           text: `${label(f, r)}で${me.map(x => x.p).join('・')}と${opp.map(x => x.p).join('・')}が重なる` });
       }
     }
-    return { position: new Kakoi.Position(pieces, hand), contacts };
+    return { position: new Kakoi.Position(pieces), contacts };
   }
 
-  const api = { position, mirror, merge };
+  const api = { position, merge };
   Kakoi.compose = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

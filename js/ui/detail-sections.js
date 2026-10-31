@@ -24,6 +24,14 @@ window.Kakoi = window.Kakoi || {};
     ['side', '横の強さ'],
     ['quick', '組みやすさ'],
   ];
+  // 戦法の5軸（囲いの RATINGS と同じ頂点の配置。ratings は tactic-ratings.js）
+  const TACTIC_RATINGS = [
+    ['attack', '攻撃力'],
+    ['speed', '速さ'],
+    ['flex', '柔軟性'],
+    ['safety', '玉の安全'],
+    ['easy', '覚えやすさ'],
+  ];
   // viewBox に収まるよう左の軸ラベル（組みやすさ）分だけ中心を右へ寄せる
   const RADAR = { cx: 102, cy: 74, r: 42, viewBox: '0 0 200 136' };
   // 頂点ごとの軸ラベル: 頂点からの差し分(dx,dy)と文字の基点
@@ -52,19 +60,22 @@ window.Kakoi = window.Kakoi || {};
    *           朱の破線（.mu-w）で重ねる（計画書 §5: ペンタグラムへの戦型重みの重ね方）
    */
   function penta(ratings = {}, { weights = null, title = '特徴の目安', small = '5段階・主観',
-    hint = '「横の強さ」は横からの飛車攻めへの耐性。端からの攻めは含みません' } = {}) {
+    hint = '「横の強さ」は横からの飛車攻めへの耐性。端からの攻めは含みません',
+    axes = RATINGS, parent = null, color = '' } = {}) {
     const rings = [1, 2, 3, 4, 5].map(l =>
-      `<polygon class="penta-ring${l === 5 ? ' edge' : ''}" points="${RATINGS.map((_, i) => vertex(i, RADAR.r * l / 5).map(num).join(',')).join(' ')}"/>`).join('');
-    const spokes = RATINGS.map((_, i) => {
+      `<polygon class="penta-ring${l === 5 ? ' edge' : ''}" points="${axes.map((_, i) => vertex(i, RADAR.r * l / 5).map(num).join(',')).join(' ')}"/>`).join('');
+    const spokes = axes.map((_, i) => {
       const [x, y] = vertex(i, RADAR.r).map(num);
       return `<line class="penta-spoke" x1="${RADAR.cx}" y1="${RADAR.cy}" x2="${x}" y2="${y}"/>`;
     }).join('');
-    const points = RATINGS.map(([k], i) =>
-      vertex(i, RADAR.r * Math.min(5, Math.max(0, ratings[k] || 0)) / 5).map(num).join(',')).join(' ');
+    const poly = r => axes.map(([k], i) =>
+      vertex(i, RADAR.r * Math.min(5, Math.max(0, r[k] || 0)) / 5).map(num).join(',')).join(' ');
+    // 戦法: 派生なら親の形を破線で重ねて「何が変わったか」を見せる
+    const parentPoly = parent ? `<polygon class="penta-parent" points="${poly(parent)}"/>` : '';
     // 戦型の重み（0〜0.5 程度）を0〜5の目盛りに換算して重ねる
-    const wpts = weights ? RATINGS.map(([k], i) =>
+    const wpts = weights ? axes.map(([k], i) =>
       vertex(i, RADAR.r * Math.min(5, (weights[k] || 0) * 10) / 5).map(num).join(',')).join(' ') : null;
-    const labels = RATINGS.map(([k, name], i) => {
+    const labels = axes.map(([k, name], i) => {
       const [x, y] = vertex(i, RADAR.r).map(num);
       const [dx, dy, anchor] = RADAR_LABEL[i];
       const tip = weights
@@ -73,8 +84,20 @@ window.Kakoi = window.Kakoi || {};
       return `<text class="penta-lbl" x="${num(x + dx)}" y="${num(y + dy)}" text-anchor="${anchor}"><title>${tip}</title>${name}</text>`;
     }).join('');
     return `<div class="sec"><h3${hint ? ` title="${esc(hint)}"` : ''}>${title}${small ? `<small>${small}</small>` : ''}</h3>` +
-      `<svg class="penta" viewBox="${RADAR.viewBox}" role="img" aria-label="${esc(title)}（5軸・5段階）">${rings}${spokes}` +
-      `<polygon class="penta-val" points="${points}"/>${wpts ? `<polygon class="mu-w" points="${wpts}"/>` : ''}${labels}</svg></div>`;
+      `<svg class="penta" viewBox="${RADAR.viewBox}" role="img" aria-label="${esc(title)}（5軸・5段階）"${color ? ` style="--tc:${color}"` : ''}>${rings}${spokes}` +
+      `${parentPoly}<polygon class="penta-val${color ? ' tac' : ''}" points="${poly(ratings)}"/>${wpts ? `<polygon class="mu-w" points="${wpts}"/>` : ''}${labels}</svg></div>`;
+  }
+
+  // 戦法の特徴の目安: 派生は親（variantOf）の形を破線で重ね、差分を一行で添える
+  function tacticPenta(tactic, parent, color) {
+    const r = tactic && tactic.ratings;
+    if (!r) return '';
+    const pr = parent && parent.ratings;
+    const diff = pr ? TACTIC_RATINGS.filter(([k]) => pr[k] !== r[k])
+      .map(([k, n]) => `${n}${r[k] > pr[k] ? '↑' : '↓'}`).join('・') : '';
+    return penta(r, { axes: TACTIC_RATINGS, parent: pr || null, color,
+      hint: '「速さ」は仕掛けまでの手数、「覚えやすさ」は定跡の量と注意点の少なさ' }) +
+      (pr ? `<p class="note ps-diff">破線＝${esc(parent.name)}${diff ? `（${diff}）` : '（形は同じ）'}</p>` : '');
   }
 
   // ===== #タグ =====
@@ -82,7 +105,8 @@ window.Kakoi = window.Kakoi || {};
   function castleTags(castle, family, subtype) {
     const parts = family ? [`<span class="tag group">#${esc(family.name)}</span>`] : [];
     if (subtype) parts.push(`<span class="tag">#${esc(subtype.name)}</span>`);
-    const rest = (castle.tags || []).filter(t => !family || t !== family.name);
+    const rest = [...(castle.aliases || []).map(a => `別名：${a}`),
+      ...(castle.tags || []).filter(t => !family || t !== family.name)];
     parts.push(...rest.map(t => `<span class="tag">#${esc(t)}</span>`));
     return `<div class="tags">${parts.join('')}</div>`;
   }
@@ -131,7 +155,7 @@ window.Kakoi = window.Kakoi || {};
   function pcList(title, items, { tone = '', cls = '', small = '点線の項目は盤上に表示' } = {}, citer) {
     if (!items || !items.length) return '';
     const li = items.map(it =>
-      `<li${sqAttr(it.sq)}${tone ? ` data-tone="${tone}"` : ''}>${rich(it.t, citer)}</li>`).join('');
+      `<li${sqAttr(it.sq)}${tone ? ` data-tone="${tone}"` : ''}><span>${rich(it.t, citer)}</span></li>`).join('');
     return sec(title, small, `<ul class="pc-list${cls ? ' ' + cls : ''}">${li}</ul>`);
   }
 
@@ -267,11 +291,12 @@ window.Kakoi = window.Kakoi || {};
     return sec(title, '点線の項目は盤上に表示', `<ul class="mu-reasons">${li}</ul>`);
   }
 
-  // 両軍の接触（compose.merge の contacts: {sq, kind:'pawn'|'ng', text}）
+  // 両軍の接触（compose.merge の contacts: {sq, kind:'pawn'|'ng', text}）。
+  // マスは合成済みの絶対座標なので data-abs を付け、詳細側の側反転（opp 用 mirrorSq）の対象外にする
   function contacts(list, citer) {
     if (!list || !list.length) return '';
     const li = list.map(c =>
-      `<li data-level="${c.kind === 'ng' ? 'ng' : 'ok'}" data-tone="${c.kind === 'ng' ? 'bad' : 'focus'}" data-sq="${esc(c.sq)}">` +
+      `<li data-level="${c.kind === 'ng' ? 'ng' : 'ok'}" data-tone="${c.kind === 'ng' ? 'bad' : 'focus'}" data-sq="${esc(c.sq)}" data-abs="1">` +
       `<span class="mk">${c.kind === 'ng' ? '×' : '＋'}</span><span>${rich(c.text, citer)}</span></li>`).join('');
     return sec('両軍の接触', 'マスに乗せると盤で光る', `<ul class="mu-reasons">${li}</ul>`);
   }
@@ -301,8 +326,8 @@ window.Kakoi = window.Kakoi || {};
   }
 
   K.detailSections = {
-    RATINGS, RADAR, sec,
-    penta, castleTags, tacticTags,
+    RATINGS, TACTIC_RATINGS, RADAR, sec,
+    penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,
     vsSection, vsRows, reasons, conflict, contacts, sources,
