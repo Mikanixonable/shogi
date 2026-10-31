@@ -38,7 +38,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa', name: '舟囲い（7九銀型）', short: '舟囲い 7九銀', reading: 'ふながこい', side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha', basic: true,
+    id: 'funa', name: '舟囲い', short: '舟囲い', reading: 'ふながこい', aliases: ['舟囲い（7九銀型）'], side: 'ibisha', family: 'funa', subtype: 'base', setup: 'ibisha', basic: true,
     core: '玉78 銀79 金69 金58',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀26',
@@ -93,7 +93,36 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'elmo', name: 'エルモ囲い（舟囲い7九金型）', short: 'エルモ囲い', reading: 'えるもがこい', side: 'ibisha', from: 'funa68gin', family: 'funa', subtype: 'kin79', setup: 'ibisha',
+    id: 'funa57gin', name: '舟囲い（5七銀型）', short: '舟囲い 5七銀', reading: 'ふながこい ごななぎんがた', aliases: ['5七銀左型'], side: 'ibisha', from: 'funa68gin', family: 'funa', subtype: 'base', setup: 'ibisha',
+    core: '玉78 銀57 金69 金58',
+    shell: '歩87 歩76 歩67 歩56',
+    rest: '銀48',
+    filler: '角88 香99 桂89 歩96 歩47 歩36',
+    flex: [{ sq: '57', to: ['46'] }],
+    tags: ['対振り飛車', '急戦'],
+    desc: '6八銀型から左銀をさらに5七へ繰り出した急戦用の形（5七銀左型）[[wj-funagakoi|joutatsu-funakakoi]]。対角道を止める振り飛車への急戦で最も多く用いられ、右銀は4八に残して守りに回す[[wj-funagakoi|joutatsu-funakakoi]]。山田定跡・4六銀左・棒銀などの急戦の土台になる[[wj-ibisha-funakyusen]]。',
+    note: '右銀を5七に上げる型は「5七銀右型（菱囲い）」として別にある。本データは対振り飛車急戦で一般的な左型を収録する[[wj-funagakoi]]。',
+    ratings: { hard: 2, wide: 3, top: 2, side: 3, quick: 4 },
+    pros: [
+      { t: '5七銀が中央と左右に利き、急戦の足場になる[[joutatsu-funakakoi]]', sq: ['57', '56', '46'] },
+      { t: '右銀を4八に残して守りに回せる[[joutatsu-funakakoi|wj-funagakoi]]', sq: ['48'] },
+    ],
+    cons: [
+      { t: '7九が空き、玉頭（7筋・8筋上部）が薄い[[wj-funagakoi]]', sq: ['79', '77', '87'] },
+      { t: '8七が急所で、香・角を当てられて集中砲火されやすい[[wj-funagakoi]]', sq: ['87', '88'] },
+    ],
+    attacks: [
+      { id: 'hachinana', name: '8七への集中砲火', t: '△8四香と角頭に香を据え、△5四角・△7五桂と駒を集めて8七を崩しにくる。舟囲い系共通の急所[[wj-funagakoi]]。', gote: '香84 角54 桂75', target: ['87', '76', '88'] },
+      { id: 'gyokuto', name: '玉頭攻め', t: '△7五歩・△6五桂で7七を狙う。5七銀が6七をカバーするぶん基本形より受けやすい。', gote: '歩75 桂65', target: ['77', '57', '76'] },
+    ],
+    sources: [
+      { ref: 'wj-funagakoi', for: '配置・解説' },
+      { ref: 'joutatsu-funakakoi', for: '配置・解説' },
+      { ref: 'wj-ibisha-funakyusen', for: '急戦での用法' },
+    ],
+  },
+  {
+    id: 'elmo', name: 'elmo囲い', short: 'elmo囲い', reading: 'えるもがこい', aliases: ['エルモ囲い', '舟囲い（7九金型）'], side: 'ibisha', from: 'funa68gin', family: 'funa', subtype: 'kin79', setup: 'ibisha',
     core: '玉78 銀68 金79 金59',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀26',
@@ -122,7 +151,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', aliases: ['居飛車金無双'], side: 'ibisha', from: 'funa', family: 'funa', subtype: 'kin68', setup: 'ibisha',
+    id: 'funa68kin', name: '舟囲い（6八金型）', short: '舟囲い 6八金', reading: 'ふながこい ろくはちきんがた', aliases: ['居飛車金無双', '舟囲いDX'], side: 'ibisha', from: 'funa57gin', family: 'funa', subtype: 'kin68', setup: 'ibisha',
     core: '玉78 金68 金58',
     shell: '歩87 歩76 歩67 歩56',
     rest: '銀57 銀26',
@@ -148,7 +177,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'yagura', name: '矢倉囲い（金矢倉）', short: '金矢倉', reading: 'やぐらがこい', side: 'ibisha', family: 'yagura', subtype: 'kin', setup: 'ibisha', basic: true,
+    id: 'yagura', name: '矢倉囲い', short: '矢倉', reading: 'やぐらがこい', aliases: ['金矢倉'], side: 'ibisha', family: 'yagura', subtype: 'kin', setup: 'ibisha', basic: true,
     core: '玉88 銀77 金78 金67',
     shell: '歩97 歩87 歩76 歩66',
     rest: '銀26',

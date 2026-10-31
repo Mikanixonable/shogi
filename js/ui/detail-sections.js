@@ -105,7 +105,8 @@ window.Kakoi = window.Kakoi || {};
   function castleTags(castle, family, subtype) {
     const parts = family ? [`<span class="tag group">#${esc(family.name)}</span>`] : [];
     if (subtype) parts.push(`<span class="tag">#${esc(subtype.name)}</span>`);
-    const rest = (castle.tags || []).filter(t => !family || t !== family.name);
+    const rest = [...(castle.aliases || []).map(a => `別名：${a}`),
+      ...(castle.tags || []).filter(t => !family || t !== family.name)];
     parts.push(...rest.map(t => `<span class="tag">#${esc(t)}</span>`));
     return `<div class="tags">${parts.join('')}</div>`;
   }

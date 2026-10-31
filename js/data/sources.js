@@ -17,7 +17,9 @@ Kakoi.SOURCES = {
   // ---- 居飛車 ----
   'wj-ibisha-anaguma': { title: '居飛車穴熊', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B1%85%E9%A3%9B%E8%BB%8A%E7%A9%B4%E7%86%8A' },
   'wj-funagakoi': { title: '舟囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%88%9F%E5%9B%B2%E3%81%84' },
-  'wj-elmo': { title: 'エルモ囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%A8%E3%83%AB%E3%83%A2%E5%9B%B2%E3%81%84' },
+  'joutatsu-funakakoi': { title: '舟囲いとは？組み方・特徴と種類一覧', publisher: '将棋上達塾', url: 'https://shogi-joutatsu.com/archives/6044' },
+  'wj-ibisha-funakyusen': { title: '居飛車舟囲い急戦', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B1%85%E9%A3%9B%E8%BB%8A%E8%88%9F%E5%9B%B2%E3%81%84%E6%80%A5%E6%88%A6' },
+  'wj-elmo': { title: 'elmo囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%A8%E3%83%AB%E3%83%A2%E5%9B%B2%E3%81%84' },
   'wj-yagura': { title: '矢倉囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%9F%A2%E5%80%89%E5%9B%B2%E3%81%84' },
   'wj-kani': { title: 'カニ囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%AB%E3%83%8B%E5%9B%B2%E3%81%84' },
   'wj-gangi': { title: '雁木囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%9B%81%E6%9C%A8%E5%9B%B2%E3%81%84' },
