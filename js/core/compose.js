@@ -15,7 +15,7 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { key, parsePieces, parseSquare, label, mirrorSq } = Kakoi.notation;
+  const { key, parsePieces, parseSquare, label, mirrorPt, mirrorSq } = Kakoi.notation;
   const { findTactic, findCastle } = Kakoi.lookup;
 
   const sq = (f, r) => `${f}${r}`;
@@ -331,7 +331,7 @@ window.Kakoi = window.Kakoi || {};
   function mirror(pos) {
     pos = pos && pos.position ? pos.position : pos; // {position,...} の結果オブジェクトも受け付ける
     const pieces = (pos ? pos.pieces : []).map(x => ({
-      ...x, f: 10 - x.f, r: 10 - x.r,
+      ...x, ...mirrorPt(x),
       owner: x.owner === 'sente' ? 'gote' : 'sente',
     }));
     return new Kakoi.Position(pieces, [...((pos && pos.hand) || [])]);

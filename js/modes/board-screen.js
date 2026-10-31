@@ -50,7 +50,7 @@ window.Kakoi = window.Kakoi || {};
       return {
         attack: a, who: sel.who,
         pieces: parsePieces(a.gote).map(x => ({
-          p: x.p, f: mirror ? 10 - x.f : x.f, r: mirror ? 10 - x.r : x.r,
+          p: x.p, ...(mirror ? K.notation.mirrorPt(x) : { f: x.f, r: x.r }),
           owner: mirror ? 'sente' : 'gote', role: 'attack',
         })),
         target: (a.target || []).map(s => mirror ? mirrorSq(s) : s),
