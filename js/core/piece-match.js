@@ -57,7 +57,9 @@ window.Kakoi = window.Kakoi || {};
   // moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、届くかどうかは自分で判定する
   const { movesOf } = Kakoi.pieceMoves;
   const MAX_PLY = 8;
-  const mcMemo = new Map();                    // `${p}:${from}` → Map(toKey → 手数)
+  // メモは compat.js / constraints.js と同じく Kakoi.LRU。キー空間は駒種×81マスと
+  // 有限だが、上限＋最近使った順の保持に揃えておく（Map フォールバックは上限なしの従来動作）
+  const mcMemo = new (Kakoi.LRU || Map)(512);   // `${p}:${from}` → Map(toKey → 手数)
   function bfsCount(p, from) {
     const mv = movesOf(p);
     const out = new Map();
@@ -98,7 +100,6 @@ window.Kakoi = window.Kakoi || {};
     let m = mcMemo.get(ck);
     if (!m) {
       m = bfsCount(p, from);
-      if (mcMemo.size > 400) mcMemo.delete(mcMemo.keys().next().value); // 簡易上限
       mcMemo.set(ck, m);
     }
     return m.has(+to[0] * 10 + +to[1]) ? m.get(+to[0] * 10 + +to[1]) : Infinity;

@@ -101,11 +101,14 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ===== #タグ =====
+  // 別名は「別名：〜」のタグにする（囲い・戦法で共通）
+  const aliasTags = x => (x.aliases || []).map(a => `別名：${a}`);
+
   // 囲い: 系統（group＝朱）・細分類・その他のタグを個別に並べる（装飾のみ・クリック不可）
   function castleTags(castle, family, subtype) {
     const parts = family ? [`<span class="tag group">#${esc(family.name)}</span>`] : [];
     if (subtype) parts.push(`<span class="tag">#${esc(subtype.name)}</span>`);
-    const rest = [...(castle.aliases || []).map(a => `別名：${a}`),
+    const rest = [...aliasTags(castle),
       ...(castle.tags || []).filter(t => !family || t !== family.name)];
     parts.push(...rest.map(t => `<span class="tag">#${esc(t)}</span>`));
     return `<div class="tags">${parts.join('')}</div>`;
@@ -114,7 +117,7 @@ window.Kakoi = window.Kakoi || {};
   // 戦法: 系統（group）・向き（context）・別名
   function tacticTags(tactic, family) {
     const parts = family ? [`<span class="tag group">#${esc(family.name)}</span>`] : [];
-    const tags = [tactic.context, ...(tactic.aliases || []).map(a => `別名：${a}`)].filter(Boolean);
+    const tags = [tactic.context, ...aliasTags(tactic)].filter(Boolean);
     parts.push(...tags.map(x => `<span class="tag">#${esc(x)}</span>`));
     return `<div class="tags">${parts.join('')}</div>`;
   }
