@@ -6,8 +6,8 @@
 
 | # | id | 名前 | family | lead | variantOf | 判定 |
 |---|---|---|---|---|---|---|
-| 1 | `saginomiya` | 鷺宮定跡 | ibisha-rook | 飛38 | sodebisha | （未確認） |
-| 2 | `kinmino` | 金美濃（対振り飛車） | ibisha-rook | 飛28 | ibisha-base | （未確認） |
+| 1 | `saginomiya` | 鷺宮定跡 | ibisha-rook | 飛38 | sodebisha | 🟢（修正案を適用済: against/againstTactic を ok に、desc・cons・出典を更新） |
+| 2 | `kinmino` | 金美濃（対振り飛車） | ibisha-rook | 飛28 | ibisha-base | 🟡（修正案Aを適用済: 戦法を削除し囲い `ibisha-kinmino` に統合。jsf-kakoi81/82 出典登録済） |
 | 3 | `gyokutou-kuraidori` | 玉頭位取り | ibisha-silver | 銀76 | — | （未確認） |
 | 4 | `ibisha-gosuji-kuraidori` | 5筋位取り（居飛車） | ibisha-silver | 銀56 | — | （未確認） |
 | 5 | `chikatetsubisya` | 地下鉄飛車 | ibisha-rook | 飛99 | — | （未確認） |
