@@ -167,4 +167,9 @@ Kakoi.SOURCES = {
   'note-343-senpou': { title: '石田流の基礎知識 3・4・3戦法とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-343-strategy/' },
   'wj-hidarigyoku': { title: '左玉', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B7%A6%E7%8E%89' },
   'wj-muteki': { title: '無敵囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%84%A1%E6%95%B5%E5%9B%B2%E3%81%84' },
+  'wj-taden': { title: '多伝囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%A4%9A%E4%BC%9D%E5%9B%B2%E3%81%84' },
+  'wj-gintaden': { title: '銀多伝', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%8A%80%E5%A4%9A%E4%BC%9D' },
+  'wj-zougan': { title: '象嵌（将棋）', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%B1%A1%E5%B5%8C' },
+  'wj-teaiwari': { title: '将棋の手合割', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B0%86%E6%A3%8B%E3%81%AE%E6%89%8B%E5%90%88%E5%89%B2' },
+  'sj-taden': { title: '多伝囲いとは？', publisher: '将棋研究', url: 'https://www.shougi.jp/kakoi/taden_kakoi/' },
 };

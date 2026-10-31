@@ -5,6 +5,7 @@ Kakoi.CASTLE_FAMILIES = [
     { id: 'base', name: '基本形（7九銀・6八銀・5七銀）' }, { id: 'kin79', name: '7九金型' }, { id: 'kin68', name: '6八金型' },
     { id: 'hako', name: '箱入り娘' },
     { id: 'torakku', name: 'トラック囲い' }, { id: 'bunchin', name: '文鎮囲い' },
+    { id: 'jun', name: '盾囲い（金盾・大盾）' },
   ] },
   { id: 'yagura', name: '矢倉型', shape: '逆L字：玉の右上を金銀が囲む', glyph: 'L', subtypes: [
     { id: 'kin', name: '金矢倉' }, { id: 'gin', name: '銀矢倉' }, { id: 'kata', name: '片矢倉系' },
@@ -52,5 +53,8 @@ Kakoi.CASTLE_FAMILIES = [
   ] },
   { id: 'low', name: '低陣型', shape: '玉と金銀を低く広げて大駒の打ち込みを減らす形', glyph: 'center', subtypes: [
     { id: 'hirame', name: '平目' },
+  ] },
+  { id: 'komaochi', name: '駒落ち型', shape: '駒落ち（上手・下手）の手合で使われる囲い', glyph: 'center', subtypes: [
+    { id: 'taden', name: '多伝囲い' }, { id: 'zougan', name: '象眼囲い' }, { id: 'kagi', name: 'カギ囲い' },
   ] },
 ];
