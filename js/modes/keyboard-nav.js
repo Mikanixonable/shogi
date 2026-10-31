@@ -17,7 +17,8 @@ window.Kakoi = window.Kakoi || {};
     if (!sel || !st) return null;
     if (sel.kind === 'tactic') {
       const list = rows.filter(r => r.family.side === st.strategy);
-      const cur = repo.tacticById(st.tacticId);
+      // 複数戦法では選択中の駒枠（sel.id、無ければ主の戦法）を動かす
+      const cur = repo.tacticById(sel.id || st.tacticId);
       const next = cur && K.tacticNav.neighbor(list, cur, key);
       return next ? { kind: 'tactic', id: next.id } : null;
     }

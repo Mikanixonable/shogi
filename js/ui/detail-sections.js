@@ -329,11 +329,34 @@ window.Kakoi = window.Kakoi || {};
     return sec('出典', small, sourcesBlock(items, citer));
   }
 
+  // ---------- お楽しみ ----------
+  // 読み物の末尾にそっと添える余白のコーナー（js/data/fun.js）。
+  // 格言は選択中の制約から1つ引く（項目を変えると別の格言が出る）＋「もう一つ」で引き直し。
+  // ミーム・動画は <details> に畳んで、読みたい人だけ開く
+  function fun(sel) {
+    const F = K.FUN;
+    if (!F || !F.proverbs.length) return '';
+    const key = `${sel.who}.${sel.kind}.${sel.id || ''}`;
+    let h = 0;
+    for (const ch of key) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    const pv = F.proverbs[h % F.proverbs.length];
+    return sec('お楽しみ', '格言・ミーム・動画',
+      `<blockquote class="fun-pv"><b>「${esc(pv.t)}」</b><span>${esc(pv.n)}</span>` +
+      `<button type="button" class="fun-shuf" title="別の格言を引く">もう一つ</button></blockquote>` +
+      `<details class="fun-memes"><summary>将棋ネットミーム一覧</summary><ul>` +
+      F.memes.map(m => `<li><b>${esc(m.t)}</b><span>${esc(m.n)}</span></li>`).join('') +
+      `</ul></details>` +
+      `<details class="fun-vids"><summary>おもしろ動画を探す（YouTube）</summary><ul>` +
+      F.videos.map(v => `<li><a href="${esc(v.u)}" target="_blank" rel="noopener">` +
+        `${esc(v.t)}<i class="ext">↗</i></a><span>${esc(v.n)}</span></li>`).join('') +
+      `</ul></details>`);
+  }
+
   K.detailSections = {
     RATINGS, TACTIC_RATINGS, RADAR, sec,
     penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,
-    vsSection, vsRows, reasons, conflict, contacts, sources,
+    vsSection, vsRows, reasons, conflict, contacts, sources, fun,
   };
 })();

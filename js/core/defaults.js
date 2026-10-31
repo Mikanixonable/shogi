@@ -28,10 +28,20 @@ window.Kakoi = window.Kakoi || {};
     return null;
   }
   // 従来の sideState（{strategy, tacticId?, castleId?}）から実効 id を返す薄い窓口
-  const tacticIdOf = st => (st && st.tacticId) || defaultTacticId(st && st.strategy);
+  // 複数戦法: tacticIds の配列があればその主（primaryTacticId）を優先する
+  const primaryTacticId = ids => {
+    const list = Array.isArray(ids) ? ids : (ids != null ? [ids] : []);
+    for (const id of list) {
+      const t = id && Kakoi.lookup && Kakoi.lookup.findTactic(id);
+      if (t && t.lead && t.lead.piece === '飛') return id;
+    }
+    return list[0] || null;
+  };
+  const tacticIdOf = st =>
+    (st && (st.tacticId || primaryTacticId(st.tacticIds))) || defaultTacticId(st && st.strategy);
   const castleIdOf = (st, opp) => (st && st.castleId) || defaultCastleId(st && st.strategy, opp && opp.strategy);
 
-  const api = { defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf };
+  const api = { defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf, primaryTacticId };
   Kakoi.defaults = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

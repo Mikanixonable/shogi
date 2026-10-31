@@ -296,18 +296,27 @@
   .dk-sort-sel { height:44px; font-size:13px; }
 
   .dk-fam-h { min-height:44px; padding:6px 0; }
-  /* 戦法タイル（C2）: 9列グリッドはつぶれるので、系統ごとの「筋＋名前」の横長リストにする */
+  /* 戦法の一覧（C2）: 9列グリッドはつぶれるので「筋の札＋名前＋記号」の縦リストにする。
+     筋は系統色の札にして遠目にも筋が拾えるようにし、系統色は行ブロック左の帯が示す */
   .dk-fh { display:none; }
-  .dk-tgrid { display:flex; flex-direction:column; gap:10px; }
+  .dk-tgrid { display:flex; flex-direction:column; gap:5px; }
   .dk-dot { display:none; }
-  .dk-cell { display:flex; flex-direction:column; gap:4px; }
-  .dk-tile { flex-direction:row; align-items:center; gap:8px; min-height:44px; padding:6px 10px; }
-  .dk-tile .nm { flex:1 1 auto; font-size:13px; text-align:left; }
-  .dk-tile .fb { order:-1; flex:none; min-width:2.4em; font-size:11px; }
+  .dk-cell { display:flex; flex-direction:column; gap:3px; }
+  .dk-tile { flex-direction:row; align-items:center; gap:10px; min-height:48px;
+             padding:5px 12px 5px 8px; border-top-width:1px; }
+  .dk-tile .fb { order:-1; flex:none; display:grid; place-items:center; align-self:stretch;
+                 min-width:44px; padding:0 5px; border-radius:6px;
+                 background:color-mix(in srgb, var(--tc, var(--accent-2)) 11%, var(--bg));
+                 color:var(--fg); font:700 12.5px/1 var(--font-d); letter-spacing:0; }
+  .dk-tile .nm { flex:1 1 auto; font-size:14px; font-weight:600; text-align:left; }
   .dk-tile .dk-marks { flex:none; margin-left:auto; }
-  .dk-var { min-height:44px; padding:9px 12px; align-items:center; }
-  .dk-var .nm { font-size:12px; }
-  .dk-var .dk-vs, .dk-var .dk-ng { font-size:10px; }
+  .dk-tile .dk-vs, .dk-tile .dk-ng { min-width:22px; padding:2px 5px; font-size:10px; }
+  /* 選択中は系統色をうっすら敷く（朱の枠＋✓は共通の .dk-item ルール） */
+  .dk-tile[aria-current="true"] { background:color-mix(in srgb, var(--tc, var(--accent)) 9%, var(--bg)); }
+  /* 派生は親に付く字下げのチップ（↳ の分だけ深く入れる） */
+  .dk-var { min-height:44px; padding:8px 12px 8px 30px; align-items:center; }
+  .dk-var .nm { font-size:12.5px; }
+  .dk-var .dk-vs, .dk-var .dk-ng { font-size:10px; min-width:20px; padding:2px 4px; }
   /* 10px 未満の字を底上げする（C3） */
   .dk-seal { font-size:10px; }
   .dk-tnote { display:block; margin:0 0 6px; font:400 11px/1.5 var(--font-b); color:var(--muted); }

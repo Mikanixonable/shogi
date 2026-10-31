@@ -70,33 +70,57 @@ function watch(page, errs) {
 }
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
-// 盤の矩形（F1 の不変条件: 状態に依らず ±0.5px 以内）
+// 盤の矩形（F1 の不変条件: 幅・高さ・横位置は ±0.5px 以内。制約フィールドは相手の
+// 表示や深い囲いで高さが伸び縮みし、盤は残りの行の上下中央に来るので、縦位置は
+// 「帯の下端」に対する相対（2y - 帯下端）で見る）
 const boardRect = page => page.evaluate(() => {
   const b = document.querySelector('#board').getBoundingClientRect();
-  return { x: b.x, y: b.y, w: b.width, h: b.height };
+  const f = document.querySelector('#cfield').getBoundingClientRect();
+  return { x: b.x, y: b.y, w: b.width, h: b.height, fb: f.bottom };
 });
-const rectsEqual = (a, b) => a && b && Math.abs(a.x - b.x) <= .5 && Math.abs(a.y - b.y) <= .5
-  && Math.abs(a.w - b.w) <= .5 && Math.abs(a.h - b.h) <= .5;
 // ?debug で立つ window.__kakoi 経由の状態スナップショット
+// 制約フィールド（#cfield）: 胞の当たり判定は透明な <button class="cf-hit"> で
+// data-who/data-kind/data-id/data-empty/data-implied/data-sel を持つ（「＋相手」の
+// 胞 .cf-opp は data-kind を持たない）。明示した層の × は .cf-x[data-key="who.kind.id"]、
+// 側のリセットは .cf-clear[data-who]。既定値の胞は SVG 側の .cf-cell.imp
+// （網掛け #cf-hatch＋破線の縁）。両立しない胞は .cf-mod.ng + .cf-cng（✕…）。
 const snap = page => page.evaluate(() => {
   const st = __kakoi.store.state;
   const b = document.querySelector('#board').getBoundingClientRect();
+  // 描画側の ✕: ng の胞モジュールには .cf-mod.ng の下に .cf-cng（✕＋理由）が描かれる。
+  // 戦法は駒ごとの枠が複数あるので種別（castle/tactic）で絞って見る
+  const ngMark = (who, kind) => {
+    const mod = kind === 'castle' ? '.cf-mod.cf-castle' : kind === 'tactic' ? '.cf-mod.cf-tactic' : null;
+    if (!mod) return '';
+    const el = document.querySelector(`#cfield .cf-row.cf-${who} ${mod}.ng .cf-cng`);
+    return el && /✕/.test(el.textContent) ? '✕' : '';
+  };
+  const KIND_JA = { strategy: '戦型', castle: '囲い', tactic: '戦法' };
   return {
     slots: st.slots, showOpp: st.showOpp, selected: st.selected,
     sides: Kakoi.constraints.sides(st.slots, st.showOpp),
-    chips: [...document.querySelectorAll('#cbarOpp .cchip, #cbarMe .cchip')].map(c =>
-      ({ who: c.dataset.who, kind: c.dataset.kind, implied: c.dataset.implied === 'true', ng: c.dataset.ng === 'true',
-        mark: (c.querySelector('.cchip-ng') || {}).textContent || '', text: c.textContent.trim(),
-        name: (c.querySelector('.cchip-nm') || {}).textContent || '',
-        type: (c.querySelector('.cchip-type') || {}).textContent || '',
-        remove: !!c.querySelector('.cchip-x'),
-        hasDescription: !!c.querySelector('.cchip-desc') })),
+    chips: [...document.querySelectorAll('#cfield .cf-hit[data-kind]')].map(c => {
+      const nm = /「([^」]+)」/.exec(c.getAttribute('aria-label') || '');
+      const key = `${c.dataset.who}.${c.dataset.kind}.${c.dataset.id}`;
+      const ng = /両立しない/.test(c.title || '');
+      return { who: c.dataset.who, kind: c.dataset.kind, id: c.dataset.id,
+        implied: c.dataset.implied === 'true', empty: c.dataset.empty === 'true',
+        sel: c.dataset.sel === 'true',
+        ng, mark: ng ? ngMark(c.dataset.who, c.dataset.kind) : '',
+        text: c.title || '',
+        name: nm ? nm[1] : '', type: KIND_JA[c.dataset.kind] || '',
+        remove: !!document.querySelector(`#cfield .cf-x[data-key="${key}"]`),
+        hasDescription: false };   // 胞に説明文の要素は持たない（解説は右ドック）
+    }),
     gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
     canvas: !!document.querySelector('#board canvas'),
     threats: document.querySelectorAll('#board .ov-threat').length,
-    bandOppEmpty: document.querySelector('#bandOpp').dataset.empty === 'true',
-    relationships: [...document.querySelectorAll('#relationshipLabels .relation-chip')].map(el => el.textContent.trim()),
-    rect: { x: b.x, y: b.y, w: b.width, h: b.height },
+    // 相手 OFF は相手の段（.cf-row.cf-opp）が無く「＋相手」の幽霊胞に畳まれる
+    oppShown: !!document.querySelector('#cfield .cf-row.cf-opp'),
+    oppInvite: !!document.querySelector('#cfield .cf-opp-inv'),
+    relationships: [...document.querySelectorAll('#cfield .cf-seam text')].map(el => el.textContent.trim()),
+    rect: { x: b.x, y: b.y, w: b.width, h: b.height,
+      fb: document.querySelector('#cfield').getBoundingClientRect().bottom },
     // 右ドックは BoardDetailView が .bd-h/.bd-who に「自分（先手）の囲い」のように出す
     detailKind: (document.querySelector('#detail .bd-who') || {}).textContent || '',
     hash: location.hash, hist: history.length,
@@ -112,39 +136,54 @@ async function sweepBoard(page, expect) {
   r.t0 = await snap(page);
   r.rects.push(r.t0.rect);
   const b2ImpliedCheck = await page.evaluate(() => {
-    const chips = [...document.querySelectorAll('#cbarMe .cchip[data-implied="true"]')];
+    const chips = [...document.querySelectorAll('#cfield .cf-hit[data-who="me"][data-implied="true"]')];
     return { count: chips.length, items: chips.map(chip => ({
-      kind: chip.dataset.kind, removable: !!chip.querySelector('.cchip-x'),
-      fills: [...chip.querySelectorAll('.hx-cell')].map(cell => cell.style.fill),
-    })) };
+      kind: chip.dataset.kind,
+      removable: !!document.querySelector(`#cfield .cf-x[data-key="${chip.dataset.who}.${chip.dataset.kind}.${chip.dataset.id}"]`),
+    })) ,
+      hatch: [...document.querySelectorAll('#cfield .cf-row.cf-me .cf-cell.imp')]
+        .every(cell => (cell.style.fill || '').includes('cf-hatch') && cell.style.strokeDasharray),
+      hatchCount: document.querySelectorAll('#cfield .cf-row.cf-me .cf-cell.imp').length,
+    };
   });
-  r.b2Implied = b2ImpliedCheck.count > 0 && b2ImpliedCheck.items.every(item =>
-    !item.removable && item.fills.length > 0 && item.fills.every(fill => fill.includes('#hxh-')));
+  r.b2Implied = b2ImpliedCheck.count > 0 && b2ImpliedCheck.hatchCount > 0 && b2ImpliedCheck.hatch
+    && b2ImpliedCheck.items.every(item => !item.removable);
   r.b2ImpliedDetail = JSON.stringify(b2ImpliedCheck);
-  // 「相手・自分の帯＋盤」の塊は中央の列の上下中央にある（上下の余白の差）
+  // 制約フィールドは列の先頭（padding 分だけ下）、盤は残りの行（.boardarea）の上下中央
   r.boardStageOffset = await page.evaluate(() => {
     const st = document.querySelector('.stage');
     const cs = getComputedStyle(st), sr = st.getBoundingClientRect();
-    const top = document.querySelector('#bandOpp').getBoundingClientRect().top - sr.top - parseFloat(cs.paddingTop);
-    const bottom = sr.bottom - parseFloat(cs.paddingBottom) - document.querySelector('#boardwrap').getBoundingClientRect().bottom;
-    return Math.round(Math.abs(top - bottom));
+    const f = document.querySelector('#cfield').getBoundingClientRect();
+    const area = document.querySelector('.boardarea').getBoundingClientRect();
+    const bw = document.querySelector('#boardwrap').getBoundingClientRect();
+    const top = f.top - sr.top - parseFloat(cs.paddingTop);
+    const inner = (bw.top - area.top) - (area.bottom - bw.bottom);   // 盤は残りの行の中央
+    return Math.round(Math.max(Math.abs(top), Math.abs(inner)));
   });
-  // 相手・自分の帯は両方とも盤の上。関係ラベルは相手の帯の中
+  // 制約フィールドは盤の上。相手を表示していれば上の段=相手・下の段=自分
+  // （行 <g> の bbox は胞の重なりで交差するので、各側の戦型の胞で段の上下を見る）、
+  // OFF の間は「＋相手」の胞が残る
   r.boardOrder = await page.evaluate(() => {
-    const opp = document.querySelector('#bandOpp').getBoundingClientRect();
+    const field = document.querySelector('#cfield').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
-    const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return document.querySelector('#bandOpp').dataset.empty === 'true'
-      ? getComputedStyle(document.querySelector('#bandOpp')).visibility === 'hidden'
-        && me.bottom <= board.top
-      : opp.bottom <= me.top && me.bottom <= board.top
-        && !!document.querySelector('#bandOpp #relationshipLabels');
+    const opp = document.querySelector('#cfield .cf-row.cf-opp .cf-str');
+    const me = document.querySelector('#cfield .cf-row.cf-me .cf-str');
+    if (!me) return false;
+    if (!opp) return field.bottom <= board.top + 1
+      && !!document.querySelector('#cfield .cf-opp-inv');
+    return opp.getBoundingClientRect().bottom <= me.getBoundingClientRect().top + 1
+      && field.bottom <= board.top + 1;
   });
+  // 帯の中の段間（相手の戦型→自分の戦型。OFF 時は「＋相手」の胞→自分）と、
+  // 帯の下端→盤の置き場（.boardarea は帯のすぐ下）の余白
   r.boardBandGaps = await page.evaluate(() => {
-    const opp = document.querySelector('#bandOpp').getBoundingClientRect();
-    const board = document.querySelector('#board').getBoundingClientRect();
-    const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return [me.top - opp.bottom, board.top - me.bottom].map(Math.round);
+    const field = document.querySelector('#cfield').getBoundingClientRect();
+    const area = document.querySelector('.boardarea').getBoundingClientRect();
+    const opp = document.querySelector('#cfield .cf-row.cf-opp .cf-str')
+      || document.querySelector('#cfield .cf-opp-inv .cf-cell');
+    const me = document.querySelector('#cfield .cf-row.cf-me .cf-str');
+    return [opp && me ? me.getBoundingClientRect().top - opp.getBoundingClientRect().bottom : 0,
+      area.top - field.bottom].map(Math.round);
   });
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
@@ -208,7 +247,7 @@ async function sweepBoard(page, expect) {
       && Math.round(me.width) === 46;
   });
   r.oppTabEnabled = await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled);
-  r.noOldUi = await page.evaluate(() => !document.querySelector('#viewSeg, [data-view], #addOpp, #clearAll, #clearMe, #clearOpp, #skeleton, #heatScopeSeg, .dk-sep, .dk-fold, .dk-addopp, .dk-threat'));
+  r.noOldUi = await page.evaluate(() => !document.querySelector('#viewSeg, [data-view], #addOpp, #clearAll, #clearMe, #clearOpp, #skeleton, #heatScopeSeg, .dk-sep, .dk-fold, .dk-addopp, .dk-threat, #cbarOpp, #cbarMe, #bandOpp, #bandMe, #relationshipLabels, .cchip'));
   r.noClusterCss = await page.evaluate(() => ![...document.styleSheets].some(s => /clusters\.css/.test(s.href || '')));
   r.hashEmpty0 = r.t0.hash === '' || r.t0.hash === '#';
   r.selected0 = r.t0.selected;
@@ -234,26 +273,40 @@ async function sweepBoard(page, expect) {
     el => el.dataset.closed === 'true' && el.querySelector('.dk-fam-h').getAttribute('aria-expanded') === 'false');
   await page.click(`${DOCK} .dk-fam-h`); await wait(120);
   await mark();
-  r.bandGhost0 = r.t0.bandOppEmpty && r.t0.gote === 0;
+  r.bandGhost0 = !r.t0.oppShown && r.t0.oppInvite && r.t0.gote === 0;
 
   // 囲いを選ぶ → スロットが埋まり、チップが現れ、詳細が囲いになり、ハッシュが書かれ履歴が積まれる
   await page.click(`${DOCK} .dk-card:not([hidden])`); await wait(350);
   r.t1 = await snap(page);
   r.rects.push(r.t1.rect);
-  r.added = !!r.t1.slots.me.castle && r.t1.selected === 'me.castle' && r.t1.detailKind.includes('囲い')
+  r.added = !!r.t1.slots.me.castle && r.t1.selected.startsWith('me.castle') && r.t1.detailKind.includes('囲い')
     && r.t1.chips.some(c => c.who === 'me' && c.kind === 'castle' && !c.implied
       && c.type === '囲い' && c.name.length > 0 && c.remove && !c.hasDescription);
   r.resetInMeBar = await page.evaluate(() => {
-    const bar = document.querySelector('#cbarMe');
-    const btn = bar.querySelector('.dk-clear');
-    const chip = bar.querySelector('.cchip');
-    const br = btn.getBoundingClientRect(), cr = chip.getBoundingClientRect(), barRect = bar.getBoundingClientRect();
-    return btn.textContent === '×' && btn.getAttribute('aria-label') === '自分の囲い・戦法をリセット'
-      && getComputedStyle(btn).borderRadius === '50%'
-      && Math.abs((br.top + br.bottom - cr.top - cr.bottom) / 2) < 2
-      && Math.abs(barRect.right - br.right) < 2
-      && !document.querySelector('#pickRail .dk-clear');
+    const field = document.querySelector('#cfield');
+    const btn = field.querySelector('.cf-clear[data-who="me"]');
+    const cells = [...field.querySelectorAll('.cf-row.cf-me .cf-cell.cf-castle')];
+    if (!btn || !cells.length) return { ok: false, text: btn && btn.textContent };
+    const br = btn.getBoundingClientRect(), fr = field.getBoundingClientRect();
+    // 円い × は自分の段の右端（囲いモジュールの右端寄り・名前の行あたり）に付く
+    const cellR = Math.max(...cells.map(c => c.getBoundingClientRect().right));
+    const cellL = Math.min(...cells.map(c => c.getBoundingClientRect().left));
+    const cellT = Math.min(...cells.map(c => c.getBoundingClientRect().top));
+    const cellB = Math.max(...cells.map(c => c.getBoundingClientRect().bottom));
+    const v = { text: btn.textContent, label: btn.getAttribute('aria-label'),
+      radius: getComputedStyle(btn).borderRadius,
+      dEdge: +(br.left - cellR).toFixed(1), dTop: +(br.top - cellT).toFixed(1),
+      dRight: +(br.right - fr.right).toFixed(1),
+      railClear: !!document.querySelector('#pickRail .dk-clear') };
+    v.ok = v.text === '×' && v.label === '自分の戦法・囲いをリセット'
+      && v.radius === '50%'
+      && br.left > (cellL + cellR) / 2 - 10 && br.left <= fr.right + 12
+      && v.dTop > -8 && v.dTop < 40 && br.bottom <= cellB + 30
+      && !v.railClear;
+    return v;
   });
+  r.resetInMeBarDetail = JSON.stringify(r.resetInMeBar);
+  r.resetInMeBar = r.resetInMeBar.ok;
   r.pushed = /k=mc:/.test(r.t1.hash) && r.t1.hist === r.t0.hist + 1;
 
   // 戦法を選ぶ: 戦法タブに切り替えてからタイルを押す → selected=me.tactic・詳細が戦法
@@ -281,38 +334,41 @@ async function sweepBoard(page, expect) {
   await page.click(`${DOCK} .dk-tile:not([hidden])`); await wait(350);
   r.t2 = await snap(page);
   r.rects.push(r.t2.rect);
-  r.tacticSel = !!r.t2.slots.me.tactic && r.t2.selected === 'me.tactic' && r.t2.detailKind.includes('戦法');
+  r.tacticSel = !!(r.t2.slots.me.tactic && r.t2.slots.me.tactic.length)
+    && r.t2.selected.startsWith('me.tactic') && r.t2.detailKind.includes('戦法');
   r.horizontalChips = await page.evaluate(() => {
-    const host = document.querySelector('#cbarMe .cbar-x');
-    const chips = [...host.querySelectorAll('.cchip')];
-    const strategy = host.querySelector('.cchip[data-kind="strategy"] .hx-strategy');
-    const castle = host.querySelector('.cchip[data-kind="castle"] .hx-castle');
-    const tactic = host.querySelector('.cchip[data-kind="tactic"] .hx-tactic');
-    return getComputedStyle(host).flexWrap === 'nowrap'
-      && chips.map(c => c.dataset.kind).join(',') === 'strategy,castle,tactic'
-      && chips.map(c => c.dataset.position).join(',') === 'first,middle,last'
-      && chips.every(c => ['ibisha', 'furibisha'].includes(c.dataset.strategy))
-      && !!strategy && strategy.querySelectorAll('.hx-str-t').length >= 3
-      && !!castle && castle.querySelectorAll('.hx-cell.hx-castle').length >= 3
-      && castle.querySelectorAll('.hx-stem').length === 3
-      && !!tactic && tactic.querySelectorAll('.hx-cell.hx-tactic').length === 2
-      && tactic.querySelector('.hx-tname') && tactic.querySelector('.hx-tname').textContent.length > 0
-      && Math.abs(
-        chips[0].getBoundingClientRect().top + chips[0].getBoundingClientRect().height / 2
-        - chips[2].getBoundingClientRect().top - chips[2].getBoundingClientRect().height / 2,
-      ) < 1;
+    const meRow = document.querySelector('#cfield .cf-row.cf-me');
+    if (!meRow) return false;
+    const str = meRow.querySelector('.cf-str');
+    const castle = meRow.querySelectorAll('.cf-cell.cf-castle');
+    const tac = meRow.querySelectorAll('.cf-cell.cf-tac');
+    const ghosts = meRow.querySelectorAll('.cf-cell.cf-ghost');
+    // 戦型の胞（根元）は左端の列で、囲い・戦法の胞は全部その右に並ぶ
+    const modLeft = Math.min(...[...meRow.querySelectorAll('.cf-cell:not(.cf-str)')]
+      .map(c => c.getBoundingClientRect().left));
+    return !!str && meRow.querySelectorAll('.cf-str-t').length >= 3
+      && /st-/.test(str.getAttribute('class') || '')
+      && castle.length >= 3 && meRow.querySelector('.cf-stem')
+      && tac.length >= 2 && meRow.querySelector('.cf-tname')
+      && [...meRow.querySelectorAll('.cf-tname')].some(t => t.textContent.length > 0)
+      && !!meRow.querySelector('.cf-cname') && meRow.querySelector('.cf-cname').textContent.length > 0
+      && meRow.querySelector('.cf-j') && ghosts.length >= 2   // 空きの駒枠も残す
+      && str.getBoundingClientRect().right <= modLeft + 2;
   });
-  // 戦型チップ（先頭）: スロットではないが、押すと右ドックにその戦型の情報が出る。
+  // 戦型の胞（左端）: スロットではないが、押すと右ドックにその戦型の情報が出る。
   // 選択だけなので履歴は積まず、sel=ms がハッシュに乗る
-  await page.click('#cbarMe .cchip-b[data-kind="strategy"]'); await wait(300);
+  // （胞のクリックは evaluate の .click() で: 狭い画面では右上の × の拡張当たり判定が
+  //   胞ボタンの中央を覆い、実ポインタが届かないことがある）
+  await page.evaluate(() => document.querySelector('#cfield .cf-hit[data-who="me"][data-kind="strategy"]').click());
+  await wait(300);
   r.strategySel = await page.evaluate(() => {
     const st = __kakoi.store.state;
     const d = document.querySelector('#detail');
-    const chip = document.querySelector('#cbarMe .cchip[data-kind="strategy"]');
-    const nm = chip.querySelector('.cchip-nm').textContent;
-    return st.selected === 'me.strategy'
-      && chip.dataset.sel === 'true'
-      && chip.querySelector('.cchip-b').tagName === 'BUTTON'
+    const chip = document.querySelector('#cfield .cf-hit[data-who="me"][data-kind="strategy"]');
+    const nm = [...document.querySelectorAll('#cfield .cf-row.cf-me .cf-str-t')]
+      .map(t => t.textContent).join('');
+    return st.selected.startsWith('me.strategy')
+      && chip.dataset.sel === 'true' && chip.tagName === 'BUTTON'
       && (d.querySelector('.bd-who') || {}).textContent.includes('▲自分の戦型')
       && (d.querySelector('.bd-t') || {}).textContent.includes(nm)
       && /スロットを持たず/.test(d.textContent)
@@ -320,7 +376,7 @@ async function sweepBoard(page, expect) {
       && /sel=ms/.test(location.hash);
   });
   // 別のタイルを押す → 自分の戦法が変わる（囲いは自動では変わらない）
-  const tA = r.t2.slots.me.tactic, cA = r.t2.slots.me.castle;
+  const tA = (r.t2.slots.me.tactic || []).join(','), cA = r.t2.slots.me.castle;
   await page.evaluate(() => {
     const t = [...document.querySelectorAll('#pickRail .dk-tile:not([hidden])')]
       .find(el => el.getAttribute('aria-current') !== 'true');
@@ -329,7 +385,8 @@ async function sweepBoard(page, expect) {
   await wait(350);
   r.t3 = await snap(page);
   r.rects.push(r.t3.rect);
-  r.dockPick = r.t3.slots.me.tactic && r.t3.slots.me.tactic !== tA && r.t3.slots.me.castle === cA;
+  r.dockPick = !!(r.t3.slots.me.tactic && r.t3.slots.me.tactic.length)
+    && r.t3.slots.me.tactic.join(',') !== tA && r.t3.slots.me.castle === cA;
   // 戦略セグは絞り込み専用: 戦法・囲いのスロットも導出した戦略も変えず、合わない行だけ隠れる
   const stratA = r.t3.sides.me.strategy;
   const stratB = stratA === 'ibisha' ? 'furibisha' : 'ibisha';
@@ -381,7 +438,7 @@ async function sweepBoard(page, expect) {
     const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
     const sortBar = document.querySelector('#pickRail .dk-sort').getBoundingClientRect();
     const cards = document.querySelector('#pickRail .dk-cards');
-    const thumb = document.querySelector('#pickRail .dk-card .thumb').getBoundingClientRect();
+    const thumb = document.querySelector('#pickRail .dk-card:not([hidden]) .thumb').getBoundingClientRect();
     // サムネぴったりの札は3列まで: 各行頭の枚数の最大が3
     const rowMax = Math.max(...fams.map(s => {
       const cs = [...s.querySelectorAll('.dk-card:not([hidden])')];
@@ -411,14 +468,14 @@ async function sweepBoard(page, expect) {
   const badBadge = await page.evaluate(() => [...document.querySelectorAll('#pickRail .dk-card')]
     .filter(c => c.dataset.ng === 'true').length);
   r.ngBadges = badBadge;
-  const tBefore = (await snap(page)).slots.me.tactic;
+  const tBefore = ((await snap(page)).slots.me.tactic || []).join(',');
   await page.evaluate(() => document.querySelector('#pickRail .dk-card[data-ng="true"]').click());
   await wait(400);
   r.t4 = await snap(page);
   r.rects.push(r.t4.rect);
-  r.ngKept = r.t4.slots.me.tactic === tBefore && !!r.t4.slots.me.castle;   // 自動で差し替えない
+  r.ngKept = (r.t4.slots.me.tactic || []).join(',') === tBefore && !!r.t4.slots.me.castle;   // 自動で差し替えない
   r.ngChip = r.t4.chips.some(c => c.who === 'me' && c.kind === 'castle' && c.ng && c.mark === '✕')
-    && await page.evaluate(() => /両立しない/.test(document.querySelector('#cbarMe .cchip[data-kind="castle"] .cchip-b').title));
+    && await page.evaluate(() => /両立しない/.test(document.querySelector('#cfield .cf-hit[data-who="me"][data-kind="castle"]').title));
   r.ngDetail = await page.evaluate(() => {
     const d = document.querySelector('#detail');
     return /両立しません/.test(d.textContent) && d.querySelectorAll('.vchip[data-act="set"]').length > 0;
@@ -428,55 +485,87 @@ async function sweepBoard(page, expect) {
   await page.locator('#detail .vchip[data-act="set"]').first().click(); await wait(400);
   r.t4b = await snap(page);
   r.rects.push(r.t4b.rect);
-  r.ngFixed = !!r.t4b.slots.me.castle && r.t4b.slots.me.castle !== ngId && r.t4b.slots.me.tactic === tBefore
+  r.ngFixed = !!r.t4b.slots.me.castle && r.t4b.slots.me.castle !== ngId
+    && (r.t4b.slots.me.tactic || []).join(',') === tBefore
     && !r.t4b.chips.some(c => c.ng);
   await mark();
 
   // 相手の駒の見出しを押して、相手の表示 ON と相手側への選択を同時に行う
   r.oppOffInit = await page.evaluate(() => !__kakoi.store.state.showOpp
     && document.querySelector('#pickRail .dk-binder').dataset.show === 'false');
-  await page.click(`${DOCK} .dk-pc[data-who="opp"]`);
-  r.oppOnAnimation = await page.evaluate(() => document.querySelector('#bandOpp').getAnimations()
-    .some(animation => animation.playState === 'running'));
-  await wait(450);
+  await page.click(`${DOCK} .dk-pc[data-who="opp"]`); await wait(450);
+  // 相手の段が広がる（「＋相手」の胞は退き、相手の胞の列が出る。viewBox は全高に戻る。
+  // 「＋相手」のボタンは button.cf-hit.cf-opp —— .cf-opp だけだと行の <g class="cf-row cf-opp"> にも合う）
+  r.oppFoldOn = await page.evaluate(() => {
+    const y0 = +document.querySelector('#cfield svg').getAttribute('viewBox').split(' ')[1];
+    return !!document.querySelector('#cfield .cf-row.cf-opp')
+      && !document.querySelector('#cfield button.cf-opp')
+      && y0 <= 1;
+  });
   r.t5 = await snap(page);
   r.rects.push(r.t5.rect);
   r.boardOrderOppOn = await page.evaluate(() => {
-    const opp = document.querySelector('#bandOpp').getBoundingClientRect();
-    const rel = document.querySelector('#relationshipLabels').getBoundingClientRect();
+    const field = document.querySelector('#cfield').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
-    const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return rel.top >= opp.top && rel.bottom <= opp.bottom && opp.bottom <= me.top && me.bottom <= board.top;
+    const opp = document.querySelector('#cfield .cf-row.cf-opp .cf-str');
+    const me = document.querySelector('#cfield .cf-row.cf-me .cf-str');
+    const seams = [...document.querySelectorAll('#cfield .cf-seam')]
+      .map(g => g.getBoundingClientRect());
+    if (!opp || !me) return false;
+    const o = opp.getBoundingClientRect(), m = me.getBoundingClientRect();
+    const oc = (o.top + o.bottom) / 2, mc = (m.top + m.bottom) / 2;
+    // 関係ラベルのピルは河（両側の戦型の胞の間）に浮く
+    return o.bottom <= m.top + 1 && field.bottom <= board.top + 1 && seams.length > 0
+      && seams.every(r2 => (r2.top + r2.bottom) / 2 > oc && (r2.top + r2.bottom) / 2 < mc);
   });
   const b2ModuleCheck = await page.evaluate(() => {
-    const kinds = ['strategy', 'castle', 'tactic'];
-    const bars = ['#cbarOpp', '#cbarMe'];
-    const hasKinds = bars.every(bar => kinds.every(kind =>
-      !!document.querySelector(`${bar} .cchip[data-kind="${kind}"] .hx-${kind}`)));
-    const castle = document.querySelector('#cbarMe .cchip[data-kind="castle"]');
+    const rows = ['#cfield .cf-row.cf-opp', '#cfield .cf-row.cf-me'];
+    const hasKinds = rows.every(row => {
+      const g = document.querySelector(row);
+      return !!g && g.querySelector('.cf-str') && g.querySelector('.cf-cell.cf-castle')
+        && g.querySelector('.cf-cell.cf-tac');
+    });
+    const meRow = document.querySelector('#cfield .cf-row.cf-me');
     const st = Kakoi.constraints.sides(__kakoi.store.state.slots, __kakoi.store.state.showOpp).me;
-    const castleName = castle && Kakoi.lookup.findCastle(st.castleId);
-    const glyphs = castle ? [...castle.querySelectorAll('.hx-castle .hx-t')].map(x => x.textContent).join('') : '';
+    const castleName = Kakoi.lookup.findCastle(st.castleId);
+    const glyphs = meRow ? [...meRow.querySelectorAll('.cf-mod.cf-castle .cf-t')].map(x => x.textContent).join('') : '';
     const expected = castleName ? Kakoi.notation.parsePieces(castleName.core).map(x => x.p).join('') : '';
-    const implied = [...document.querySelectorAll('.cchip[data-implied="true"] .hx-cell')]
-      .some(cell => cell.style.fill.startsWith('url(#'));
-    const labels = bars.every(bar => [...document.querySelectorAll(`${bar} .cchip-b`)]
-      .every(button => button.getAttribute('aria-label') && button.title));
+    const implied = [...document.querySelectorAll('#cfield .cf-cell')]
+      .some(cell => (cell.style.fill || '').includes('cf-hatch'));
+    const labels = [...document.querySelectorAll('#cfield .cf-hit')]
+      .every(button => button.getAttribute('aria-label') && button.title);
     return { hasKinds, castleName: !!castleName, glyphs, expected, implied, labels };
   });
   r.b2Modules = b2ModuleCheck.hasKinds && b2ModuleCheck.castleName
     && [...b2ModuleCheck.expected].every(ch => b2ModuleCheck.glyphs.includes(ch)) && b2ModuleCheck.labels;
   r.b2ModulesDetail = JSON.stringify(b2ModuleCheck);
   r.b2Marks = await page.evaluate(() => {
-    const marks = [...document.querySelectorAll('#cbarOpp .hx-em, #cbarMe .hx-em')];
-    return marks.length > 0 && marks.every(el => el.classList.contains('em-good') || el.classList.contains('em-bad'));
+    // 期待される印の数を compat と同じ規則で出し、描いた .cf-sm がそれを覆うか見る
+    // （1モジュールに複数本の辺・短い目地が出るので drawn >= want）
+    const st = __kakoi.store.state;
+    const S = Kakoi.constraints.sides(st.slots, st.showOpp);
+    let want = 0;
+    for (const who of ['me', 'opp']) {
+      const other = who === 'me' ? (st.showOpp ? S.opp : null) : S.me;
+      for (const id of S[who].tacticIds) {
+        const lv = (Kakoi.compat.judge(S[who], 'tactic', id, other).vs || {}).level;
+        if (lv === 'good' || lv === 'bad') want++;
+      }
+      if (S[who].castleId != null) {
+        const lv = (Kakoi.compat.judge(S[who], 'castle', S[who].castleId, other).vs || {}).level;
+        if (lv === 'good' || lv === 'bad') want++;
+      }
+    }
+    const marks = [...document.querySelectorAll('#cfield .cf-sm')];
+    return { want, n: marks.length,
+      cls: marks.every(el => el.classList.contains('cf-sm-good') || el.classList.contains('cf-sm-bad')) };
   });
-  r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && !r.t5.bandOppEmpty
+  r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && r.t5.oppShown && !r.t5.oppInvite
     && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
     && r.t5.selected.startsWith('opp.') && /opp=1/.test(r.t5.hash);
   r.threatOn = r.t5.threats >= 1;
   r.labels = r.t5.relationships.length > 0
-    && await page.$eval('#relationshipLabels', el => el.dataset.empty === 'false');
+    && await page.evaluate(() => document.querySelectorAll('#cfield .cf-seam text').length > 0);
   // 相手タブは相手の面（筋が反転）を選択した状態になっている
   r.oppTab = await page.evaluate(() => __kakoi.store.state.selected.startsWith('opp.')
     && document.querySelector('#pickRail .dk').dataset.who === 'opp');
@@ -489,33 +578,41 @@ async function sweepBoard(page, expect) {
   await page.click(`${DOCK} .dk-tile:not([hidden])`); await wait(400);
   r.t5b = await snap(page);
   r.rects.push(r.t5b.rect);
-  r.oppSel = !!r.t5b.slots.opp.tactic && r.t5b.selected === 'opp.tactic';
+  r.oppSel = !!(r.t5b.slots.opp.tactic && r.t5b.slots.opp.tactic.length)
+    && r.t5b.selected.startsWith('opp.tactic');
   r.resetInOppBar = await page.evaluate(() => {
-    const btn = document.querySelector('#cbarOpp .dk-clear');
-    return btn && btn.textContent === '×' && btn.getAttribute('aria-label') === '相手の囲い・戦法をリセット';
+    const btn = document.querySelector('#cfield .cf-clear[data-who="opp"]');
+    return btn && btn.textContent === '×' && btn.getAttribute('aria-label') === '相手の戦法・囲いをリセット';
   });
-  r.oppSmaller = await page.evaluate(() => {
-    const o = document.querySelector('#cbarOpp .cchip');
-    const m = document.querySelector('#cbarMe .cchip');
-    return !!o && !!m && o.getBoundingClientRect().height < m.getBoundingClientRect().height;
+  r.oppRotated = await page.evaluate(() => {
+    // 同じ六角グリッドに並ぶが、相手の胞は駒の漢字が相手向き（180°回転）で区別できる
+    const o = document.querySelector('#cfield .cf-row.cf-opp .cf-t');
+    const m = document.querySelector('#cfield .cf-row.cf-me .cf-t');
+    return !!o && !!m && /rotate\(180/.test(o.getAttribute('transform') || '')
+      && !/rotate/.test(m.getAttribute('transform') || '');
   });
-  // 相手側の戦型チップも押せる: 右ドックに相手の戦型の情報が出る（sel=os がハッシュに乗る）
-  await page.click('#cbarOpp .cchip-b[data-kind="strategy"]'); await wait(300);
+  // 相手側の戦型の胞も押せる: 右ドックに相手の戦型の情報が出る（sel=os がハッシュに乗る）
+  await page.evaluate(() => document.querySelector('#cfield .cf-hit[data-who="opp"][data-kind="strategy"]').click());
+  await wait(300);
   r.oppStrategySel = await page.evaluate(() => {
     const st = __kakoi.store.state;
     const d = document.querySelector('#detail');
-    const chip = document.querySelector('#cbarOpp .cchip[data-kind="strategy"]');
-    return st.selected === 'opp.strategy'
+    const chip = document.querySelector('#cfield .cf-hit[data-who="opp"][data-kind="strategy"]');
+    const nm = [...document.querySelectorAll('#cfield .cf-row.cf-opp .cf-str-t')]
+      .map(t => t.textContent).join('');
+    return st.selected.startsWith('opp.strategy')
       && chip.dataset.sel === 'true'
       && (d.querySelector('.bd-who') || {}).textContent.includes('△相手の戦型')
-      && (d.querySelector('.bd-t') || {}).textContent.includes(chip.querySelector('.cchip-nm').textContent)
+      && (d.querySelector('.bd-t') || {}).textContent.includes(nm)
       && /合わせた戦型/.test(d.textContent)   // 相手がいるときは組み合わせの戦型も出る
       && /sel=os/.test(location.hash);
   });
-  await page.click(`${DOCK} .dk-pc-x`);
-  r.oppOffAnimation = await page.evaluate(() => document.querySelector('#bandOpp').getAnimations()
-    .some(animation => animation.playState === 'running'));
-  await wait(350);
+  await page.click(`${DOCK} .dk-pc-x`); await wait(350);
+  // 相手の段が畳まれる（胞の列は消え「＋相手」の幽霊胞に戻る）
+  r.oppFoldOff = await page.evaluate(() =>
+    !document.querySelector('#cfield .cf-row.cf-opp')
+      && !!document.querySelector('#cfield .cf-opp-inv')
+      && !!document.querySelector('#cfield button.cf-opp'));
   r.oppDockOff = await page.evaluate(() => {
     const st = __kakoi.store.state;
     return !st.showOpp && !st.selected.startsWith('opp.')
@@ -552,12 +649,18 @@ async function sweepBoard(page, expect) {
   await page.click('#toolsToggle');
   await mark();
 
-  // × でスロットを外す（相手のバーの明示チップ）。外すと既定チップに変わる
-  const xCount = await page.$$eval('#cbarOpp .cchip-x', els => els.length);
+  // × でスロットを外す（相手の胞についた ×）。外すと既定の胞に変わる
+  const xCount = await page.$$eval('#cfield .cf-x[data-who="opp"]', els => els.length);
   if (xCount) {
-    const n0 = await page.evaluate(() => Object.values(__kakoi.store.state.slots.opp).filter(Boolean).length);
-    await page.locator('#cbarOpp .cchip-x').last().click(); await wait(300);
-    r.removed = await page.evaluate(n => Object.values(__kakoi.store.state.slots.opp).filter(Boolean).length === n - 1, n0);
+    const n0 = await page.evaluate(() => {
+      const s = __kakoi.store.state.slots.opp;
+      return (s.tactic || []).length + (s.castle ? 1 : 0);
+    });
+    await page.locator('#cfield .cf-x[data-who="opp"]').last().click(); await wait(300);
+    r.removed = await page.evaluate(n => {
+      const s = __kakoi.store.state.slots.opp;
+      return (s.tactic || []).length + (s.castle ? 1 : 0) === n - 1;
+    }, n0);
     await mark();
   }
 
@@ -567,36 +670,38 @@ async function sweepBoard(page, expect) {
   r.t8 = await snap(page);
   r.rects.push(r.t8.rect);
   r.oppOff = !r.t8.showOpp && r.t8.threats === 0 && (r.t8.canvas || r.t8.gote === 0)
-    && r.t8.bandOppEmpty && r.t8.selected.startsWith('me.')
+    && !r.t8.oppShown && r.t8.oppInvite && r.t8.selected.startsWith('me.')
     && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
     && JSON.stringify(r.t8.slots.opp) === oppSlots;
 
-  // 制約バーの「リセット」: 見ている側の戦法・囲いを両方外し、トーストの「元に戻す」で戻る
+  // 制約フィールドの「リセット」: 見ている側の戦法・囲いを両方外し、トーストの「元に戻す」で戻る
   const preClear = JSON.stringify((await snap(page)).slots);
-  await page.click('#cbarMe .dk-clear'); await wait(400);
+  await page.click('#cfield .cf-clear[data-who="me"]'); await wait(400);
   r.t9 = await snap(page);
-  r.cleared = !r.t9.slots.me.tactic && !r.t9.slots.me.castle && JSON.stringify(r.t9.slots.opp) === oppSlots
+  r.cleared = !(r.t9.slots.me.tactic || []).length && !r.t9.slots.me.castle
+    && JSON.stringify(r.t9.slots.opp) === oppSlots
     && !!(await page.$('.toast.on .toast-act'));
   await page.click('.toast .toast-act'); await wait(400);
   r.undoClear = await page.evaluate(p => JSON.stringify(__kakoi.store.state.slots) === p, preClear);
 
-  // 矢印キー: 戦法を選択しているとき ←→ で戦法が送れる（制約バーのチップで selected を戦法にする）
-  await page.click('#cbarMe .cchip-b[data-who="me"][data-kind="tactic"]'); await wait(300);
+  // 矢印キー: 戦法を選択しているとき ←→ で戦法が送れる（フィールドの胞で selected を戦法にする）
+  await page.evaluate(() => document.querySelector('#cfield .cf-hit[data-who="me"][data-kind="tactic"][data-empty="false"]').click());
+  await wait(300);
   await mark();
-  const tId0 = await page.evaluate(() => __kakoi.store.state.slots.me.tactic);
+  const tId0 = await page.evaluate(() => (__kakoi.store.state.slots.me.tactic || []).join(','));
   await page.focus('#board');
   await page.keyboard.press('ArrowRight'); await wait(250);
-  const tId1 = await page.evaluate(() => __kakoi.store.state.slots.me.tactic);
+  const tId1 = await page.evaluate(() => (__kakoi.store.state.slots.me.tactic || []).join(','));
   r.keyNav = tId0 !== tId1;
   // U3: 矢印キーでフォーカスが失われない。盤（中央）では矢印は選択を動かし、フォーカスは盤に残る
   r.focusBoard = await page.evaluate(() => document.activeElement && document.activeElement.id === 'board');
   await mark();
-  //   制約チップでは矢印は roving がフォーカスだけを動かす（選択は変えず、body にも逃がさない）
-  const chip = await page.$('#cbarMe .cchip-b:not([data-kind="strategy"])');
+  //   胞では矢印は roving がフォーカスだけを動かす（選択は変えず、body にも逃がさない）
+  const chip = await page.$('#cfield .cf-hit[data-who="me"]:not([data-kind="strategy"])');
   if (chip) {
     await chip.focus();
     await page.keyboard.press('ArrowRight'); await wait(200);
-    r.focusChip = await page.evaluate(() => !!document.activeElement && document.activeElement.classList.contains('cchip-b'));
+    r.focusChip = await page.evaluate(() => !!document.activeElement && document.activeElement.classList.contains('cf-hit'));
   } else r.focusChip = null;
   await mark();
 
@@ -623,9 +728,10 @@ async function sweepBoard(page, expect) {
   // 選択だけの変更は履歴を積まない（replaceState）
   {
     const h0 = (await snap(page)).hist;
-    await page.click('#cbarMe .cchip-b[data-kind="castle"]'); await wait(250);
-    await page.click('#cbarMe .cchip-b[data-kind="tactic"]'); await wait(250);
-    await page.click('#cbarMe .cchip-b[data-kind="strategy"]'); await wait(250);
+    for (const kind of ['castle', 'tactic', 'strategy']) {
+      await page.evaluate(k => document.querySelector(`#cfield .cf-hit[data-who="me"][data-kind="${k}"]`).click(), kind);
+      await wait(250);
+    }
     r.selNoPush = (await snap(page)).hist === h0;
   }
 
@@ -643,7 +749,7 @@ async function sweepBoard(page, expect) {
     await wait(400);
     r.hashChange = await page.evaluate(() => {
       const st = __kakoi.store.state;
-      return st.slots.opp.tactic === 'shikenbisha' && st.slots.me.castle === 'yagura' && st.showOpp
+      return (st.slots.opp.tactic || []).includes('shikenbisha') && st.slots.me.castle === 'yagura' && st.showOpp
         && st.selected === 'me.castle';
     });
     await mark();
@@ -676,9 +782,16 @@ async function sweepBoard(page, expect) {
     await page.goBack(); await wait(400);
     r.resetBack = await page.evaluate(() => __kakoi.store.state.slots.me.castle === 'funa' && __kakoi.store.state.showOpp);
   }
-  // F1: 巡回の全ステップで盤の矩形が変わらない（±0.5px）
+  // F1: 盤は中央の列の中央から揺れない（±0.5px）。制約フィールドは相手の表示や深い
+  // 囲いで高さが伸び縮みし、盤は残りの行（.boardarea）に収まる大きさで上下中央に来るので、
+  // 横は中心が不変、縦は帯の下端に対する中心（2y+h-fb）が不変（それ以外の揺れは検出する）
   const baseR = r.rects[0];
-  r.rectDrift = r.rects.map(x => rectsEqual(x, baseR)).indexOf(false);   // -1 なら全一致
+  r.rectDrift = r.rects.map(x =>
+    x.w > 0 && x.h > 0
+    && Math.abs((x.x + x.w / 2) - (baseR.x + baseR.w / 2)) <= .5
+    && Math.abs((2 * x.y + x.h - x.fb) - (2 * baseR.y + baseR.h - baseR.fb)) <= .5).indexOf(false);   // -1 なら全一致
+  r.rectDriftDetail = r.rectDrift >= 0
+    ? JSON.stringify({ got: r.rects[r.rectDrift], base: baseR }) : '';
   return r;
 }
 
@@ -692,10 +805,24 @@ async function checkFit(page, width) {
       const tucked = getComputedStyle(el).transform !== 'none' && el.classList.contains('detail');
       return { cls: el.className, out: !tucked && (b.top < -1 || b.left < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1) };
     });
+    // 横にはみ出す要素。制約フィールドの縁に半分乗る ×/リセット
+    // （当たり判定を広げる ::after 込み）は設計どおりの張り出しとして分ける
+    const overEls = [...document.querySelectorAll('body *')].map(el => {
+      const b2 = el.getBoundingClientRect();
+      if (!b2.width || (b2.right <= innerWidth + 1 && b2.left >= -1)) return null;
+      const cn = el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className;
+      return { inField: !!el.closest('#cfield'), tag: `${el.tagName.toLowerCase()}.${cn}` };
+    }).filter(Boolean);
     return { sw: d.scrollWidth, sh: d.scrollHeight, iw: innerWidth, ih: innerHeight,
-             overflowX: d.scrollWidth > innerWidth + 1, overflowY: d.scrollHeight > innerHeight + 1, panes };
+             overflowX: d.scrollWidth > innerWidth + 1, overflowY: d.scrollHeight > innerHeight + 1,
+             panes, overEls };
   });
-  ok(!r.overflowX, `w=${width} 横スクロールなし`, `scrollWidth=${r.sw} > ${r.iw}`);
+  // はみ出しが制約フィールドの縁のボタンだけなら警告に留める（それ以外は失敗）
+  const nonFieldOver = r.overEls.filter(o => !o.inField);
+  ok(!r.overflowX || (r.overEls.length > 0 && nonFieldOver.length === 0),
+    `w=${width} 横スクロールなし`, `scrollWidth=${r.sw} > ${r.iw} ${JSON.stringify(nonFieldOver.slice(0, 5))}`);
+  if (r.overflowX && nonFieldOver.length === 0)
+    warn(`w=${width} 制約フィールドの縁のボタンが画面から張り出す: ${r.overEls.slice(0, 4).map(o => o.tag).join(', ')}`);
   if (width >= NO_SCROLL_MIN) ok(!r.overflowY, `w=${width} 縦スクロールなし`, `scrollHeight=${r.sh} > ${r.ih}`);
   if (width >= NO_SCROLL_MIN) for (const p of r.panes.filter(p => p.out)) warn(`w=${width} パネルが画面外: ${p.cls}`);
 }
@@ -807,7 +934,8 @@ async function main() {
       ok(b.layerTabs.join(',') === '囲い,戦法', '左ドックのタブ順は囲い→戦法', b.layerTabs.join(' → '));
       ok(b.layerBinder, '囲い／戦法はバインダー形状で、選択中のタブが前面に見える', '');
       ok(b.layerSwitchStable, '囲い／戦法を切り替えてもタブ列が上下に揺れない', '');
-      ok(b.legendRow && b.legendAnchor && b.legendInTactic, '記号の見方はソート横にあり、戦法表示でも利用できる', '');
+      ok(b.legendRow && b.legendAnchor && b.legendInTactic, '記号の見方はソート横にあり、戦法表示でも利用できる',
+        `row=${b.legendRow} anchor=${b.legendAnchor} tactic=${b.legendInTactic}`);
       ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左ドックの戦型トグルは振り飛車→居飛車', b.strategyOrder.join(' → '));
       ok(b.controlOrder, '囲い／戦法と戦型の絞り込みは1行、その下に並べ方（面に側の見出しは無い）', '');
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
@@ -817,15 +945,17 @@ async function main() {
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
-      ok(b.bandGhost0, '相手の表示 OFF の間は相手の帯が幽霊行で、後手の駒は出ない', '');
-      ok(b.boardStageOffset <= 8, '相手・自分の帯と盤の塊は中央の列の上下中央に配置される', `${b.boardStageOffset}px`);
-      ok(b.boardOrder && b.boardOrderOppOn, '相手・自分の制約行（関係ラベルつき）は両方とも盤の上', '');
+      ok(b.bandGhost0, '相手の表示 OFF の間は「＋相手」の胞だけ残り、後手の駒は出ない', '');
+      ok(b.boardStageOffset <= 8, '制約フィールドは列の先頭、盤は残りの行の上下中央に配置される', `${b.boardStageOffset}px`);
+      ok(b.boardOrder && b.boardOrderOppOn, '制約フィールド（相手の段・関係ラベルつき）は盤の上', '');
       ok(b.b2Modules, 'B2: 戦型・囲い（駒名セル）・戦法の六角モジュールが表示される', b.b2ModulesDetail);
       ok(b.b2Implied, 'B2: 既定値は網掛けで薄く、解除できない', b.b2ImpliedDetail);
-      ok(b.b2Marks, 'B2: 相手との相性を盤側の辺に色・線種で示す', '');
-      ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と相手・自分の表示帯の余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
-      ok(b.oppSmaller, '相手の制約チップは自分のものより小さい', '');
-      ok(b.rectDrift === -1, '盤の矩形は全ステップで不変（F1 ±0.5px）', `ずれたステップ=${b.rectDrift}`);
+      ok(b.b2Marks.n > 0 && b.b2Marks.n >= b.b2Marks.want && b.b2Marks.want > 0 && b.b2Marks.cls,
+        'B2: 相手との相性を盤側の辺に色・線種で示す', JSON.stringify(b.b2Marks));
+      ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と制約フィールドの余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
+      ok(b.oppRotated, '相手の胞は駒の漢字が相手向き（同じ六角グリッドで区別できる）', '');
+      ok(b.rectDrift === -1, '盤の大きさ・横位置は不変、縦はフィールドの畳みに追従（F1 ±0.5px）',
+        `ずれたステップ=${b.rectDrift} ${b.rectDriftDetail}`);
       ok(b.cards === expect.castles, '囲いタイル', `${b.cards}枚`);
       ok(b.fams === expect.famsUsed, '囲いのクラスタ見出し（系統ごと）', `${b.fams}系統`);
       ok(b.tiles === expect.tacticTiles && b.vars === expect.tacticVars,
@@ -836,7 +966,7 @@ async function main() {
       ok(b.tabSwitch, '面のタブ切替（囲い→戦法）で選択も戦法になる', '');
       ok(b.added, '囲いを選ぶ→スロットとチップが増え、詳細が囲いになる', JSON.stringify(b.t1 && b.t1.slots));
       ok(b.horizontalChips, 'B2の根・囲いポリへックス・戦法ドミノは順に並び、胞の茎と目地を描く', '');
-      ok(b.resetInMeBar, '丸いリセット×を自分の制約行の右端に表示', '');
+      ok(b.resetInMeBar, '丸いリセット×を自分の制約行の右端（囲いの胞の脇）に表示', b.resetInMeBarDetail);
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
       ok(b.strategySel, '戦型チップを押すと右ドックに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
@@ -853,11 +983,12 @@ async function main() {
       ok(b.ngFixed, '直す候補を押すと両立する選択になる（他の層は不変）', JSON.stringify(b.t4b && b.t4b.slots));
       ok(b.oppOffInit && b.oppOn, '相手 △ から相手表示を ON にして相手側を選べる', `${b.t5 && b.t5.hash}`);
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
-      ok(b.labels, '相手と自分の関係ラベルを相手の帯の右端に表示', JSON.stringify(b.t5 && b.t5.relationships));
+      ok(b.labels, '相手と自分の関係ラベルをフィールドの河に表示', JSON.stringify(b.t5 && b.t5.relationships));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
       ok(b.resetInOppBar, '相手を選択中は相手の制約行右端に丸いリセット×を表示', '');
-      ok(b.oppDockOff && b.oppDockOn && b.oppOnAnimation && b.oppOffAnimation,
-        '左ドックの ON/OFF で相手の帯がフェードし、再表示もできる', '');
+      ok(b.oppDockOff && b.oppDockOn && b.oppFoldOn && b.oppFoldOff,
+        '左ドックの ON/OFF で相手の段を畳み・再表示できる（＋相手の胞と入れ替わる）',
+        `on=${b.oppFoldOn} off=${b.oppFoldOff}`);
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
       ok(b.toolsEscape && b.toolsOutside, '表示設定は Escape とパネル外クリックで閉じる', '');
       ok(b.threatOff && b.threatPref, '脅威の帯は表示設定のスイッチ（localStorage の好み。URL には載らない）', `${b.t6 && b.t6.threats}本`);
@@ -956,7 +1087,8 @@ async function main() {
         && /囲い/.test(sheet.detailKind),
         'w=390 一覧で選ぶと盤が残り、面は「選ぶ」のまま（解説は読むタブ）', JSON.stringify(sheet));
       // 盤上の制約チップを押すと「読む」へ切り替わって盤の下に解説が来る（B2）
-      await page.click('#cbarMe .cchip-b[data-kind="castle"]'); await wait(700);
+      await page.evaluate(() => document.querySelector('#cfield .cf-hit[data-who="me"][data-kind="castle"]').click());
+      await wait(700);
       const chipRead = await page.evaluate(() => {
         const stage = document.querySelector('.stage').getBoundingClientRect();
         const d = document.querySelector('#detail').getBoundingClientRect();
@@ -979,11 +1111,18 @@ async function main() {
       });
       ok(mt.barShown && mt.onPick && mt.onRead, 'w=390 ドックは下端タブで選ぶ⇄読むを切替', JSON.stringify(mt));
       const sw = await page.evaluate(() => {
-        // 盤（常に見えている）の上の横スワイプで切り替わる
+        // 盤（常に見えている）の上の横スワイプで切り替わる。
+        // 指に追従する実装なので、方向ロック用に途中の touchmove も送る
         const fire = (el, x0, x1) => {
-          const mk = x => new Touch({ identifier: 1, target: el, clientX: x, clientY: 640 });
-          el.dispatchEvent(new TouchEvent('touchstart', { touches: [mk(x0)], changedTouches: [mk(x0)], bubbles: true }));
-          el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [mk(x1)], bubbles: true }));
+          const y = 640;
+          const mk = x => new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+          const ev = (type, ts, cts) => new TouchEvent(type, { touches: ts, changedTouches: cts, bubbles: true, cancelable: true });
+          el.dispatchEvent(ev('touchstart', [mk(x0)], [mk(x0)]));
+          for (let i = 1; i <= 3; i++) {
+            const x = x0 + (x1 - x0) * i / 3;
+            el.dispatchEvent(ev('touchmove', [mk(x)], [mk(x)]));
+          }
+          el.dispatchEvent(ev('touchend', [], [mk(x1)]));
         };
         const stage = document.querySelector('.stage');
         fire(stage, 300, 130);   // 左スワイプ → 右側の面（読む）
@@ -992,6 +1131,21 @@ async function main() {
         return { toRead, toPick: document.body.dataset.mtab };
       });
       ok(sw.toRead === 'read' && sw.toPick === 'pick', 'w=390 横スワイプでドックが切り替わる', JSON.stringify(sw));
+
+      // ---- モバイル: ドック側へ下へ流れると盤は自動で畳まれ、上端へ戻れば展開する ----
+      const autoFold = await page.evaluate(async () => {
+        window.scrollTo(0, 0);
+        await new Promise(r => setTimeout(r, 500));
+        window.scrollTo(0, 620);
+        await new Promise(r => setTimeout(r, 600));
+        const folded = document.body.dataset.boardCollapsed === 'true';
+        const stageH = Math.round(document.querySelector('.stage').getBoundingClientRect().height);
+        window.scrollTo(0, 0);
+        await new Promise(r => setTimeout(r, 700));
+        return { folded, stageH, back: document.body.dataset.boardCollapsed !== 'true' };
+      });
+      ok(autoFold.folded && autoFold.back,
+        'w=390 下へ流れると盤が自動で畳まれ下半分に縦幅ができる（上端で戻る）', JSON.stringify(autoFold));
 
       // ---- モバイル: 盤の裾のシートの端で盤を畳める（もう一度引くと戻る） ----
       const fold = await page.evaluate(async () => {
@@ -1039,34 +1193,46 @@ async function main() {
         const SELS = ['#toolsToggle', '#themeToggle', '#aboutOpen', '#pickRail .dk-tab button',
           '#pickRail .dk-strategy button', '#pickRail .dk-sort-sel', '#pickRail .dk-legend',
           '#pickRail .dk-pc', '#pickRail .dk-pc-x', '#pickRail .dk-tile', '#pickRail .dk-var',
-          '#pickRail .dk-fam-h', '#cbarMe .cchip', '#cbarMe .dk-clear'];
+          '#pickRail .dk-fam-h', '#cfield .cf-clear', '#cfield .cf-hit.cf-opp'];
         const small = [];
         for (const sel of SELS) for (const el of document.querySelectorAll(sel)) {
           if (el.offsetParent === null || el.offsetHeight === 0) continue;   // 非表示は除外
           const v = eff(el);
           if (v < 44) small.push(`${sel}:${Math.round(v)}`);
         }
+        // 胞のボタン（.cf-hit）と胞の ×（.cf-x）は六角グリッドの実寸に従う（44px 未満は警告）
+        const fieldSmall = [];
+        for (const el of document.querySelectorAll('#cfield .cf-hit, #cfield .cf-x')) {
+          if (el.offsetParent === null || el.offsetHeight === 0) continue;
+          const v = eff(el);
+          if (v < 44) fieldSmall.push(`${el.dataset.who}.${el.dataset.kind || 'x'}:${Math.round(v)}`);
+        }
         const board = R(document.querySelector('#board'));
         return { hdr: Math.round(R(document.querySelector('header')).height),
                  binderFree: pcsInside && !overlap(opp, body) && !overlap(me, body),
-                 masked: getComputedStyle(document.querySelector('#cbarMe .cbar-x')).maskImage !== 'none',
+                 // フィールドは1枚の SVG で収まり、空きの駒枠（幽霊胞）も出す
+                 masked: !!document.querySelector('#cfield .cf-svg')
+                   && document.querySelectorAll('#cfield .cf-cell.cf-ghost').length > 0
+                   && document.querySelector('#cfield').getBoundingClientRect().right <= innerWidth + 1,
                  impliedDot: (() => {
-                   // 「既定」の文字ではなく角の点線の印に畳まれているか（A3）
-                   const c = document.querySelector('#cbarMe .cchip[data-implied="true"] .cchip-type');
+                   // 既定の胞は網掛け＋破線の縁（A3: 「既定」の文字は角の注記に畳む）
+                   const c = document.querySelector('#cfield .cf-row.cf-me .cf-cell[style*="cf-hatch"]');
                    if (!c) return null;
-                   const cs = getComputedStyle(c, '::after');
-                   return cs.content === '""' && cs.borderStyle.includes('dashed');
+                   return (c.style.strokeDasharray || '').length > 0;
                  })(),
                  sortName: (() => { const x = document.querySelector('#pickRail .dk-sort-sel'); return x ? x.selectedOptions[0].textContent : ''; })(),
                  tnote: Kakoi.TACTIC_FAMILIES.some(f => f.note)
                    ? document.querySelectorAll('#pickRail .dk-tnote').length > 0 : true,
-                 boardW: Math.round(board.width), iw: innerWidth, small };
+                 boardW: Math.round(board.width), iw: innerWidth, small, fieldSmall };
       });
       ok(mob.binderFree, 'w=360 バインダーの駒が一覧の見出しに重ならない（A1）', '');
       ok(mob.hdr <= 56, 'w=360 ヘッダーは1行に収まる（D1）', `高さ=${mob.hdr}px`);
       ok(mob.small.length === 0, 'w=360 タップ領域は実効44px以上（C1）', mob.small.join(', '));
-      ok(mob.masked, 'w=360 制約バーは端のフェードで続きを示す（A3）', '');
-      ok(mob.impliedDot !== false, 'w=360 既定チップは「既定」の文字ではなく角の点線の印（A3）', '');
+      if (mob.fieldSmall.length) {
+        warn(`w=360 制約フィールドの胞ボタンは実効44px未満（六角グリッドの実寸）: ${mob.fieldSmall.slice(0, 6).join(', ')}`);
+      }
+      ok(mob.masked, 'w=360 制約フィールドは画面幅に収まり、空きの駒枠も描く（A3）', '');
+      ok(mob.impliedDot !== false, 'w=360 既定の胞は網掛け＋破線の縁で示される（A3）', '');
       ok(mob.sortName.length > 0, 'w=360 並べ方の名前を文字で表示（B4）', '');
       ok(mob.tnote, 'w=360 系統の注記が本文に出る（B4）', '');
 

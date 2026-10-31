@@ -14,13 +14,13 @@ window.Kakoi = window.Kakoi || {};
   class BoardScreen {
     /**
      * @param {{ els:object, board:Kakoi.BoardView, overlay:Kakoi.OverlayView,
-     *   bars:{opp:Kakoi.ConstraintBar, me:Kakoi.ConstraintBar},
+     *   field:Kakoi.ConstraintField,
      *   detail:Kakoi.BoardDetailView,
      *   repo:Kakoi.Repository, rows:Array,
      *   nameOf:(who:string,kind:string,id:string)=>string }} deps
      */
-    constructor({ els, board, overlay, bars, detail, repo, rows, nameOf }) {
-      Object.assign(this, { els, board, overlay, bars, detail, repo, rows });
+    constructor({ els, board, overlay, field, detail, repo, rows, nameOf }) {
+      Object.assign(this, { els, board, overlay, field, detail, repo, rows });
       this._nameOf = nameOf;
       this._renderKey = null;
       this._meTactic = null;
@@ -62,8 +62,8 @@ window.Kakoi = window.Kakoi || {};
     _renderKeyOf(state, d, attack) {
       const { S } = d;
       return JSON.stringify({
-        me: [S.me.strategy, S.me.tacticId, S.me.castleId],
-        opp: state.showOpp ? [S.opp.strategy, S.opp.tacticId, S.opp.castleId] : null,
+        me: [S.me.strategy, S.me.tacticIds, S.me.castleId],
+        opp: state.showOpp ? [S.opp.strategy, S.opp.tacticIds, S.opp.castleId] : null,
         heat: !!state.heat,
         atk: attack ? [attack.who, attack.attack.id, !!state.showOpp] : 0,
       });
@@ -86,8 +86,7 @@ window.Kakoi = window.Kakoi || {};
 
       if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')
           || changed.has('attackId') || changed.has('showThreat')) {
-        this._paintBar(state, d);
-        this._paintRelationships(state, d);
+        this._paintField(state, d);
         this._paintStage(state, d);
         this._renderDetail(state, d);
       }
@@ -107,7 +106,8 @@ window.Kakoi = window.Kakoi || {};
         ...merged.contacts.filter(c => c.kind === 'ng').map(c => c.sq),
         ...(attack ? attack.target : []),
       ], 'bad');
-      // 自分の戦法が変わったときは主役の駒を経路どおりに滑らせる（旧戦法画面と同じ）
+      // 自分の戦法が変わったときは主役の駒を経路どおりに滑らせる（旧戦法画面と同じ。
+      // 複数採用では主の戦法=飛車優先を動かす）
       const meT = this.repo.tacticById(S.me.tacticId);
       const trace = animate && meT && this._meTactic !== meT.id && meT.route && meT.route.length > 1
         ? { square: meT.lead.square, piece: meT.lead.piece, path: meT.route } : null;
@@ -121,55 +121,48 @@ window.Kakoi = window.Kakoi || {};
       const ov = this.overlay;
       // 脅威の帯は相手を表示しているときだけ（表示設定の showThreat で切り替える）
       ov.threat(state.showThreat !== false && threat ? threat.threatFiles : null);
-      const meT = this.repo.tacticById(S.me.tacticId);
-      const oppT = state.showOpp ? this.repo.tacticById(S.opp.tacticId) : null;
+      // 採用した全戦法の主役の経路を引く（自分=墨・相手=朱）
       const routes = [
-        hasArrow(meT) ? { squares: meT.route, tone: 'ink' } : null,
-        hasArrow(oppT) ? { squares: oppT.route.map(mirrorSq), tone: 'bad' } : null,
-      ].filter(Boolean);
+        ...S.me.tacticIds.map(id => this.repo.tacticById(id))
+          .filter(hasArrow).map(t => ({ squares: t.route, tone: 'ink' })),
+        ...(state.showOpp ? S.opp.tacticIds.map(id => this.repo.tacticById(id)) : [])
+          .filter(hasArrow).map(t => ({ squares: t.route.map(mirrorSq), tone: 'bad' })),
+      ];
       ov.routes(routes.length ? routes : null);
       ov.contacts(merged.contacts.length
         ? merged.contacts.map(c => ({ sq: c.sq, kind: c.kind }))
         : null);
     }
 
-    // ---------- 制約バー（盤の上に相手・自分の2本） ----------
-    // marks: 層ごとの「相手との相性」（compat.judge().vs）。バーが盤に向く辺に ◎/△ を出す
-    _barMarks(state, d, who) {
+    // ---------- 制約フィールド（盤の上の1枚の蜂の巣。両側を同じグリッドに並べる） ----------
+    // marks: 層ごとの「相手との相性」（compat.judge().vs）。戦法は id ごと。
+    //   自分の戦法の胞と相手の囲いの胞が河を隔てて共有する辺に ◎（緑）/△（赤）を出す
+    _fieldMarks(state, d, who) {
       const st = d.S[who];
       const other = who === 'me' ? (state.showOpp ? d.S.opp : null) : d.S.me;
-      const m = {};
-      for (const kind of ['tactic', 'castle']) {
-        const id = st[K.lookup.FIELD[kind]];
-        if (id == null) continue;
-        const j = K.compat.judge(st, kind, id, other);
+      const m = { tactic: {}, castle: null };
+      for (const id of st.tacticIds) {
+        const j = K.compat.judge(st, 'tactic', id, other);
         const lv = j.vs && j.vs.level;
-        m[kind] = lv === 'good' || lv === 'bad' ? lv : null;
+        m.tactic[id] = lv === 'good' || lv === 'bad' ? lv : null;
+      }
+      if (st.castleId != null) {
+        const j = K.compat.judge(st, 'castle', st.castleId, other);
+        const lv = j.vs && j.vs.level;
+        m.castle = lv === 'good' || lv === 'bad' ? lv : null;
       }
       return m;
     }
-    _paintBar(state, d) {
-      const common = { selected: state.selected, nameOf: this._nameOf };
-      this.bars.opp.render({ ...common, st: state.showOpp ? d.S.opp : null, ng: d.ng.opp, marks: this._barMarks(state, d, 'opp') });
-      this.bars.me.render({ ...common, st: d.S.me, ng: d.ng.me, marks: this._barMarks(state, d, 'me') });
+    _paintField(state, d) {
+      this.field.render({
+        S: d.S, slots: state.slots, ng: d.ng,
+        marks: { me: this._fieldMarks(state, d, 'me'), opp: this._fieldMarks(state, d, 'opp') },
+        labels: state.showOpp ? d.labels : [],
+        selected: state.selected, showOpp: state.showOpp, nameOf: this._nameOf,
+      });
     }
 
-    _paintRelationships(state, d) {
-      const labels = state.showOpp ? d.labels : [];
-      const host = this.els.relations;
-      host.dataset.empty = String(!labels.length);
-      host.setAttribute('aria-hidden', String(!labels.length));
-      host.replaceChildren(...labels.map(({ label }) => {
-        const chip = document.createElement('span');
-        chip.className = 'relation-chip';
-        chip.textContent = `#${label}`;
-        chip.title = `対局の関係: ${label}`;
-        return chip;
-      }));
-    }
-
-    // ---------- 盤の上の帯（側の表示＋制約バー）・持ち駒 ----------
-    // 伝統的な記法の持ち駒: 主語（▲/△）＋駒＋二枚以上は漢数字（歩二・香 など）
+    // ---------- 持ち駒（盤の左右。伝統的な記法: 主語＋駒＋二枚以上は漢数字） ----------
     _handText(pos, mark) {
       const h = (pos && pos.hand) || [];
       if (!h.length) return '';
@@ -180,18 +173,6 @@ window.Kakoi = window.Kakoi || {};
 
     _paintStage(state, d) {
       const e = this.els;
-      const sel = parseSel(state.selected);
-      const hasOpp = !!state.showOpp;
-      // 帯は盤の上に2行（上から相手→自分）。相手 OFF の間も行トラックは残して盤の矩形を
-      // 固定し、相手の帯はフェードで出し入れする（F1）。表示 ON/OFF は左ドックの駒の見出しで行う
-      e.bandOpp.dataset.empty = hasOpp ? 'false' : 'true';
-      if (!hasOpp) e.bandOpp.dataset.sel = 'false';
-
-      for (const who of ['me', 'opp']) {
-        if (who === 'opp' && !hasOpp) continue;
-        (who === 'me' ? e.bandMe : e.bandOpp).dataset.sel = sel && sel.who === who ? 'true' : 'false';
-      }
-
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
@@ -201,9 +182,13 @@ window.Kakoi = window.Kakoi || {};
     // 選んだ層が他の層と両立しないときは、理由と直す候補（constraints.suggest）も渡す
     _renderDetail(state, d) {
       const sel = parseSel(state.selected) || { who: 'me', kind: 'castle' };
-      const ng = d.ng[sel.who][sel.kind] || null;
+      // 戦法は駒ごとの枠: 選択中の駒枠（無ければ主の戦法）の ng を取る
+      const tacId = sel.id || d.S[sel.who].tacticId;
+      const ng = sel.kind === 'tactic'
+        ? ((d.ng[sel.who].tactic || {})[tacId] || null)
+        : (d.ng[sel.who][sel.kind] || null);
       this.detail.render({
-        sel,
+        sel: sel.id ? sel : { who: sel.who, kind: sel.kind, id: sel.kind === 'tactic' ? tacId : undefined },
         st: d.S[sel.who],
         S: d.S,
         showOpp: state.showOpp,
@@ -211,7 +196,8 @@ window.Kakoi = window.Kakoi || {};
         attackId: state.attackId,
         contacts: d.merged.contacts,   // merge 済みの接触を共有する（S5: 再計算しない）
         ng,
-        suggest: ng ? K.constraints.suggest(state.slots, state.showOpp, sel.who, sel.kind)
+        suggest: ng ? K.constraints.suggest(state.slots, state.showOpp, sel.who, sel.kind, 6,
+            sel.kind === 'tactic' ? tacId : null)
           .map(id => ({ id, name: this._nameOf(sel.who, sel.kind, id) })) : [],
       });
     }

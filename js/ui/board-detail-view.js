@@ -61,6 +61,19 @@ window.Kakoi = window.Kakoi || {};
         if (t && !t.contains(e.relatedTarget) && handlers.onHover) handlers.onHover([], null);
       });
       el.addEventListener('click', e => {
+        const shuf = e.target.closest('.fun-shuf');
+        if (shuf) {   // お楽しみ: 格言を1つ引き直す（状態には触れない）
+          const bq = shuf.closest('.fun-pv'), F = K.FUN;
+          if (bq && F && F.proverbs.length > 1) {
+            const cur = bq.querySelector('b').textContent;
+            let pv = cur;
+            for (let i = 0; i < 6 && pv === cur; i++)
+              pv = F.proverbs[Math.floor(Math.random() * F.proverbs.length)];
+            bq.querySelector('b').textContent = `「${pv.t}」`;
+            bq.querySelector('span').textContent = pv.n;
+          }
+          return;
+        }
         const atk = e.target.closest('.attack');
         if (atk) {
           if (handlers.onAttack) handlers.onAttack(atk.getAttribute('aria-pressed') === 'true' ? null : atk.dataset.id);
@@ -110,7 +123,7 @@ window.Kakoi = window.Kakoi || {};
         || { who: 'me', kind: 'castle' };
       const who = sel.who === 'opp' ? 'opp' : 'me';
       const kind = sel.kind === 'tactic' ? 'tactic' : 'castle';
-      const norm = { who, kind };
+      const norm = { who, kind, id: sel.id };
       this._sel = norm;
       const st = p.st !== undefined ? p.st : S[who];
       const citer = makeCiter();
@@ -118,8 +131,10 @@ window.Kakoi = window.Kakoi || {};
         : kind === 'tactic' ? this._tactic(norm, st, S, p.showOpp, citer, p)
         : this._castle(norm, st, S, p.showOpp, p.attackId, citer, p);
       this._tapSq = null;   // 描き直しでタップ中の data-sq 要素は取り替わる
-      // 共通の末尾: 両軍の接触 → 出典。接触は呼び出し側の導出（merge 済み）を受け取る（S5: 再計算しない）
-      this.el.innerHTML = [b.body, Sec().contacts(p.contacts, citer), Sec().sources(b.sources, citer)]
+      // 共通の末尾: 両軍の接触 → 出典 → お楽しみ（格言・ミーム・動画の余白コーナー）。
+      // 接触は呼び出し側の導出（merge 済み）を受け取る（S5: 再計算しない）
+      this.el.innerHTML = [b.body, Sec().contacts(p.contacts, citer),
+        Sec().sources(b.sources, citer), Sec().fun(norm)]
         .filter(Boolean).join('');
     }
 
@@ -139,8 +154,9 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // ---------- *.tactic ----------
+    // 戦法は駒ごとの枠が複数ある: 選択中の枠（sel.id、無ければ主の戦法）の詳細を出す
     _tactic(sel, st, S, showOpp, citer, p) {
-      const t = findTactic(st.tacticId);
+      const t = findTactic(sel.id || st.tacticId);
       if (!t) {
         return {
           body: this._head(sel, '（未選択）', st.implied && st.implied.tactic)

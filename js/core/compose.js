@@ -34,21 +34,28 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 戦略・戦法・囲いの3層を合成した局面を返す。
-   * @param {{strategy?:string, tacticId?:string, castleId?:string,
+   * 戦略・戦法（複数可）・囲いを合成した局面を返す。
+   * @param {{strategy?:string, tacticId?:string, tacticIds?:string[], castleId?:string,
    *          side?:'sente'|'gote', oppStrategy?:string}} opts
+   *   tacticIds: 駒ごとに1つずつ選んだ戦法の全リスト（tacticId は後方互換の単独指定）。
+   *   主の戦法（defaults.primaryTacticId）が土台、残りは副の戦法として必須の駒を先に置く。
    *   oppStrategy: 囲い未選択のとき戦略テンプレートの既定囲いを振り分けるのに使う
    * @returns {{position: Kakoi.Position,
-   *            conflicts: Array<{code:string, squares?:string[], text:string}>,
+   *            conflicts: Array<{code:string, squares?:string[], text:string, layers?:string[]}>,
    *            moved: number, flexed: Array<{piece:string, from:string, to:string}>}}
+   *   conflicts.layers: 衝突の帰属（戦法の id / 'castle'）。無ければ共有（全体の問題）
    */
   function position(opts = {}) {
-    const { strategy = null, tacticId = null, castleId = null,
+    const { strategy = null, tacticId = null, tacticIds = null, castleId = null,
       side = 'sente', oppStrategy = null } = opts;
-    const tactic = tacticId ? findTactic(tacticId) : null;
+    const ids = Array.isArray(tacticIds) && tacticIds.length
+      ? tacticIds : (tacticId ? [tacticId] : []);
+    const tactics = ids.map(findTactic).filter(Boolean);
+    const tactic = tactics.find(t => t.id === Kakoi.defaults.primaryTacticId(ids)) || null;
+    const restT = tactics.filter(t => t !== tactic);
     const castle = castleId ? findCastle(castleId) : null;
 
-    // 1. 土台: 戦法があれば戦法の局面、なければ戦略テンプレート（既定囲い＋想定配置）
+    // 1. 土台: 主の戦法があればその局面、なければ戦略テンプレート（既定囲い＋想定配置）
     let base;
     if (tactic) {
       base = Kakoi.Position.fromPieces(tactic.pieces, {
@@ -64,6 +71,9 @@ window.Kakoi = window.Kakoi || {};
       ...x, role: x.role === 'core' || x.role === 'rest' ? 'support' : x.role,
     }));
     const hand = [...(base.hand || [])];
+    for (const t of restT) {          // 副戦法の持ち駒も土台に足す（同種は重ねない）
+      for (const p of (t.hand || '')) if (!hand.includes(p)) hand.push(p);
+    }
     const baseSq = new Map(pieces.map(x => [x, sq(x.f, x.r)]));  // moved の基準
 
     const conflicts = [];
@@ -72,15 +82,20 @@ window.Kakoi = window.Kakoi || {};
     const assigned = new Set(); // 囲いの目標として確定した駒（donor・追い出しの対象外）
     const at = (f, r) => pieces.find(x => key(x.f, x.r) === key(f, r));
 
-    // 2. ロック: 戦法の essential ∪ 主役のマスにいる駒
+    // 2. ロック: 戦法の essential ∪ 主役のマスにいる駒（主→副の順。lockOwner=その戦法の id）
     const locked = new Set();
+    const lockOwner = new Map();      // 駒 → ロックした戦法の id（衝突の帰属用）
+    const lockAt = (x, tag) => { locked.add(x); if (!lockOwner.has(x)) lockOwner.set(x, tag); };
+    const lockSqsOf = t => {
+      const sqs = new Set(parsePieces(t.essential).map(x => sq(x.f, x.r)));
+      if (t.lead && t.lead.square) sqs.add(t.lead.square);
+      return sqs;
+    };
     if (tactic) {
-      const sqs = new Set(parsePieces(tactic.essential).map(x => sq(x.f, x.r)));
-      if (tactic.lead && tactic.lead.square) sqs.add(tactic.lead.square);
-      for (const s of sqs) {
+      for (const s of lockSqsOf(tactic)) {
         const { f, r } = parseSquare(s);
         const x = at(f, r);
-        if (x) locked.add(x);
+        if (x) lockAt(x, tactic.id);
       }
     }
     // 盤上で筋 f にいる先手の歩（ex を除く）。持ち駒の歩を打つと二歩になるかの判定用
@@ -132,6 +147,36 @@ window.Kakoi = window.Kakoi || {};
     const flexOf = s => (castle && Array.isArray(castle.flex)
       ? castle.flex.find(e => e && e.sq === s) : null);
 
+    // 3. 副戦法の必須層: 主の戦法と同じロック層として先に置く。土台に無い駒は
+    //    donor/持ち駒から置き、別の戦法のロック駒と重なれば衝突（帰属は両方の戦法）
+    for (const t of restT) {
+      const need = parsePieces(t.essential);
+      if (t.lead && t.lead.square) {
+        const ls = parseSquare(t.lead.square);
+        if (!need.some(x => x.f === ls.f && x.r === ls.r))
+          need.push({ p: t.lead.piece, f: ls.f, r: ls.r });
+      }
+      for (const e of need) {
+        const on = at(e.f, e.r);
+        if (on && on.p === e.p) {                       // 同種がいる: 共有の必須として採用
+          lockAt(on, t.id);
+          if (on.role !== 'lead') on.role = 'core';
+          continue;
+        }
+        if (on && locked.has(on)) {                     // 別の戦法のロック駒と衝突
+          conflicts.push({ code: 'SQUARE', squares: [sq(e.f, e.r)],
+            layers: [t.id, lockOwner.get(on)].filter(Boolean),
+            text: `${label(e.f, e.r)}で${on.p}と${e.p}が重なる` });
+          continue;
+        }
+        if (on) displace(on);
+        const placed = sourcePlace(e.p, e.f, e.r, 'core');
+        if (placed) lockAt(placed, t.id);
+        else conflicts.push({ code: 'COUNT', squares: [sq(e.f, e.r)], layers: [t.id],
+          text: `${e.p}${label(e.f, e.r)}を置く駒が足りない` });
+      }
+    }
+
     // core の目標 (f,r) がロック駒に塞がれたとき、崩し形として flex.to へ置く。
     // to のマスは「空き」か「置ける」（同種の駒＝貸し出しで兼ねる / 別種の非ロック駒＝追い出して置く）
     function tryFlex(t, f, r) {
@@ -171,12 +216,13 @@ window.Kakoi = window.Kakoi || {};
           if (on && locked.has(on)) {                    // ロック駒（essential/主役）と衝突
             if (!tryFlex(t, t.f, t.r)) {
               conflicts.push({ code: 'SQUARE', squares: [S],
+                layers: [...new Set(['castle', lockOwner.get(on)].filter(Boolean))],
                 text: `${label(t.f, t.r)}で${on.p}と${t.p}が重なる` });
             }
             continue;
           }
           if (on && assigned.has(on)) {                  // 先に確定した囲いの駒と衝突
-            conflicts.push({ code: 'SQUARE', squares: [S],
+            conflicts.push({ code: 'SQUARE', squares: [S], layers: ['castle'],
               text: `${label(t.f, t.r)}で${on.p}と${t.p}が重なる` });
             continue;
           }
@@ -206,7 +252,7 @@ window.Kakoi = window.Kakoi || {};
             flexed.push({ piece: t.p, from: sq(t.f, t.r), to: shared.to });
             continue;
           }
-          conflicts.push({ code: 'COUNT', squares: [sq(t.f, t.r)],
+          conflicts.push({ code: 'COUNT', squares: [sq(t.f, t.r)], layers: ['castle'],
             text: `${t.p}${label(t.f, t.r)}を置く駒が足りない` });
         }
       };
@@ -259,7 +305,7 @@ window.Kakoi = window.Kakoi || {};
           if (on && on.p === t.p) { assigned.add(on); continue; } // role はそのまま
           if (on && assigned.has(on)) continue;                    // 確定済みの core は動かせない
           if (!canSource(t.p, t.f, t.r, on)) {
-            conflicts.push({ code: 'SHELL', squares: [sq(t.f, t.r)],
+            conflicts.push({ code: 'SHELL', squares: [sq(t.f, t.r)], layers: ['castle'],
               text: `${label(t.f, t.r)}に${t.p}を置けず殻を省略` });
             continue;
           }
@@ -278,6 +324,7 @@ window.Kakoi = window.Kakoi || {};
           if (!on) continue;
           if (locked.has(on) || assigned.has(on) || on.role === 'lead') {
             conflicts.push({ code: 'HAND', squares: [sq(on.f, on.r)],
+              layers: [...new Set(['castle', lockOwner.get(on)].filter(Boolean))],
               text: `${p}を持ち駒にできない（${label(on.f, on.r)}の駒は戦法の必須）` });
             continue;
           }

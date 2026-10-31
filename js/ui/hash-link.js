@@ -20,12 +20,14 @@ window.Kakoi = window.Kakoi || {};
   const BOARD_KEYS = ['slots', 'showOpp', 'selected'];
 
   const encodeSel = sel => {
-    const [who, kind] = String(sel || '').split('.');
-    return WHO_LETTER[who] && KIND_LETTER[kind] ? WHO_LETTER[who] + KIND_LETTER[kind] : '';
+    const [who, kind, id] = String(sel || '').split('.');
+    if (!WHO_LETTER[who] || !KIND_LETTER[kind]) return '';
+    return WHO_LETTER[who] + KIND_LETTER[kind] + (id ? `.${id}` : '');
   };
   const decodeSel = s => {
-    const m = /^([mo])([tcs])$/.exec(String(s || ''));
-    return m ? `${WHO_CHAR[m[1]]}.${KIND_CHAR[m[2]]}` : null;
+    const m = /^([mo])([tcs])(?:\.([^\s.]+))?$/.exec(String(s || ''));
+    if (!m) return null;
+    return `${WHO_CHAR[m[1]]}.${KIND_CHAR[m[2]]}` + (m[3] ? `.${m[3]}` : '');
   };
 
   /** state からハッシュのクエリ部分（先頭の # を含まない）を作る。parseHash と対称。初期状態は '' */
@@ -33,10 +35,12 @@ window.Kakoi = window.Kakoi || {};
     const slots = state.slots;
     const toks = [];
     for (const who of ['me', 'opp']) {
-      for (const kind of ['tactic', 'castle']) {
-        const id = slots && slots[who] && slots[who][kind];
-        if (id) toks.push(`${WHO_LETTER[who]}${KIND_LETTER[kind]}:${id}`);
-      }
+      // 戦法は駒ごとの枠が複数ある（k= の中に同じ mt:/ot: が複数並ぶ）
+      const tids = slots && slots[who] ? slots[who].tactic : null;
+      for (const id of (Array.isArray(tids) ? tids : (tids ? [tids] : [])))
+        toks.push(`${WHO_LETTER[who]}t:${id}`);
+      const cid = slots && slots[who] ? slots[who].castle : null;
+      if (cid) toks.push(`${WHO_LETTER[who]}c:${cid}`);
     }
     if (!toks.length && !state.showOpp) return '';
     const p = new URLSearchParams();
@@ -51,7 +55,7 @@ window.Kakoi = window.Kakoi || {};
   /**
    * ハッシュ文字列（先頭の # を含まない）を解析し、盤面の状態を返す純粋関数。
    * 欠けた項目・不正な値は初期値（空のスロット・相手 OFF・selected=null）になる。
-   * id の正当性は呼び出し側（constraints.normalizeSlots）が確かめる
+   * 同じ駒の戦法が複数並んだときの絞り込みは呼び出し側（constraints.normalizeSlots）が行う
    * @returns {{slots:{me:Object, opp:Object}, showOpp:boolean, selected:string|null}}
    */
   function parseHash(h) {
@@ -61,7 +65,10 @@ window.Kakoi = window.Kakoi || {};
     if (p.has('k') || p.has('opp')) {
       for (const tok of String(p.get('k') || '').split(',')) {
         const m = /^([mo])([tc]):(.+)$/.exec(tok.trim());
-        if (m) slots[WHO_CHAR[m[1]]][KIND_CHAR[m[2]]] = m[3];
+        if (!m) continue;
+        const who = WHO_CHAR[m[1]], kind = KIND_CHAR[m[2]];
+        if (kind === 'tactic') (slots[who].tactic = slots[who].tactic || []).push(m[3]);
+        else slots[who].castle = m[3];
       }
       showOpp = p.get('opp') === '1';
       selected = decodeSel(p.get('sel'));

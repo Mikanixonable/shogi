@@ -20,7 +20,7 @@ window.Kakoi = window.Kakoi || {};
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: stage, bandOpp, relations, bandMe, barOpp, barMe,
+     *   els: stage, field,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els, dockTabs }) {
@@ -29,15 +29,13 @@ window.Kakoi = window.Kakoi || {};
       this._pvKey = null;
       this._pvRaf = null;
 
-      // 制約バーは盤の上に2本（上から相手・自分）
-      const barHandlers = {
-        onSelect: (w, k) => this._select(w, k, true),
-        onRemove: (w, k) => this._remove(w, k),
-      };
-      this.bars = {
-        opp: new K.ConstraintBar(els.barOpp, { who: 'opp', ...barHandlers }),
-        me: new K.ConstraintBar(els.barMe, { who: 'me', ...barHandlers }),
-      };
+      // 制約フィールドは盤の上に1枚（上の段=相手・下の段=自分。同じ六角グリッド）
+      this.field = new K.ConstraintField(els.field, {
+        onSelect: (w, k, id) => this._select(w, k, id, true),
+        onRemove: (w, k, id) => this._remove(w, k, id),
+        onOpp: on => this._setShowOpp(on),
+        onClear: w => this._clearSide(w),
+      });
       // 左ドック: 自分／相手のタブで切り替える1枚の面。見ている側・層は state.selected が持つ
       this.dock = new K.DockView(els.rail /* #pickRail */, {
         onSelect: (w, k) => this._select(w, k, false),
@@ -62,7 +60,7 @@ window.Kakoi = window.Kakoi || {};
       // 「見える半分」は BoardScreen に委譲（S6）
       this.screen = new K.BoardScreen({
         els, board, overlay,
-        bars: this.bars, detail: this.detail,
+        field: this.field, detail: this.detail,
         repo, rows: this.rows,
         nameOf: (w, k, id) => K.lookup.nameOf(k, id),
       });
@@ -70,11 +68,12 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // ---------- スロットの操作（他の層は自動では変わらない） ----------
+    // 戦法は駒ごとの枠: setTactic で同じ駒の枠だけ差し替え、違う駒は追加（複数同時採用）
     _set(who, kind, id) {
       const s = this.store.state;
       this.store.set({
         slots: K.constraints.setSlot(s.slots, who, kind, id),
-        selected: `${who}.${kind}`, dockTab: kind,
+        selected: `${who}.${kind}.${id}`, dockTab: kind,
       });
       this._openDrawer();
       // 狭い画面では一覧の選択で「読む」へ飛ばさない: 盤が追従表示のまま見えるので
@@ -93,10 +92,10 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    _select(who, kind, fromBar = false) {
+    _select(who, kind, id = null, fromBar = false) {
       const before = this.store.state;
       this.store.set({
-        selected: `${who}.${kind}`,
+        selected: id ? `${who}.${kind}.${id}` : `${who}.${kind}`,
         // 戦型は左ドックにタブが無い（情報は右ドック）。dockTab は層タブの記憶なのでそのままにする
         ...(K.constraints.KINDS.includes(kind) ? { dockTab: kind } : {}),
         ...(who === 'opp' && !before.showOpp ? { showOpp: true } : {}),
@@ -107,9 +106,10 @@ window.Kakoi = window.Kakoi || {};
       // （B2: 一覧側の reveal は止め、代わりに「読む」を見せる）
       if (fromBar) this._revealDetail();
       // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る。
-      // 戦型はスロットを持たないので reveal は項目を持たず no-op になる）
+      // 戦型はスロットを持たないので reveal は項目を持たず no-op になる。
+      // 戦法の駒枠の選択（id）はその系統の項目まで送る）
       const s = this.store.state;
-      this.dock.reveal(kind, K.constraints.sides(s.slots, s.showOpp)[who]);
+      this.dock.reveal({ who, kind, id }, K.constraints.sides(s.slots, s.showOpp)[who]);
     }
 
     _openDrawer() {
@@ -138,9 +138,15 @@ window.Kakoi = window.Kakoi || {};
       });
     }
 
-    // 選択を保ったまま1つ外す。外したあとは戦略既定値の既定チップに変わる
-    _remove(who, kind) {
-      this.store.set({ slots: K.constraints.setSlot(this.store.state.slots, who, kind, null) });
+    // 選択を保ったまま1つ外す。外したあとは戦略既定値の既定胞に変わる。
+    // 戦法は駒ごとの枠: id 指定はその枠だけ外す（他の駒の戦法は残る）。id なしは全部外す
+    _remove(who, kind, id = null) {
+      const s = this.store.state;
+      this.store.set({
+        slots: kind === 'tactic' && id
+          ? K.constraints.removeTactic(s.slots, who, id)
+          : K.constraints.setSlot(s.slots, who, kind, null),
+      });
     }
 
     /** 制約バーの「リセット」: 見ている側の戦法・囲いを両方外す。履歴に積むので「戻る」で元に戻せる */
@@ -198,7 +204,7 @@ window.Kakoi = window.Kakoi || {};
       const cur = K.constraints.sides(s.slots, s.showOpp)[who];
       const after = K.constraints.sides(next, s.showOpp)[who];
       const posOf = x => K.compose.position({
-        strategy: x.strategy, tacticId: x.tacticId, castleId: x.castleId, side: 'sente',
+        strategy: x.strategy, tacticIds: x.tacticIds, castleId: x.castleId, side: 'sente',
       }).position;
       const a = posOf(cur), b = posOf(after);
       for (const x of [...a.pieces, ...b.pieces]) {

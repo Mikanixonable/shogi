@@ -25,10 +25,16 @@ window.Kakoi = window.Kakoi || {};
 
   // その側の戦法を解決する。未選択なら戦略テンプレートの既定戦法
   // （既定値の解決規則は Kakoi.constraints が唯一の権威）
+  // 複数戦法: tacticIds があれば全て、主の戦法（primaryTacticId）が先頭
+  function _resolveTactics(side) {
+    const ids = (side && Array.isArray(side.tacticIds) && side.tacticIds.length)
+      ? side.tacticIds
+      : [Kakoi.defaults.tacticIdOf(side)].filter(Boolean);
+    return ids.map(findTactic).filter(Boolean);
+  }
   function _resolveTactic(side) {
-    if (side && side.tacticId) return findTactic(side.tacticId);
-    const id = Kakoi.defaults.tacticIdOf(side);
-    return id ? findTactic(id) : null;
+    const ts = _resolveTactics(side);
+    return ts.find(t => t.id === Kakoi.defaults.primaryTacticId(ts.map(t => t.id))) || ts[0] || null;
   }
 
   // その側の囲いを解決する。未選択なら戦略テンプレートの既定囲い
@@ -94,29 +100,29 @@ window.Kakoi = window.Kakoi || {};
       ? (opp.strategy === 'furibisha' ? 'taikou-i' : 'aiibisha')
       : (opp.strategy === 'ibisha' ? 'taikou-f' : 'aifuri');
 
+    const oppTactics = _resolveTactics(opp);
     const oppTactic = _resolveTactic(opp);
     const kingFile = _resolveKingFile(me, opp.strategy);
     const rookFile = _oppRookFileAbs(opp);
-    const routeEndFile = _routeEndFileAbs(oppTactic);
+    const routeEndFiles = oppTactics.map(_routeEndFileAbs).filter(f => f != null);
     const distance = (kingFile != null && rookFile != null) ? Math.abs(kingFile - rookFile) : null;
 
     // 重み: 戦型の初期値に、相手の戦法の pace と玉飛の距離で補正する
     const weights = { ...BASE_WEIGHTS[kind] };
-    if (oppTactic && oppTactic.pace === 'rapid') { weights.quick += .1; weights.side += .1; } // 急戦には間に合う囲い
-    if (oppTactic && oppTactic.pace === 'slow')  { weights.hard  += .1; weights.top  += .1; } // 持久戦には堅さと上部
+    if (oppTactics.some(t => t.pace === 'rapid')) { weights.quick += .1; weights.side += .1; } // 急戦には間に合う囲い
+    if (oppTactics.some(t => t.pace === 'slow'))  { weights.hard  += .1; weights.top  += .1; } // 持久戦には堅さと上部
     if (distance != null && distance <= 2) weights.top  += .1;   // 近い＝縦から攻められる
     if (distance != null && distance >= 4) weights.side += .1;   // 遠い＝横から回り込まれる
 
-    // 脅威の筋: 相手の飛車の筋＋主役の経路の終点の筋（重複は除く）。盤の脅威の帯に使う
-    const threatFiles = [...new Set([rookFile, routeEndFile].filter(f => f != null))];
+    // 脅威の筋: 相手の飛車の筋＋各戦法の主役の経路の終点の筋（重複は除く）。盤の脅威の帯に使う
+    const threatFiles = [...new Set([rookFile, ...routeEndFiles].filter(f => f != null))];
 
     // 端攻めの前兆（fitness の減点判定用）: 相手の飛車が端筋、または
-    // 香・桂の主役の経路の終点が玉の筋に近い（計画書 §3-3）
-    const oppLeadPiece = oppTactic && oppTactic.lead ? oppTactic.lead.piece : null;
+    // 香・桂の主役の経路の終点が玉の筋に近い（計画書 §3-3。複数戦法ではどれか1つでも）
     const edgeThreat = EDGE_FILES.has(rookFile)                                   // 相手の飛車が端筋
-      || (EDGE_LEADS.has(oppLeadPiece)                                            // 香・桂の主役の経路の終点が
-        && routeEndFile != null && kingFile != null                               // 玉の筋に近い
-        && Math.abs(routeEndFile - kingFile) <= 1);
+      || oppTactics.some(t => t.lead && EDGE_LEADS.has(t.lead.piece)              // 香・桂の主役の経路の終点が
+        && _routeEndFileAbs(t) != null && kingFile != null                        // 玉の筋に近い
+        && Math.abs(_routeEndFileAbs(t) - kingFile) <= 1);
 
     return { kind, label: KIND_LABEL[kind], distance, weights, threatFiles, edgeThreat };
   }

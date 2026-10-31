@@ -62,8 +62,7 @@
   const mode = new K.ConstraintMode({
     repo, store, board, overlay, dockTabs,
     els: {
-      stage: $('stageMain'), bandOpp: $('bandOpp'), relations: $('relationshipLabels'), bandMe: $('bandMe'),
-      barOpp: $('cbarOpp'), barMe: $('cbarMe'),
+      stage: $('stageMain'), field: $('cfield'),
       handOpp: $('handOpp'), handMe: $('handMe'),
       rail: $('pickRail'),
       detail: $('detail'),
@@ -88,21 +87,7 @@
     new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-drawer'] });
     sync();
   }
-  // 盤の収納/展開（モバイル。盤の裾のシートの端を引いて畳む）
-  {
-    const t = $('boardToggle');
-    const sync = () => {
-      const collapsed = document.body.dataset.boardCollapsed === 'true';
-      t.setAttribute('aria-expanded', String(!collapsed));
-      t.setAttribute('aria-label', collapsed ? '盤を出す' : '盤を収納する');
-    };
-    t.addEventListener('click', () => {
-      document.body.dataset.boardCollapsed = document.body.dataset.boardCollapsed === 'true' ? '' : 'true';
-      sync();
-    });
-    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-board-collapsed'] });
-    sync();
-  }
+  // 盤の収納/展開（モバイル。手動の帯＋ドックへ流れたときの自動畳み）は DockTabs._bindFold が持つ
 
   store.subscribe((state, changed) => {
     mode.update(state, changed);

@@ -71,46 +71,21 @@ header { position:relative; }
 .rail { border-right:1px solid var(--line); }
 .detail { border-left:1px solid var(--line); position:relative; }
 
-/* 中央: 相手・自分の制約バーを盤面の上に並べる。3行のトラックで盤の矩形を固定する（F1） */
-.stage .sideband[data-side="opp"] { order:0; }
-.stage .sideband[data-side="me"] { order:1; }
-.stage .boardarea { order:2; }
-.stage #bandOpp { transition:opacity .36s var(--ease), visibility 0s linear .36s; }
-.stage #bandOpp[data-empty="true"] { visibility:hidden; opacity:0; pointer-events:none; }
-.stage #bandOpp[data-empty="false"] { visibility:visible; opacity:1; transition:opacity .36s var(--ease), visibility 0s; }
-/* 関係ラベル（#対抗形 など）: 相手の帯の右端に添える（相手を表示しているときだけ） */
-.relation-row { display:flex; flex:none; min-width:0; align-items:center; justify-content:flex-end; gap:6px; overflow:hidden; }
-.relation-row[data-empty="true"] { display:none; }
-.relation-chip { flex:none; padding:1px 8px; border:1px solid var(--line); border-radius:999px;
-                 background:var(--bg); color:var(--muted); font-size:11px; line-height:1.4; white-space:nowrap; }
+/* 中央: 制約フィールド（1枚の蜂の巣。相手=上・自分=下）→ 盤。2行のトラック（F1） */
+.stage #cfield { order:0; }
+.stage .boardarea { order:1; }
 
 /* ===== rail: 左ドック（自分／相手のタブで切り替える1枚の面。DockView が構造を組み立てる。css/dock.css 参照） ===== */
 .rail { display:flex; flex-direction:column; padding:16px 18px; }
 .pane-fill { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:auto; }
 
 /* ===== stage: 盤を見る ===== */
-/* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。相手 OFF 時もトラックを確保する。
-   盤の大きさは stage の高さから帯2本を引いた残りで決める（board.css の .boardwrap）。
-   相手の帯は自分より一段小さい（--band-h-opp。主従の区別） */
-.stage { --band-h:50px; --band-h-opp:42px; --stage-gap:10px; display:grid; position:relative; container-type:size;
+/* 行: 制約フィールド（内容の高さ=aspect-ratio）＋盤（残り全部）。盤の大きさは
+   boardarea の残り高さから決める（board.css の .boardwrap が 100cqh を見る） */
+.stage { --stage-gap:8px; display:grid; position:relative; container-type:size;
          grid-template-columns:minmax(0,1fr);
-         grid-template-rows:var(--band-h-opp) var(--band-h) auto; align-content:center;
-         padding:24px 18px; gap:var(--stage-gap); }
-/* 状態の帯（sideband）: 側の印＋制約カプセル（＋相手だけ関係ラベル）の1行 */
-.sideband { display:flex; flex-direction:row; align-items:center; gap:10px; min-width:0; min-height:0; }
-.sideband[hidden] { display:none; }
-.sband-h { display:flex; align-items:center; flex:none; }
-.sband-h .who { flex:none; display:flex; align-items:center; gap:6px; font:700 13px/1 var(--font-d); letter-spacing:.06em; color:var(--muted); }
-.sband-h .who::before { content:"▲"; display:grid; place-items:center; width:24px; height:24px;
-                        border-radius:50%; background:var(--accent-soft); color:var(--accent); font:800 11px/1 var(--font-b); }
-.sideband[data-side="opp"] .who::before { content:"△"; background:color-mix(in srgb,var(--gote-ink) 12%,var(--bg)); color:var(--gote-ink); }
-/* 相手の制約条件は自分より小さく: チップ・リセットを等比で縮める（形・記号はそのまま） */
-.sideband[data-side="opp"] .cbar { min-height:36px; }
-.sideband[data-side="opp"] .cchip { zoom:.8; }
-.sideband[data-side="opp"] .dk-clear { zoom:.85; }
-.sideband[data-sel="true"] .who { color:var(--accent); }
-.sideband[data-side="opp"][data-sel="true"] .who { color:var(--gote-ink); }
-@media (prefers-reduced-motion:reduce) { .stage #bandOpp { transition:none; } }
+         grid-template-rows:auto minmax(0,1fr); align-content:center;
+         padding:20px 18px; gap:var(--stage-gap); }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
 .handcol { position:absolute; top:calc(var(--coord-h) + var(--coord-gap)); bottom:0; width:22px; margin:0 2px;
@@ -307,9 +282,13 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
 
   /* 縦1列は flex（order が効く＋sticky のコンテナが .app 全体になる。grid だと
      sticky 要素は自分の grid area に閉じて動かない）。minmax(0,…) に相当する
-     最小幅のキャップは各パネルの min-width:0 で取る */
-  .app { display:flex; flex-direction:column; }
+     最小幅のキャップは各パネルの min-width:0 で取る。スワイプ中に面が指に
+     追従して横へはみ出しても、ページの横スクロールにはしない */
+  .app { display:flex; flex-direction:column; overflow-x:clip; }
   .stage, .rail, .detail { min-width:0; grid-template-columns:minmax(0,1fr); }
+  /* 面の上の縦スワイプはブラウザのスクロールに任せ、横のずれは JS の面送りが
+     拾う（dock-tabs.js）。ここを pan-y にすると斜めスワイプでも縦が混ざらない */
+  .rail, .detail { touch-action:pan-y; }
   /* 見る（盤）を上端に固定し、下を流れる「選ぶ／読む」と同じ画面に収める（B1）。
      帯の行の高さは内容のまま（grid-template-rows:none）、盤の幅は board.css で高さに上限を付ける */
   .stage { order:-1; position:sticky; top:var(--hdr); z-index:15; height:auto; background:var(--bg);
@@ -326,12 +305,6 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
   .detail .vert { display:none; }
   /* 狭い画面では行の高さを緩める（盤の固定は sticky と svh の上限で行う） */
   .stage { grid-template-rows:none; align-content:normal; container-type:normal; }
-  /* ページがスクロールするので幽霊行は残さず、相手の帯は畳む */
-  .stage #bandOpp[data-empty="true"] { display:none; }
-  /* 帯は「側の印＋制約チップの横並び」の1行に詰める。関係ラベルは相手の帯の次の行へ折り返す */
-  .sideband { gap:8px; overflow:visible; }
-  .sideband[data-side="opp"] { flex-wrap:wrap; row-gap:2px; }
-  .relation-row { flex-basis:100%; justify-content:flex-start; min-height:20px; padding-left:32px; }
   /* 持ち駒は boardwrap に対する絶対配置のまま。22px の margin は持ち駒列の予約（22+2の張り出しと同じ） */
   .boardwrap { margin:0 22px; }
   /* 10px 未満の字を底上げする（C3） */
@@ -347,15 +320,12 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
   .app { flex-direction:row; flex-wrap:wrap; align-items:flex-start; }
   /* 盤は左列に高さいっぱいで固定（sticky は .app 全体がコンテナ）。一覧・読むは右列を流れる */
   .stage { flex:0 0 53%; height:calc(100svh - var(--hdr));
-           grid-template-rows:auto auto minmax(0,1fr); }
-  /* 両側の帯を盤の上に積み、盤を最後の行に置く */
-  .stage #bandOpp { grid-row:1; }
-  .stage #bandMe { grid-row:2; }
-  .stage .boardarea { grid-row:3; }
-  /* 盤に高さを回す: 関係ラベルは畳み（右ドックの対戦相性に同じ情報がある）、帯の上下を詰める */
+           grid-template-rows:auto minmax(0,1fr); }
+  /* 制約フィールドを盤の上に積み、盤を最後の行に置く */
+  .stage #cfield { grid-row:1; }
+  .stage .boardarea { grid-row:2; }
+  /* 盤に高さを回す: 帯の上下を詰める */
   .stage { gap:4px; padding-top:4px; padding-bottom:4px; }
-  .relation-row { display:none; }
-  .stage .cchip { height:36px; min-height:36px; }
   /* 右列は「選ぶ／読む」の切替タブ（data-mtab が見せる1枚を選ぶ）。下端タブは画面幅いっぱいのまま */
   .rail, .detail { flex:1 1 0; min-width:0; border-left:1px solid var(--line); }
   .rail { padding-right:max(14px, env(safe-area-inset-right)); }

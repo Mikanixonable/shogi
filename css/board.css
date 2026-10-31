@@ -1,9 +1,10 @@
 /* 盤と駒: 本榧の盤（縁まで続く柾目・光の側の艶・漆を盛った太刀盛りの線）と黄楊の彫駒（design-refs-board/kaya.html）。
    光は左上に固定（--lx/--ly/--len。js/ui/kaya-art.js の LX/LY/LEN と同じ値） */
 
-/* 広い画面の盤の大きさは .stage（container-type:size）の残り高さから決める（帯2本と行間を引く）。
-   boardarea は盤の高さだけを取り、帯は盤のすぐ上・下に付く */
-.boardarea { display:flex; align-items:center; justify-content:center; min-height:0; }
+/* 広い画面の盤の大きさは .boardarea（container-type:size。制約フィールドを引いた残り高）から
+   決める。制約フィールドは盤の上の1行、盤はその下の残りに収まる */
+.boardarea { display:flex; align-items:center; justify-content:center; min-height:0;
+             container-type:size; }
 /* 盤の外枠: 盤は罫の外に縁（--bm）を持ち、座標ラベルはその外に置く。#board の矩形は罫の内側だけ
    （重ね表示・駒の座標はこの矩形の割合で決まる）。縁の分は boardwrap の padding と gap で取る。
    持ち駒列の幅（左右24pxずつ）は .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
@@ -15,9 +16,11 @@
              display:grid; position:relative; grid-template-columns:minmax(0,1fr) var(--coord-w);
              grid-template-rows:var(--coord-h) minmax(0,auto); gap:calc(var(--coord-gap) + var(--bm));
              padding:0 0 var(--bm) var(--bm);
-             --avail-h:calc(100cqh - var(--band-h-opp, 0px) - var(--band-h, 0px) - var(--stage-gap, 0px) * 2);
-             width:min(calc(100cqw - 48px),
-               calc((var(--avail-h) - var(--coord-h) - var(--coord-gap) - var(--bm) * 2) * 9 / 9.6 + var(--coord-w) + var(--coord-gap) + var(--bm) * 2)); }
+             --avail-h:100cqh;
+             /* 制約フィールドの分は boardarea の残り高に譲り済み。盤は残りの9割強に収める */
+             --bw:min(calc(100cqw - 48px),
+               calc((var(--avail-h) - var(--coord-h) - var(--coord-gap) - var(--bm) * 2) * 9 / 9.6 + var(--coord-w) + var(--coord-gap) + var(--bm) * 2));
+             width:calc(var(--bw) * .92); }
 :root[data-theme="dark"] .boardwrap {
   --wood-1:#d6b67a; --wood-mid:#c49a58; --wood-2:#a87c42; --wood-ink:#1a0f06;
   --wood-glow:rgba(255,241,205,.55); --wood-grain-op:.85; --wood-mark:#4b351a;

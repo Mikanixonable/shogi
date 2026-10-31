@@ -21,10 +21,10 @@ window.Kakoi = window.Kakoi || {};
   function deriveBoard(slots, showOpp = true) {
     const S = K.constraints.sides(slots, showOpp);
     const mePos = K.compose.position({
-      strategy: S.me.strategy, tacticId: S.me.tacticId, castleId: S.me.castleId, side: 'sente',
+      strategy: S.me.strategy, tacticIds: S.me.tacticIds, castleId: S.me.castleId, side: 'sente',
     });
     const oppPos = showOpp ? K.compose.position({
-      strategy: S.opp.strategy, tacticId: S.opp.tacticId, castleId: S.opp.castleId, side: 'gote',
+      strategy: S.opp.strategy, tacticIds: S.opp.tacticIds, castleId: S.opp.castleId, side: 'gote',
     }) : null;
     const merged = oppPos
       ? K.compose.merge(mePos.position, oppPos.position, { late: LATE })

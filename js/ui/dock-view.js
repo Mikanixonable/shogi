@@ -81,17 +81,12 @@ window.Kakoi = window.Kakoi || {};
       this.binder = el.querySelector('.dk-binder');
       this.pcs = { me: this.binder.querySelector('[data-who="me"]'), opp: this.binder.querySelector('[data-who="opp"]') };
       this.oppOffBtn = this.binder.querySelector('.dk-pc-x');
-      this.clearBtn = document.createElement('button');
-      this.clearBtn.type = 'button';
-      this.clearBtn.className = 'dk-clear';
-      this.clearBtn.textContent = '×';
       this._bindBinder();
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
         this.filter[this.who] = v;
         if (this._last) this.update(this._last.state, this._last.S);
       });
-      this.clearBtn.addEventListener('click', () => h.onClear(this.who));
       this.sortWrap = this.root.querySelector('.dk-sort');
       this.sortSel = this.root.querySelector('.dk-sort-sel');
       this.sortSel.value = this.sort;
@@ -286,12 +281,6 @@ window.Kakoi = window.Kakoi || {};
       this.oppOffBtn.hidden = !showOpp;
       this.tabSeg.setValue(kind);
       this.sortWrap.hidden = kind !== 'castle';   // 戦法は筋の表のまま（並べ方は囲いだけ）
-      const side = state.slots[who];
-      const clearHost = document.querySelector(`#stageMain .sideband[data-side="${who}"] .cbar`);
-      if (clearHost && this.clearBtn.parentElement !== clearHost) clearHost.append(this.clearBtn);
-      this.clearBtn.hidden = KINDS.every(k => side[k] == null);
-      this.clearBtn.title = `${who === 'opp' ? '相手' : '自分'}の囲い・戦法をリセット`;
-      this.clearBtn.setAttribute('aria-label', this.clearBtn.title);
 
       // 絞り込みは、導出した戦略が変わったとき（戦法を選んだ・ハッシュで開いた）にそれへ合わせる
       const st = S[who];
@@ -312,7 +301,9 @@ window.Kakoi = window.Kakoi || {};
       // 「駒が足りない」といった嘘の ng 理由が出ない）
       for (const it of v.items) {
         const { j } = K.constraints.evaluate(state.slots, showOpp, who, it.kind, it.id);
-        const cur = st[FIELD[it.kind]] === it.id;
+        // 戦法は駒ごとの枠が複数ある: 採用中のもの全てを選択中として印す
+        const cur = it.kind === 'tactic' ? (st.tacticIds || []).includes(it.id)
+          : st[FIELD[it.kind]] === it.id;
         it.el.setAttribute('aria-current', cur ? 'true' : 'false');
         it.el.hidden = B.offItem(it, strat);
         const implied = cur && st.implied[it.kind];
@@ -323,12 +314,12 @@ window.Kakoi = window.Kakoi || {};
         if (tip) it.el.title = tip; else it.el.removeAttribute('title');
       }
 
-      // 選択中の派生を持つ親タイルを強調する（§4-3）
+      // 選択中の派生を持つ親タイルを強調する（§4-3。複数戦法では採用中の全部を見る）
       if (v.tiles) {
-        const selVar = st.tacticId;
-        const parentId = selVar && (K.TACTICS.find(t => t.id === selVar) || {}).variantOf;
+        const parents = new Set((st.tacticIds || [])
+          .map(id => (K.TACTICS.find(t => t.id === id) || {}).variantOf).filter(Boolean));
         for (const t of v.tiles) {
-          if (parentId && t.dataset.id === parentId) t.dataset.vsel = 'true';
+          if (parents.has(t.dataset.id)) t.dataset.vsel = 'true';
           else delete t.dataset.vsel;
         }
       }
@@ -362,14 +353,17 @@ window.Kakoi = window.Kakoi || {};
       this.key.hidden = !parts.length;
     }
 
-    // 制約チップを選んだときの連動（U5）: 種類のタブへ切り替わった一覧で、その側の実効値 st の
-    // 項目までスクロールする（フォーカスは奪わず、一瞬だけ輪郭を添える）
-    reveal(kind, st) {
+    // 制約胞を選んだときの連動（U5）: 種類のタブへ切り替わった一覧で、その側の実効値 st の
+    // 項目までスクロールする（フォーカスは奪わず、一瞬だけ輪郭を添える）。
+    // sel.id があるときはその戦法（無ければ主の戦法）を示す
+    reveal(sel, st) {
       // 狭い画面では一覧のスクロールはページ全体のスクロールになるので行わない
       // （B2: 代わりに constraint-mode が解説を盤の下へ持ってくる）
       if (matchMedia('(max-width:979px)').matches) return;
+      const kind = sel && sel.kind;
       requestAnimationFrame(() => {
-        const id = st && st[FIELD[kind]];
+        const id = (sel && sel.id && findTactic(sel.id) && sel.id)
+          || (st && st[FIELD[kind]]);
         let t = id && this.body.querySelector(`.dk-item[data-id="${id}"]`);
         if (!t && id && kind === 'tactic') {   // 派生選択中は親タイルを示す
           const p = (findTactic(id) || {}).variantOf;

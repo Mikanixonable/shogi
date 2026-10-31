@@ -1,97 +1,70 @@
-/* 統合画面（board）: 制約バー・制約チップ・右ドックの先頭部品。
+/* 統合画面（board）: 制約フィールド・右ドックの先頭部品。
    「墨と余白」: 罫線と記号で示す。色だけに頼らない（種類名・名称・破線を併記） */
 
-/* ===== 制約バー: 見出しと盤の間。チップ1つ=スロット1つ ===== */
-/* .cbar-x はカプセルを横一列に流し、リセットは同じ行の右端に置く */
-.cbar { display:flex; flex:1 1 auto; min-width:0; min-height:44px; align-items:center; flex-wrap:nowrap; gap:6px; overflow:visible; }
-.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; flex-wrap:nowrap; gap:0; padding:2px 6px 2px 0;
-          container:cbar / inline-size;
-          overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
-          mask-image:linear-gradient(to right,#000 calc(100% - 8px),transparent); }
-.cbar-x::-webkit-scrollbar { display:none; }
-/* ===== B2 蜂の巣: 根の胞 → 囲いポリへックス → 戦法ドミノ ===== */
-.cbar { --k-str:var(--fg); --k-castle:var(--accent); --k-tactic:var(--t-silver); }
-.cbar-x { gap:5px; }
-.cchip { --chip-ink:var(--t-silver); position:relative; display:flex; flex:0 0 auto;
-         min-width:0; max-width:100%; height:auto; min-height:44px; align-items:center;
-         gap:3px; margin:0; padding:0; background:none; color:var(--fg); }
-.cchip[data-position="middle"], .cchip[data-position="last"] { margin-left:0; padding-left:0; }
-.cchip[data-kind="strategy"] { --chip-ink:var(--k-str); }
-.cchip[data-kind="castle"] { --chip-ink:var(--k-castle); }
-.cchip[data-family="furibisha-rook"], .cchip[data-family="ibisha-rook"] { --chip-ink:var(--t-rook); }
-.cchip[data-family="ibisha-silver"] { --chip-ink:var(--t-silver); }
-.cchip[data-family="ibisha-kakukeifu"] { --chip-ink:var(--t-kaku); }
-.cchip::before, .cchip::after { content:none; }
-.cchip .cchip-b { display:flex; min-width:0; align-items:center; gap:5px; padding:0;
-                  border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
-.cchip .cchip-b, .cchip-x { position:relative; z-index:3; }
-.cchip-txt { display:block; flex:none; min-width:0; }
-.cchip-type { display:none; }
-.cchip-ng { display:none; }
-.cchip[data-ng="true"] .cchip-ng { display:inline; color:var(--bad); font-size:14px; font-weight:900; }
-.cchip-nm { display:block; min-width:0; max-width:min(180px,calc(100vw - 220px)); overflow:hidden;
-            color:var(--fg); font-size:12.5px; font-weight:800; line-height:1.2;
-            text-overflow:ellipsis; white-space:nowrap; }
-.cchip[data-kind="strategy"] .cchip-nm,
-.cchip[data-kind="tactic"] .cchip-nm { display:none; }
-.cchip[data-implied="true"] .cchip-txt::after { content:"既定・押して確定"; display:block; margin-top:2px;
-            color:var(--muted); font:500 9px/1.1 var(--font-b); white-space:nowrap; }
-.cchip-x { display:grid; flex:none; place-items:center; width:20px; height:20px; margin:0; border:0;
-           border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; }
+/* ===== 制約フィールド: 盤の上に1枚だけ敷く蜂の巣（B2 多角形モジュール） ===== */
+/* 上=相手・下=自分を同じ六角グリッドに並べ、河を隔てた共有辺に相性を出す。
+   描画は1枚のSVG（.cf-svg）。当たり判定は透明な <button> の層（.cf-hits）が受ける */
+.cfield { position:relative; display:block; width:100%; min-width:0; aspect-ratio:395/224;
+          overflow:hidden; }
+.cf-svg { display:block; width:100%; height:100%; overflow:visible; }
+.cf-hits { display:block; position:absolute; inset:0; }
+.cf-hit, .cf-x, .cf-clear { position:absolute; }
+.cf-hit { z-index:2; border:0; padding:0; margin:0; background:transparent; cursor:pointer;
+          border-radius:8px; }
+@media (hover:hover) { .cf-hit:hover { background:color-mix(in srgb,var(--fg) 4%,transparent); } }
+.cf-hit:focus-visible { outline:2px solid var(--accent); outline-offset:-1px; }
+/* 胞の右上に付く ×（外す）と、側の右端のリセット。ヒット層の胞ボタンより手前 */
+.cf-x, .cf-clear { z-index:3; display:grid; place-items:center; width:18px; height:18px; padding:0;
+                   border:0; border-radius:50%; background:var(--bg); color:var(--muted);
+                   cursor:pointer; font-size:13px; line-height:1;
+                   box-shadow:0 0 0 1px var(--line-2); }
+.cf-clear { width:22px; height:22px; box-shadow:none; border:1px solid var(--line-2); font-size:15px; }
 @media (hover:hover) {
-  .cchip .cchip-b:hover .cchip-nm { color:var(--accent); }
-  .cchip-x:hover { color:var(--bad); background:color-mix(in srgb,var(--bad) 8%,transparent); }
+  .cf-x:hover, .cf-clear:hover { color:var(--bad); box-shadow:0 0 0 1px var(--bad); border-color:var(--bad); }
 }
-.hx { flex:none; display:block; overflow:visible; }
-.hx-cell { stroke:var(--bg); stroke-width:1.6; stroke-linejoin:round; transition:fill .2s,stroke .2s; }
-.hx-cell.hx-str { fill:var(--k-str); }
-.hx-cell.hx-castle { fill:color-mix(in srgb,var(--k-castle) 22%,var(--bg)); }
-.hx-cell.hx-castle.gy { fill:var(--k-castle); }
-.hx-cell.hx-tactic { fill:color-mix(in srgb,var(--chip-ink) 26%,var(--bg)); }
-.hx-t { fill:var(--fg); font:700 11px/1 var(--font-d); pointer-events:none; }
-.hx-t.minor { fill:var(--muted); font-weight:500; }
-.hx-cell.hx-castle.gy + .hx-t { fill:var(--bg); font-weight:800; }
-.hx-str-t { fill:var(--bg); font:800 12.5px/1 var(--font-d); pointer-events:none; }
-.hx-tname { fill:var(--fg2); font:700 7.4px/1 var(--font-b); pointer-events:none; }
-.hx-stem { stroke:var(--muted); stroke-width:1; stroke-dasharray:1 3; }
-.hx-j { fill:none; stroke-linecap:round; pointer-events:none; }
-.hx-j-castle { stroke:color-mix(in srgb,var(--k-castle) 45%,var(--bg)); stroke-width:.9; }
-.hx-j-tactic { stroke:color-mix(in srgb,var(--chip-ink) 55%,var(--bg)); stroke-width:1; }
-.hx-em { fill:none; stroke-width:2.6; stroke-linecap:round; pointer-events:none; }
-.hx-em.em-good { stroke:var(--good); }
-.hx-em.em-bad { stroke:var(--bad); stroke-dasharray:3 3.5; }
-.hx-imp-bg { fill:var(--bg); }
-.hx-imp-ln { stroke:var(--line-2); stroke-width:1.4; }
-.hx-g.imp .hx-t, .hx-g.imp .hx-str-t, .hx-g.imp .hx-tname { fill:var(--muted); }
-.hx-g { transform-box:fill-box; transform-origin:center; }
-.hx-g.ng { transform:rotate(3deg); }
-.hx-g.ng .hx-cell { stroke:var(--bad); }
-.hx-g.ng .hx-cell.hx-castle, .hx-g.ng .hx-cell.hx-tactic { fill:color-mix(in srgb,var(--bad) 22%,var(--bg)); }
-.cchip[data-sel="true"] .hx-cell { stroke:var(--accent); stroke-width:2; }
-.cbar-x .cchip[data-position="middle"], .cbar-x .cchip[data-position="last"] { margin-left:0; padding-left:0; }
-.cchip[data-ng="true"] .cchip-nm { color:var(--bad); }
-@media (hover:hover) {
-  .cchip[data-kind="castle"] .cchip-b:hover .hx-castle { fill:color-mix(in srgb,var(--k-castle) 34%,var(--bg)); }
-  .cchip[data-kind="tactic"] .cchip-b:hover .hx-tactic { fill:color-mix(in srgb,var(--chip-ink) 36%,var(--bg)); }
-  .cchip[data-kind="strategy"] .cchip-b:hover .hx-str { fill:color-mix(in srgb,var(--k-str) 84%,var(--bg)); }
-}
-/* 行が狭いとき（1）: 横にはみ出させず、種類の文字を色の点に畳み、名前は省略記号で縮める */
-.cchip-type::before { content:none; }
-@container cbar (max-width:560px) {
-  .cchip-type { min-width:10px; width:10px; padding:0; font-size:0; position:relative; }
-  .cchip-type::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--chip-ink); }
-  .cchip[data-implied="true"] .cchip-type::after { content:""; position:absolute; top:-4px; right:-4px; margin:0;
-            width:5px; height:5px; border:1px dashed var(--muted); background:var(--bg); }
-  .cchip-nm { font-size:13px; }
-  .cchip { gap:3px; padding-right:15px; }
-  .cchip[data-position="middle"], .cchip[data-position="last"] { padding-left:19px; }
-  .cchip-x { width:18px; }
-}
-/* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
-.cchip[data-sel="true"] .cchip-nm { color:var(--accent); }
-/* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
-.cchip[data-implied="true"] { opacity:.72; }
-.cchip[data-implied="true"] .cchip-type::after { content:"既定"; margin-top:1px; font-size:9px; letter-spacing:.06em; }
+/* --- 胞（六角セル） --- */
+.cf-cell { stroke:var(--bg); stroke-width:1.6; stroke-linejoin:round; transition:fill .2s,stroke .2s; }
+.cf-str { fill:var(--fg); }
+.cf-str-t { fill:var(--bg); font:800 12.5px/1 var(--font-d); }
+.cf-stem { fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:1 3; }
+.cf-castle { fill:color-mix(in srgb,var(--accent) 20%,var(--bg)); }
+.cf-castle.gy { fill:var(--accent); }
+.cf-castle.gy + .cf-t { fill:var(--bg); font-weight:800; }
+.cf-tac { fill:color-mix(in srgb,var(--tc,var(--t-silver)) 24%,var(--bg)); }
+.cf-tac.glyph { fill:color-mix(in srgb,var(--tc,var(--t-silver)) 42%,var(--bg)); }
+.cf-ghost { fill:none; stroke:var(--line-2); stroke-width:1.2; stroke-dasharray:3 3; }
+/* --- 胞の中の文字 --- */
+.cf-t { fill:var(--fg); font-family:var(--font-d); font-weight:700; }
+.cf-t.minor { fill:var(--muted); font-weight:500; }
+.cf-tname { fill:var(--fg2); font-family:var(--font-b); font-weight:700; }
+.cf-add { fill:var(--muted); font:600 9px/1 var(--font-b); }
+.cf-cname { fill:var(--fg); font:800 10.5px/1 var(--font-d); letter-spacing:.04em; }
+.cf-csub { fill:var(--muted); font:500 8px/1 var(--font-b); }
+.cf-cng { fill:var(--bad); font:700 8px/1 var(--font-b); }
+.cf-who { fill:var(--muted); font:700 10px/1 var(--font-d); letter-spacing:.1em; }
+.cf-who.sel { fill:var(--accent); }
+.cf-who-mark { font-size:9px; }
+.cf-opp-t { fill:var(--muted); font:600 10px/1 var(--font-b); }
+/* --- 継ぎ目・目地・相性の印 --- */
+.cf-j { fill:none; stroke-linecap:round; }
+.cf-j-castle { stroke:color-mix(in srgb,var(--accent) 45%,var(--bg)); stroke-width:.9; }
+.cf-j-tactic { stroke:color-mix(in srgb,var(--tc,var(--muted)) 55%,var(--bg)); stroke-width:1; }
+.cf-sm { fill:none; stroke-width:2.6; stroke-linecap:round; }
+.cf-sm-good { stroke:var(--good); }
+.cf-sm-bad { stroke:var(--bad); stroke-dasharray:3 3.5; }
+.cf-glint { fill:var(--good); opacity:.85; }
+.cf-crack { fill:none; stroke:var(--bad); stroke-width:1.4; stroke-linejoin:round; }
+.cf-seam rect { fill:var(--bg); stroke:var(--line); }
+.cf-seam text { fill:var(--muted); font-size:10px; font-family:var(--font-b); }
+/* 既定値（implied）の網掛けパターンの部品 */
+.cf-imp-bg { fill:var(--bg); }
+.cf-imp-ln { stroke:var(--line-2); stroke-width:1.2; }
+/* --- 状態（選択・両立しない。傾けは JS が transform で付ける） --- */
+.cf-mod.sel .cf-cell { stroke:var(--accent); stroke-width:2; }
+.cf-str.sel { stroke:var(--accent); stroke-width:2; }
+.cf-mod.ng .cf-cell { stroke:var(--bad); }
+.cf-mod.ng .cf-castle, .cf-mod.ng .cf-tac { fill:color-mix(in srgb,var(--bad) 20%,var(--bg)); }
+@media (prefers-reduced-motion:reduce) { .cf-cell { transition:none; } }
 /* ===== 右ドック（board-detail-view。U5）: 選択中の制約の説明 ===== */
 /* 先頭: 側の表示名（小）＋項目名（大）。既定値で補った層は破線の「既定」を添える */
 .bd-who { margin:0 0 2px; font-size:11px; letter-spacing:.18em; color:var(--muted); }
@@ -109,19 +82,7 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 /* ===== narrow ===== */
 @media (max-width:979px) {
   #pickRail { padding:12px 14px; }
-  .cbar { overflow:visible; }
-  /* フェードは残して「右に続きがある」ことを示し、チップ単位で吸い付くようにする（A3） */
-  .cbar-x { flex:1 1 auto; overflow-x:auto; scroll-snap-type:x proximity;
-            padding-left:2px; }
-  /* 狭い画面は縮めずに横へ流す（1〜2字まで縮むと読めない）。右端のフェードで続きを示す */
-  .cchip { flex:none; height:auto; min-height:50px; scroll-snap-align:start; }
-  .cchip-x { position:relative; }
-  .cchip-x::after { content:""; position:absolute; inset:-11px; }   /* C1: 見た目は22pxのまま当たり判定を広げる */
-  /* 「既定」の文字は幅を食うので、種類の角の点線の印だけにする（A3） */
-  .cchip-type { position:relative; }
-  .cchip[data-implied="true"] .cchip-type::after { content:""; position:absolute; top:-4px; right:-4px;
-            width:5px; height:5px; border:1px dashed var(--muted); background:var(--bg); }
-  /* 戦法チップ: 胞内の7pxの字に加えて、読める大きさの名前をチップの文字面に出す（M6） */
-  .cchip[data-kind="tactic"] .cchip-nm { display:block; flex:none; font-size:12px; }
-  .cchip[data-kind="tactic"] .hx-tname { display:none; }
+  /* 胞のボタンを指で押しやすいよう、×・リセットの当たり判定を広げる（C1） */
+  .cf-x::after { content:""; position:absolute; inset:-10px; }
+  .cf-clear::after { content:""; position:absolute; inset:-11px; }
 }

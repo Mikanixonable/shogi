@@ -59,23 +59,11 @@
     <div class="pane-fill" id="pickRail"></div>
   </nav>
 
-  <!-- 見る: 盤の上に相手（一段小さく）・自分の制約バーを並べ、関係ラベルは相手の帯の右端。
-       相手の表示 ON/OFF は左ドックの駒の見出し（OFF のときも相手の帯の行は残し、盤を動かさない） -->
+  <!-- 見る: 盤の上に1枚の制約フィールド（蜂の巣の多角形モジュール。相手=上・自分=下で同じ
+       六角グリッドに並び、自分の戦法の胞と相手の囲いの胞が河を隔てて辺を共有する）。
+       相手の表示 ON/OFF は左ドックの駒の見出しか「＋相手」の胞 -->
   <main class="panel glass stage" id="stageMain">
-    <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
-      <div class="sband-h">
-        <span class="who">相手</span>
-      </div>
-      <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
-      <div class="relation-row" id="relationshipLabels" data-empty="true" aria-hidden="true"
-           role="note" aria-label="相手と自分の関係"></div>
-    </div>
-    <div class="sideband" id="bandMe" data-side="me">
-      <div class="sband-h">
-        <span class="who">自分</span>
-      </div>
-      <div class="cbar" id="cbarMe" role="group" aria-label="自分の制約条件"></div>
-    </div>
+    <div id="cfield" role="group" aria-label="制約条件"></div>
     <!-- 盤（BoardView / OverlayView は1組だけ） -->
     <div class="boardarea">
       <div class="boardwrap" id="boardwrap">
