@@ -28,7 +28,6 @@
 
 <!-- 全体の設定（右: 歯車で開く表示設定のポップオーバー） -->
 <header class="glass">
-  <button class="ib" id="boardToggle" type="button" aria-expanded="false" aria-label="盤を収納/展開">盤</button>
   <div class="brand"><a class="mark" href="index.html" title="トップへ" aria-label="将棋の囲い図鑑 トップへ">玉</a><h1>将棋の囲い図鑑</h1><button class="about" id="aboutOpen" type="button">このサイトについて</button></div>
   <div class="tools" id="tools" role="group" aria-label="表示設定">
     <div class="setting">
@@ -60,7 +59,7 @@
     <div class="pane-fill" id="pickRail"></div>
   </nav>
 
-  <!-- 見る: 盤の上に相手（一段小さく）・盤の下に自分の帯（盤と同じ向き）。関係ラベルは相手の帯の右端。
+  <!-- 見る: 盤の上に相手（一段小さく）・自分の制約バーを並べ、関係ラベルは相手の帯の右端。
        相手の表示 ON/OFF は左ドックの駒の見出し（OFF のときも相手の帯の行は残し、盤を動かさない） -->
   <main class="panel glass stage" id="stageMain">
     <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
@@ -88,6 +87,8 @@
         <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
         <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
       </div>
+      <!-- 盤の収納: 盤の裾の帯。狭い画面だけ出る。引くと盤が上へ巻き上がって畳まれる -->
+      <button class="blind" id="boardToggle" type="button" aria-expanded="true" aria-controls="boardwrap" aria-label="盤を収納する"></button>
     </div>
   </main>
 
@@ -98,7 +99,22 @@
     <div class="detail-body" id="detail"></div>
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>
+
+  <!-- narrow: 左（選ぶ）と右（読む）のドックを下端のタブか横スワイプで切り替える（js/ui/dock-tabs.js） -->
+  <div class="mtabs" role="group" aria-label="ドックの切替">
+    <button type="button" data-tab="pick" aria-pressed="true" aria-controls="pickRail">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>選ぶ</span>
+    </button>
+    <button type="button" data-tab="read" aria-pressed="false" aria-controls="detail">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5C10 4 7.5 3.6 5 4v14c2.5-.4 5 0 7 1.5 2-1.5 4.5-1.9 7-1.5V4c-2.5-.4-5 0-7 1.5zM12 5.5v14"/></svg>
+      <span>読む</span>
+    </button>
+  </div>
 </div>
+
+<!-- 表示設定のボトムシートが開いたとき背面を伏せるスクリム（narrow のみ表示。押すとシートが閉じる） -->
+<div class="sheet-scrim" aria-hidden="true"></div>
 
 <!-- このサイトについて: ロゴ横のボタンで開く説明モーダル。Esc・背景クリック・×ボタンで閉じる -->
 <dialog class="about-dlg" id="aboutDialog" aria-labelledby="aboutTitle">

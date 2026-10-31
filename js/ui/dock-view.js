@@ -116,6 +116,26 @@ window.Kakoi = window.Kakoi || {};
       for (const c of K.CASTLES) this._pos.set(c.id, castlePos(c));
       this._bindEvents();
       this._bindLegend();
+      // 狭い画面: バインダーの駒は層タブと同じ行へ、戦型の絞り込みは並べ方の行へ移し、
+      // 「選ぶ操作（側・層）」と「見せ方の操作（絞り込み・並べ方・凡例）」の2段に分ける（モバイル M1）
+      this._mql = matchMedia('(max-width:979px)');
+      this._mql.addEventListener('change', () => this._relocate());
+      this._relocate();
+    }
+
+    _relocate() {
+      const paneH = this.root.querySelector('.dk-pane-h');
+      const tools = this.root.querySelector('.dk-tools');
+      const strat = this.root.querySelector('.dk-strategy');
+      const narrow = this._mql.matches;
+      if (narrow) {
+        paneH.prepend(this.binder);        // [相手/自分][囲い|戦法]
+        tools.prepend(strat);              // [振り/居飛車][並べ方][凡例][?]
+      } else {
+        paneH.prepend(strat);              // 元の順序へ戻す
+        this.el.appendChild(this.binder);  // ドック右端の縦バインダーに戻る
+      }
+      this.binder.setAttribute('aria-orientation', narrow ? 'horizontal' : 'vertical');
     }
 
     // ---------- 駒の見出し: 押すとその側の面へ（相手が OFF なら表示して開く）。縦のタブなので ↑=相手・↓=自分 ----------
@@ -131,9 +151,10 @@ window.Kakoi = window.Kakoi || {};
       });
       this.binder.addEventListener('keydown', e => {
         if (!e.target.closest('.dk-pc')) return;
-        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (/^Arrow(Up|Down|Left|Right)$/.test(e.key)) {
           e.preventDefault();
-          const who = e.key === 'ArrowUp' ? 'opp' : 'me';
+          // 縦（広い画面）: 上=相手・下=自分。横（狭い画面）: 左=相手・右=自分
+          const who = e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? 'opp' : 'me';
           this.h.onSelect(who, this.kind);
           this.pcs[who].focus();
         } else if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.closest('[data-who="opp"]')) {

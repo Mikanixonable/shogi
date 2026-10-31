@@ -111,30 +111,40 @@ async function sweepBoard(page, expect) {
   const mark = async () => r.rects.push(await boardRect(page));
   r.t0 = await snap(page);
   r.rects.push(r.t0.rect);
-  // 「相手の帯・盤・自分の帯」の塊は中央の列の上下中央にある（上下の余白の差）
+  const b2ImpliedCheck = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('#cbarMe .cchip[data-implied="true"]')];
+    return { count: chips.length, items: chips.map(chip => ({
+      kind: chip.dataset.kind, removable: !!chip.querySelector('.cchip-x'),
+      fills: [...chip.querySelectorAll('.hx-cell')].map(cell => cell.style.fill),
+    })) };
+  });
+  r.b2Implied = b2ImpliedCheck.count > 0 && b2ImpliedCheck.items.every(item =>
+    !item.removable && item.fills.length > 0 && item.fills.every(fill => fill.includes('#hxh-')));
+  r.b2ImpliedDetail = JSON.stringify(b2ImpliedCheck);
+  // 「相手・自分の帯＋盤」の塊は中央の列の上下中央にある（上下の余白の差）
   r.boardStageOffset = await page.evaluate(() => {
     const st = document.querySelector('.stage');
     const cs = getComputedStyle(st), sr = st.getBoundingClientRect();
     const top = document.querySelector('#bandOpp').getBoundingClientRect().top - sr.top - parseFloat(cs.paddingTop);
-    const bottom = sr.bottom - parseFloat(cs.paddingBottom) - document.querySelector('#bandMe').getBoundingClientRect().bottom;
+    const bottom = sr.bottom - parseFloat(cs.paddingBottom) - document.querySelector('#boardwrap').getBoundingClientRect().bottom;
     return Math.round(Math.abs(top - bottom));
   });
-  // 相手の帯は盤の上・自分の帯は盤の下（盤の向きと同じ）。関係ラベルは相手の帯の中
+  // 相手・自分の帯は両方とも盤の上。関係ラベルは相手の帯の中
   r.boardOrder = await page.evaluate(() => {
     const opp = document.querySelector('#bandOpp').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
     return document.querySelector('#bandOpp').dataset.empty === 'true'
       ? getComputedStyle(document.querySelector('#bandOpp')).visibility === 'hidden'
-        && board.bottom <= me.top
-      : opp.bottom <= board.top && board.bottom <= me.top
+        && me.bottom <= board.top
+      : opp.bottom <= me.top && me.bottom <= board.top
         && !!document.querySelector('#bandOpp #relationshipLabels');
   });
   r.boardBandGaps = await page.evaluate(() => {
     const opp = document.querySelector('#bandOpp').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return [board.top - opp.bottom, me.top - board.bottom].map(Math.round);
+    return [me.top - opp.bottom, board.top - me.bottom].map(Math.round);
   });
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
@@ -275,15 +285,22 @@ async function sweepBoard(page, expect) {
   r.horizontalChips = await page.evaluate(() => {
     const host = document.querySelector('#cbarMe .cbar-x');
     const chips = [...host.querySelectorAll('.cchip')];
+    const strategy = host.querySelector('.cchip[data-kind="strategy"] .hx-strategy');
+    const castle = host.querySelector('.cchip[data-kind="castle"] .hx-castle');
+    const tactic = host.querySelector('.cchip[data-kind="tactic"] .hx-tactic');
     return getComputedStyle(host).flexWrap === 'nowrap'
       && chips.map(c => c.dataset.kind).join(',') === 'strategy,castle,tactic'
       && chips.map(c => c.dataset.position).join(',') === 'first,middle,last'
       && chips.every(c => ['ibisha', 'furibisha'].includes(c.dataset.strategy))
-      && chips.every(c => getComputedStyle(c, '::before').clipPath.includes('polygon'))
-      && chips.slice(0, 2).every(c => c.dataset.strategy === 'ibisha'
-        ? getComputedStyle(c, '::after').clipPath.includes('polygon')
-        : parseFloat(getComputedStyle(c, '::after').width) === 15)
-      && Math.abs(chips[0].getBoundingClientRect().top - chips[2].getBoundingClientRect().top) < 1;
+      && !!strategy && strategy.querySelectorAll('.hx-str-t').length >= 3
+      && !!castle && castle.querySelectorAll('.hx-cell.hx-castle').length >= 3
+      && castle.querySelectorAll('.hx-stem').length === 3
+      && !!tactic && tactic.querySelectorAll('.hx-cell.hx-tactic').length === 2
+      && tactic.querySelector('.hx-tname') && tactic.querySelector('.hx-tname').textContent.length > 0
+      && Math.abs(
+        chips[0].getBoundingClientRect().top + chips[0].getBoundingClientRect().height / 2
+        - chips[2].getBoundingClientRect().top - chips[2].getBoundingClientRect().height / 2,
+      ) < 1;
   });
   // 戦型チップ（先頭）: スロットではないが、押すと右ドックにその戦型の情報が出る。
   // 選択だけなので履歴は積まず、sel=ms がハッシュに乗る
@@ -429,7 +446,30 @@ async function sweepBoard(page, expect) {
     const rel = document.querySelector('#relationshipLabels').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return rel.top >= opp.top && rel.bottom <= opp.bottom && opp.bottom <= board.top && board.bottom <= me.top;
+    return rel.top >= opp.top && rel.bottom <= opp.bottom && opp.bottom <= me.top && me.bottom <= board.top;
+  });
+  const b2ModuleCheck = await page.evaluate(() => {
+    const kinds = ['strategy', 'castle', 'tactic'];
+    const bars = ['#cbarOpp', '#cbarMe'];
+    const hasKinds = bars.every(bar => kinds.every(kind =>
+      !!document.querySelector(`${bar} .cchip[data-kind="${kind}"] .hx-${kind}`)));
+    const castle = document.querySelector('#cbarMe .cchip[data-kind="castle"]');
+    const st = Kakoi.constraints.sides(__kakoi.store.state.slots, __kakoi.store.state.showOpp).me;
+    const castleName = castle && Kakoi.lookup.findCastle(st.castleId);
+    const glyphs = castle ? [...castle.querySelectorAll('.hx-castle .hx-t')].map(x => x.textContent).join('') : '';
+    const expected = castleName ? Kakoi.notation.parsePieces(castleName.core).map(x => x.p).join('') : '';
+    const implied = [...document.querySelectorAll('.cchip[data-implied="true"] .hx-cell')]
+      .some(cell => cell.style.fill.startsWith('url(#'));
+    const labels = bars.every(bar => [...document.querySelectorAll(`${bar} .cchip-b`)]
+      .every(button => button.getAttribute('aria-label') && button.title));
+    return { hasKinds, castleName: !!castleName, glyphs, expected, implied, labels };
+  });
+  r.b2Modules = b2ModuleCheck.hasKinds && b2ModuleCheck.castleName
+    && [...b2ModuleCheck.expected].every(ch => b2ModuleCheck.glyphs.includes(ch)) && b2ModuleCheck.labels;
+  r.b2ModulesDetail = JSON.stringify(b2ModuleCheck);
+  r.b2Marks = await page.evaluate(() => {
+    const marks = [...document.querySelectorAll('#cbarOpp .hx-em, #cbarMe .hx-em')];
+    return marks.length > 0 && marks.every(el => el.classList.contains('em-good') || el.classList.contains('em-bad'));
   });
   r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && !r.t5.bandOppEmpty
     && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
@@ -778,8 +818,11 @@ async function main() {
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
       ok(b.bandGhost0, '相手の表示 OFF の間は相手の帯が幽霊行で、後手の駒は出ない', '');
-      ok(b.boardStageOffset <= 8, '相手の帯・盤・自分の帯の塊は中央の列の上下中央に配置される', `${b.boardStageOffset}px`);
-      ok(b.boardOrder && b.boardOrderOppOn, '相手の制約行（関係ラベルつき）は盤の上、自分の制約行は盤の下', '');
+      ok(b.boardStageOffset <= 8, '相手・自分の帯と盤の塊は中央の列の上下中央に配置される', `${b.boardStageOffset}px`);
+      ok(b.boardOrder && b.boardOrderOppOn, '相手・自分の制約行（関係ラベルつき）は両方とも盤の上', '');
+      ok(b.b2Modules, 'B2: 戦型・囲い（駒名セル）・戦法の六角モジュールが表示される', b.b2ModulesDetail);
+      ok(b.b2Implied, 'B2: 既定値は網掛けで薄く、解除できない', b.b2ImpliedDetail);
+      ok(b.b2Marks, 'B2: 相手との相性を盤側の辺に色・線種で示す', '');
       ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と相手・自分の表示帯の余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
       ok(b.oppSmaller, '相手の制約チップは自分のものより小さい', '');
       ok(b.rectDrift === -1, '盤の矩形は全ステップで不変（F1 ±0.5px）', `ずれたステップ=${b.rectDrift}`);
@@ -792,7 +835,7 @@ async function main() {
       ok(b.collapse, '系統ブロックを折りたためる', '');
       ok(b.tabSwitch, '面のタブ切替（囲い→戦法）で選択も戦法になる', '');
       ok(b.added, '囲いを選ぶ→スロットとチップが増え、詳細が囲いになる', JSON.stringify(b.t1 && b.t1.slots));
-      ok(b.horizontalChips, '制約カプセルは戦型→囲い→戦法の順で連結', '');
+      ok(b.horizontalChips, 'B2の根・囲いポリへックス・戦法ドミノは順に並び、胞の茎と目地を描く', '');
       ok(b.resetInMeBar, '丸いリセット×を自分の制約行の右端に表示', '');
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
@@ -839,6 +882,14 @@ async function main() {
         await page.setViewportSize({ width: w, height: 900 }); await wait(250);
         const r = await page.evaluate(() => { const d = document.documentElement; return { sh: d.scrollHeight, ih: innerHeight, sw: d.scrollWidth, iw: innerWidth }; });
         ok(r.sw <= r.iw + 1 && r.sh <= r.ih + 1, `board@w${w} ページスクロールなし`, `${r.sw}x${r.sh} > ${r.iw}x${r.ih}`);
+        const rows3 = await page.evaluate(() =>
+          [...document.querySelectorAll('#pickRail .dk-fam:not([hidden])')].map(s => {
+            const cs = [...s.querySelectorAll('.dk-card:not([hidden])')].filter(c => c.offsetHeight > 0);
+            if (cs.length < 3) return 0;
+            const y = cs[0].offsetTop;
+            return cs.filter(c => Math.abs(c.offsetTop - y) < 1).length;
+          }).filter(n => n > 0));
+        ok(rows3.length > 0 && rows3.every(n => n === 3), `board@w${w} 囲いタイルは3列（足りなければサムネごと縮む）`, JSON.stringify(rows3));
       }
 
       // ---- w=1100: 右ドックはドロワー（§4-6）。タブ＋制約選択で開き、閉じても横スクロールしない ----
@@ -886,21 +937,76 @@ async function main() {
       });
       ok(tools.shown && tools.hidden && tools.open && tools.inside && tools.closed, 'w=390 表示設定の開閉', JSON.stringify(tools));
 
-      // ---- モバイル: 項目を選ぶと盤が残り、解説が盤の下に来る（B1/B2） ----
+      // ---- モバイル: 一覧で選んでも面は「選ぶ」のまま（盤は追従表示で変化が見える。M2）。
+      //      解説を開くのは「読む」タブか、盤上の制約チップ ----
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.click(`${DOCK} .dk-card:not([hidden])`); await wait(900);
       const sheet = await page.evaluate(() => {
         const stage = document.querySelector('.stage').getBoundingClientRect();
-        const d = document.querySelector('#detail').getBoundingClientRect();
         const b = document.querySelector('#board').getBoundingClientRect();
-        return { stageBottom: Math.round(stage.bottom), dTop: Math.round(d.top), ih: innerHeight,
+        return { stageBottom: Math.round(stage.bottom), ih: innerHeight,
                  boardVisible: b.bottom > 0 && b.top < innerHeight,
                  sticky: getComputedStyle(document.querySelector('.stage')).position === 'sticky',
+                 mtab: document.body.dataset.mtab,
+                 railShown: getComputedStyle(document.querySelector('.rail')).display !== 'none',
+                 detailKind: (document.querySelector('#detail .bd-who') || {}).textContent || '',
                  sy: Math.round(scrollY) };
       });
-      ok(sheet.sticky && sheet.boardVisible && sheet.sy > 0
-        && sheet.dTop >= sheet.stageBottom - 8 && sheet.dTop < sheet.ih,
-        'w=390 項目を選ぶと盤が残り、解説が盤の下に来る', JSON.stringify(sheet));
+      ok(sheet.sticky && sheet.boardVisible && sheet.mtab === 'pick' && sheet.railShown
+        && /囲い/.test(sheet.detailKind),
+        'w=390 一覧で選ぶと盤が残り、面は「選ぶ」のまま（解説は読むタブ）', JSON.stringify(sheet));
+      // 盤上の制約チップを押すと「読む」へ切り替わって盤の下に解説が来る（B2）
+      await page.click('#cbarMe .cchip-b[data-kind="castle"]'); await wait(700);
+      const chipRead = await page.evaluate(() => {
+        const stage = document.querySelector('.stage').getBoundingClientRect();
+        const d = document.querySelector('#detail').getBoundingClientRect();
+        return { mtab: document.body.dataset.mtab,
+                 dTop: Math.round(d.top), stageBottom: Math.round(stage.bottom), ih: innerHeight };
+      });
+      ok(chipRead.mtab === 'read' && chipRead.dTop >= chipRead.stageBottom - 8 && chipRead.dTop < chipRead.ih,
+        'w=390 制約チップを押すと「読む」へ切り替わり盤の下に来る', JSON.stringify(chipRead));
+
+      // ---- モバイル: 左右のドックは下端タブと横スワイプで「選ぶ⇄読む」を切り替える ----
+      const mt = await page.evaluate(() => {
+        const vis = el => getComputedStyle(el).display !== 'none' && el.offsetHeight > 0;
+        const bar = document.querySelector('.mtabs');
+        const rail = document.querySelector('.rail'), det = document.querySelector('.detail');
+        bar.querySelector('[data-tab="read"]').click();
+        const onRead = !vis(rail) && vis(det);
+        bar.querySelector('[data-tab="pick"]').click();
+        const onPick = vis(rail) && !vis(det);
+        return { barShown: vis(bar), onPick, onRead };
+      });
+      ok(mt.barShown && mt.onPick && mt.onRead, 'w=390 ドックは下端タブで選ぶ⇄読むを切替', JSON.stringify(mt));
+      const sw = await page.evaluate(() => {
+        // 盤（常に見えている）の上の横スワイプで切り替わる
+        const fire = (el, x0, x1) => {
+          const mk = x => new Touch({ identifier: 1, target: el, clientX: x, clientY: 640 });
+          el.dispatchEvent(new TouchEvent('touchstart', { touches: [mk(x0)], changedTouches: [mk(x0)], bubbles: true }));
+          el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [mk(x1)], bubbles: true }));
+        };
+        const stage = document.querySelector('.stage');
+        fire(stage, 300, 130);   // 左スワイプ → 右側の面（読む）
+        const toRead = document.body.dataset.mtab;
+        fire(stage, 130, 300);   // 右スワイプ → 左側の面（選ぶ）
+        return { toRead, toPick: document.body.dataset.mtab };
+      });
+      ok(sw.toRead === 'read' && sw.toPick === 'pick', 'w=390 横スワイプでドックが切り替わる', JSON.stringify(sw));
+
+      // ---- モバイル: 盤の裾のシートの端で盤を畳める（もう一度引くと戻る） ----
+      const fold = await page.evaluate(async () => {
+        const area = document.querySelector('.boardarea'), t = document.querySelector('#boardToggle');
+        const h0 = area.getBoundingClientRect().height;
+        t.click();
+        await new Promise(r => setTimeout(r, 900));
+        const h1 = area.getBoundingClientRect().height;
+        const aria1 = t.getAttribute('aria-expanded');
+        t.click();
+        await new Promise(r => setTimeout(r, 900));
+        return { h0, h1, h2: area.getBoundingClientRect().height, aria1, aria2: t.getAttribute('aria-expanded') };
+      });
+      ok(fold.h1 < fold.h0 / 3 && fold.h2 >= fold.h0 - 4 && fold.aria1 === 'false' && fold.aria2 === 'true',
+        'w=390 盤の裾のシートの端で盤を畳める（もう一度で戻る）', JSON.stringify(fold));
 
       // ---- w=360 縦: バインダーの重なり（A1）・ヘッダー1行（D1）・タップ領域（C1）・フェード（A3） ----
       await page.setViewportSize({ width: 360, height: 740 }); await wait(350);
@@ -912,8 +1018,11 @@ async function main() {
         const overlap = (a, b) => !(a.bottom <= b.top || b.bottom <= a.top || a.right <= b.left || b.right <= a.left);
         const opp = R(document.querySelector('#pickRail .dk-pc[data-who="opp"]'));
         const me = R(document.querySelector('#pickRail .dk-pc[data-who="me"]'));
-        const paneH = R(document.querySelector('#pickRail .dk-pane-h'));
-        const filter = R(document.querySelector('#pickRail .dk-tools'));
+        const paneH = document.querySelector('#pickRail .dk-pane-h');
+        const body = R(document.querySelector('#pickRail .dk-body'));
+        // M1: バインダーの駒はタブの行の中にある（一覧の見出し・本文に重ならない）
+        const pcsInside = paneH.contains(document.querySelector('#pickRail .dk-pc[data-who="opp"]'))
+          && paneH.contains(document.querySelector('#pickRail .dk-pc[data-who="me"]'));
         // タップ領域: 実寸に、位置が absolute の疑似要素の負の inset（当たり判定の拡張）を足す
         const eff = el => {
           const r = el.getBoundingClientRect();
@@ -939,7 +1048,7 @@ async function main() {
         }
         const board = R(document.querySelector('#board'));
         return { hdr: Math.round(R(document.querySelector('header')).height),
-                 binderFree: !overlap(opp, paneH) && !overlap(me, paneH) && !overlap(opp, filter) && !overlap(me, filter),
+                 binderFree: pcsInside && !overlap(opp, body) && !overlap(me, body),
                  masked: getComputedStyle(document.querySelector('#cbarMe .cbar-x')).maskImage !== 'none',
                  impliedDot: (() => {
                    // 「既定」の文字ではなく角の点線の印に畳まれているか（A3）
