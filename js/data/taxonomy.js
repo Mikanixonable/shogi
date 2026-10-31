@@ -2,7 +2,7 @@
 window.Kakoi = window.Kakoi || {};
 Kakoi.CASTLE_FAMILIES = [
   { id: 'funa', name: '舟囲い型', shape: '玉が7八。金銀が玉の横から下へ広がる', glyph: 'funa', subtypes: [
-    { id: 'base', name: '基本形（7九銀・6八銀）' }, { id: 'kin79', name: '7九金型' }, { id: 'kin68', name: '6八金型' },
+    { id: 'base', name: '基本形（7九銀・6八銀・5七銀）' }, { id: 'kin79', name: '7九金型' }, { id: 'kin68', name: '6八金型' },
   ] },
   { id: 'yagura', name: '矢倉型', shape: '逆L字：玉の右上を金銀が囲む', glyph: 'L', subtypes: [
     { id: 'kin', name: '金矢倉' }, { id: 'gin', name: '銀矢倉' }, { id: 'kata', name: '片矢倉系' },
