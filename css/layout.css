@@ -71,10 +71,10 @@ header { position:relative; }
 .rail { border-right:1px solid var(--line); }
 .detail { border-left:1px solid var(--line); position:relative; }
 
-/* 中央: 盤の上に相手、盤の下に自分（盤の向きと同じ）。3行のトラックで盤の矩形を固定する（F1） */
+/* 中央: 相手・自分の制約バーを盤面の上に並べる。3行のトラックで盤の矩形を固定する（F1） */
 .stage .sideband[data-side="opp"] { order:0; }
-.stage .boardarea { order:1; }
-.stage .sideband[data-side="me"] { order:2; }
+.stage .sideband[data-side="me"] { order:1; }
+.stage .boardarea { order:2; }
 .stage #bandOpp { transition:opacity .36s var(--ease), visibility 0s linear .36s; }
 .stage #bandOpp[data-empty="true"] { visibility:hidden; opacity:0; pointer-events:none; }
 .stage #bandOpp[data-empty="false"] { visibility:visible; opacity:1; transition:opacity .36s var(--ease), visibility 0s; }
@@ -92,9 +92,9 @@ header { position:relative; }
 /* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。相手 OFF 時もトラックを確保する。
    盤の大きさは stage の高さから帯2本を引いた残りで決める（board.css の .boardwrap）。
    相手の帯は自分より一段小さい（--band-h-opp。主従の区別） */
-.stage { --band-h:56px; --band-h-opp:46px; --stage-gap:10px; display:grid; position:relative; container-type:size;
+.stage { --band-h:50px; --band-h-opp:42px; --stage-gap:10px; display:grid; position:relative; container-type:size;
          grid-template-columns:minmax(0,1fr);
-         grid-template-rows:var(--band-h-opp) auto var(--band-h); align-content:center;
+         grid-template-rows:var(--band-h-opp) var(--band-h) auto; align-content:center;
          padding:24px 18px; gap:var(--stage-gap); }
 /* 状態の帯（sideband）: 側の印＋制約カプセル（＋相手だけ関係ラベル）の1行 */
 .sideband { display:flex; flex-direction:row; align-items:center; gap:10px; min-width:0; min-height:0; }
@@ -198,6 +198,9 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
 .about-dlg .about-body { padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px; }
 .about-dlg p { margin:0; font-size:13px; line-height:2; }
 
+/* ===== 狭い画面専用の部品（下端のドック切替タブ・盤を畳むシートの端）は広い画面では出さない ===== */
+.mtabs, #boardToggle { display:none; }
+
 /* ===== 1180px 以下: 右ドックは右端から開くドロワー（計画書 §4-6。制約チップを選ぶと開く） ===== */
 #detailToggle { display:none; }   /* ドロワー幅以外は常駐しない */
 @media (min-width:980px) and (max-width:1180px) {
@@ -220,15 +223,50 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
 
 /* ===== narrow: 盤を上に固定し、下半分で「選ぶ／読む」（B1） ===== */
 @media (max-width:979px) {
-  :root { --hdr:52px; }
+  :root { --hdr:52px;   /* 追従するヘッダーの高さ（sticky の基準に使う） */
+          --mtab-h:56px; }   /* 下端のドック切替タブの高さ（セーフエリアは .mtabs の padding で足す） */
   body { height:auto; overflow:auto; display:block; }
-  /* existing rules ... */
-  #boardToggle { display:grid; place-items:center; position:absolute; left:10px; top:calc(var(--hdr) + 5px); width:40px; height:30px; font-size:12px; cursor:pointer; }
-  body[data-board-collapsed="true"] .boardarea { display:none; }
-}
-
-  :root { --hdr:52px; }   /* 追従するヘッダーの高さ（sticky の基準に使う） */
-  body { height:auto; overflow:auto; display:block; }
+  /* 盤の収納: 盤の裾の帯を引くと盤が上へ巻き上がって畳まれる（grid の行を 1fr→0fr に動かす。
+     board.css を後から読むので、.stage > .boardarea で詳細度を上げて display:flex を上書く） */
+  .stage > .boardarea { --blind-h:28px; display:grid; grid-template-rows:1fr auto;
+               justify-items:center; min-height:0; overflow:hidden;
+               transition:grid-template-rows .38s var(--ease); }
+  .stage > .boardarea > .boardwrap { min-height:0; align-self:center; }
+  body[data-board-collapsed="true"] .stage > .boardarea { grid-template-rows:0fr auto; }
+  /* 取っ手はボトムシートの定石であるグラバーピル（横長の丸棒）1本。押して畳む・出す（M4） */
+  #boardToggle { display:block; position:relative; justify-self:stretch; height:var(--blind-h); padding:0;
+                 border:0; border-top:1px solid var(--line-2); border-radius:0; background:var(--bg); cursor:pointer; }
+  #boardToggle::after { content:""; position:absolute; left:50%; top:50%; width:44px; height:5px;
+                        transform:translate(-50%,-50%); border:0; border-radius:3px; background:var(--line-2);
+                        transition:background .2s; }
+  @media (hover:hover) { #boardToggle:hover::after { background:var(--muted); } }
+  /* 下端のドック切替タブ: 左（選ぶ）・右（読む）の面を1枚ずつ出す。横スワイプでも切替わる（js/ui/dock-tabs.js）。
+     アイコン＋ラベルの一般的なボトムナビの形（M3）。アクティブなタブの再タップは面の先頭へ戻る */
+  .mtabs { display:flex; position:fixed; left:0; right:0; bottom:0; z-index:24;
+           padding-bottom:env(safe-area-inset-bottom);
+           background:var(--bg); border-top:1px solid var(--line-2); }
+  .mtabs button { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+                  height:var(--mtab-h); padding:8px 0 0; border:0; border-radius:0;
+                  background:none; cursor:pointer; font:700 11px/1 var(--font-b); letter-spacing:.18em; color:var(--muted); }
+  .mtabs button svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7;
+                      stroke-linecap:round; stroke-linejoin:round; }
+  .mtabs button span { transform:translateX(.09em); }  /* 字間の見かけの偏りを戻す */
+  .mtabs button[aria-pressed="true"] { color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); }
+  @media (hover:hover) { .mtabs button:hover { color:var(--fg); } }
+  /* タブの分だけ下の内容が隠れないよう、ページの末尾に余白を足す */
+  .app { padding-bottom:calc(var(--mtab-h) + env(safe-area-inset-bottom) + 14px); }
+  /* 見せる面は body[data-mtab] が選ぶ（data-mtab が無い＝JS 不通時は従来どおり両方が並ぶ） */
+  body[data-mtab="pick"] .detail { display:none; }
+  body[data-mtab="read"] .rail { display:none; }
+  /* 切替は面が横から滑り込む。向きは body[data-mdir]（l=選ぶ→読む / r=読む→選ぶ） */
+  @keyframes mtab-in-r { from { opacity:0; transform:translateX(26px); } }
+  @keyframes mtab-in-l { from { opacity:0; transform:translateX(-26px); } }
+  body[data-mtab="read"][data-mdir="l"] .detail { animation:mtab-in-r .26s var(--ease); }
+  body[data-mtab="pick"][data-mdir="r"] .rail { animation:mtab-in-l .26s var(--ease); }
+  @media (prefers-reduced-motion:reduce) {
+    .boardarea, #boardToggle::after { transition:none; }
+    .rail, .detail { animation:none; }
+  }
   /* ヘッダーは画面上端に追従（ブランド＋歯車＋明暗）。表示設定のポップオーバーは歯車の下に開く */
   /* body 直下のヘッダーだけに限定（ドック内の <header class="dk-pane-h"> に効かせない） */
   body > header { position:sticky; top:0; z-index:20; height:var(--hdr); flex-wrap:nowrap;
@@ -247,8 +285,25 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
   .brand .about::before { content:""; position:absolute; inset:-9px; }   /* C1: 当たり判定を広げる */
   .ib { width:44px; height:44px; }      /* C1: タップ領域を広げる */
   .ib.txt { width:auto; }
-  /* 表示設定のポップオーバーは画面内に収める */
-  .tools.open { right:max(8px, env(safe-area-inset-right)); }
+  /* 表示設定: ポップオーバーではなく、下端から開くボトムシートにする（M5）。
+     グラバーピル・背面のスクリム・下スワイプで閉じる（js/ui/tools-toggle.js） */
+  .tools.open { position:fixed; left:0; right:0; top:auto; bottom:0; z-index:40;
+                flex-direction:column; align-items:stretch; gap:16px; max-height:72svh; overflow:auto;
+                padding:10px 22px calc(20px + env(safe-area-inset-bottom));
+                background:var(--bg); border:0; border-top:1px solid var(--line-2);
+                border-radius:16px 16px 0 0; box-shadow:0 -8px 30px rgba(24,18,8,.22);
+                animation:sheet-up .3s var(--ease); }
+  .tools.open::before { content:""; display:block; flex:none; width:44px; height:5px; margin:0 auto;
+                        border-radius:3px; background:var(--line-2); }
+  .tools.open .setting { font-size:14px; }
+  .tools.open .seg button { padding:10px 18px; font-size:14px; }
+  .tools.open .switch { padding:6px 0; font-size:14px; min-height:44px; }
+  .tools.open .ib.txt { height:44px; font-size:14px; }
+  @keyframes sheet-up { from { transform:translateY(24%); opacity:.4; } }
+  .sheet-scrim { display:none; }
+  body[data-tools="open"] .sheet-scrim { display:block; position:fixed; inset:0; z-index:35;
+                                         background:rgba(27,26,23,.4); }
+  :root[data-theme="dark"] .sheet-scrim { background:rgba(0,0,0,.55); }
 
   /* 縦1列は flex（order が効く＋sticky のコンテナが .app 全体になる。grid だと
      sticky 要素は自分の grid area に閉じて動かない）。minmax(0,…) に相当する
@@ -292,17 +347,17 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
   .app { flex-direction:row; flex-wrap:wrap; align-items:flex-start; }
   /* 盤は左列に高さいっぱいで固定（sticky は .app 全体がコンテナ）。一覧・読むは右列を流れる */
   .stage { flex:0 0 53%; height:calc(100svh - var(--hdr));
-           grid-template-rows:auto minmax(0,1fr) auto; }
-  /* 相手の帯が畳まれても盤が中段に入るよう、行を明示する */
+           grid-template-rows:auto auto minmax(0,1fr); }
+  /* 両側の帯を盤の上に積み、盤を最後の行に置く */
   .stage #bandOpp { grid-row:1; }
-  .stage .boardarea { grid-row:2; }
-  .stage #bandMe { grid-row:3; }
+  .stage #bandMe { grid-row:2; }
+  .stage .boardarea { grid-row:3; }
   /* 盤に高さを回す: 関係ラベルは畳み（右ドックの対戦相性に同じ情報がある）、帯の上下を詰める */
   .stage { gap:4px; padding-top:4px; padding-bottom:4px; }
   .relation-row { display:none; }
-  .stage .cchip { height:36px; }
-  .rail { flex:0 0 47%; border-left:1px solid var(--line);
-          padding-right:max(14px, env(safe-area-inset-right)); }
-  .detail { flex:0 0 47%; margin-left:auto; }
+  .stage .cchip { height:36px; min-height:36px; }
+  /* 右列は「選ぶ／読む」の切替タブ（data-mtab が見せる1枚を選ぶ）。下端タブは画面幅いっぱいのまま */
+  .rail, .detail { flex:1 1 0; min-width:0; border-left:1px solid var(--line); }
+  .rail { padding-right:max(14px, env(safe-area-inset-right)); }
   .detail [id], .detail-body { scroll-margin-top:calc(var(--hdr) + 8px); }
 }

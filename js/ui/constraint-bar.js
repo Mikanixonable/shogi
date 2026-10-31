@@ -34,6 +34,20 @@ window.Kakoi = window.Kakoi || {};
     return [[cx, cy - r], [cx + w, cy - r / 2], [cx + w, cy + r / 2], [cx, cy + r], [cx - w, cy + r / 2], [cx - w, cy - r / 2]];
   };
   const hexPts = (cx, cy, r) => hexV(cx, cy, r).map(p => p.map(n => +n.toFixed(2)).join(',')).join(' ');
+  const hexPath = (cx, cy, r, corner = 1.8) => {
+    const v = hexV(cx, cy, r);
+    const toward = (a, b) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy);
+      const n = Math.min(corner, d / 3);
+      return [a[0] + dx / d * n, a[1] + dy / d * n];
+    };
+    const before = v.map((p, i) => toward(p, v[(i + 5) % 6]));
+    const after = v.map((p, i) => toward(p, v[(i + 1) % 6]));
+    return `M${before[0].map(n => n.toFixed(2)).join(' ')}`
+      + v.map((p, i) => `Q${p.map(n => n.toFixed(2)).join(' ')} ${after[i].map(n => n.toFixed(2)).join(' ')}`
+        + `L${before[(i + 1) % 6].map(n => n.toFixed(2)).join(' ')}`).join('')
+      + 'Z';
+  };
   // 盤（敵）に向く2辺: 自分の帯は盤の下にあるので上の2辺、相手の帯は盤の上なので下の2辺
   const FACING = { me: [5, 0], opp: [2, 3] };
   function edgeMark(g, cx, cy, r, side, cls) {
@@ -44,22 +58,21 @@ window.Kakoi = window.Kakoi || {};
     }
   }
 
-  // 囲いのコア駒を offset 座標のセルにする。相手の囲いは180°回して、帯の下端（盤側）が
-  // 前線になる向きにする（盤上の見え方と同じ）。外接矩形は左上を (0,0) に正規化する
-  function castleCells(core, who) {
-    const cells = parsePieces(core || '').map(x => who === 'opp'
-      ? { p: x.p, col: x.f - 1, row: 9 - x.r }
-      : { p: x.p, col: 9 - x.f, row: x.r - 7 });
-    const minC = Math.min(...cells.map(c => c.col));
-    const minR = Math.min(...cells.map(c => c.row));
-    cells.forEach(c => { c.col -= minC; c.row -= minR; });
-    return cells;
+  // 囲いのコア駒を offset 座標の胞にする。盤の筋・段の間隔と偶奇を残し、
+  // 相手側は段だけを反転して、帯の下端（盤側）が前線になる向きにする
+  function castleCells(core, side, who) {
+    return parsePieces(core || '').map(x => ({
+      p: x.p,
+      col: (side === 'furibisha' ? 5 : 9) - x.f,
+      row: who === 'opp' ? 2 - (x.r - 7) : x.r - 7,
+      front: x.r === 7,
+    }));
   }
 
-  // 奇数行オフセット（pointy-top）でセル中心を返す
-  const cellXY = (col, row, s, x0, y0) => {
+  // 奇数行オフセット（pointy-top）。行の偶奇を保ったまま胞の座標を詰める
+  const rawCellXY = (col, row, s) => {
     const w = Math.sqrt(3) * s;
-    return [x0 + col * w + (row & 1) * w / 2, y0 + row * 1.5 * s];
+    return [col * w + (row & 1) * w / 2, row * 1.5 * s];
   };
 
   const pieceStrategy = (kind, id, fallback) => {
@@ -212,6 +225,9 @@ window.Kakoi = window.Kakoi || {};
       c.dataset.strategy = w.strategy;
       c.dataset.position = w.position;
       c.dataset.mark = w.mark || '';
+      const tactic = w.kind === 'tactic' ? findTactic(w.id) : null;
+      const family = tacticFamilyOf(tactic);
+      c.dataset.family = family ? family.id : '';
       const b = c.querySelector('.cchip-b');
       b.dataset.who = w.who;
       b.dataset.kind = w.kind;
@@ -257,75 +273,111 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    // 戦型=大きな根の六角。縦書きの戦型名（居飛車/振り飛車）を中に入れる
+    // 戦型=根元の大きな六角。囲い胞へ3本の点線が伸びる参照の構成に合わせる
     _hexStrategy(svg, g, w) {
-      const R = 16, cx = R * M2 + 2.5, cy = R + 2.5;
+      const R = 23, cx = R * M2 + 2.5, cy = R + 2.5;
       svg.setAttribute('viewBox', `0 0 ${(2 * R * M2 + 5).toFixed(1)} ${(2 * R + 5).toFixed(1)}`);
       svg.setAttribute('width', (2 * R * M2 + 5).toFixed(1));
       svg.setAttribute('height', (2 * R + 5).toFixed(1));
-      svg$('polygon', { points: hexPts(cx, cy, R), class: `hx-cell hx-str st-${w.strategy}` }, g);
-      const chars = (w.name || '').replace('り', '').split('');  // 振り飛車→振飛車 の3文字に収める
-      const fs = chars.length > 3 ? 8.5 : 10;
-      const y0 = cy - (chars.length - 1) * fs * 1.12 / 2 + fs * 0.36;
+      svg$('path', { d: hexPath(cx, cy, R, 3), class: `hx-cell hx-str st-${w.strategy}` }, g);
+      const chars = (w.name || '').replace('り', '').split('');  // 振り飛車は胞内に収まる3字へ
+      const fs = 14;
+      const y0 = cy - (chars.length - 1) * fs * 1.12 / 2 + fs * 0.34;
       chars.forEach((ch, i) => {
         svg$('text', { x: cx, y: y0 + i * fs * 1.12, class: 'hx-str-t', 'font-size': fs, 'text-anchor': 'middle' }, g)
           .textContent = ch;
       });
     }
 
-    // 囲い=コアの駒を載せたセルクラスタ。自分は玉が左下・相手は180°回して前線が盤側になる
+    // 囲い=盤上の筋・段に沿ったポリへックス。玉の胞を朱く、共有辺には細い目地を通す
     _hexCastle(svg, g, w) {
       const castle = findCastle(w.id);
-      const cells = castleCells(castle ? castle.core : '', w.who);
-      const s = 8.6, wdt = Math.sqrt(3) * s, pad = 2;
-      const cols = Math.max(...cells.map(c => c.col)) + 1;
-      const rows = Math.max(...cells.map(c => c.row)) + 1;
-      const vw = cols * wdt + wdt / 2 + pad * 2, vh = rows * 1.5 * s + s / 2 + pad * 2;
+      const cells = castleCells(castle ? castle.core : '', castle && castle.side, w.who);
+      const s = 10.8, wdt = Math.sqrt(3) * s, pad = 3, stem = 23;
+      const at = cells.map(cell => {
+        const [x, y] = rawCellXY(cell.col, cell.row, s);
+        return { ...cell, rawX: x, rawY: y };
+      });
+      const minX = Math.min(...at.map(cell => cell.rawX));
+      const maxX = Math.max(...at.map(cell => cell.rawX));
+      const minY = Math.min(...at.map(cell => cell.rawY));
+      const maxY = Math.max(...at.map(cell => cell.rawY));
+      const vw = stem + maxX - minX + wdt + pad * 2;
+      const vh = maxY - minY + s * 2 + pad * 2;
       svg.setAttribute('viewBox', `0 0 ${vw.toFixed(1)} ${vh.toFixed(1)}`);
       svg.setAttribute('width', vw.toFixed(1));
       svg.setAttribute('height', vh.toFixed(1));
-      const front = w.who === 'me' ? 0 : rows - 1;   // 盤に面する前線の段（自分=上・相手=下）
-      const seen = new Set();
-      const markCells = [];
-      for (const cell of cells) {
-        const key = `${cell.col},${cell.row}`;
-        if (seen.has(key)) continue;                 // 同じマスに2駒は来ないが念のため
-        seen.add(key);
-        const [cx, cy] = cellXY(cell.col, cell.row, s, pad + wdt / 2, pad + s);
-        svg$('polygon', { points: hexPts(cx, cy, s), class: `hx-cell st-${w.strategy}${cell.p === '玉' ? ' gy' : ''}` }, g);
-        svg$('text', { x: cx, y: cy + s * 0.36, class: 'hx-t', 'font-size': s * 0.95, 'text-anchor': 'middle' }, g)
-          .textContent = cell.p;
-        // 相手との相性は前線セルの盤向きの2辺に出す
-        if (w.mark && cell.row === front) markCells.push([cx, cy]);
+      const positioned = at.map(cell => ({
+        ...cell,
+        cx: stem + pad + wdt / 2 + cell.rawX - minX,
+        cy: pad + s + cell.rawY - minY,
+      }));
+      // 点線の茎は大きな戦型胞から囲いの上・中・下段へ伸びる
+      const ys = [pad + s, vh / 2, vh - pad - s];
+      for (const y of ys) {
+        const nearest = positioned.reduce((best, cell) => Math.abs(cell.cy - y) < Math.abs(best.cy - y) ? cell : best, positioned[0]);
+          svg$('line', { x1: -6, y1: y, x2: nearest.cx - s * M2 - 3, y2: nearest.cy, class: 'hx-stem' }, g);
       }
-      // 接続線は全セルを描いてから重ねる（隣のセルに塗り潰されないよう最後に）
-      for (const [cx, cy] of markCells) edgeMark(g, cx, cy, s, w.who, `em-${w.mark}`);
+      const edgeMap = new Map();
+      for (const cell of positioned) {
+        const vertices = hexV(cell.cx, cell.cy, s);
+        svg$('path', {
+          d: hexPath(cell.cx, cell.cy, s, 1.8),
+          class: `hx-cell hx-castle st-${w.strategy}${cell.p === '玉' ? ' gy' : ''}`,
+        }, g);
+        const minor = '香桂歩'.includes(cell.p);
+        svg$('text', { x: cell.cx, y: cell.cy + (minor ? 1 : 0), class: `hx-t${minor ? ' minor' : ''}`,
+          'font-size': minor ? 8.5 : 11, 'text-anchor': 'middle' }, g).textContent = cell.p;
+        vertices.forEach((a, i) => {
+          const b = vertices[(i + 1) % 6];
+          const key = [a, b].map(p => p.map(n => n.toFixed(2)).join(',')).sort().join('|');
+          if (!edgeMap.has(key)) edgeMap.set(key, []);
+          edgeMap.get(key).push([a, b]);
+        });
+      }
+      // 共有辺は白いセル間に淡い色の目地として残し、かたまりの形を読みやすくする
+      for (const edges of edgeMap.values()) {
+        if (edges.length === 2) {
+          const [a, b] = edges[0];
+          svg$('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'hx-j hx-j-castle' }, g);
+        }
+      }
+      const front = positioned.filter(cell => cell.front);
+      if (w.mark) for (const cell of front) edgeMark(g, cell.cx, cell.cy, s, w.who, `em-${w.mark}`);
     }
 
-    // 戦法=主役の駒と筋の2セルドミノ。自分は帯の上端（盤側）、相手は下端に寄せる
+    // 戦法=系統の駒記号＋戦法名を載せた2胞の双六モジュール
     _hexTactic(svg, g, w) {
       const t = findTactic(w.id);
       const fam = tacticFamilyOf(t);
-      const s = 8.6, wdt = Math.sqrt(3) * s, pad = 2;
-      const vw = 2 * wdt + pad * 2, vh = 2.5 * s + pad * 2;   // ドミノ＋上下に余白（名前側）
+      const s = 13, wdt = Math.sqrt(3) * s, pad = 2;
+      const label = (t && (t.short || t.name)) || '';
+      const chars = [...label];
+      const lines = chars.length > 2 ? [chars.slice(0, 2).join(''), chars.slice(2, 4).join('')] : [label];
+      const vw = 2 * wdt + pad * 2, vh = 2 * s + pad * 2;
       svg.setAttribute('viewBox', `0 0 ${vw.toFixed(1)} ${vh.toFixed(1)}`);
       svg.setAttribute('width', vw.toFixed(1));
       svg.setAttribute('height', vh.toFixed(1));
-      const cy = w.who === 'me' ? pad + s : vh - pad - s;     // 盤側に寄せる
-      const pieces = [
-        (t && t.lead && t.lead.piece) || (fam && fam.piece) || '・',
-        t && t.lead && Array.isArray(t.lead.files) ? String(t.lead.files[0]) : '',
-      ];
-      const at = [];
-      pieces.forEach((p, i) => {
+      const cy = vh / 2;
+      const familyGlyph = (fam && fam.piece) || (t && t.lead && t.lead.piece) || '・';
+      for (let i = 0; i < 2; i++) {
         const cx = pad + wdt / 2 + i * wdt;
-        at.push(cx);
-        svg$('polygon', { points: hexPts(cx, cy, s), class: `hx-cell st-${w.strategy}${i ? ' aux' : ''}` }, g);
-        svg$('text', { x: cx, y: cy + s * 0.36, class: `hx-t${i ? ' aux' : ''}`, 'font-size': s * (i ? 0.8 : 0.95), 'text-anchor': 'middle' }, g)
-          .textContent = p;
-      });
-      // 相手との相性は盤向きの辺に出す（セルを全部置いてから重ねる）
-      if (w.mark) for (const cx of at) edgeMark(g, cx, cy, s, w.who, `em-${w.mark}`);
+        svg$('path', { d: hexPath(cx, cy, s, 2), class: `hx-cell hx-tactic${i ? ' name-cell' : ' glyph-cell'}` }, g);
+        if (!i) {
+          svg$('text', { x: cx, y: cy + 3.6, class: 'hx-t', 'font-size': 14, 'text-anchor': 'middle' }, g).textContent = familyGlyph;
+        } else {
+          lines.forEach((line, j) => {
+            svg$('text', { x: cx, y: cy + (lines.length > 1 ? (j ? 4 : -3.5) : 2.5),
+              class: 'hx-tname', 'font-size': line.length > 2 ? 6.5 : 7.4, 'text-anchor': 'middle' }, g).textContent = line;
+          });
+        }
+      }
+      // ドミノ中央の継ぎ目と盤に向く辺の相性マーク
+      svg$('line', { x1: pad + wdt, y1: cy - s * .48, x2: pad + wdt, y2: cy + s * .48, class: 'hx-j hx-j-tactic' }, g);
+      if (w.mark) {
+        const markCx = pad + wdt / 2;
+        edgeMark(g, markCx, cy, s, w.who, `em-${w.mark}`);
+      }
     }
 
     _xHost() {

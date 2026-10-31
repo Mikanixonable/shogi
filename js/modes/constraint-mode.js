@@ -23,8 +23,8 @@ window.Kakoi = window.Kakoi || {};
      *   els: stage, bandOpp, relations, bandMe, barOpp, barMe,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
-    constructor({ repo, store, board, overlay, els }) {
-      Object.assign(this, { repo, store, board, overlay, els });
+    constructor({ repo, store, board, overlay, els, dockTabs }) {
+      Object.assign(this, { repo, store, board, overlay, els, dockTabs });
       this.rows = K.tacticNav.tacticRows(repo.tacticFamilies(), repo.tactics());
       this._pvKey = null;
       this._pvRaf = null;
@@ -77,7 +77,20 @@ window.Kakoi = window.Kakoi || {};
         selected: `${who}.${kind}`, dockTab: kind,
       });
       this._openDrawer();
-      this._revealDetail();
+      // 狭い画面では一覧の選択で「読む」へ飛ばさない: 盤が追従表示のまま見えるので
+      // 候補を次々比較できる。解説は「読む」タブか、盤上の制約チップを押して開く（M2）。
+      // 初回だけ、解説の場所を小さく案内する
+      if (matchMedia('(max-width:979px)').matches) this._hintRead();
+    }
+
+    // 最初の選択のあと一度だけ「読む」タブへの導線を出す（sessionStorage のフラグ）
+    _hintRead() {
+      try { if (sessionStorage.getItem('shogi-read-hint')) return; sessionStorage.setItem('shogi-read-hint', '1'); }
+      catch (e) { /* 保存できなければ毎回出す */ }
+      if (K.Toast) K.Toast.show('盤に反映しました。解説は下の「読む」タブへ', {
+        host: this.els.stage, ms: 3600,
+        action: this.dockTabs ? { label: '読む', fn: () => this.dockTabs.show('read', { dir: 'l', align: 'top' }) } : null,
+      });
     }
 
     _select(who, kind, fromBar = false) {
@@ -110,6 +123,8 @@ window.Kakoi = window.Kakoi || {};
     // 横向き2列では盤は左列なので、解説はヘッダーの下へ
     _revealDetail() {
       if (!matchMedia('(max-width:979px)').matches) return;
+      // ドックがタブ化してからは「読む」面へ切り替えて、その先頭を盤の下に合わせる
+      if (this.dockTabs) { this.dockTabs.show('read', { dir: 'l', align: 'top' }); return; }
       const r = this.els.detail.getBoundingClientRect();
       const stage = this.els.stage.getBoundingClientRect();
       const twoCol = stage.width < innerWidth * 0.6;   // 横向きは盤が左の2列

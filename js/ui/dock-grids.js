@@ -88,10 +88,15 @@ window.Kakoi = window.Kakoi || {};
     fh.innerHTML = [9, 8, 7, 6, 5, 4, 3, 2, 1].map(f => `<span>${ZEN[f]}</span>`).join('');
     v.on.appendChild(fh);
     const variantsOf = new Map();
+    const tacticById = new Map(K.TACTICS.map(t => [t.id, t]));
     for (const t of K.TACTICS) {
       if (!t.variantOf) continue;
-      if (!variantsOf.has(t.variantOf)) variantsOf.set(t.variantOf, []);
-      variantsOf.get(t.variantOf).push(t);
+      // 派生の派生は根のタイルに畳む（チップは非派生のタイルにしか付けない）
+      let root = t.variantOf;
+      for (let i = 0; tacticById.get(root) && tacticById.get(root).variantOf && i < 8; i++)
+        root = tacticById.get(root).variantOf;
+      if (!variantsOf.has(root)) variantsOf.set(root, []);
+      variantsOf.get(root).push(t);
     }
     for (const { family, tactics: ts } of ctx.tacticRows) {
       const sec = document.createElement('section');

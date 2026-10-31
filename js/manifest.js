@@ -14,7 +14,7 @@ Kakoi.MANIFEST = (() => {
     'js/ui/theme-toggle.js', 'js/ui/tools-toggle.js', 'js/ui/toast.js', 'js/ui/hash-link.js',
     'js/ui/constraint-bar.js', 'js/ui/roving.js',
     'js/ui/dock-grids.js', 'js/ui/dock-badges.js', 'js/ui/dock-view.js',
-    'js/ui/about-modal.js',
+    'js/ui/about-modal.js', 'js/ui/dock-tabs.js',
   ];
   const modes = ['js/modes/keyboard-nav.js', 'js/modes/board-screen.js', 'js/modes/constraint-mode.js'];
   const app = ['js/app.js'];

@@ -11,6 +11,9 @@ window.Kakoi = window.Kakoi || {};
       const setOpen = open => {
         panel.classList.toggle('open', open);
         btn.setAttribute('aria-expanded', String(open));
+        // 狭い画面ではボトムシートとして開く。スクリムの表示を body の属性で知らせる（M5）
+        if (open) document.body.dataset.tools = 'open';
+        else delete document.body.dataset.tools;
       };
       btn.addEventListener('click', () => setOpen(!panel.classList.contains('open')));
       document.addEventListener('pointerdown', e => {
@@ -21,6 +24,13 @@ window.Kakoi = window.Kakoi || {};
         setOpen(false);
         btn.focus();
       });
+      // ボトムシートの定石: 上端から下へ引くと閉じる（M5）
+      let sy = null;
+      panel.addEventListener('touchstart', e => { sy = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive: true });
+      panel.addEventListener('touchmove', e => {
+        if (sy != null && e.touches[0].clientY - sy > 48) { sy = null; setOpen(false); }
+      }, { passive: true });
+      panel.addEventListener('touchend', () => { sy = null; }, { passive: true });
     }
   }
 

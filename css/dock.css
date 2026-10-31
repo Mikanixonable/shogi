@@ -188,9 +188,10 @@
 .dk-fam[data-closed="true"] .dk-cards { display:none; }
 
 /* F3: カードはサムネイルの描画幅（サムネ帯62px × 窓のアスペクト --ar。全囲い 5筋×3段 ≈94px＋枠）に限る。
-   左ドックでは3列が上限になり、列が減る分は縦スクロールで吸収する */
+   3列を維持するため、ドック幅が足りないときは (面幅-余白)/3 に収まるようサムネごと縮む */
 .dk-cards { display:flex; flex-wrap:wrap; gap:8px 7px; }
-.dk-card { display:flex; flex-direction:column; align-items:stretch; gap:3px; width:calc(62px * var(--ar, 1.52) + 2px);
+.dk-card { display:flex; flex-direction:column; align-items:stretch; gap:3px;
+           width:min(calc(62px * var(--ar, 1.52) + 2px), calc((100% - 14px) / 3));
            padding:0 0 5px; cursor:pointer;
            border:1px solid var(--line-2); background:var(--bg); font:inherit; color:inherit;
            transition:border-color .2s, transform .15s var(--ease), box-shadow .15s; }
@@ -201,7 +202,7 @@
 .dk-card .thumb { display:flex; justify-content:center; align-items:center; width:100%; height:65px; padding:0;
                   border-bottom:3px solid var(--fam, var(--line)); }
 .dk-card .thumb .sc { display:block; height:100%; }
-.dk-card .thumb svg { width:auto; height:100%; display:block; margin:auto; }
+.dk-card .thumb svg { width:auto; height:100%; max-width:100%; display:block; margin:auto; }
 .dk-card .nm { font-size:12px; line-height:1.2; text-align:center; letter-spacing:.02em; padding:2px 2px 0; overflow-wrap:anywhere; }
 
 /* 性質の段の見出し: 星で段を示す */
@@ -266,18 +267,23 @@
 .dk-binder[data-show="false"] .dk-pc[data-who="opp"] .body::after { background:var(--faint); }
 
 /* ===== narrow: ページ全体でスクロールするので、一覧は内容の高さを取る ===== */
+/* M1: 面の上端は「選ぶ操作（相手/自分の側＋囲い/戦法の層）」の1行、
+   その下は「見せ方（戦型の絞り込み・並べ方・凡例）」の1行の2段構成。
+   バインダーの駒はタブと同じ行に並ぶ小さな駒タブ（dock-view.js がDOMを移す） */
 @media (max-width:979px) {
   #pickRail .dk { flex:none; display:block; }
-  /* 駒の見出しはドックの上に横並び（左=相手・右=自分）。駒は横長にして字も横書き */
-  .dk-binder { position:static; order:-1; display:flex; flex-direction:row; justify-content:flex-start; align-items:center;
-               width:auto; gap:10px; margin-bottom:10px; }
-  .dk-pc { position:relative; top:auto; right:auto; bottom:auto; width:112px; height:44px; }
+  .dk-binder { position:static; display:flex; flex-direction:row; align-items:flex-end;
+               width:auto; gap:2px; margin:0 4px 0 0; padding:0; flex:none; }
+  .dk-pc { position:relative; top:auto; right:auto; bottom:auto; width:60px; height:44px; }
   .dk-pc[data-who] { top:auto; }            /* 広い画面の縦積み top を打ち消す（詳細度対策・A1） */
-  .dk-pc[aria-selected="true"][data-who] { right:auto; width:112px; }
-  .dk-pc .v, .dk-pc[data-who="opp"] .v { inset:4px 0 0; writing-mode:horizontal-tb; letter-spacing:.2em; }
-  .dk-pc[data-who="opp"] .v { inset:0 0 4px; }
+  .dk-pc[aria-selected="true"][data-who] { right:auto; width:60px; }
+  .dk-pc .v, .dk-pc[data-who="opp"] .v { inset:0; display:flex; align-items:center; justify-content:center;
+                gap:3px; writing-mode:horizontal-tb; font-size:12px; letter-spacing:.02em; }
+  .dk-pc .v small { font-size:9px; }
   .dk-pc-ghost { display:none !important; }
-  .dk-pc-x { position:relative; right:auto; top:auto; margin-left:-6px; }
+  .dk-pc-x { position:relative; right:auto; top:auto; margin:0 0 10px -8px; }
+  /* 戦型の絞り込みは並べ方の行の先頭へ（見せ方の行）。セグメントであることが分かるよう下線は残す */
+  .dk-tools .dk-strategy { flex:none; align-self:center; margin:0 4px 0 0; }
   .dk-pane { display:block; min-height:0; }
   .dk-body { overflow:visible; }
   /* タップ領域（C1）: 小さなボタンは見た目を変えず ::after で当たり判定だけ広げる */
@@ -286,7 +292,7 @@
   .dk-legend::after { content:""; position:absolute; inset:-13px; }
   .dk-pc-x::after { content:""; position:absolute; inset:-11px; }
   .dk-tab button { height:44px; }
-  .dk-strategy button { min-height:44px; }
+  .dk-strategy button { min-height:44px; padding-left:8px; padding-right:8px; }
   .dk-sort-sel { height:44px; font-size:13px; }
 
   .dk-fam-h { min-height:44px; padding:6px 0; }

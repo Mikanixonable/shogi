@@ -52,8 +52,15 @@
   const overlay = new K.OverlayView($('board'));
   if (debug) window.__kakoi = { overlay, board, repo, store };
 
+  // 狭い画面: 左（選ぶ）・右（読む）ドックを下端タブ＋横スワイプで切り替える
+  const dockTabs = new K.DockTabs(document.querySelector('.mtabs'), {
+    rail: document.querySelector('.rail'),
+    detail: document.querySelector('.detail'),
+    stage: $('stageMain'),
+  });
+
   const mode = new K.ConstraintMode({
-    repo, store, board, overlay,
+    repo, store, board, overlay, dockTabs,
     els: {
       stage: $('stageMain'), bandOpp: $('bandOpp'), relations: $('relationshipLabels'), bandMe: $('bandMe'),
       barOpp: $('cbarOpp'), barMe: $('cbarMe'),
@@ -70,15 +77,31 @@
   new K.ThemeToggle($('themeToggle'));
   new K.ToolsToggle($('toolsToggle'), $('tools'));
   new K.AboutModal($('aboutOpen'), $('aboutDialog'));
-  // 盤の収納/展開ボタン（モバイル）
+  // 右ドックのドロワー開閉（中くらいの幅では右端から開く。§4-6）
+  {
+    const t = $('detailToggle');
+    const sync = () => t.setAttribute('aria-expanded', String(document.body.dataset.drawer === 'open'));
+    t.addEventListener('click', () => {
+      document.body.dataset.drawer = document.body.dataset.drawer === 'open' ? '' : 'open';
+      sync();
+    });
+    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-drawer'] });
+    sync();
+  }
+  // 盤の収納/展開（モバイル。盤の裾のシートの端を引いて畳む）
   {
     const t = $('boardToggle');
-    const sync = () => t.setAttribute('aria-expanded', String(document.body.dataset.boardCollapsed === 'true'));
+    const sync = () => {
+      const collapsed = document.body.dataset.boardCollapsed === 'true';
+      t.setAttribute('aria-expanded', String(!collapsed));
+      t.setAttribute('aria-label', collapsed ? '盤を出す' : '盤を収納する');
+    };
     t.addEventListener('click', () => {
       document.body.dataset.boardCollapsed = document.body.dataset.boardCollapsed === 'true' ? '' : 'true';
       sync();
     });
     new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-board-collapsed'] });
+    sync();
   }
 
   store.subscribe((state, changed) => {
