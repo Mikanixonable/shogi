@@ -4,13 +4,14 @@
 /* ===== 制約バー: 見出しと盤の間。チップ1つ=スロット1つ ===== */
 /* .cbar-x はカプセルを横一列に流し、リセットは同じ行の右端に置く */
 .cbar { display:flex; flex:1 1 auto; min-width:0; min-height:44px; align-items:center; flex-wrap:nowrap; gap:6px; overflow:visible; }
-.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; flex-wrap:nowrap; gap:0; padding:2px 12px 2px 0;
+.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; flex-wrap:nowrap; gap:0; padding:2px 6px 2px 0;
+          container:cbar / inline-size;
           overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
-          mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent); }
+          mask-image:linear-gradient(to right,#000 calc(100% - 8px),transparent); }
 .cbar-x::-webkit-scrollbar { display:none; }
-/* チップ: 種類・名称と解除記号だけを、凹凸が連結する一枚の帯にまとめる */
+/* チップ: 六角モジュール＋種類・名称と解除記号を、凹凸が連結する一枚の帯にまとめる */
 .cchip { --chip-ink:var(--t-silver); --chip-bg:color-mix(in srgb,var(--chip-ink) 14%,var(--bg));
-         position:relative; display:flex; flex:none; min-width:0; max-width:100%; height:40px; align-items:center; gap:4px; padding:3px 20px 3px 6px;
+         position:relative; display:flex; flex:0 1 auto; min-width:0; max-width:100%; height:auto; min-height:48px; align-items:center; gap:4px; padding:2px 20px 2px 6px;
          background:none; color:var(--fg); }
 .cchip[data-position="middle"] { margin-left:-14px; padding-left:22px; }
 .cchip[data-position="last"] { margin-left:-14px; padding-left:22px; }
@@ -37,15 +38,53 @@
                   border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
 .cchip .cchip-b, .cchip-x { position:relative; z-index:3; }
 @media (hover:hover) { .cchip .cchip-b:hover .cchip-nm { color:var(--accent); } }
-.cchip-type { display:grid; flex:none; place-items:center; min-width:32px; height:24px; padding:0 3px;
-              border-radius:999px; color:var(--chip-ink); font-size:10px; font-weight:800; letter-spacing:0; }
-.cchip-ng { flex:none; font-style:normal; font-size:13px; font-weight:900; color:var(--bad); }
+/* 種類（小）＋ ✕・名称の2段組。モジュールの右に細く立てる */
+.cchip-txt { display:grid; flex:none; grid-template-columns:auto minmax(0,1fr); column-gap:2px; min-width:0; align-items:center; }
+.cchip-type { grid-column:1/-1; color:var(--chip-ink); font-size:9px; font-weight:800; letter-spacing:.1em; line-height:1.3; }
+.cchip-ng { flex:none; font-style:normal; font-size:12px; font-weight:900; color:var(--bad); }
 .cchip-ng:empty { display:none; }
 .cchip-nm { display:block; min-width:0; max-width:min(240px,calc(100vw - 200px)); overflow:hidden; color:var(--fg);
-            font-size:14px; font-weight:800; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
+            font-size:13px; font-weight:800; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
+.cchip[data-kind="strategy"] .cchip-nm { display:none; }   /* 名は大きな根の中に縦書きで入れる */
 .cchip-x { display:grid; flex:none; place-items:center; width:22px; height:22px; margin:0; border:0;
            border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; }
 @media (hover:hover) { .cchip-x:hover { border-color:var(--bad); color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); } }
+/* ===== 六角モジュール（B2案: 囲い=駒のクラスタ、戦法=主役+筋のドミノ、戦型=大きな根） ===== */
+.hx { flex:none; display:block; overflow:visible; }
+.hx-cell { fill:var(--piece-1); stroke:var(--piece-edge); stroke-width:1;
+           transition:stroke .2s var(--ease); }
+.hx-cell.aux { fill:var(--faint); }
+.hx-cell.gy { fill:color-mix(in srgb,var(--accent) 16%,var(--piece-1)); }
+.hx-cell.hx-str { fill:color-mix(in srgb,var(--chip-ink) 10%,var(--bg)); stroke-width:1.4; }
+.hx-t { font-family:var(--font-d); font-weight:700; fill:var(--ink); pointer-events:none; }
+.hx-t.aux { fill:var(--muted); font-weight:600; }
+.hx-str-t { font-family:var(--font-d); font-weight:800; fill:var(--fg); pointer-events:none; }
+/* 相手との相性: 盤に向く辺に◎=緑/△=赤の線（ドックのバッジと同じ意味） */
+.hx-em { stroke-width:2.6; stroke-linecap:round; }
+.hx-em.em-good { stroke:var(--good); }
+.hx-em.em-bad { stroke:var(--bad); stroke-dasharray:3.5 2.5; }
+/* 既定値で補った層: 斜線の網掛け（js の _hatch が各セルに url(#) を当てる） */
+.hx-imp-bg { fill:var(--bg); }
+.hx-imp-ln { stroke:var(--line-2); stroke-width:1.4; }
+.hx-g.imp .hx-t, .hx-g.imp .hx-str-t { fill:var(--muted); }
+/* 両立しない層: モジュールを少し傾けて「はまらない」を示す（理由は title・右ドック） */
+.hx-g { transform-box:fill-box; transform-origin:center; }
+.hx-g.ng { transform:rotate(3deg); }
+.hx-g.ng .hx-cell { stroke:var(--bad); }
+.cchip[data-sel="true"] .hx-cell { stroke:var(--accent); }
+.cchip[data-sel="true"] .hx-cell.hx-str { stroke-width:2; }
+/* 行が狭いとき（1）: 横にはみ出させず、種類の文字を色の点に畳み、名前は省略記号で縮める */
+.cchip-type::before { content:none; }
+@container cbar (max-width:560px) {
+  .cchip-type { min-width:10px; width:10px; padding:0; font-size:0; position:relative; }
+  .cchip-type::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--chip-ink); }
+  .cchip[data-implied="true"] .cchip-type::after { content:""; position:absolute; top:-4px; right:-4px; margin:0;
+            width:5px; height:5px; border:1px dashed var(--muted); background:var(--bg); }
+  .cchip-nm { font-size:13px; }
+  .cchip { gap:3px; padding-right:15px; }
+  .cchip[data-position="middle"], .cchip[data-position="last"] { padding-left:19px; }
+  .cchip-x { width:18px; }
+}
 /* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
 .cchip[data-sel="true"] .cchip-nm { color:var(--accent); }
 /* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
@@ -72,7 +111,8 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
   /* フェードは残して「右に続きがある」ことを示し、チップ単位で吸い付くようにする（A3） */
   .cbar-x { flex:1 1 auto; overflow-x:auto; scroll-snap-type:x proximity;
             padding-left:2px; }
-  .cchip { height:44px; scroll-snap-align:start; }
+  /* 狭い画面は縮めずに横へ流す（1〜2字まで縮むと読めない）。右端のフェードで続きを示す */
+  .cchip { flex:none; height:auto; min-height:50px; scroll-snap-align:start; }
   .cchip-x { position:relative; }
   .cchip-x::after { content:""; position:absolute; inset:-11px; }   /* C1: 見た目は22pxのまま当たり判定を広げる */
   /* 「既定」の文字は幅を食うので、種類の角の点線の印だけにする（A3） */

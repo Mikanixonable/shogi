@@ -70,15 +70,15 @@
   new K.ThemeToggle($('themeToggle'));
   new K.ToolsToggle($('toolsToggle'), $('tools'));
   new K.AboutModal($('aboutOpen'), $('aboutDialog'));
-  // 中くらいの幅（≤1180px）で右ドックはドロワー。タブで開閉する（§4-6）
+  // 盤の収納/展開ボタン（モバイル）
   {
-    const t = $('detailToggle');
-    const sync = () => t.setAttribute('aria-expanded', String(document.body.dataset.drawer === 'open'));
+    const t = $('boardToggle');
+    const sync = () => t.setAttribute('aria-expanded', String(document.body.dataset.boardCollapsed === 'true'));
     t.addEventListener('click', () => {
-      document.body.dataset.drawer = document.body.dataset.drawer === 'open' ? '' : 'open';
+      document.body.dataset.boardCollapsed = document.body.dataset.boardCollapsed === 'true' ? '' : 'true';
       sync();
     });
-    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-drawer'] });
+    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-board-collapsed'] });
   }
 
   store.subscribe((state, changed) => {

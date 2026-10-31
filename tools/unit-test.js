@@ -686,21 +686,21 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
       'placeTactics:空き筋にドット', jstr(a.dots));
   }
 
-  // miniWindow（サムネイルの窓）: core 駒の外接矩形を最小 4筋×3段まで広げる。端・自陣の奥へ先に広げる。flip は対角へ
+  // miniWindow（サムネイルの窓）: core 駒の外接矩形を最小 5筋×3段まで広げる。端・自陣の奥へ先に広げる。flip は対角へ
   {
     const anaguma = K.CASTLES.find(x => x.id === 'anaguma');
     const pos = K.Position.fromCastle(anaguma, K.SETUPS[anaguma.setup]);
     const w = K.miniWindow(pos, 'ibisha');
-    ok(w.f0 === 6 && w.f1 === 9 && w.r0 === 7 && w.r1 === 9,
-      'miniWindow:居飛車穴熊は6-9筋×7-9段（玉側の隅まで）', jstr(w));
+    ok(w.f0 === 5 && w.f1 === 9 && w.r0 === 7 && w.r1 === 9,
+      'miniWindow:居飛車穴熊は5-9筋×7-9段（玉側の隅まで）', jstr(w));
     const wf = K.miniWindow(pos, 'ibisha', true);
-    ok(wf.f0 === 1 && wf.f1 === 4 && wf.r0 === 1 && wf.r1 === 3,
+    ok(wf.f0 === 1 && wf.f1 === 5 && wf.r0 === 1 && wf.r1 === 3,
       'miniWindow:flip は対角の隅', jstr(wf));
     const small = K.CASTLES.every(c => [false, true].every(flip => {
       const x = K.miniWindow(K.Position.fromCastle(c, K.SETUPS[c.setup]), c.side, flip);
-      return x.f1 - x.f0 + 1 >= 4 && x.r1 - x.r0 + 1 >= 3 && x.f0 >= 1 && x.f1 <= 9 && x.r0 >= 1 && x.r1 <= 9;
+      return x.f1 - x.f0 + 1 >= 5 && x.r1 - x.r0 + 1 >= 3 && x.f0 >= 1 && x.f1 <= 9 && x.r0 >= 1 && x.r1 <= 9;
     }));
-    ok(small, 'miniWindow:全囲いで窓は4筋×3段以上・盤の内側', '');
+    ok(small, 'miniWindow:全囲いで窓は5筋×3段以上・盤の内側', '');
     // 全囲い: core 駒は全て窓の中に収まる（右玉・中住まいのようにずれる場合を含む）
     let allIn = true, detail = '';
     for (const c of K.CASTLES) {

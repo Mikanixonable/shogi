@@ -8,9 +8,9 @@
 //     列に分岐チップとして常に表示する。列の配置は
 //     tacticNav.placeTactics（純関数）
 //   - 基本の項目（データの basic）は「基本」の印を付けて系統の先頭に置く
-//   - 囲いタイル: 並べ方（CASTLE_SORTS）ごとの折りたたみブロック。既定は CASTLE_FAMILIES ごと。サムネイルは玉側の隅の
-//     固定窓（6筋×4段）で歩の壁・周辺の駒ごと見せる（lab/shogi と同じ方式。中央寄りの
-//     囲いは窓をずらす。相手の面は180度回転・字は正立）（§4-4）
+//   - 囲いタイル: 並べ方（CASTLE_SORTS）ごとの折りたたみブロック。既定は CASTLE_FAMILIES ごと。サムネイルは core 駒の
+//     外接矩形を最小 5筋×3段に広げた窓で、歩の壁・周辺の駒ごと見せる。タイルの幅は窓の描画幅
+//     （--ar。サムネにぴったりの札）に限る。相手の面は180度回転・字は正立（§4-4）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -152,6 +152,7 @@ window.Kakoi = window.Kakoi || {};
     if (c.basic) b.dataset.basic = 'true';
     b.style.setProperty('--fam', famColor(c.family));   // 堅さ順など系統が混ざる段でも下線で系統が分かる
     if (row) { b.style.setProperty('--d', depth); b.dataset.depth = depth; }
+    else b.style.setProperty('--ar', K.miniAspect(K.miniWindow(ctx._pos.get(c.id), c.side, flip)).toFixed(4));   // カード幅=サムネの描画幅
     b.innerHTML =
       (row && depth ? '<span class="br" aria-hidden="true">└</span>' : '') +
       `<span class="thumb" aria-hidden="true"><span class="sc">` +

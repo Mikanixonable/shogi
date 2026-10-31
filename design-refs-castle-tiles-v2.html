@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>囲いタイル 幅詰め A案の派生 — 窓幅の統一・玉・絞り込み</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* design-refs-castle-tiles.html のA案（サムネぴったり札）の派生案。
+   4x3窓（≈57px）と5x3窓（≈71px）でずれるカード幅を統一する4案＋共通の3変更
+   （玉の表示を駒形に / 戦略の絞り込みを左端の文字セグメントに / 戦法タブのアイコン）。 */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f;
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --gote-ink:#33507a;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --f-funa:#b5652b; --f-yagura:#33507a; --f-gangi:#4a6b3f; --f-anaguma:#55504a; --f-mino:#c8371f;
+  --f-itidan:#a07a1f; --f-nakazumai:#6b5a7a; --f-kinmusou:#8a6d3f; --f-migigyoku:#2f7a73;
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b;
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --gote-ink:#8ea6cf;
+  --f-funa:#d98a50; --f-yagura:#8ea6cf; --f-gangi:#9cbf8a; --f-anaguma:#b4ada2; --f-mino:#e2563b;
+  --f-itidan:#d1a94a; --f-nakazumai:#a996bb; --f-kinmusou:#c4a77a; --f-migigyoku:#6cc0b6;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); }
+body { margin:0; font:14px/1.6 var(--font-b); color:var(--fg); background:var(--bg); }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+/* ===== ページの枠 ===== */
+.top { position:sticky; top:0; z-index:30; display:flex; gap:6px 14px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 12px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 10px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.top button { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; }
+.intro { max-width:1100px; margin:22px auto 0; padding:0 16px; color:var(--fg2); font-size:13.5px; }
+.intro ul { margin:6px 0 0; padding-left:1.3em; }
+section.plan { max-width:1100px; margin:40px auto 0; padding:0 16px 36px; border-bottom:1px solid var(--line); }
+section.plan h2 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:800 24px/1.3 var(--font-d); letter-spacing:.06em; }
+section.plan h2 .no { font:800 34px/1 var(--font-d); color:var(--accent); }
+section.plan h2 .rec { font:700 11px/1 var(--font-b); color:var(--bg); background:var(--accent); padding:3px 9px; letter-spacing:.14em; }
+section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-width:860px; }
+.stage { display:grid; grid-template-columns:390px minmax(0,1fr); gap:0 40px; align-items:start; }
+.stage .cap { font-size:11px; color:var(--muted); letter-spacing:.14em; margin-bottom:4px; }
+.notes { font-size:12.5px; color:var(--fg2); display:flex; flex-direction:column; gap:12px; padding-left:8px; }
+.notes h4 { margin:0 0 2px; font-size:12px; letter-spacing:.14em; color:var(--muted); }
+.notes ul { margin:0; padding-left:1.2em; }
+.notes .try { padding:8px 12px; border-left:2px solid var(--accent); background:var(--accent-soft); }
+.notes .warn { padding:8px 12px; border-left:2px solid var(--accent-2); }
+.notes code { font:600 11px/1.4 ui-monospace,monospace; background:var(--faint); padding:1px 4px; }
+table.cmp { border-collapse:collapse; font-size:12px; }
+table.cmp th, table.cmp td { border:1px solid var(--line-2); padding:4px 10px; text-align:left; }
+table.cmp th { background:var(--faint); font-weight:600; }
+@media (max-width:880px) { .stage { grid-template-columns:390px; } .notes { padding:16px 0 0; } }
+
+/* ===== 共通: 左ドックの器（実寸）と駒の見出し ===== */
+.rail { position:relative; width:390px; border-right:1px solid var(--line); }
+.rail .pg { position:relative; padding:10px 14px 16px; display:flex; flex-direction:column; }
+.body { padding:8px 9px 2px 0; }
+
+/* ===== 面の上端（変更後: 左=戦略の文字セグメント、右=層タブ） ===== */
+.ph { display:flex; flex-wrap:nowrap; align-items:flex-end; gap:12px; margin-bottom:8px; border-bottom:1px solid var(--line-2); }
+/* 戦略の絞り込み: 丸ピルをやめ、文字だけのセグメント（朱の下線）に */
+.strat2 { flex:none; display:flex; align-self:flex-end; margin-bottom:2px; }
+.strat2 button { border:0; background:none; padding:7px 10px 6px; cursor:pointer; font:700 13px/1 var(--font-b);
+                 letter-spacing:.06em; color:var(--muted); }
+.strat2 button[aria-pressed="true"] { color:var(--fg); font-weight:700; box-shadow:inset 0 -2.5px 0 var(--accent); }
+.tabs { position:relative; display:flex; align-items:flex-end; gap:4px; flex:1 1 auto; height:42px; min-width:0; margin-bottom:-1px; }
+.tabs button { position:relative; flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:7px;
+               height:41px; min-width:0; padding:6px 3px; border:1px solid var(--line-2);
+               border-radius:9px 9px 0 0; background:color-mix(in srgb,var(--fg) 4%,var(--bg));
+               font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted); }
+.tabs button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
+.tabs button[aria-pressed="true"] { z-index:1; border-color:var(--accent-2); border-bottom:1px solid var(--bg);
+                                   background:var(--bg); color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); font-weight:800; }
+.tools { display:flex; align-items:center; gap:6px 10px; flex-wrap:wrap; min-height:28px; margin:0 0 8px; }
+.sort { display:flex; align-items:center; gap:6px; font-size:11px; letter-spacing:.06em; color:var(--muted); }
+.selsim { height:28px; display:inline-flex; align-items:center; padding:0 24px 0 9px; border:1px solid var(--line-2);
+          font:600 12px/1 var(--font-b); letter-spacing:.04em; color:var(--fg);
+          background:linear-gradient(45deg,transparent 50%,var(--muted) 50%) right 13px center/4px 4px no-repeat,
+                     linear-gradient(135deg,var(--muted) 50%,transparent 50%) right 9px center/4px 4px no-repeat; }
+.key { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; font-size:11px; color:var(--muted); }
+.lg-badge { display:inline-block; min-width:1.9em; margin-right:3px; padding:0 4px; border-radius:999px;
+            font:700 9.5px/1.6 var(--font-b); text-align:center; }
+.lg-good { background:var(--good); color:var(--bg); }
+.lg-bad { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
+.lg-ng { background:var(--bad); color:#fbf6ea; }
+.legend { margin-left:auto; width:18px; height:18px; padding:0; border:1px solid var(--line-2); border-radius:50%;
+          background:none; color:var(--muted); font:600 11px/1 var(--font-b); cursor:pointer; flex:none; }
+
+/* ===== 共通: 系統ブロック ===== */
+.fam { display:flex; flex-direction:column; gap:6px; border-left:4px solid var(--fam, var(--line-2)); padding-left:8px; margin-bottom:12px; }
+.famh { display:flex; align-items:center; gap:7px; width:100%; padding:2px 0; border:0; background:none;
+        font:700 14px/1.2 var(--font-d); letter-spacing:.08em; color:var(--fg); cursor:pointer; text-align:left; }
+.famh:hover { color:var(--fam); }
+.famh .caret { font-size:10px; color:var(--muted); transition:transform .2s var(--ease); }
+.fam[data-closed="true"] .famh .caret { transform:rotate(-90deg); }
+.famh .gl { display:inline-flex; color:var(--fam); }
+.famh .gl svg { display:block; }
+.famh .n { margin-left:auto; min-width:22px; padding:1px 6px; border-radius:999px; background:var(--fam); color:var(--bg);
+           font:700 11px/1.4 var(--font-b); text-align:center; letter-spacing:0; }
+.fam[data-closed="true"] .cards { display:none; }
+
+/* ===== 共通: カードの状態 ===== */
+.it { position:relative; font:inherit; color:inherit; cursor:pointer; min-width:0; text-align:center; }
+.it .vs, .it .ng { display:inline-block; min-width:18px; padding:1px 5px; border-radius:999px;
+                   font:700 9.5px/1.35 var(--font-b); font-style:normal; text-align:center; }
+.it .vs:empty, .it .ng:empty { display:none; }
+.it[data-vs="good"] .vs { background:var(--good); color:var(--bg); }
+.it[data-vs="bad"] .vs { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
+.it .ng { background:var(--bad); color:#fbf6ea; }
+.it[data-ng="true"] { border-style:dashed !important; border-color:var(--line-2) !important; }
+.it[aria-current="true"] { outline:2.5px solid var(--accent); outline-offset:1px; }
+.it[aria-current="true"] .nm { font-weight:700; color:var(--fg); }
+.it[aria-current="true"]::before { content:"✓"; position:absolute; z-index:3; top:-8px; right:-7px; width:16px; height:16px;
+                                   border-radius:50%; background:var(--accent); color:#fbf6ea; font:700 10px/16px var(--font-b);
+                                   text-align:center; pointer-events:none; }
+.it[data-implied="true"]::after { content:""; position:absolute; top:2px; right:2px; width:5px; height:5px;
+                                 border:1px dashed var(--muted); pointer-events:none; }
+.it[data-basic="true"] .nm { font-weight:600; }
+.seal { position:absolute; top:-1px; left:-1px; z-index:2; padding:1px 3px 0; background:var(--accent); color:#fbf6ea;
+        font:600 8.5px/1.25 var(--font-b); letter-spacing:.08em; pointer-events:none; }
+.mk { display:flex; align-items:center; justify-content:center; gap:3px; min-height:11px; }
+
+/* ===== 共通: サムネイル ===== */
+.th { display:flex; justify-content:center; align-items:center; }
+.th .sc { display:block; height:100%; max-width:100%; }
+.th svg { width:auto; max-width:100%; height:100%; display:block; margin:auto; }
+.mini-bg { fill:color-mix(in srgb, var(--fg) 4%, var(--bg)); stroke:var(--line-2); stroke-width:.5; }
+.mini-ln { stroke:var(--line); stroke-width:.4; }
+.mini-pc { font:700 9px var(--font-d); fill:var(--fg); text-anchor:middle; dominant-baseline:central; }
+.mini-pc.k { fill:#fbf6ea; font-size:8.6px; }
+.mini-pc.ksolo { fill:var(--accent); font-size:9.4px; }
+.mini-k { fill:var(--accent); }
+.mini-dot { fill:var(--muted); opacity:.55; }
+
+/* ===== 共通: 駒の見出し ===== */
+.binder { position:absolute; z-index:6; top:0; bottom:0; right:-18px; width:40px; pointer-events:none; }
+.pc { position:absolute; right:0; width:40px; height:min(150px,28vh); padding:0; border:0; background:none;
+      cursor:pointer; pointer-events:auto; color:var(--muted); }
+.pc[data-who="opp"] { top:calc(50% - min(150px,28vh)); }
+.pc[data-who="me"] { top:50%; }
+.pc .bd { position:absolute; inset:0; background:var(--line-2); clip-path:polygon(50% 0,100% 12%,100% 100%,0 100%,0 12%); }
+.pc .bd::after { content:""; position:absolute; inset:1px; background:var(--bg); clip-path:polygon(50% 0,100% 12%,100% 100%,0 100%,0 12%); }
+.pc[data-who="opp"] .bd { transform:scaleY(-1); }
+.pc .v { position:absolute; inset:14px 0 0; display:flex; align-items:center; justify-content:center; gap:6px;
+         writing-mode:vertical-rl; font:700 15px/1 var(--font-d); letter-spacing:.3em; }
+.pc[data-who="opp"] .v { inset:0 0 14px; }
+.pc .v small { font:500 10px/1 var(--font-b); letter-spacing:.08em; }
+.pc[aria-selected="true"] { right:-3px; width:46px; z-index:2; color:var(--ink); }
+.pc[aria-selected="true"] .bd { background:var(--piece-edge); }
+.pc[aria-selected="true"] .bd::after { background:var(--piece-1); }
+.pc-ghost { display:none; }
+
+/* ===== 共通の変更の見本 ===== */
+.gyoku { display:flex; gap:22px; align-items:flex-start; margin:4px 0 10px; }
+.gyoku figure { margin:0; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.gyoku .th { height:50px; border:1px solid var(--line-2); padding:0; }
+.gyoku .th svg { height:100%; width:auto; }
+.gyoku figcaption { font-size:11.5px; color:var(--fg2); }
+.gyoku .pick figcaption { color:var(--accent); font-weight:700; }
+.phmock { border:1px solid var(--line-2); padding:8px 12px 0; margin:4px 0 10px; }
+.phmock .ph { margin-bottom:0; border-bottom:0; }
+.phmock .old { opacity:.55; }
+.phmock .strat { display:flex; padding:2px; border:1.5px solid var(--line-2); border-radius:999px; align-self:center; }
+.phmock .strat button { display:flex; align-items:center; gap:5px; padding:5px 9px; border-radius:999px; border:0; background:none;
+                        font:700 12px/1 var(--font-b); color:var(--muted); white-space:nowrap; }
+.phmock .strat button b { display:grid; place-items:center; width:17px; height:17px; border:1px solid currentColor; border-radius:50%; font:800 10px/1 var(--font-d); }
+.phmock .strat button[aria-pressed="true"] { background:var(--accent); color:#fbf6ea; }
+.icons { display:flex; gap:18px; align-items:flex-end; margin:4px 0 10px; }
+.icons figure { margin:0; display:flex; flex-direction:column; align-items:center; gap:5px; }
+.icons svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
+.icons figcaption { font-size:11px; color:var(--fg2); }
+.icons .old svg { color:var(--muted); }
+.icons .pick figcaption { color:var(--accent); font-weight:700; }
+
+/* ============================================================
+   A系の共通: サムネぴったり札（v1のA案）
+   ============================================================ */
+.cards { display:flex; flex-wrap:wrap; gap:8px 6px; align-items:flex-start; }
+.card { flex:none; display:flex; flex-direction:column; align-items:stretch; gap:2px;
+        width:calc(var(--tw) + 2px); padding:0 0 4px; border:1px solid var(--line-2); background:var(--bg);
+        transition:border-color .2s, transform .15s var(--ease), box-shadow .15s; }
+.card:hover { border-color:var(--fg); transform:translateY(-2px); box-shadow:0 4px 10px rgba(24,18,8,.12); }
+.card[data-basic="true"] { border:1.5px solid var(--fam); }
+.th { width:100%; height:50px; border-bottom:3px solid var(--fam, var(--line)); }
+.tx { display:block; }
+.nm { font-size:11px; line-height:1.25; letter-spacing:0; padding:2px 1px 0; display:block; overflow-wrap:anywhere; }
+
+/* A1 窓そろえ: 全窓を5列に（サムネ自体が全て同寸 5x3 → カード73.2pxで完全統一） */
+.k1 .card { width:calc(var(--tw) + 2px); }
+
+/* A2 小そろえ: カードを4x3寸（59px）に統一。5x3のサムネは縮んで中央に収まる */
+.k2 .card { width:59px; }
+.k2 .th { height:50px; }   /* svg は max-width:100% で縮む（57x約38） */
+
+/* A3 大そろえ・面合わせ: カードを5x3寸（73.2px）に統一。サムネは幅いっぱい（高さは窓比で変わる） */
+.k3 .card { width:73.2px; }
+.k3 .th { height:auto; }
+.k3 .th .sc { height:auto; width:100%; }
+.k3 .th svg { width:100%; height:auto; }
+
+/* A4 大そろえ・余白: カード73.2px・帯50pxは統一。4x3は中央に余白が残る */
+.k4 .card { width:73.2px; }
+.k4 .th { height:50px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>囲いタイル A案の派生 — 窓幅の統一（実寸）</h1>
+  <nav><a href="#k0">共通の変更</a><a href="#k1">A1 窓そろえ</a><a href="#k2">A2 小そろえ</a><a href="#k3">A3 大そろえ・面</a><a href="#k4">A4 大そろえ・余白</a><a href="#cmp">比較</a></nav>
+  <span class="sp"></span>
+  <button type="button" id="theme">ライト／ダーク</button>
+</header>
+
+<div class="intro">
+  <p>A案（サムネぴったり札）を採用したうえで、4x3窓（≈57pxの札）と5x3窓（≈71pxの札）でばらつくカード幅を統一する派生案です。加えて、玉が赤い丸からはみ出る問題の解消（駒形に変更）、居飛車/振り飛車の絞り込みのシンプル化と左端への移動、戦法タブのアイコン変更を全案に適用しています。</p>
+  <ul>
+    <li>統一の方向は3通り: 窓自体を揃える（A1）／小さい側に揃える（A2）／大きい側に揃える（A3・A4）。</li>
+    <li>サムネイルは実アプリの <code>miniBoardSVG</code> 相当（A1 は窓を5列に広げた版）＋玉は駒形。</li>
+  </ul>
+</div>
+
+<main>
+<section class="plan" id="k0">
+  <h2><span class="no">※</span>共通の変更（全案に適用）</h2>
+  <div class="stage" style="grid-template-columns:minmax(0,1fr)">
+    <div class="notes" style="padding-left:0">
+      <div><h4>1. 玉の表示 — 赤い丸（直径9.4）に8.6pxの「玉」が収まらずはみ出る → 駒の形に</h4>
+        <div class="gyoku">
+          <figure class="pick"><span class="th"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span><figcaption>駒形（採用例）</figcaption></figure>
+          <figure><span class="th"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><rect class="mini-k" x="0.1" y="22.1" width="9.8" height="10.8" rx="2.2"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span><figcaption>角丸の朱面</figcaption></figure>
+          <figure><span class="th"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><text class="mini-pc core ksolo" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span><figcaption>朱の字だけ（印なし）</figcaption></figure>
+        </div>
+        <ul>
+          <li>駒形: 盤の駒と同じ五角形のシルエットを朱で描き、玉を白抜きに。字は形の内側に収まる。</li>
+          <li>角丸: セルいっぱいの角丸矩形。丸より広いので字は収まるが、駒が主張しすぎる。</li>
+          <li>朱の字だけ: 最も軽い。玉の場所は分かるが「守りの中心」の目印としては弱い。</li>
+        </ul>
+      </div>
+      <div><h4>2. 戦略の絞り込み — 丸ピルをやめて文字だけに。タブ列の左端へ</h4>
+        <div class="phmock">
+          <div class="ph old">
+            <div class="tabs"><button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button><button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20L20 4M13 4h7v7"/></svg>戦法</button></div>
+            <div class="strat"><button type="button" aria-pressed="true"><b>居</b>居飛車</button><button type="button"><b>振</b>振り飛車</button></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:2px 0 8px">いま（右端の丸ピル）</div>
+          <div class="ph">
+            <div class="strat2"><button type="button" aria-pressed="true">居飛車</button><button type="button">振り飛車</button></div>
+            <div class="tabs"><button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button><button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:2px 0 8px">変更後（左端・文字セグメント＝朱の下線）</div>
+        </div>
+      </div>
+      <div><h4>3. 戦法タブのアイコン — 斜め矢印から「駒と動き」へ</h4>
+        <div class="icons">
+          <figure class="old"><svg viewBox="0 0 24 24"><path d="M4 20L20 4M13 4h7v7"/></svg><figcaption>いま（↗）</figcaption></figure>
+          <figure class="pick"><svg viewBox="0 0 24 24"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg><figcaption>駒と動き（採用例）</figcaption></figure>
+          <figure><svg viewBox="0 0 24 24"><path d="M12 4.5 L17.5 7.4 L19 19 H5 L6.5 7.4 Z"/></svg><figcaption>駒だけ</figcaption></figure>
+          <figure><svg viewBox="0 0 24 24"><path d="M5 19 L17 7 M17 7 h-5.5 M17 7 v5.5 M19 19 L7 7 M7 7 h5.5 M7 7 v5.5"/></svg><figcaption>交差する矢</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plan k1" id="k1">
+  <h2><span class="no">A1</span>窓そろえ — 窓を全部5列に <span class="rec">推奨</span></h2>
+  <p class="lead">最もきれいに統一する方法: サムネの切り出し窓の最小列数を 4→5 にするだけ（<code>mini-board.js</code> の <code>MIN_COLS</code>）。全サムネが 5x3・約71px の同寸になり、カードも 73.2px で完全に揃う。玉側の端へ1筋分だけ窓が広がり、周辺の駒（点）も多めに見える。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">囲いの一覧（居飛車・系統別）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2" role="group" aria-label="戦型の絞り込み">
+      <button type="button" aria-pressed="true">居飛車</button>
+      <button type="button">振り飛車</button>
+    </div>
+    <div class="tabs" role="group" aria-label="一覧（囲い／戦法）">
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button>
+    </div>
+  </header>
+  <div class="tools">
+    <label class="sort"><span>並べ方</span><span class="selsim">系統別</span></label>
+    <span class="key"><span class="lg-badge lg-good">◎</span>相性がよい　<span class="lg-badge lg-bad">△</span>苦手　<span class="lg-badge lg-ng">✕</span>両立しない</span>
+    <button type="button" class="legend" aria-expanded="false" title="記号の見方">?</button>
+  </div>
+  <div class="body">
+    <div class="view"><div class="on">
+      <section class="fam" style="--fam:var(--f-gangi)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>雁木型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" title="カニ囲い（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="45" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="16.5" r="1.3"/><text class="mini-pc core" x="25" y="17">金</text><text class="mini-pc core" x="35" y="17">銀</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><path class="mini-k" d="M35 22.4 L39.2 24.5 L40.0 32.6 L30.0 32.6 L30.8 24.5 Z"/><text class="mini-pc core k" x="35" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">カニ囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" data-implied="true" title="兜囲い（兜矢倉）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="45" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M35 11.4 L39.2 13.5 L40.0 21.6 L30.0 21.6 L30.8 13.5 Z"/><text class="mini-pc core k" x="35" y="17">玉</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">兜矢倉</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" data-vs="good" title="雁木囲い（旧型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="45" y="6">銀</text><circle class="mini-dot" cx="15" cy="16.5" r="1.3"/><text class="mini-pc core" x="25" y="17">金</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><path class="mini-k" d="M35 22.4 L39.2 24.5 L40.0 32.6 L30.0 32.6 L30.8 24.5 Z"/><text class="mini-pc core k" x="35" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">雁木</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" title="ツノ銀雁木（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="45" y="6">銀</text><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">ツノ銀雁木</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-anaguma)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>穴熊型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" data-basic="true" aria-current="true" title="居飛車穴熊（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">居飛車穴熊</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" title="矢倉穴熊（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">矢倉穴熊</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" data-vs="bad" title="松尾流穴熊（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">銀</text></svg></span></span><span class="tx"><span class="nm">松尾流穴熊</span></span><span class="mk"><i class="vs">△</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" data-ng="true" title="ビッグ4（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">ビッグ4</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-mino)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>美濃型</b><span class="n">3</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" data-basic="true" aria-current="false" data-vs="good" title="左美濃（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><path class="mini-k" d="M15 11.4 L19.2 13.5 L20.0 21.6 L10.0 21.6 L10.8 13.5 Z"/><text class="mini-pc core k" x="15" y="17">玉</text><text class="mini-pc core" x="25" y="17">銀</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">左美濃</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" aria-current="false" title="天守閣美濃（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">桂</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">天守閣美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" aria-current="false" title="四枚美濃（左美濃系）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">四枚美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-nakazumai)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>中住まい型</b><span class="n">2</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:71.2px" aria-current="false" data-vs="good" title="中住まい（4八銀型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="45" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">銀</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">中住まい</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:71.2px" aria-current="false" title="中原囲い（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">銀</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="45" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">中原囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-migigyoku)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>右玉型</b><span class="n">1</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-migigyoku);--tw:71.2px" aria-current="false" data-ng="true" title="右玉（角換わり型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="45" y="6">桂</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M35 11.4 L39.2 13.5 L40.0 21.6 L30.0 21.6 L30.8 13.5 Z"/><text class="mini-pc core k" x="35" y="17">玉</text></svg></span></span><span class="tx"><span class="nm">右玉</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+    </div></div>
+  </div>
+  <div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">
+    <span class="pc-ghost" aria-hidden="true"></span>
+    <button type="button" role="tab" class="pc" data-who="opp"><span class="bd" aria-hidden="true"></span><span class="v"><b>相手</b><small>△</small></span></button>
+    <button type="button" role="tab" class="pc" data-who="me" aria-selected="true"><span class="bd" aria-hidden="true"></span><span class="v"><b>自分</b><small>▲</small></span></button>
+  </div>
+</div></div>
+    </div>
+    <div class="notes">
+      <div><h4>変わるところ</h4>
+        <ul>
+          <li><code>mini-board.js</code>: <code>MIN_COLS = 4 → 5</code>（1行）。カードの <code>--tw</code> は窓から出るので自動で73.2pxに揃う。</li>
+        </ul>
+      </div>
+      <div><h4>よい点</h4>
+        <ul>
+          <li>カード・サムネとも完全に同寸。余白ゼロのまま揃う唯一の案。</li>
+          <li>窓が1筋広がるので「周りの歩の壁」まで見える（情報量が増える）。</li>
+        </ul>
+      </div>
+      <div class="warn"><h4>気をつけるところ</h4>
+        <ul>
+          <li>カード73.2px → 1行4枚（326pxの中身）。A案の5枚/行より密度は下がる。</li>
+          <li>将来 6列以上の窓が出る囲いでは再びばらつく（--tw は窓に追随する仕組みのまま）。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plan k2" id="k2">
+  <h2><span class="no">A2</span>小そろえ — 4x3寸に統一（5x3は縮む）</h2>
+  <p class="lead">カードを小さい側（4x3の59px）に揃え、5x3のサムネは幅いっぱいに縮めて中央に置く。窓の生成は変えず、見せ方だけで揃える案。密度は最も高い（1行5枚）。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">囲いの一覧（居飛車・系統別）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2" role="group" aria-label="戦型の絞り込み">
+      <button type="button" aria-pressed="true">居飛車</button>
+      <button type="button">振り飛車</button>
+    </div>
+    <div class="tabs" role="group" aria-label="一覧（囲い／戦法）">
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button>
+    </div>
+  </header>
+  <div class="tools">
+    <label class="sort"><span>並べ方</span><span class="selsim">系統別</span></label>
+    <span class="key"><span class="lg-badge lg-good">◎</span>相性がよい　<span class="lg-badge lg-bad">△</span>苦手　<span class="lg-badge lg-ng">✕</span>両立しない</span>
+    <button type="button" class="legend" aria-expanded="false" title="記号の見方">?</button>
+  </div>
+  <div class="body">
+    <div class="view"><div class="on">
+      <section class="fam" style="--fam:var(--f-gangi)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>雁木型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:57px" aria-current="false" title="カニ囲い（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">銀</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">カニ囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:57px" aria-current="false" data-implied="true" title="兜囲い（兜矢倉）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">兜矢倉</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:57px" aria-current="false" data-vs="good" title="雁木囲い（旧型）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">雁木</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:57px" aria-current="false" title="ツノ銀雁木（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M15 22.4 L19.2 24.5 L20.0 32.6 L10.0 32.6 L10.8 24.5 Z"/><text class="mini-pc core k" x="15" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">ツノ銀雁木</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-anaguma)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>穴熊型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:57px" data-basic="true" aria-current="true" title="居飛車穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">居飛車穴熊</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:57px" aria-current="false" title="矢倉穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">矢倉穴熊</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:57px" aria-current="false" data-vs="bad" title="松尾流穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">銀</text></svg></span></span><span class="tx"><span class="nm">松尾流穴熊</span></span><span class="mk"><i class="vs">△</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:57px" aria-current="false" data-ng="true" title="ビッグ4（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">ビッグ4</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-mino)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>美濃型</b><span class="n">3</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-mino);--tw:57px" data-basic="true" aria-current="false" data-vs="good" title="左美濃（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><path class="mini-k" d="M5 11.4 L9.2 13.5 L10.0 21.6 L0.0 21.6 L0.8 13.5 Z"/><text class="mini-pc core k" x="5" y="17">玉</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">左美濃</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:57px" aria-current="false" title="天守閣美濃（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">桂</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">天守閣美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:57px" aria-current="false" title="四枚美濃（左美濃系）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">四枚美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-nakazumai)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>中住まい型</b><span class="n">2</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:57px" aria-current="false" data-vs="good" title="中住まい（4八銀型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="45" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">銀</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">中住まい</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:57px" aria-current="false" title="中原囲い（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">銀</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="45" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">中原囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-migigyoku)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>右玉型</b><span class="n">1</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-migigyoku);--tw:57px" aria-current="false" data-ng="true" title="右玉（角換わり型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="45" y="6">桂</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M35 11.4 L39.2 13.5 L40.0 21.6 L30.0 21.6 L30.8 13.5 Z"/><text class="mini-pc core k" x="35" y="17">玉</text></svg></span></span><span class="tx"><span class="nm">右玉</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+    </div></div>
+  </div>
+  <div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">
+    <span class="pc-ghost" aria-hidden="true"></span>
+    <button type="button" role="tab" class="pc" data-who="opp"><span class="bd" aria-hidden="true"></span><span class="v"><b>相手</b><small>△</small></span></button>
+    <button type="button" role="tab" class="pc" data-who="me" aria-selected="true"><span class="bd" aria-hidden="true"></span><span class="v"><b>自分</b><small>▲</small></span></button>
+  </div>
+</div></div>
+    </div>
+    <div class="notes">
+      <div><h4>変わるところ</h4>
+        <ul>
+          <li><code>.dk-card</code>: <code>width:59px</code> 固定（<code>--tw</code> 不要）</li>
+          <li><code>.dk-card .thumb svg</code>: <code>max-width:100%</code>（実アプリのまま）で自然に縮む</li>
+        </ul>
+      </div>
+      <div><h4>よい点</h4>
+        <ul>
+          <li>1行5枚で最もコンパクト。JSは窓を返すだけでよい。</li>
+          <li>行・列とも完全に揃う。</li>
+        </ul>
+      </div>
+      <div class="warn"><h4>気をつけるところ</h4>
+        <ul>
+          <li>5x3窓（中住まい・右玉・金無双系）は縮小されるので、4x3窓より一回り小さく見える。</li>
+          <li>統一の基準が「一番小さい囲い」になる。大きい窓が増えるほど縮みが目立つ。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plan k3" id="k3">
+  <h2><span class="no">A3</span>大そろえ・面合わせ — 73.2pxに揃えてサムネは幅いっぱい</h2>
+  <p class="lead">カードを大きい側（73.2px）に揃え、サムネは常にカード幅いっぱいに描く。4x3窓は高さ約60px・5x3窓は約48pxと、高さが窓比で変わるのでカードの下辺は不揃い（名はサムネの直下）。その代わりサムネは全て大きく読みやすい。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">囲いの一覧（居飛車・系統別）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2" role="group" aria-label="戦型の絞り込み">
+      <button type="button" aria-pressed="true">居飛車</button>
+      <button type="button">振り飛車</button>
+    </div>
+    <div class="tabs" role="group" aria-label="一覧（囲い／戦法）">
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button>
+    </div>
+  </header>
+  <div class="tools">
+    <label class="sort"><span>並べ方</span><span class="selsim">系統別</span></label>
+    <span class="key"><span class="lg-badge lg-good">◎</span>相性がよい　<span class="lg-badge lg-bad">△</span>苦手　<span class="lg-badge lg-ng">✕</span>両立しない</span>
+    <button type="button" class="legend" aria-expanded="false" title="記号の見方">?</button>
+  </div>
+  <div class="body">
+    <div class="view"><div class="on">
+      <section class="fam" style="--fam:var(--f-gangi)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>雁木型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" title="カニ囲い（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">銀</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">カニ囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" data-implied="true" title="兜囲い（兜矢倉）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">兜矢倉</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" data-vs="good" title="雁木囲い（旧型）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">雁木</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" title="ツノ銀雁木（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M15 22.4 L19.2 24.5 L20.0 32.6 L10.0 32.6 L10.8 24.5 Z"/><text class="mini-pc core k" x="15" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">ツノ銀雁木</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-anaguma)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>穴熊型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" data-basic="true" aria-current="true" title="居飛車穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">居飛車穴熊</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" title="矢倉穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">矢倉穴熊</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" data-vs="bad" title="松尾流穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">銀</text></svg></span></span><span class="tx"><span class="nm">松尾流穴熊</span></span><span class="mk"><i class="vs">△</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" data-ng="true" title="ビッグ4（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">ビッグ4</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-mino)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>美濃型</b><span class="n">3</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" data-basic="true" aria-current="false" data-vs="good" title="左美濃（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><path class="mini-k" d="M5 11.4 L9.2 13.5 L10.0 21.6 L0.0 21.6 L0.8 13.5 Z"/><text class="mini-pc core k" x="5" y="17">玉</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">左美濃</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" aria-current="false" title="天守閣美濃（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">桂</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">天守閣美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" aria-current="false" title="四枚美濃（左美濃系）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">四枚美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-nakazumai)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>中住まい型</b><span class="n">2</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:71.2px" aria-current="false" data-vs="good" title="中住まい（4八銀型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="45" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">銀</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">中住まい</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:71.2px" aria-current="false" title="中原囲い（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">銀</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="45" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">中原囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-migigyoku)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>右玉型</b><span class="n">1</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-migigyoku);--tw:71.2px" aria-current="false" data-ng="true" title="右玉（角換わり型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="45" y="6">桂</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M35 11.4 L39.2 13.5 L40.0 21.6 L30.0 21.6 L30.8 13.5 Z"/><text class="mini-pc core k" x="35" y="17">玉</text></svg></span></span><span class="tx"><span class="nm">右玉</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+    </div></div>
+  </div>
+  <div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">
+    <span class="pc-ghost" aria-hidden="true"></span>
+    <button type="button" role="tab" class="pc" data-who="opp"><span class="bd" aria-hidden="true"></span><span class="v"><b>相手</b><small>△</small></span></button>
+    <button type="button" role="tab" class="pc" data-who="me" aria-selected="true"><span class="bd" aria-hidden="true"></span><span class="v"><b>自分</b><small>▲</small></span></button>
+  </div>
+</div></div>
+    </div>
+    <div class="notes">
+      <div><h4>変わるところ</h4>
+        <ul>
+          <li><code>.dk-card</code>: <code>width:73.2px</code> 固定</li>
+          <li><code>.dk-card .thumb</code>: <code>height:auto</code>、svg は <code>width:100%; height:auto</code>（高さが窓比に追随）</li>
+        </ul>
+      </div>
+      <div><h4>よい点</h4>
+        <ul>
+          <li>サムネが全て幅いっぱい＝4x3窓が一回り大きく見える。</li>
+          <li>名がサムネの直下に来るので、絵と名の対応が近い。</li>
+        </ul>
+      </div>
+      <div class="warn"><h4>気をつけるところ</h4>
+        <ul>
+          <li>カードの高さが2種類（4x3=約74px・5x3=約62px）。同じ行に混ざると下辺が不揃い。</li>
+          <li>幅は揃うが「タイルの大きさが同じ」とは言えない。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plan k4" id="k4">
+  <h2><span class="no">A4</span>大そろえ・余白 — 73.2pxの札に4x3は中央配置</h2>
+  <p class="lead">カードを大きい側（73.2px）に揃え、サムネの帯（50px）も統一したまま。4x3窓は中央に置かれ左右に約7pxずつ余白が残る。完全に揃うが、小さい窓には余白が復活する（いまの構図を弱めた版）。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">囲いの一覧（居飛車・系統別）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2" role="group" aria-label="戦型の絞り込み">
+      <button type="button" aria-pressed="true">居飛車</button>
+      <button type="button">振り飛車</button>
+    </div>
+    <div class="tabs" role="group" aria-label="一覧（囲い／戦法）">
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button>
+    </div>
+  </header>
+  <div class="tools">
+    <label class="sort"><span>並べ方</span><span class="selsim">系統別</span></label>
+    <span class="key"><span class="lg-badge lg-good">◎</span>相性がよい　<span class="lg-badge lg-bad">△</span>苦手　<span class="lg-badge lg-ng">✕</span>両立しない</span>
+    <button type="button" class="legend" aria-expanded="false" title="記号の見方">?</button>
+  </div>
+  <div class="body">
+    <div class="view"><div class="on">
+      <section class="fam" style="--fam:var(--f-gangi)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>雁木型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" title="カニ囲い（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">銀</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">カニ囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" data-implied="true" title="兜囲い（兜矢倉）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">兜矢倉</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" data-vs="good" title="雁木囲い（旧型）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><circle class="mini-dot" cx="5" cy="16.5" r="1.3"/><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">雁木</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-gangi);--tw:71.2px" aria-current="false" title="ツノ銀雁木（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M15 22.4 L19.2 24.5 L20.0 32.6 L10.0 32.6 L10.8 24.5 Z"/><text class="mini-pc core k" x="15" y="28">玉</text></svg></span></span><span class="tx"><span class="nm">ツノ銀雁木</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-anaguma)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>穴熊型</b><span class="n">4</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" data-basic="true" aria-current="true" title="居飛車穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">居飛車穴熊</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" title="矢倉穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">矢倉穴熊</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" data-vs="bad" title="松尾流穴熊（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text><text class="mini-pc core" x="25" y="28">銀</text></svg></span></span><span class="tx"><span class="nm">松尾流穴熊</span></span><span class="mk"><i class="vs">△</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-anaguma);--tw:71.2px" aria-current="false" data-ng="true" title="ビッグ4（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="5" y="17">香</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><circle class="mini-dot" cx="35" cy="16.5" r="1.3"/><path class="mini-k" d="M5 22.4 L9.2 24.5 L10.0 32.6 L0.0 32.6 L0.8 24.5 Z"/><text class="mini-pc core k" x="5" y="28">玉</text><text class="mini-pc core" x="15" y="28">桂</text></svg></span></span><span class="tx"><span class="nm">ビッグ4</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-mino)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>美濃型</b><span class="n">3</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" data-basic="true" aria-current="false" data-vs="good" title="左美濃（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><path class="mini-k" d="M5 11.4 L9.2 13.5 L10.0 21.6 L0.0 21.6 L0.8 13.5 Z"/><text class="mini-pc core k" x="5" y="17">玉</text><text class="mini-pc core" x="15" y="17">銀</text><text class="mini-pc core" x="35" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><text class="mini-pc core" x="25" y="28">金</text></svg></span></span><span class="tx"><span class="nm">左美濃</span></span><span class="seal" aria-label="基本">基本</span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" aria-current="false" title="天守閣美濃（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">桂</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">天守閣美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-mino);--tw:71.2px" aria-current="false" title="四枚美濃（左美濃系）（窓 4x3）"><span class="th"><span class="sc"><svg viewBox="0 0 40 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="40" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="40" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="40" y2="22"/><path class="mini-k" d="M15 0.4 L19.2 2.5 L20.0 10.6 L10.0 10.6 L10.8 2.5 Z"/><text class="mini-pc core k" x="15" y="6">玉</text><text class="mini-pc core" x="25" y="6">銀</text><text class="mini-pc core" x="35" y="6">金</text><text class="mini-pc core" x="25" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><circle class="mini-dot" cx="25" cy="27.5" r="1.3"/><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">四枚美濃</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-nakazumai)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>中住まい型</b><span class="n">2</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:71.2px" aria-current="false" data-vs="good" title="中住まい（4八銀型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="15" cy="5.5" r="1.3"/><circle class="mini-dot" cx="25" cy="5.5" r="1.3"/><circle class="mini-dot" cx="35" cy="5.5" r="1.3"/><circle class="mini-dot" cx="45" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">金</text><path class="mini-k" d="M25 11.4 L29.2 13.5 L30.0 21.6 L20.0 21.6 L20.8 13.5 Z"/><text class="mini-pc core k" x="25" y="17">玉</text><text class="mini-pc core" x="35" y="17">銀</text><text class="mini-pc core" x="45" y="17">金</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/></svg></span></span><span class="tx"><span class="nm">中住まい</span></span><span class="mk"><i class="vs">◎</i><span class="ng"></span></span></button><button type="button" class="it card" style="--fam:var(--f-nakazumai);--tw:71.2px" aria-current="false" title="中原囲い（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><circle class="mini-dot" cx="5" cy="5.5" r="1.3"/><text class="mini-pc core" x="5" y="17">銀</text><text class="mini-pc core" x="15" y="17">金</text><text class="mini-pc core" x="45" y="17">銀</text><circle class="mini-dot" cx="5" cy="27.5" r="1.3"/><circle class="mini-dot" cx="15" cy="27.5" r="1.3"/><path class="mini-k" d="M25 22.4 L29.2 24.5 L30.0 32.6 L20.0 32.6 L20.8 24.5 Z"/><text class="mini-pc core k" x="25" y="28">玉</text><text class="mini-pc core" x="35" y="28">金</text></svg></span></span><span class="tx"><span class="nm">中原囲い</span></span><span class="mk"><i class="vs"></i><span class="ng"></span></span></button></div>
+</section>
+<section class="fam" style="--fam:var(--f-migigyoku)">
+  <button type="button" class="famh" aria-expanded="true"><span class="caret" aria-hidden="true">▾</span><span class="gl" aria-hidden="true"><svg viewBox="0 0 26 26" width="22" height="22"><path d="undefined" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>右玉型</b><span class="n">1</span></button>
+  <div class="cards"><button type="button" class="it card" style="--fam:var(--f-migigyoku);--tw:71.2px" aria-current="false" data-ng="true" title="右玉（角換わり型）（窓 5x3）"><span class="th"><span class="sc"><svg viewBox="0 0 50 33" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect class="mini-bg" width="50" height="33" rx="1.5"/><line class="mini-ln" x1="10" y1="0" x2="10" y2="33"/><line class="mini-ln" x1="20" y1="0" x2="20" y2="33"/><line class="mini-ln" x1="30" y1="0" x2="30" y2="33"/><line class="mini-ln" x1="40" y1="0" x2="40" y2="33"/><line class="mini-ln" x1="0" y1="11" x2="50" y2="11"/><line class="mini-ln" x1="0" y1="22" x2="50" y2="22"/><text class="mini-pc core" x="15" y="6">銀</text><text class="mini-pc core" x="35" y="6">銀</text><text class="mini-pc core" x="45" y="6">桂</text><text class="mini-pc core" x="5" y="17">金</text><text class="mini-pc core" x="25" y="17">金</text><path class="mini-k" d="M35 11.4 L39.2 13.5 L40.0 21.6 L30.0 21.6 L30.8 13.5 Z"/><text class="mini-pc core k" x="35" y="17">玉</text></svg></span></span><span class="tx"><span class="nm">右玉</span></span><span class="mk"><i class="vs"></i><span class="ng">✕</span></span></button></div>
+</section>
+    </div></div>
+  </div>
+  <div class="binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">
+    <span class="pc-ghost" aria-hidden="true"></span>
+    <button type="button" role="tab" class="pc" data-who="opp"><span class="bd" aria-hidden="true"></span><span class="v"><b>相手</b><small>△</small></span></button>
+    <button type="button" role="tab" class="pc" data-who="me" aria-selected="true"><span class="bd" aria-hidden="true"></span><span class="v"><b>自分</b><small>▲</small></span></button>
+  </div>
+</div></div>
+    </div>
+    <div class="notes">
+      <div><h4>変わるところ</h4>
+        <ul>
+          <li><code>.dk-card</code>: <code>width:73.2px</code> 固定（<code>--tw</code> 不要）</li>
+          <li>それ以外は現行のまま（<code>.thumb</code> 高さ50px・svg中央）</li>
+        </ul>
+      </div>
+      <div><h4>よい点</h4>
+        <ul>
+          <li>変更が最小。完全な格子。</li>
+        </ul>
+      </div>
+      <div class="warn"><h4>気をつけるところ</h4>
+        <ul>
+          <li>4x3窓には約14pxの余白が復活。「絵と枠が一致する」A案の効果が半減。</li>
+          <li>1行4枚で、現状の3枚からの改善は限定的。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plan" id="cmp">
+  <h2><span class="no">□</span>比較と実装メモ</h2>
+  <div class="notes" style="padding-left:0">
+    <table class="cmp">
+      <tr><th>案</th><th>カード幅</th><th>サムネ</th><th>1行の枚数</th><th>揃い方</th><th>変更量</th></tr>
+      <tr><td>A1 窓そろえ</td><td>73.2px（統一）</td><td>全て5x3・同寸</td><td>4</td><td>完全に揃う</td><td>定数1行</td></tr>
+      <tr><td>A2 小そろえ</td><td>59px（統一）</td><td>5x3は縮小</td><td>5</td><td>完全に揃う</td><td>CSSのみ</td></tr>
+      <tr><td>A3 大そろえ・面</td><td>73.2px（統一）</td><td>幅いっぱい・高さ2種</td><td>4</td><td>幅だけ揃う（高さ不揃い）</td><td>CSSのみ</td></tr>
+      <tr><td>A4 大そろえ・余白</td><td>73.2px（統一）</td><td>現行のまま中央</td><td>4</td><td>完全に揃う（4x3に余白）</td><td>CSS 1行</td></tr>
+      <tr><td>（参考）A そのまま</td><td>59 / 73.2px</td><td>窓どおり</td><td>5</td><td>右端不揃い</td><td>—</td></tr>
+    </table>
+    <div class="try"><b>実装メモ</b><br>
+      ・A1: <code>mini-board.js</code> の <code>MIN_COLS = 4</code> → <code>5</code>。窓が全て5x3になり <code>--tw</code> が全囲いで一致。<br>
+      ・玉の駒形: <code>mini-board.js</code> の <code>&lt;circle class="mini-k"&gt;</code> を駒の五角形 <code>&lt;path&gt;</code> に置き換えるだけ（<code>.mini-k</code> の fill はそのまま使える）。<br>
+      ・絞り込み: <code>dock-view.js</code> の <code>.dk-strategy</code> を層タブの左に移し、丸印 <code>&lt;b&gt;</code> とピル枠を外して <code>.seg</code> 風の文字セグメントに（<code>Segmented</code> はそのまま使える）。<br>
+      ・タブアイコン: <code>TAB_ICON.tactic</code> の svg を差し替え。</div>
+  </div>
+</section>
+</main>
+
+<script>
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('shogi-theme', r.dataset.theme); } catch (e) {}
+});
+document.addEventListener('click', e => {
+  const h = e.target.closest('.famh'); if (!h) return;
+  const sec = h.closest('.fam');
+  const open = sec.dataset.closed === 'true';
+  sec.dataset.closed = open ? 'false' : 'true';
+  h.setAttribute('aria-expanded', String(open));
+});
+</script>
+</body>
+</html>

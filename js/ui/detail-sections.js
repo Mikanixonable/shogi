@@ -157,6 +157,7 @@ window.Kakoi = window.Kakoi || {};
    */
   function pcList(title, items, { tone = '', cls = '', small = '点線の項目は盤上に表示' } = {}, citer) {
     if (!items || !items.length) return '';
+    // 本文は span で包む（li はグリッドなので、包まないと出典の <sup> が別のセルとして次の行へ落ちる）
     const li = items.map(it =>
       `<li${sqAttr(it.sq)}${tone ? ` data-tone="${tone}"` : ''}><span>${rich(it.t, citer)}</span></li>`).join('');
     return sec(title, small, `<ul class="pc-list${cls ? ' ' + cls : ''}">${li}</ul>`);
