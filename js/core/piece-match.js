@@ -12,7 +12,7 @@ window.Kakoi = window.Kakoi || {};
   // 後手の駒は (f,r)→(10−f,10−r) で回転して置く（compose.mirror と同じ変換）。
   // コスト計算にも同じ回転をかけると、後手の「前」（段が増える向き）が
   // moveCost の前提する先手の「前」（段が減る向き）と一致する
-  const mir = s => `${10 - +s[0]}${10 - +s[1]}`;
+  const mir = Kakoi.notation.mirrorSq;
 
   /**
    * 駒を from → to へ滑らせる不自然さ（マス単位）。null は滑らせない（消滅＋出現にする）

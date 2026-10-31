@@ -404,7 +404,7 @@ window.Kakoi = window.Kakoi || {};
         // overrides: ○/◎ が上書きできる衝突コードの明示（L2）。
         // SIDE / KING_ROOK / SAME_WING は原則なので上書き対象から外す
         if (p.overrides !== undefined) {
-          const OK = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT', 'HAND']);
+          const OK = new Set(['SQUARE', 'PAWN', 'COUNT', 'HAND']);
           if (!isArr(p.overrides) || !p.overrides.length) errors.push(`pairings[${i}].overridesが空の配列`);
           else for (const code of p.overrides) {
             if (!isStr(code) || !OK.has(code)) errors.push(`pairings[${i}].overrides不正: ${code}`);

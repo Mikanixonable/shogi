@@ -201,8 +201,7 @@ window.Kakoi = window.Kakoi || {};
     update(state, changed) {
       const d = this.screen.update(state, changed);
       const hard = changed.has('initial');
-      if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')
-          || changed.has('play')) {
+      if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')) {
         this.dock.update(state, d.S);
       }
     }
