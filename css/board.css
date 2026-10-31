@@ -1,7 +1,9 @@
 /* 盤と駒: 本榧の盤（縁まで続く柾目・光の側の艶・漆を盛った太刀盛りの線）と黄楊の彫駒（design-refs-board/kaya.html）。
    光は左上に固定（--lx/--ly/--len。js/ui/kaya-art.js の LX/LY/LEN と同じ値） */
 
-.boardarea { container-type:size; display:flex; align-items:center; justify-content:center; min-height:0; }
+/* 広い画面の盤の大きさは .stage（container-type:size）の残り高さから決める（帯2本と行間を引く）。
+   boardarea は盤の高さだけを取り、帯は盤のすぐ上・下に付く */
+.boardarea { display:flex; align-items:center; justify-content:center; min-height:0; }
 /* 盤の外枠: 盤は罫の外に縁（--bm）を持ち、座標ラベルはその外に置く。#board の矩形は罫の内側だけ
    （重ね表示・駒の座標はこの矩形の割合で決まる）。縁の分は boardwrap の padding と gap で取る。
    持ち駒列の幅（左右24pxずつ）は .handcol の margin で常時予約する（F1: 盤の矩形は常にこの式だけで決まる） */
@@ -13,9 +15,9 @@
              display:grid; position:relative; grid-template-columns:minmax(0,1fr) var(--coord-w);
              grid-template-rows:var(--coord-h) minmax(0,auto); gap:calc(var(--coord-gap) + var(--bm));
              padding:0 0 var(--bm) var(--bm);
+             --avail-h:calc(100cqh - var(--band-h-opp, 0px) - var(--band-h, 0px) - var(--stage-gap, 0px) * 2);
              width:min(calc(100cqw - 48px),
-               calc((100cqh - var(--coord-h) - var(--coord-gap) - var(--bm) * 2) * 9 / 9.6 + var(--coord-w) + var(--coord-gap) + var(--bm) * 2));
-             transform:translateY(-13px); }
+               calc((var(--avail-h) - var(--coord-h) - var(--coord-gap) - var(--bm) * 2) * 9 / 9.6 + var(--coord-w) + var(--coord-gap) + var(--bm) * 2)); }
 :root[data-theme="dark"] .boardwrap {
   --wood-1:#d6b67a; --wood-mid:#c49a58; --wood-2:#a87c42; --wood-ink:#1a0f06;
   --wood-glow:rgba(255,241,205,.55); --wood-grain-op:.85; --wood-mark:#4b351a;
@@ -75,11 +77,15 @@
 .pc.off { opacity:.28; filter:none; }
 
 /* ミニ盤（左のカード） */
-.mini-bg { fill:url(#wood); }
-.mini-ln { stroke:var(--wood-line); stroke-width:.35; }
-.mini-pc { font:700 11.5px var(--font-d); fill:var(--ink); text-anchor:middle; dominant-baseline:central; }
-.mini-pc.core { fill:var(--core); }
-.mini-pc.off { opacity:.28; }
+/* ミニ盤（左ドックのサムネイル。7）: 木目をやめて地の色に寄せた記号的な図。
+   囲いの駒だけを字で、他の駒は点で示す。玉は朱の丸に白抜き */
+.mini-bg { fill:color-mix(in srgb, var(--fg) 4%, var(--bg)); stroke:var(--line-2); stroke-width:.5; }
+.mini-ln { stroke:var(--line); stroke-width:.4; }
+.mini-pc { font:700 9px var(--font-d); fill:var(--fg); text-anchor:middle; dominant-baseline:central; }
+.mini-pc.core { fill:var(--fg); }
+.mini-pc.k { fill:#fbf6ea; font-size:8.6px; }
+.mini-k { fill:var(--accent); }
+.mini-dot { fill:var(--muted); opacity:.55; }
 
 /* 盤の重ね表示（筋道の矢印）。矢印はマス・駒の下、盤面の上 */
 .overlay { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; overflow:visible; }
@@ -120,7 +126,7 @@
   /* 段ラベルを細め（14px）にし、持ち駒列の margin を22pxずつに詰める。
      盤を sticky で画面上に残すので、幅は高さでも上限を掛ける（盤高 ≈ 幅×9.6/9 ≤ 40svh。B1） */
   .boardwrap { width:min(calc(100cqw - 44px),
-                calc(37.5svh + var(--coord-w) + var(--coord-gap))); transform:none; }
+                calc(37.5svh + var(--coord-w) + var(--coord-gap))); }
   .flabels { font-size:14px; }
   .rlabels { font-size:14px; }
 }

@@ -84,7 +84,8 @@ window.Kakoi = window.Kakoi || {};
    * 脅威の評価: 戦型・玉飛の距離・強みの重み・脅威の筋を計算する（計画書 §1-2 / §3-3）
    * @param {{strategy:string, tacticId?:string, castleId?:string}} me  自分（先手）の選択状態
    * @param {{strategy:string, tacticId?:string, castleId?:string}} opp 相手（後手）の選択状態
-   * @returns {{kind:string, label:string, distance:number|null, weights:Object, threatFiles:number[]}}
+   * @returns {{kind:string, label:string, distance:number|null, weights:Object, threatFiles:number[], edgeThreat:boolean}}
+   *   edgeThreat: 端攻めの前兆（fitness の減点判定に使う）
    */
   function threat(me, opp) {
     me = me || {}; opp = opp || {};
@@ -109,12 +110,15 @@ window.Kakoi = window.Kakoi || {};
     // 脅威の筋: 相手の飛車の筋＋主役の経路の終点の筋（重複は除く）。盤の脅威の帯に使う
     const threatFiles = [...new Set([rookFile, routeEndFile].filter(f => f != null))];
 
-    return {
-      kind, label: KIND_LABEL[kind], distance, weights, threatFiles,
-      // fitness の減点判定や他モジュールが使う中間値
-      _kingFile: kingFile, _rookFile: rookFile, _routeEndFile: routeEndFile,
-      _oppLeadPiece: oppTactic && oppTactic.lead ? oppTactic.lead.piece : null,
-    };
+    // 端攻めの前兆（fitness の減点判定用）: 相手の飛車が端筋、または
+    // 香・桂の主役の経路の終点が玉の筋に近い（計画書 §3-3）
+    const oppLeadPiece = oppTactic && oppTactic.lead ? oppTactic.lead.piece : null;
+    const edgeThreat = EDGE_FILES.has(rookFile)                                   // 相手の飛車が端筋
+      || (EDGE_LEADS.has(oppLeadPiece)                                            // 香・桂の主役の経路の終点が
+        && routeEndFile != null && kingFile != null                               // 玉の筋に近い
+        && Math.abs(routeEndFile - kingFile) <= 1);
+
+    return { kind, label: KIND_LABEL[kind], distance, weights, threatFiles, edgeThreat };
   }
 
   /**
@@ -132,12 +136,7 @@ window.Kakoi = window.Kakoi || {};
     // 端攻めは5軸に含まれないので、端攻めが効く相手には別途減点する（計画書 §3-3）
     const hasHashi = castle && Array.isArray(castle.attacks)
       && castle.attacks.some(x => x && x.id === 'hashi');
-    const edgeThreat = threatInfo && (
-      EDGE_FILES.has(threatInfo._rookFile) ||                                   // 相手の飛車が端筋
-      (EDGE_LEADS.has(threatInfo._oppLeadPiece)                                 // 香・桂の主役の経路の終点が
-        && threatInfo._routeEndFile != null && threatInfo._kingFile != null     // 玉の筋に近い
-        && Math.abs(threatInfo._routeEndFile - threatInfo._kingFile) <= 1));
-    if (hasHashi && edgeThreat) score -= 0.5;
+    if (hasHashi && threatInfo && threatInfo.edgeThreat) score -= 0.5;
 
     return Math.round(score * 100) / 100;
   }

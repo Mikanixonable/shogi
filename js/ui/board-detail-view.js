@@ -19,7 +19,7 @@ window.Kakoi = window.Kakoi || {};
   const Sec = () => K.detailSections; // 読み込み順に依存しないよう呼び出し時に引く
 
   const { LAYER_JA, FIELD, findTactic, findCastle, tacticFamilyOf, castleFamilyOf, castleSides, strategyLabel } = K.lookup;
-  const WHO_JA = { me: '自分（先手・▲）', opp: '相手（後手・△）' };
+  const WHO_JA = { me: '▲自分', opp: '△相手' };
   const SHORT_WHO = { me: '自分', opp: '相手' };
   // 戦法の多角形の色は主役の駒の系統色（左ドックのタイルの --t-* と同じ）
   const TACTIC_COLOR = { 'furibisha-rook': 'var(--t-rook)', 'ibisha-rook': 'var(--t-rook)',
@@ -124,9 +124,9 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // ---------- パネル先頭: 側の表示名＋項目名＋既定の層の注記 ----------
-    _head(sel, name, implied) {
+    _head(sel, name, implied, reading) {
       return `<div class="bd-h"><p class="bd-who">${WHO_JA[sel.who]}の${LAYER_JA[sel.kind]}</p>` +
-        `<h2 class="bd-t">${esc(name)}${implied ? ' <small class="bd-imp">既定</small>' : ''}</h2>` +
+        `<h2 class="bd-t">${esc(name)}${reading ? ` <span class="bd-imp">${esc(reading)}</span>` : ''}${implied ? ' <small class="bd-imp">既定</small>' : ''}</h2>` +
         (implied
           ? '<p class="note">未選択のため、戦略の既定値（または他の層との相性から選んだ値）で補っています。左ドックで選ぶと置き換わります。</p>'
           : '') +
@@ -173,7 +173,7 @@ window.Kakoi = window.Kakoi || {};
       const j = other && K.compat ? K.compat.judge(st, 'tactic', t.id, other) : null;
       const vsRows = j ? Sec().vsRows(j.vs) : [];
       const body = [
-        this._head(sel, t.name, implied),
+        this._head(sel, t.name, implied, t.reading),
         this._conflict(sel, p, citer),
         Sec().tacticPenta(t, t.variantOf ? findTactic(t.variantOf) : null, TACTIC_COLOR[t.family] || ''),
         Sec().tacticTags(t, family),
@@ -219,7 +219,7 @@ window.Kakoi = window.Kakoi || {};
         c.sources || [], setupSrc || [], pairing ? pairing.sources || [] : []);
       const ngTexts = new Set((p.ng || []).map(r => r.text));
       const body = [
-        this._head(sel, c.name, implied),
+        this._head(sel, c.name, implied, c.reading),
         this._conflict(sel, p, citer),
         Sec().penta(c.ratings, th
           ? { weights: th.weights, small: '朱の破線＝この戦型で効く軸' }
@@ -299,7 +299,7 @@ window.Kakoi = window.Kakoi || {};
 
     // ---------- 出典（呼び出し側の共有 Repository） ----------
     // 生の sources 宣言（{ref,for}）を複数束ねて解決する（同じ ref は for を「・」で連結）
-    _mergedSources(...lists) { return this.h.repo._resolveSources(lists.flat()); }
+    _mergedSources(...lists) { return this.h.repo.resolveSources(lists.flat()); }
     _tacticSources(t, castle) { return t ? this.h.repo.tacticComboSourcesOf(t, castle) : []; }
     _lineageOf(c) { return this.h.repo.lineageOf(c); }
     _pairingsOf(t) { return this.h.repo.pairingsOf(t); }

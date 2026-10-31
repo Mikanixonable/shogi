@@ -51,7 +51,7 @@ Kakoi.SOURCES = {
   'sj-millennium': { title: 'ミレニアム囲いとは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/millennium/' },
   'wj-yagura-anaguma': { title: '矢倉穴熊', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%9F%A2%E5%80%89%E7%A9%B4%E7%86%8A' },
   'wj-matsuo-anaguma': { title: '松尾流穴熊', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%9D%BE%E5%B0%BE%E6%B5%81%E7%A9%B4%E7%86%8A' },
-  'wj-big4': { title: 'ビッグ4', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%83%93%E3%83%83%E3%82%B04' },
+  'wj-big4': { title: 'ビッグ4（穴熊囲いのバリエーション）', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%83%93%E3%83%83%E3%82%B04_(%E5%B0%86%E6%A3%8B)' },
   'sj-big4': { title: 'ビッグ4（ビッグフォー）とは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/kakoi/big4/' },
   'wj-tenshukaku': { title: '天守閣美濃', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%A4%A9%E5%AE%88%E9%96%A3%E7%BE%8E%E6%BF%83' },
   'wj-yonmaimino': { title: '四枚美濃', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%9B%9B%E6%9E%9A%E7%BE%8E%E6%BF%83' },
@@ -66,6 +66,9 @@ Kakoi.SOURCES = {
   'wj-nakahara': { title: '中原囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E4%B8%AD%E5%8E%9F%E5%9B%B2%E3%81%84' },
   'wj-migigyoku': { title: '右玉', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%8F%B3%E7%8E%89' },
   'sj-migigyoku': { title: '右玉戦法とは？', publisher: '将棋の囲い（shougi.jp）', url: 'https://www.shougi.jp/senpou/migigyoku/' },
+  'wj-chudan': { title: '中段玉', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E4%B8%AD%E6%AE%B5%E7%8E%89' },
+  'note-shogicastle-hishi': { title: '菱囲い：形、組み方、長所と弱点', publisher: 'shogicastle.com', url: 'https://shogicastle.com/ja/kakoi/hishi-gakoi/' },
+  'note-rojo-etc': { title: 'その他の囲い（空中楼閣・中原囲いなど）', publisher: '道路上将棋！', url: 'https://do.rojo.jp/shogi/help/help_rule_k_etc.html' },
   // ---- 戦法 ----
   'we-static-rook': { title: 'Static Rook', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Static_Rook' },
   'wj-mukaibisha': { title: '向かい飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%90%91%E3%81%8B%E3%81%84%E9%A3%9B%E8%BB%8A' },
@@ -97,4 +100,8 @@ Kakoi.SOURCES = {
   'wj-morishita': { title: '森下システム', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%A3%AE%E4%B8%8B%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0' },
   'maid-yui': { title: 'わかる！勝てる！メイドシステム！', publisher: 'YouTube（将棋メイドゆい）', url: 'https://www.youtube.com/watch?v=sUh1KBSmkNs' },
   'minor-maid': { title: '『メイドシステム 真実のゾーン！』初見実況プレイ', publisher: 'マイナー将棋ブログ', url: 'https://minorshogi.com/20190724maid-system-the-world-of-truth/' },
+  'wj-saginomiya': { title: '鷺宮定跡', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%B7%BA%E5%AE%AE%E5%AE%9A%E8%B7%A1' },
+  'wj-yamada': { title: '山田定跡', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B1%B1%E7%94%B0%E5%AE%9A%E8%B7%A1' },
+  'note-newishida': { title: '石田流の基礎知識　新・石田流とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-new-ishida-style/' },
+  'note-ishida-summary': { title: '石田流の基礎知識、定跡まとめ', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/summary-theory-ishida-style/' },
 };

@@ -134,10 +134,24 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // ---------- 制約バー（盤の上に相手・自分の2本） ----------
+    // marks: 層ごとの「相手との相性」（compat.judge().vs）。バーが盤に向く辺に ◎/△ を出す
+    _barMarks(state, d, who) {
+      const st = d.S[who];
+      const other = who === 'me' ? (state.showOpp ? d.S.opp : null) : d.S.me;
+      const m = {};
+      for (const kind of ['tactic', 'castle']) {
+        const id = st[K.lookup.FIELD[kind]];
+        if (id == null) continue;
+        const j = K.compat.judge(st, kind, id, other);
+        const lv = j.vs && j.vs.level;
+        m[kind] = lv === 'good' || lv === 'bad' ? lv : null;
+      }
+      return m;
+    }
     _paintBar(state, d) {
       const common = { selected: state.selected, nameOf: this._nameOf };
-      this.bars.opp.render({ ...common, st: state.showOpp ? d.S.opp : null, ng: d.ng.opp });
-      this.bars.me.render({ ...common, st: d.S.me, ng: d.ng.me });
+      this.bars.opp.render({ ...common, st: state.showOpp ? d.S.opp : null, ng: d.ng.opp, marks: this._barMarks(state, d, 'opp') });
+      this.bars.me.render({ ...common, st: d.S.me, ng: d.ng.me, marks: this._barMarks(state, d, 'me') });
     }
 
     _paintRelationships(state, d) {

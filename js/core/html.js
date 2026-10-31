@@ -47,6 +47,20 @@ window.Kakoi = window.Kakoi || {};
   const plain = text => String(text).replace(TOKEN, '');
 
   /**
+   * 本文中の [[ref]] / [[ref1|ref2]] トークンから ref 名のリストを取り出す。
+   * トークンの形はこのモジュールが唯一の権威（validate.js の出典検査もこれを使う）
+   * @param {string} text 本文
+   * @returns {string[]} 出現順の ref 名（重複はそのまま残す）
+   */
+  const citeRefs = text => {
+    if (typeof text !== 'string' || text.indexOf('[[') < 0) return [];
+    const out = [];
+    for (const m of text.matchAll(TOKEN))
+      out.push(...m[1].split('|').map(r => r.trim()).filter(Boolean));
+    return out;
+  };
+
+  /**
    * 出典リストの共通描画。items は {for, ref?, title, publisher, url} の配列。
    * 本文で引用されたものは cite() の番号順、引用されなかったものはその後ろに連番で続ける。
    * 引用が1件も無い（トークン未導入の）パネルでは従来どおり番号なしの見た目になる
@@ -67,5 +81,5 @@ window.Kakoi = window.Kakoi || {};
     return `<ul class="sources">${li}</ul>`;
   };
 
-  Kakoi.html = { esc, sqAttr, makeCiter, rich, plain, sourcesBlock };
+  Kakoi.html = { esc, sqAttr, makeCiter, rich, plain, citeRefs, sourcesBlock };
 })();

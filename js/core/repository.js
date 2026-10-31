@@ -32,7 +32,7 @@ window.Kakoi = window.Kakoi || {};
     setupOf(castle) { return this._setups[castle.setup]; }
 
     /** 出典の参照を、同じ ref はまとめて（for は「・」で連結）解決して返す */
-    _resolveSources(list) {
+    resolveSources(list) {
       const merged = new Map();
       for (const s of list) {
         const src = this._sources[s.ref];
@@ -54,12 +54,12 @@ window.Kakoi = window.Kakoi || {};
     pairingsOf(tactic) {
       return (tactic.pairings || [])
         .filter(p => p && this._byId.has(p.castle))
-        .map(p => ({ castle: this._byId.get(p.castle), level: p.level, why: p.why, sources: this._resolveSources(p.sources || []) }));
+        .map(p => ({ castle: this._byId.get(p.castle), level: p.level, why: p.why, sources: this.resolveSources(p.sources || []) }));
     }
     /** 戦法と囲い（＋その想定配置）の出典を併記する。castle がなければ戦法だけ */
     tacticComboSourcesOf(tactic, castle) {
       const setup = castle && this.setupOf(castle);
-      return this._resolveSources([
+      return this.resolveSources([
         ...(tactic.sources || []),
         ...(castle ? castle.sources || [] : []),
         ...(setup ? setup.sources || [] : []),
