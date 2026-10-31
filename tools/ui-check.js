@@ -188,8 +188,10 @@ async function sweepBoard(page, expect) {
     const opp = document.querySelector('#pickRail .dk-pc[data-who="opp"]').getBoundingClientRect();
     const me = document.querySelector('#pickRail .dk-pc[data-who="me"]').getBoundingClientRect();
     const ghost = document.querySelector('#pickRail .dk-pc-ghost');
+    const mid = (binder.top + binder.bottom) / 2;
     return getComputedStyle(ghost).display !== 'none'
-      && Math.abs(opp.top - binder.top - 30) < 1
+      && Math.abs(opp.bottom - mid) < 1      // 相手の駒の先がドックの中央（河）
+      && Math.abs(me.top - mid) < 1          // 自分の駒の先がドックの中央（河）
       && Math.abs(me.top - opp.bottom) < 1
       && Math.round(me.width) === 46;
   });
@@ -752,7 +754,7 @@ async function main() {
 
       const b = await sweepBoard(page, expect);
       ok(b.panes === 1 && b.oppTabEnabled, '左ドックは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
-      ok(b.binderStyle, 'バインダーは上下端に配置し、相手 OFF 時は点線の駒影を残す', '');
+      ok(b.binderStyle, 'バインダーの2枚の駒は中央（河）で向き合い、相手 OFF 時は点線の駒影を残す', '');
       ok(b.layerTabs.join(',') === '囲い,戦法', '左ドックのタブ順は囲い→戦法', b.layerTabs.join(' → '));
       ok(b.layerBinder, '囲い／戦法はバインダー形状で、選択中のタブが前面に見える', '');
       ok(b.layerSwitchStable, '囲い／戦法を切り替えてもタブ列が上下に揺れない', '');
