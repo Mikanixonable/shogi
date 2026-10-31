@@ -172,4 +172,8 @@ Kakoi.SOURCES = {
   'wj-zougan': { title: '象嵌（将棋）', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%B1%A1%E5%B5%8C' },
   'wj-teaiwari': { title: '将棋の手合割', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B0%86%E6%A3%8B%E3%81%AE%E6%89%8B%E5%90%88%E5%89%B2' },
   'sj-taden': { title: '多伝囲いとは？', publisher: '将棋研究', url: 'https://www.shougi.jp/kakoi/taden_kakoi/' },
+  'wj-tsukada': { title: '塚田スペシャル', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%A1%9A%E7%94%B0%E3%82%B9%E3%83%9A%E3%82%B7%E3%83%A3%E3%83%AB' },
+  'wj-nakata-XP': { title: '中田功XP', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E4%B8%AD%E7%94%B0%E5%8A%9FXP' },
+  'wj-murata': { title: '村田システム', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%9D%91%E7%94%B0%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0' },
+  'wj-yonenaga': { title: '米長流急戦矢倉', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%B1%B3%E9%95%B7%E6%B5%81%E6%80%A5%E6%88%A6%E7%9F%A2%E5%80%89' },
 };
