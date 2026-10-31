@@ -217,16 +217,16 @@
 
 /* ===== 駒の見出し（バインダー）: 左ドックと盤の境の罫をまたいで2枚の駒を立てる =====
    盤と同じく上=相手（先が下）・下=自分（先が上）。2枚の先は河の高さ（ドックの縦中央）で向き合う。
-   開いている側は「このページの見出し」: 駒の地（生成り）で塗り、面へ伸びる首・側色の縁・
-   先端の朱印・盤側へ落ちる影で持ち上げる。もう一方は罫だけの薄い駒。相手が OFF のときは駒の影＋「＋相手」 */
+   開いている側は生成りの地に塗って盤側へ張り出す。もう一方は罫だけの駒。
+   相手が OFF のときは駒の影＋「＋相手」（design-refs-binder.html E 案） */
 .rail { position:relative; }
 .dk-binder { position:absolute; z-index:6; top:0; bottom:0; right:-18px; width:40px; pointer-events:none; }
 .dk-pc { position:absolute; right:0; width:40px; height:min(150px,28vh); padding:0; border:0; background:none;
-         cursor:pointer; pointer-events:auto; color:var(--muted); opacity:.55;
-         transition:color .2s, opacity .2s, filter .25s var(--ease),
-                    right .28s cubic-bezier(.2,.9,.3,1.3), width .28s cubic-bezier(.2,.9,.3,1.3); }
-.dk-pc[data-who="opp"] { top:30px; }
-.dk-pc[data-who="me"] { top:calc(30px + min(150px,28vh)); }
+         cursor:pointer; pointer-events:auto; color:var(--muted);
+         transition:color .2s, right .28s cubic-bezier(.2,.9,.3,1.3), width .28s cubic-bezier(.2,.9,.3,1.3); }
+/* 2枚の先がドックの縦中央（河）で向き合う: 相手の駒は中央より上、自分の駒は中央より下 */
+.dk-pc[data-who="opp"] { top:calc(50% - min(150px,28vh)); }
+.dk-pc[data-who="me"] { top:50%; }
 .dk-pc .body { position:absolute; inset:0; background:var(--line-2); transition:background .2s;
                clip-path:polygon(50% 0, 100% 12%, 100% 100%, 0 100%, 0 12%); }
 .dk-pc .body::after { content:""; position:absolute; inset:1px; background:var(--bg); transition:background .2s;
@@ -236,43 +236,26 @@
             writing-mode:vertical-rl; font:700 15px/1 var(--font-d); letter-spacing:.3em; }
 .dk-pc[data-who="opp"] .v { inset:0 0 14px; }
 .dk-pc .v small { font:500 10px/1 var(--font-b); letter-spacing:.08em; }
-@media (hover:hover) { .dk-pc:hover { color:var(--fg); opacity:.85; } }
-.dk-pc:focus-visible { opacity:1; }
-/* 開いている側: 盤側へふっと出る（緩いバネ）＋生成りの地＋側色の縁＋drop-shadow（clip-path の形に沿う）で浮かせる */
-.dk-pc[aria-selected="true"] { right:-3px; width:46px; z-index:2; opacity:1; color:var(--ink);
-         filter:drop-shadow(2px 1px 4px rgba(24,18,8,.26)); }
+@media (hover:hover) { .dk-pc:hover { color:var(--fg); } }
+/* 開いている側: 盤側へふっと出る（緩いバネ）＋生成りの地＋側色の縁 */
+.dk-pc[aria-selected="true"] { right:-3px; width:46px; z-index:2; color:var(--ink); }
 .dk-pc[aria-selected="true"] .body { background:var(--piece-edge); }
 .dk-pc[aria-selected="true"] .body::after { background:var(--piece-1); }
 .dk-pc[aria-selected="true"][data-who="opp"] { color:var(--gote-ink); }
-.dk-pc[aria-selected="true"][data-who="opp"] .body { background:var(--gote-ink); }
-/* 面への首: 一覧の縁まで届く短い橋（上下と左端は側色、右は駒の縁へ2px被せて開く）。見出しが面に挿さった形に */
-.dk-pc[aria-selected="true"]::before { content:""; position:absolute; top:15%; bottom:15%; right:calc(100% - 2px); width:10px;
-         background:var(--piece-1); border-left:1px solid var(--piece-edge);
-         box-shadow:0 -1px 0 var(--piece-edge), 0 1px 0 var(--piece-edge); }
-.dk-pc[aria-selected="true"][data-who="opp"]::before { border-left-color:var(--gote-ink);
-         box-shadow:0 -1px 0 var(--gote-ink), 0 1px 0 var(--gote-ink); }
-/* 先端の朱印: 自分=▲・相手=▽（側の帯の ▲△ と同じ向き） */
-.dk-pc[aria-selected="true"]::after { content:""; position:absolute; left:50%; width:7px; height:6px;
-         transform:translateX(-50%); background:var(--accent); }
-.dk-pc[aria-selected="true"][data-who="me"]::after { top:7px; clip-path:polygon(50% 0,100% 100%,0 100%); }
-.dk-pc[aria-selected="true"][data-who="opp"]::after { bottom:7px; clip-path:polygon(0 0,100% 0,50% 100%); }
 /* OFF の相手駒の裏に残す点線の影 */
-.dk-pc-ghost { display:none; position:absolute; top:30px; right:0; width:40px; height:min(150px,28vh);
+.dk-pc-ghost { display:none; position:absolute; top:calc(50% - min(150px,28vh)); right:0; width:40px; height:min(150px,28vh);
                border:1px dashed var(--line-2); border-right:0; pointer-events:none; }
 .dk-binder[data-show="false"] .dk-pc-ghost { display:block; }
 /* 相手の駒の角の ×（相手を盤から下げる＝表示 OFF） */
-.dk-pc-x { position:absolute; top:19px; right:-11px; width:22px; height:22px; padding:0; border-radius:50%;
+.dk-pc-x { position:absolute; top:calc(50% - min(150px,28vh) - 11px); right:-11px; width:22px; height:22px; padding:0; border-radius:50%;
            z-index:3; pointer-events:auto; box-shadow:0 0 0 2px var(--bg);
            border:1px solid var(--line-2); background:var(--bg); color:var(--muted); cursor:pointer; font:500 12px/1 var(--font-b); }
 @media (hover:hover) { .dk-pc-x:hover { color:var(--bad); border-color:var(--bad); } }
 .dk-pc-x[hidden] { display:none; }
-/* 相手 OFF: 駒台に下げた影（薄い面＋「＋相手」）。ホバーで駒が盤へ戻る予告 */
+/* 相手 OFF: 駒台に下げた影（薄い面＋「＋相手」） */
+.dk-binder[data-show="false"] .dk-pc[data-who="opp"] { opacity:.75; color:var(--muted); }
 .dk-binder[data-show="false"] .dk-pc[data-who="opp"] .body { background:none; }
 .dk-binder[data-show="false"] .dk-pc[data-who="opp"] .body::after { background:var(--faint); }
-.dk-binder[data-show="false"] .dk-pc[data-who="opp"] .v small { display:none; }
-@media (hover:hover) { .dk-binder[data-show="false"] .dk-pc[data-who="opp"]:hover { opacity:1; } }
-@media (hover:hover) { .dk-binder[data-show="false"] .dk-pc[data-who="opp"]:hover .body { background:var(--line-2); } }
-@media (hover:hover) { .dk-binder[data-show="false"] .dk-pc[data-who="opp"]:hover .body::after { background:var(--piece-1); } }
 
 /* ===== narrow: ページ全体でスクロールするので、一覧は内容の高さを取る ===== */
 @media (max-width:979px) {
@@ -283,8 +266,6 @@
   .dk-pc { position:relative; top:auto; right:auto; bottom:auto; width:112px; height:44px; }
   .dk-pc[data-who] { top:auto; }            /* 広い画面の縦積み top を打ち消す（詳細度対策・A1） */
   .dk-pc[aria-selected="true"][data-who] { right:auto; width:112px; }
-  .dk-pc::before { display:none; }          /* 横並びでは面への首は出さない */
-  .dk-pc[aria-selected="true"] { filter:drop-shadow(0 2px 4px rgba(24,18,8,.25)); }
   .dk-pc .v, .dk-pc[data-who="opp"] .v { inset:4px 0 0; writing-mode:horizontal-tb; letter-spacing:.2em; }
   .dk-pc[data-who="opp"] .v { inset:0 0 4px; }
   .dk-pc-ghost { display:none !important; }

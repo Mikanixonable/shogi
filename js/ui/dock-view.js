@@ -131,16 +131,27 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 駒の見出し: 押すとその側の面へ（相手が OFF なら表示して開く）。縦のタブなので ↑=相手・↓=自分 ----------
     _bindBinder() {
       this.binder.addEventListener('click', e => {
-        if (e.target.closest('.dk-pc-x')) { this.h.onToggleOpponent(false); return; }
+        if (e.target.closest('.dk-pc-x')) {
+          this.h.onToggleOpponent(false);
+          this.pcs.me.focus();
+          return;
+        }
         const pc = e.target.closest('.dk-pc');
         if (pc) this.h.onSelect(pc.dataset.who, this.kind);
       });
       this.binder.addEventListener('keydown', e => {
-        if (!e.target.closest('.dk-pc') || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
-        e.preventDefault();
-        const who = e.key === 'ArrowUp' ? 'opp' : 'me';
-        this.h.onSelect(who, this.kind);
-        this.pcs[who].focus();
+        if (!e.target.closest('.dk-pc')) return;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const who = e.key === 'ArrowUp' ? 'opp' : 'me';
+          this.h.onSelect(who, this.kind);
+          this.pcs[who].focus();
+        } else if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.closest('[data-who="opp"]')) {
+          // 駒を下げる＝相手の表示 OFF
+          e.preventDefault();
+          this.h.onToggleOpponent(false);
+          this.pcs.me.focus();
+        }
       });
     }
 
