@@ -1,7 +1,7 @@
 // スクリプト一覧: 読み込み順の唯一の定義（index.html と tools/validate-castles.js が共有する）
 window.Kakoi = window.Kakoi || {};
 Kakoi.MANIFEST = (() => {
-  const core = ['js/core/notation.js'];
+  const core = ['js/core/notation.js', 'js/core/piece-moves.js'];
   const data = ['js/data/sources.js', 'js/data/taxonomy.js', 'js/data/setups.js', 'js/data/strategies.js', 'js/data/castles-ibisha.js', 'js/data/castles-furibisha.js', 'js/data/tactic-families.js', 'js/data/tactics.js', 'js/data/tactic-ratings.js'];
   const vendor = ['js/vendor/three.min.js']; // 立体駒用。UMD（file:// でも読める）を内蔵
   const logic = ['js/core/lookup.js', 'js/core/lru.js', 'js/core/html.js', 'js/core/position.js', 'js/core/defaults.js', 'js/core/matchup.js', 'js/core/compose.js', 'js/core/compat.js', 'js/core/constraints.js', 'js/core/board-model.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/validate.js', 'js/core/piece-match.js'];
