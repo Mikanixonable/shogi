@@ -547,6 +547,10 @@ window.Kakoi = window.Kakoi || {};
         results.push({ kind: 'strategy', id: sid, ...r });
       }
     }
+    // 手筋・格言・定番セット（tesuji.js / combos.js）の出典も参照済みとして数える
+    for (const t of [...(isArr(ctx.TESUJI) ? ctx.TESUJI : []), ...(isArr(ctx.COMBOS) ? ctx.COMBOS : [])]) {
+      for (const s of (t && isArr(t.sources) ? t.sources : [])) if (s && s.ref) used.add(s.ref);
+    }
     for (const [ref, s] of Object.entries(ctx.SOURCES || {})) {
       results.push({ kind: 'source', id: ref, ...source(ref, s) });
       if (!used.has(ref)) warnings.push(`source:${ref}: どこからも参照されていない`);

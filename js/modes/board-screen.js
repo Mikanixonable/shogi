@@ -34,6 +34,14 @@ window.Kakoi = window.Kakoi || {};
       const k = state.showOpp;
       if (this._derived && this._derived.slots === slots && this._derived.k === k) return this._derived.d;
       const d = K.deriveBoard(slots, state.showOpp);
+      // 王手飛車の筋（両軍の合成局面で。相手は表示しているときだけ）
+      if (K.tesuji) {
+        const pos = d.merged.position;
+        d.forks = {
+          me: K.tesuji.forks(pos, 'sente', { latent: true }),
+          opp: state.showOpp ? K.tesuji.forks(pos, 'gote', { latent: true }) : [],
+        };
+      }
       this._derived = { slots, k, d };
       return d;
     }
@@ -55,7 +63,24 @@ window.Kakoi = window.Kakoi || {};
         })),
         target: (a.target || []).map(s => mirror ? mirrorSq(s) : s),
         showPieces: !state.showOpp,
+        defenses: this._defenses(state, st, a, mirror),
       };
+    }
+
+    // 選択中の攻め筋に対する受けの手筋（底歩）。囲いの側の局面（先手視点）で求め、相手側は反転する
+    _defenses(state, st, attack, mirror) {
+      const list = (K.TESUJI || []).filter(t => (t.counters || []).includes(attack.id));
+      if (!list.length || !K.tesuji) return [];
+      const pos = K.compose.position({
+        strategy: st.strategy, tacticIds: st.tacticIds, castleId: st.castleId, side: 'sente',
+      }).position;
+      return list.map(t => {
+        const r = t.id === 'sokofu' ? K.tesuji.sokofu(pos, attack) : null;
+        return r && {
+          tesuji: t, sq: mirror ? mirrorSq(r.sq) : r.sq, mark: mirror ? '△' : '▲',
+          kinzoko: r.kinzoko, nifu: r.nifu, on: state.defense === t.id,
+        };
+      }).filter(Boolean);
     }
 
     // 駒レイヤに効く入力だけを見る（selected の変更では再描画しない）
@@ -66,6 +91,7 @@ window.Kakoi = window.Kakoi || {};
         opp: state.showOpp ? [S.opp.strategy, S.opp.tacticIds, S.opp.castleId] : null,
         heat: !!state.heat,
         atk: attack ? [attack.who, attack.attack.id, !!state.showOpp] : 0,
+        def: attack ? attack.defenses.filter(x => x.on).map(x => x.sq) : 0,
       });
     }
 
@@ -85,7 +111,7 @@ window.Kakoi = window.Kakoi || {};
       if (!redraw && changed.has('showThreat')) this._overlays(state, d);
 
       if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')
-          || changed.has('attackId') || changed.has('showThreat')) {
+          || changed.has('attackId') || changed.has('showThreat') || changed.has('defense')) {
         this._paintField(state, d);
         this._paintStage(state, d);
         this._renderDetail(state, d);
@@ -96,8 +122,13 @@ window.Kakoi = window.Kakoi || {};
     // 盤の駒レイヤ＋重ね表示。selected のみの更新では来ない
     _renderBoard(state, d, attack, animate) {
       const { S, merged } = d;
-      const position = attack && attack.showPieces
-        ? new K.Position([...merged.position.pieces, ...attack.pieces], [...merged.position.hand])
+      // 受けの手筋を押しているときは、その歩を盤に置く（主役の駒と同じ朱で強調）
+      const defPieces = attack ? attack.defenses.filter(x => x.on).map(x => ({
+        p: '歩', f: +x.sq[0], r: +x.sq[1], owner: attack.who === 'opp' ? 'gote' : 'sente', role: 'lead',
+      })) : [];
+      const position = attack && (attack.showPieces || defPieces.length)
+        ? new K.Position([...merged.position.pieces, ...(attack.showPieces ? attack.pieces : []), ...defPieces],
+          [...merged.position.hand])
         : merged.position;
       const heat = state.heat
         ? K.attackMap(position, x => x.role === 'core' || x.role === 'lead')
@@ -132,6 +163,13 @@ window.Kakoi = window.Kakoi || {};
       ov.contacts(merged.contacts.length
         ? merged.contacts.map(c => ({ sq: c.sq, kind: c.kind }))
         : null);
+      // 王手飛車の筋: 自分が狙われる筋は朱、相手を狙える筋は緑
+      if (d.forks) {
+        ov.forks([
+          ...d.forks.me.map(x => ({ ...x, tone: 'bad' })),
+          ...d.forks.opp.map(x => ({ ...x, tone: 'good' })),
+        ]);
+      }
     }
 
     // ---------- 制約フィールド（盤の上の1枚の蜂の巣。両側を同じグリッドに並べる） ----------
@@ -182,6 +220,7 @@ window.Kakoi = window.Kakoi || {};
     // 選んだ層が他の層と両立しないときは、理由と直す候補（constraints.suggest）も渡す
     _renderDetail(state, d) {
       const sel = parseSel(state.selected) || { who: 'me', kind: 'castle' };
+      const attack = this._attackInfo(state, d.S);
       // 戦法は駒ごとの枠: 選択中の駒枠（無ければ主の戦法）の ng を取る
       const tacId = sel.id || d.S[sel.who].tacticId;
       const ng = sel.kind === 'tactic'
@@ -195,6 +234,10 @@ window.Kakoi = window.Kakoi || {};
         threat: d.threat,
         attackId: state.attackId,
         contacts: d.merged.contacts,   // merge 済みの接触を共有する（S5: 再計算しない）
+        defenses: sel.kind === 'castle' && attack ? attack.defenses : [],
+        forks: sel.kind === 'strategy' ? null : {
+          list: (d.forks && d.forks[sel.who]) || [], attacker: sel.who === 'me' ? '△' : '▲', mine: sel.who === 'me',
+        },
         ng,
         suggest: ng ? K.constraints.suggest(state.slots, state.showOpp, sel.who, sel.kind, 6,
             sel.kind === 'tactic' ? tacId : null)

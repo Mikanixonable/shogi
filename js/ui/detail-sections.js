@@ -352,11 +352,68 @@ window.Kakoi = window.Kakoi || {};
       `</ul></details>`);
   }
 
+  // ---------- 定番セット・受けの手筋・王手飛車 ----------
+  /**
+   * 定番セット（戦法×囲いの名前のある組み合わせ。data/combos.js）。
+   * 押すとそのセットを制約に立てる（[data-act="combo"]）。vs があるときは相手側も並べられる
+   * @param {Array<{combo:Object, done:boolean}>} rows
+   * @param {{ canVs?:boolean }} opt 相手のセットも並べるボタンを出すか（自分側のみ）
+   */
+  function combos(rows, citer, { canVs = false } = {}) {
+    if (!rows || !rows.length) return '';
+    const items = rows.map(({ combo: c, done }) => {
+      const vs = canVs && c.vs
+        ? `<button class="vchip" data-act="combo" data-id="${esc(c.id)}" data-vs="1" aria-pressed="false">相手も並べる</button>` : '';
+      return `<div class="combo${done ? ' done' : ''}">` +
+        `<h3 class="combo-h">${esc(c.name)}${c.basic ? '<span class="combo-basic">基本</span>' : ''}${done ? '<span class="combo-ok">完成</span>' : ''}</h3>` +
+        `<p class="desc">${rich(c.desc, citer)}</p>` +
+        `<div class="vchips"><button class="vchip" data-act="combo" data-id="${esc(c.id)}" aria-pressed="${done}">${done ? 'そろっています' : 'このセットにする'}</button>${vs}</div>` +
+        `</div>`;
+    }).join('');
+    return sec('定番セット', '戦法と囲いを両方選ぶと完成', items);
+  }
+
+  /**
+   * 受けの手筋（選択中の攻め筋に対する底歩など）。press で盤に駒を置く
+   * @param {Array<{tesuji:Object, sq:string, mark:string, kinzoko:boolean, nifu:boolean, on:boolean}>} rows
+   */
+  function defenses(rows, citer) {
+    if (!rows || !rows.length) return '';
+    const items = rows.map(r => {
+      const where = `${r.mark}${label(+r.sq[0], +r.sq[1])}歩`;
+      const text = (r.kinzoko ? `${where}（金の下に打つ底歩）で横の利きを止める。` : `${where}で横の利きを止める。`) +
+        (r.nifu ? `いまは${r.sq[0]}筋に自分の歩があるので、その歩を交換した後なら打てる（二歩の禁止）。` : '');
+      return `<button class="attack defense" data-act="defense" data-id="${esc(r.tesuji.id)}" data-sq="${r.sq}" data-tone="good" aria-pressed="${r.on}">` +
+        `<b>${esc(r.tesuji.name)}</b>${esc(text)}</button>`;
+    }).join('');
+    return sec('受けの手筋', '押すと盤に歩を置く', `<div class="attacks">${items}</div>`) +
+      `<p class="note"><button class="linkish" data-act="tesuji" data-id="${esc(rows[0].tesuji.id)}">${esc(rows[0].tesuji.name)}の図と格言を見る</button></p>`;
+  }
+
+  /**
+   * 王手飛車の筋: 相手が角・桂を1枚打つと玉と飛車に同時に利くマス（core/tesuji.js の forks）
+   * @param {Array<{piece,sq,king,rook,via:string[]}>} list 盤の絶対座標
+   * @param {{ attacker:string, mine:boolean }} opt attacker: 打つ側の印（▲/△）。mine: 自分が狙われる側
+   */
+  function forks(list, { attacker, mine }) {
+    if (!list || !list.length) return '';
+    const L = s => label(+s[0], +s[1]);
+    const li = list.map(x => {
+      const via = x.via.length ? `（${x.via.map(L).join('・')}の歩が動くと筋が通る）` : '（いま打たれると成立）';
+      return `<li data-sq="${[x.sq, x.king, x.rook, ...x.via].join(' ')}" data-tone="${mine ? 'bad' : 'good'}" data-abs="1">` +
+        `${attacker}${L(x.sq)}${esc(x.piece)}：玉${L(x.king)}と飛${L(x.rook)}に同時に利く${esc(via)}</li>`;
+    }).join('');
+    return sec(mine ? '王手飛車の筋（狙われる）' : '王手飛車の筋（狙える）', '持ち駒の角・桂を打つ場合。マスに乗せると盤で光る',
+      `<ul class="mu-reasons">${li}</ul>`) +
+      `<p class="note"><button class="linkish" data-act="tesuji" data-id="otebisha">王手飛車の図と格言を見る</button></p>`;
+  }
+
   K.detailSections = {
     RATINGS, TACTIC_RATINGS, RADAR, sec,
     penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,
     vsSection, vsRows, reasons, conflict, contacts, sources, fun,
+    combos, defenses, forks,
   };
 })();

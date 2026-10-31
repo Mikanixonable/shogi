@@ -40,6 +40,8 @@ Kakoi.SOURCES = {
   'jsf-kakoi41': { title: '飯島流引き角戦法【玉の囲い方 第41回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2018/07/41.html' },
   'jsf-kakoi63': { title: 'エルモ囲いの組み方【玉の囲い方 第63回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/03/kakoi63.html' },
   'jsf-kakoi77': { title: '土居矢倉の組み方（1）【玉の囲い方 第77回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/07/kakoi_77.html' },
+  'jsf-kakoi81': { title: '対振り飛車金美濃の組み方（1）【玉の囲い方 第81回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/07/kakoi_81.html' },
+  'jsf-kakoi82': { title: '対振り飛車金美濃の組み方（2）【玉の囲い方 第82回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/07/kakoi_82.html' },
   'jsf-kakoi87': { title: 'カニ囲い右四間飛車【玉の囲い方 第87回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2019/08/kakoi_87.html' },
   'jsf-kuzushi48': { title: '矢倉の崩し方【第48回】', publisher: '日本将棋連盟（Web Archive）', url: 'https://web.archive.org/web/2023/https://www.shogi.or.jp/column/2018/08/post_416.html' },
 
@@ -80,6 +82,9 @@ Kakoi.SOURCES = {
   'shinrar-hashibisha': { title: '【将棋神ラー流】端飛車戦法を徹底解説！', publisher: '将棋神ラー', url: 'https://shogishinrar.com/hashibisha' },
   'note-nifusen-kyuken': { title: '「九間飛車」3つの冴えたアイディア', publisher: 'note（二歩千金）', url: 'https://note.com/nifusen/n/n656a6498b4ba' },
   'wj-shogi-yogo': { title: '将棋用語一覧', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B0%86%E6%A3%8B%E7%94%A8%E8%AA%9E%E4%B8%80%E8%A6%A7' },
+  'wj-tesuji': { title: '手筋 (将棋)', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%89%8B%E7%AD%8B_(%E5%B0%86%E6%A3%8B)' },
+  'wj-kakugen': { title: '将棋の格言', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B0%86%E6%A3%8B%E3%81%AE%E6%A0%BC%E8%A8%80' },
+  'kouza-yureikaku': { title: '幽霊角・助けの角', publisher: '将棋講座ドットコム', url: 'https://shogi-kouza.com/2018/03/17/post-2686/' },
   'wj-bougin': { title: '棒銀', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%A3%92%E9%8A%80' },
   'we-climbing-silver': { title: 'Climbing Silver', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Climbing_Silver' },
   'wj-hayakurigin': { title: '早繰り銀', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%97%A9%E7%B9%B0%E3%82%8A%E9%8A%80' },

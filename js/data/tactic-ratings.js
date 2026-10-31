@@ -38,7 +38,6 @@ Kakoi.TACTIC_RATING_KEYS = ['attack', 'speed', 'flex', 'safety', 'easy'];
     'sodebisha': [3, 4, 2, 3, 3],
     'saginomiya': [4, 4, 2, 3, 2],
     'ibisha-base': [3, 3, 4, 4, 5],
-    'kinmino': [2, 1, 3, 4, 3],
     'suzumezashi': [4, 2, 2, 4, 2],
     'onigoroshi': [4, 4, 1, 2, 2],
     'sujichigaikaku': [3, 3, 3, 3, 2],

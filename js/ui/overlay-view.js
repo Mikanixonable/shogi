@@ -28,8 +28,9 @@ window.Kakoi = window.Kakoi || {};
         `<marker id="rtHeadBad" ${MARKER_BODY}><path class="rt-head rt-hb" ${HEAD_D}/></marker>` +
         `<marker id="rtHeadInk" ${MARKER_BODY}><path class="rt-head rt-hi" ${HEAD_D}/></marker>` +
         '</defs>' +
-        '<g class="rt-g"></g>';
+        '<g class="rt-g"></g><g class="fk-g"></g>';
       this.routeLayer = this.svg.querySelector('.rt-g');
+      this.forkLayer = this.svg.querySelector('.fk-g');
       this.throughSvg = document.createElementNS(NS, 'svg');
       this.throughSvg.setAttribute('class', 'overlay overlay-through');
       this.throughSvg.setAttribute('viewBox', '0 0 9 9');
@@ -50,9 +51,14 @@ window.Kakoi = window.Kakoi || {};
       this.contactLayer = document.createElement('div');
       this.contactLayer.className = 'ov-contacts';
       this.contactLayer.setAttribute('aria-hidden', 'true');
+      // 王手飛車の筋の印（打つマスに薄い駒の字）
+      this.forkMarks = document.createElement('div');
+      this.forkMarks.className = 'ov-forks';
+      this.forkMarks.setAttribute('aria-hidden', 'true');
       boardEl.appendChild(this.svg);
       boardEl.appendChild(this.throughSvg);
       boardEl.appendChild(this.contactLayer);
+      boardEl.appendChild(this.forkMarks);
     }
 
     /**
@@ -125,6 +131,41 @@ window.Kakoi = window.Kakoi || {};
         el.style.top = `${p.y}%`;
         this.contactLayer.appendChild(el);
       }
+    }
+
+    /**
+     * 王手飛車の筋: 打つマスから玉・飛車へ細い線を引き、打つマスに駒の字を薄く置く。null/[] で消す
+     * @param {Array<{piece:string, sq:string, king:string, rook:string, via:string[], tone:'good'|'bad'}>|null} list
+     *   via が空でない筋（歩が動くと通る）は破線で控えめに描く
+     */
+    forks(list) {
+      this.forkLayer.replaceChildren();
+      this.forkMarks.replaceChildren();
+      if (!list || !list.length) return;
+      let html = '';
+      const seen = new Set();
+      for (const x of list) {
+        const a = center(x.sq);
+        const cls = `fk fk-${x.tone === 'good' ? 'good' : 'bad'}${x.via && x.via.length ? ' fk-latent' : ''}`;
+        for (const t of [x.king, x.rook]) {
+          const b = center(t);
+          html += `<line class="${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+        }
+        const key = x.piece + x.sq;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const p = pct(x.sq);
+        const el = document.createElement('div');
+        el.className = 'ov-fork';
+        el.dataset.tone = x.tone === 'good' ? 'good' : 'bad';
+        el.dataset.latent = String(!!(x.via && x.via.length));
+        el.dataset.sq = x.sq;
+        el.textContent = x.piece;
+        el.style.left = `${p.x}%`;
+        el.style.top = `${p.y}%`;
+        this.forkMarks.appendChild(el);
+      }
+      this.forkLayer.innerHTML = html;
     }
   }
 

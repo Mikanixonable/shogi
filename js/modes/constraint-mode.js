@@ -23,8 +23,10 @@ window.Kakoi = window.Kakoi || {};
      *   els: stage, field,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
-    constructor({ repo, store, board, overlay, els, dockTabs }) {
+    constructor({ repo, store, board, overlay, els, dockTabs, openTesuji }) {
       Object.assign(this, { repo, store, board, overlay, els, dockTabs });
+      this._openTesuji = openTesuji;
+      this._done = { me: null, opp: null };
       this.rows = K.tacticNav.tacticRows(repo.tacticFamilies(), repo.tactics());
       this._pvKey = null;
       this._pvRaf = null;
@@ -54,8 +56,11 @@ window.Kakoi = window.Kakoi || {};
       this.detail = new K.BoardDetailView(els.detail, {
         repo: this.repo,
         onHover: (sqs, tone) => this.board.hover(sqs, tone),
-        onAttack: attackId => this.store.set({ attackId }),
+        onAttack: attackId => this.store.set({ attackId, defense: null }),
         onSetConstraint: (w, k, id) => this._set(w, k, id),
+        onCombo: (w, id, withVs) => this._combo(w, id, withVs),
+        onDefense: id => this.store.set({ defense: id }),
+        onOpenTesuji: id => { if (this._openTesuji) this._openTesuji(id); },
       });
       // 「見える半分」は BoardScreen に委譲（S6）
       this.screen = new K.BoardScreen({
@@ -80,6 +85,27 @@ window.Kakoi = window.Kakoi || {};
       // 候補を次々比較できる。解説は「読む」タブか、盤上の制約チップを押して開く（M2）。
       // 初回だけ、解説の場所を小さく案内する
       if (matchMedia('(max-width:979px)').matches) this._hintRead();
+    }
+
+    /** 定番セットを制約に立てる（data/combos.js）。withVs で相手側のセットも並べる */
+    _combo(who, id, withVs) {
+      const c = (K.COMBOS || []).find(x => x.id === id);
+      if (!c) return;
+      const s = this.store.state;
+      let slots = K.constraints.setSlot(s.slots, who, 'tactic', c.tactic);
+      slots = K.constraints.setSlot(slots, who, 'castle', c.castle);
+      if (withVs && c.vs) {
+        const opp = who === 'me' ? 'opp' : 'me';
+        if (c.vs.tactic) slots = K.constraints.setSlot(slots, opp, 'tactic', c.vs.tactic);
+        if (c.vs.castle) slots = K.constraints.setSlot(slots, opp, 'castle', c.vs.castle);
+      }
+      const patch = { slots, ...(withVs && c.vs ? { showOpp: true } : {}) };
+      const sel = parseSel(s.selected);
+      if (!sel || sel.who !== who || !K.constraints.KINDS.includes(sel.kind)) {
+        Object.assign(patch, { selected: `${who}.castle`, dockTab: 'castle' });
+      }
+      this.store.set(patch);
+      this._openDrawer();
     }
 
     // 最初の選択のあと一度だけ「読む」タブへの導線を出す（sessionStorage のフラグ）
@@ -169,7 +195,7 @@ window.Kakoi = window.Kakoi || {};
       const s = this.store.state;
       if (!s.showOpp && !hasAny(s.slots)) return;
       this.store.set({
-        slots: K.constraints.emptySlots(), showOpp: false, attackId: null,
+        slots: K.constraints.emptySlots(), showOpp: false, attackId: null, defense: null,
         selected: K.constraints.normalizeSelected(null, false, s.dockTab),
       });
       this._toastUndo('盤を初期状態に戻しました');
@@ -224,6 +250,19 @@ window.Kakoi = window.Kakoi || {};
       const hard = changed.has('initial');
       if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')) {
         this.dock.update(state, d.S);
+      }
+      this._notifyCombo(d, state, hard);
+    }
+
+    // 定番セットが新しく完成したら知らせる（起動時・ハッシュで開いたときは黙って覚えるだけ）
+    _notifyCombo(d, state, quiet) {
+      for (const who of ['me', 'opp']) {
+        const c = who === 'opp' && !state.showOpp ? null : (K.tesuji ? K.tesuji.comboOf(d.S[who]) : null);
+        const id = c ? c.id : null;
+        if (id && id !== this._done[who] && !quiet && K.Toast) {
+          K.Toast.show(`${who === 'opp' ? '相手' : '自分'}の定番セット「${c.name}」が完成しました`, { host: this.els.stage });
+        }
+        this._done[who] = id;
       }
     }
 

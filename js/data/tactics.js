@@ -857,8 +857,8 @@ Kakoi.TACTICS = [
     essential: '飛38 銀57',
     pace: 'rapid',
     senkei: [],
-    against: { furibisha: 'good' },
-    againstTactic: { shikenbisha: 'good' },
+    against: { furibisha: 'ok' },
+    againstTactic: { shikenbisha: 'ok' },
     pairings: [
       { castle: 'funa68kin', level: 'best', why: '5七銀左型に▲6八金上と固めた舟囲いDXが鷺宮定跡の構えそのもの[[wj-saginomiya]]', sources: [{ ref: 'wj-saginomiya', for: '組み合わせ' }] },
       { castle: 'funa57gin', level: 'ok', why: '土台となる5七銀左型の舟囲い（ここから▲6八金上まで進めるのが本筋）[[wj-saginomiya]]', sources: [{ ref: 'wj-saginomiya', for: '組み合わせ' }] },
@@ -866,19 +866,20 @@ Kakoi.TACTICS = [
     ],
     tags: ['急戦', '対四間飛車', '袖飛車'],
     context: '対四間飛車（5七銀左急戦の定跡。先手後手どちらでも指せる）',
-    desc: '5七銀左型の舟囲いからさらに▲6八金上（舟囲いDX）と固め、飛車を3筋に回して▲3五歩の突き捨てから角頭を攻める対四間飛車の急戦定跡[[wj-saginomiya]]。青野照市が創案し米長邦雄がタイトル戦で連採して広まり、2人が中野区鷺宮に住んでいたことが名の由来[[wj-saginomiya]]。山田定跡・4六銀左戦法・4五歩早仕掛けと同じ5七銀左急戦の体系で、振り飛車側の待機方法によって使い分ける[[wj-saginomiya|wj-ibisha-funakyusen]]。',
+    desc: '5七銀左型の舟囲いからさらに▲6八金上（舟囲いDX[[wj-funagakoi]]）と固め、飛車を3筋に回して▲3五歩の突き捨てから角頭（相手の角の前のマス）を攻める対四間飛車の急戦定跡[[wj-saginomiya]]。昭和50年代後半に青野照市が創案し、米長邦雄がタイトル戦で連採して広まった。2人が中野区鷺宮に住んでいたことが名の由来[[wj-saginomiya]]。山田定跡・4六銀左戦法・4五歩早仕掛けと同じ5七銀左急戦の体系で、振り飛車側の待機方法によって使い分ける[[wj-saginomiya|wj-ibisha-funakyusen]]。',
     pros: [
       { t: '▲3五歩からの角頭攻めと飛車先突破が定跡化されており、再現性が高い[[wj-saginomiya]]' },
       { t: '右銀を4八に残すため通常の右銀3八飛戦法と違い▲1六歩の催促が打てるなど独特の手筋がある[[wj-saginomiya]]' },
     ],
     cons: [
       { t: '難解・複雑で、米長はプロにとっても難しい戦法と評している[[wj-saginomiya]]' },
-      { t: '四間飛車側の対策（△6三歩-△1二香型など）が進み居飛車側の勝率は芳しくない[[wj-saginomiya]]' },
+      { t: '四間飛車側の△6三歩-△1二香型への対策が進み、この型ではプロ公式戦で先手13勝21敗（2010年まで34局）と居飛車側の勝率は芳しくない[[wj-saginomiya]]' },
     ],
     note: '図は▲3八飛までの基本図（5七銀左・6八金型・袖飛車）。狭義の鷺宮定跡はこの形から▲3五歩△同歩▲4六銀と仕掛ける[[wj-saginomiya]]',
     sources: [
       { ref: 'wj-saginomiya', for: '配置・解説' },
       { ref: 'wj-ibisha-funakyusen', for: '系統' },
+      { ref: 'wj-funagakoi', for: '舟囲いDXの呼称' },
     ],
   },
   {
@@ -911,40 +912,6 @@ Kakoi.TACTICS = [
     sources: [
       { ref: 'wj-ibisha', for: '配置・解説' },
       { ref: 'we-static-rook', for: '解説' },
-    ],
-  },
-  {
-    id: 'kinmino', name: '金美濃（対振り飛車）', short: '金美濃', reading: 'きんみの', variantOf: 'ibisha-base',
-    aliases: ['対振り飛車金美濃', '対振り飛車持久戦'],
-    family: 'ibisha-rook', lead: { piece: '飛', files: [2], square: '28' },
-    route: ['28'],
-    pieces: '玉88 飛28 角77 金78 金67 銀79 銀57 桂89 桂29 香99 香19 歩97 歩87 歩76 歩66 歩56 歩47 歩37 歩27 歩17',
-    essential: '角77 銀57',
-    pace: 'slow',
-    senkei: [],
-    against: { furibisha: 'good' },
-    againstTactic: { fujiisystem: 'ok' },
-    pairings: [
-      { castle: 'hidarimino', level: 'best', why: '金美濃は左美濃の系譜に数えられる経過形で、7九銀型のまま7八金と固めてから組み替える[[wj-hidarimino]]', sources: [{ ref: 'wj-hidarimino', for: '組み合わせ' }] },
-      { castle: 'anaguma', level: 'best', why: '金美濃の形から居飛車穴熊へ発展させるのが主流の手順[[wj-hidarimino|wj-ibisha-anaguma]]', sources: [{ ref: 'wj-hidarimino', for: '組み合わせ' }, { ref: 'wj-ibisha-anaguma', for: '組み合わせ' }] },
-      { castle: 'tenshukaku', level: 'ok', why: '左美濃系の発展形（8七玉）へ組み替える系譜' },
-    ],
-    tags: ['持久戦'],
-    context: '対振り飛車（急戦を避ける持久戦の構え）',
-    desc: '四間飛車の対左美濃策である藤井システムの登場（平成9年ごろ）以降、従来の手順で居飛車穴熊に組もうとすると速攻で後れを取るため、▲8八玉から▲9八香と急がず▲7九銀型のまま▲7八金と陣形を固める対振り飛車の指し方。金美濃と呼ばれる[[wj-shikenbisha|wj-hidarimino]]。この陣を経由して居飛車穴熊に発展させる手順が多く、6筋位取りや串カツ囲いへの組み替えも可能[[wj-hidarimino|wj-ibisha-anaguma]]。居飛車（2筋）の汎用エントリとの違いは、攻めの銀を繰り出さず持久戦に構える点にある。',
-    pros: [
-      { t: '藤井システムや石田流など振り飛車の積極策に対し、極端に不利になることが少ない[[wj-hidarimino]]' },
-      { t: '穴熊・6筋位取り・串カツ囲いと発展先が多彩[[wj-hidarimino]]' },
-    ],
-    cons: [
-      { t: '組み替えに手数がかかる' },
-      { t: '玉頭（8筋）の薄さは左美濃と共通[[wj-hidarimino]]' },
-    ],
-    note: '図は角7七・右銀5七・金6七7八・玉8八の金美濃型。7九銀型のまま7八金と固めるのが特徴[[wj-hidarimino]]',
-    sources: [
-      { ref: 'wj-hidarimino', for: '配置・解説' },
-      { ref: 'wj-ibisha-anaguma', for: '発展先' },
-      { ref: 'wj-shikenbisha', for: '背景（藤井システム）' },
     ],
   },
   {

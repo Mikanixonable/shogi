@@ -1190,6 +1190,7 @@ Kakoi.CASTLES.push(
   },
   {
     id: 'ibisha-kinmino', name: '居飛車金美濃', short: '金美濃', reading: 'いびしゃきんみの',
+    aliases: ['対振り飛車金美濃'],
     side: 'ibisha', from: 'hidarimino', family: 'mino', subtype: 'kinmino', setup: 'ibisha',
     core: '玉88 金78 金67 銀79 銀57 角77',
     shell: '歩97 歩87 歩76 歩66 歩56 歩46 歩36',
@@ -1203,7 +1204,8 @@ Kakoi.CASTLES.push(
       { t: '6筋・7筋の位を保てないと上部が薄くなりやすい[[wj-kakoi]]', sq: ['66', '76', '67'] },
     ],
     attacks: [{ id: 'center', name: '中央攻め', t: '△5五歩・△6五歩などで位と金銀の連携を揺さぶる。', gote: '歩55 歩65', target: ['56', '66', '67'] }],
-    sources: [{ ref: 'wj-kakoi', for: '分類・配置' }, { ref: 'wj-hidarimino', for: '系統' }],
+    note: '「金美濃」は日本将棋連盟のコラムが付けた仮称で、正式な名称ではない[[jsf-kakoi81]]。藤井システムが広まった平成9年ごろからプロの対局で急増した[[jsf-kakoi81|wj-hidarimino]]。▲9八香▲9九玉▲8八銀で穴熊へ、6筋の位取りや銀冠にも発展させられる[[jsf-kakoi82]]。',
+    sources: [{ ref: 'wj-kakoi', for: '分類・配置' }, { ref: 'wj-hidarimino', for: '系統' }, { ref: 'jsf-kakoi81', for: '手順・配置' }, { ref: 'jsf-kakoi82', for: '発展形' }],
   },
   {
     id: 'kinjun', name: '金盾囲い', short: '金盾囲い', reading: 'きんじゅんがこい',

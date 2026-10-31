@@ -61,6 +61,15 @@ window.Kakoi = window.Kakoi || {};
         if (t && !t.contains(e.relatedTarget) && handlers.onHover) handlers.onHover([], null);
       });
       el.addEventListener('click', e => {
+        // 定番セット・受けの手筋・手筋の図（.attack の見た目を借りる受けの手筋は先に拾う）
+        const act = e.target.closest('[data-act="combo"], [data-act="defense"], [data-act="tesuji"]');
+        if (act) {
+          const id = act.dataset.id;
+          if (act.dataset.act === 'combo' && handlers.onCombo) handlers.onCombo(this._sel.who, id, act.dataset.vs === '1');
+          if (act.dataset.act === 'defense' && handlers.onDefense) handlers.onDefense(act.getAttribute('aria-pressed') === 'true' ? null : id);
+          if (act.dataset.act === 'tesuji' && handlers.onOpenTesuji) handlers.onOpenTesuji(id);
+          return;
+        }
         const shuf = e.target.closest('.fun-shuf');
         if (shuf) {   // お楽しみ: 格言を1つ引き直す（状態には触れない）
           const bq = shuf.closest('.fun-pv'), F = K.FUN;
@@ -131,10 +140,24 @@ window.Kakoi = window.Kakoi || {};
         : kind === 'tactic' ? this._tactic(norm, st, S, p.showOpp, citer, p)
         : this._castle(norm, st, S, p.showOpp, p.attackId, citer, p);
       this._tapSq = null;   // 描き直しでタップ中の data-sq 要素は取り替わる
+      // 戦法・囲いの面: 定番セット（その層を含むもの）と王手飛車の筋を足す
+      const extra = [];
+      let tail = '';
+      if (sel.kind !== 'strategy' && st) {
+        const ids = kind === 'tactic' ? (st.tacticIds || []) : (st.castleId ? [st.castleId] : []);
+        const done = K.tesuji ? K.tesuji.comboOf(st) : null;
+        const rows = [...new Set(ids.flatMap(id => K.tesuji ? K.tesuji.combosWith(kind, id) : []))]
+          .map(c => ({ combo: c, done: done === c }));
+        tail += Sec().combos(rows, citer, { canVs: who === 'me' });
+        for (const r of rows) extra.push(...(r.combo.sources || []));
+      }
+      if (p.forks && p.forks.list.length) tail += Sec().forks(p.forks.list, p.forks);
       // 共通の末尾: 両軍の接触 → 出典 → お楽しみ（格言・ミーム・動画の余白コーナー）。
       // 接触は呼び出し側の導出（merge 済み）を受け取る（S5: 再計算しない）
-      this.el.innerHTML = [b.body, Sec().contacts(p.contacts, citer),
-        Sec().sources(b.sources, citer), Sec().fun(norm)]
+      const have = new Set(b.sources.map(s => s.ref));
+      const more = this.h.repo.resolveSources(extra).filter(s => !have.has(s.ref));
+      this.el.innerHTML = [b.body, tail, Sec().contacts(p.contacts, citer),
+        Sec().sources([...b.sources, ...more], citer), Sec().fun(norm)]
         .filter(Boolean).join('');
     }
 
@@ -231,8 +254,10 @@ window.Kakoi = window.Kakoi || {};
       const tactic = findTactic(st.tacticId);
       const pairing = tactic && (tactic.pairings || []).find(pp => pp.castle === c.id);
       const setupSrc = this.h.repo.setupOf(c).sources;
+      const defs = p.defenses || [];
       const sources = this._mergedSources(
-        c.sources || [], setupSrc || [], pairing ? pairing.sources || [] : []);
+        c.sources || [], setupSrc || [], pairing ? pairing.sources || [] : [],
+        ...defs.map(r => r.tesuji.sources || []));
       const ngTexts = new Set((p.ng || []).map(r => r.text));
       const body = [
         this._head(sel, c.name, implied, c.reading),
@@ -251,6 +276,7 @@ window.Kakoi = window.Kakoi || {};
         Sec().pcList('長所', c.pros, { tone: 'good' }, citer),
         Sec().pcList('短所', c.cons, { tone: 'bad', cls: 'cons' }, citer),
         Sec().attacks(c, attackId, citer, { hasOpp: !!other }),
+        Sec().defenses(defs, citer),
         j ? Sec().reasons(
           j.reasons.filter(r => !ngTexts.has(r.text)).map(r => ({ level: 'ok', text: r.text, squares: r.squares })),
           citer) : '',

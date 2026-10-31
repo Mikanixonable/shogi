@@ -59,8 +59,11 @@
     stage: $('stageMain'),
   });
 
+  // 手筋と格言のモーダル（ヘッダーのボタン・右ドックの「図と格言を見る」から開く）
+  const tesujiModal = new K.TesujiModal($('tesujiOpen'), $('tesujiDialog'), repo);
   const mode = new K.ConstraintMode({
     repo, store, board, overlay, dockTabs,
+    openTesuji: id => tesujiModal.open(id),
     els: {
       stage: $('stageMain'), field: $('cfield'),
       handOpp: $('handOpp'), handMe: $('handMe'),
