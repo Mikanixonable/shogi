@@ -137,7 +137,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha', basic: true,
+    id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', subtype: 'sanmai', setup: 'furibisha', basic: true,
     core: '玉19 香18 桂29 銀28 金39 金38',
     shell: '歩17 歩27 歩36',
     rest: '銀67',
@@ -163,7 +163,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'ginkananaguma', name: '銀冠穴熊', short: '銀冠穴熊', reading: 'ぎんかんあなぐま', side: 'furibisha', from: 'furianaguma', family: 'anaguma', setup: 'furibisha',
+    id: 'ginkananaguma', name: '銀冠穴熊', short: '銀冠穴熊', reading: 'ぎんかんあなぐま', side: 'furibisha', from: 'furianaguma', family: 'anaguma', subtype: 'ginkan', setup: 'furibisha',
     core: '玉19 香18 桂29 銀27 金38 金47',
     shell: '歩17 歩26 歩36 歩46',
     rest: '銀67',
@@ -239,7 +239,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'migiyagura', name: '右矢倉', short: '右矢倉', reading: 'みぎやぐら', side: 'furibisha', family: 'kinmusou', setup: 'furibisha',
+    id: 'migiyagura', name: '右矢倉', short: '右矢倉', reading: 'みぎやぐら', side: 'furibisha', family: 'yagura', subtype: 'migi', setup: 'furibisha',
     core: '玉28 銀37 金38 金47',
     shell: '歩17 歩27 歩36 歩46',
     rest: '銀67',
