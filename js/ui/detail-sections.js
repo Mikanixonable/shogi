@@ -341,8 +341,8 @@ window.Kakoi = window.Kakoi || {};
     for (const ch of key) h = (h * 31 + ch.codePointAt(0)) >>> 0;
     const pv = F.proverbs[h % F.proverbs.length];
     return sec('お楽しみ', '格言・ミーム・動画',
-      `<blockquote class="fun-pv"><b>「${esc(pv.t)}」</b><span>${esc(pv.n)}</span>` +
-      `<button type="button" class="fun-shuf" title="別の格言を引く">もう一つ</button></blockquote>` +
+      `<blockquote class="fun-pv"><b>「${esc(pv.t)}」</b><span>${esc(pv.n)}</span></blockquote>` +
+      `<div class="fun-row"><button type="button" class="fun-shuf" title="別の格言を引く">もう一つ</button></div>` +
       `<details class="fun-memes"><summary>将棋ネットミーム一覧</summary><ul>` +
       F.memes.map(m => `<li><b>${esc(m.t)}</b><span>${esc(m.n)}</span></li>`).join('') +
       `</ul></details>` +
