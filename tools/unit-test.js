@@ -83,7 +83,7 @@ for (const t of K.TACTICS) {
     (SYM[K.compat.judge(meOf(t), 'castle', c.id).level] || '?').padEnd(W));
   mlines.push(t.id.padEnd(NW) + cells.join(' '));
 }
-const matrixText = mlines.join('\n') + '\n';
+const matrixText = mlines.map(line => line.trimEnd()).join('\n') + '\n';
 const matrixFile = path.join(ROOT, 'tools', 'expected-matrix.txt');
 if (!fs.existsSync(matrixFile)) {
   fs.writeFileSync(matrixFile, matrixText);
