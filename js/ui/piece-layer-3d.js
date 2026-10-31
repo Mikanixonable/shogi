@@ -1,4 +1,7 @@
-// 駒レイヤ（立体版）: 盤全面に置いた1枚の canvas に Three.js で五角形の立体駒を描く。
+// 駒レイヤ（立体版）: 盤全面に置いた1枚の canvas に Three.js で駒を描き、局面の切替で滑らせる。
+// 駒の見た目は Kakoi.kayaArt が焼いた彫駒の絵（面取りの陰影・彫りの字・木目）を真上から見た板として貼り、
+// 盤に落ちる2段の影も同じ光から焼いた板で重ねる（真上の正射影なので立体の側面は見えない）。
+// canvas は盤の縁まで広げ、端の駒の影が縁に落ちても切れないようにする。
 // 盤は表示専用なので canvas は pointer-events:none（レイキャスト不要）。
 // file:// でも動くようベンダリングした UMD ビルド（window.THREE）を使う。
 // WebGL が使えない・?flat が付くときは BoardView が piece-layer-dom 側を選ぶのでここには来ない
@@ -7,11 +10,8 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ---- 駒の形（マス幅=1 の単位系。五角形は .pc の clip-path と同じ頂点比） ----
-  const FACE_W = .72, FACE_H = .80;    // 駒面（上底）の五角形
-  const BEVEL = .055;                  // 駒面から台座へ広がる量
-  const DEPTH = .15, BEVEL_T = .035;   // 厚みと手前側の傾斜深さ
-  const FRONT_Z = DEPTH + BEVEL_T + .006;
+  const ART = Kakoi.kayaArt;
+  const TILE_S = 2.6;                  // 駒の絵を焼く解像度（単位系 88×100 の倍率）
   const MOVE_MS = 560, FADE_MS = 380, MODE_MS = 280;
   const PIECE_CHARS = '玉金銀角飛歩香桂'; // 定形の駒の字。未知の字は必要になった時点でタイルを足す
 
@@ -37,18 +37,6 @@ window.Kakoi = window.Kakoi || {};
   const EASE_ROUTE = cubicBezier(.3, .65, .3, 1); // 筋道（DOM版と同じ）
   const EASE_OUT = t => 1 - (1 - t) * (1 - t);
   const clamp01 = v => Math.min(1, Math.max(0, v));
-
-  /** 五角形シェイプ（先端が上。.pc の clip-path polygon(50% 0,86% 14%,100% 100%,0 100%,14% 14%) と同じ） */
-  const pentagon = (w, h) => {
-    const s = new THREE.Shape();
-    s.moveTo(0, h / 2);
-    s.lineTo(w * .36, h * .36);
-    s.lineTo(w / 2, -h / 2);
-    s.lineTo(-w / 2, -h / 2);
-    s.lineTo(-w * .36, h * .36);
-    s.closePath();
-    return s;
-  };
 
   class PieceLayer3d {
     /** WebGL と THREE が使えるか。false なら BoardView は DOM 版に切り替える */
@@ -85,28 +73,14 @@ window.Kakoi = window.Kakoi || {};
       this.renderer.setClearColor(0x000000, 0);
       this.scene = new THREE.Scene();
       this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 2000);
-      this.camera.position.set(0, 0, 600); // 駒の厚み分だけ前に出るので、手前で欠けない距離を取る
-      this.scene.add(new THREE.AmbientLight(0xffffff, .82));
-      const sun = new THREE.DirectionalLight(0xffffff, .5);
-      sun.position.set(-3, 5, 6); // 左上の斜め上から
-      this.scene.add(sun);
-
-      // 共有ジオメトリ（単位系。実寸は group.scale でマスに合わせる）
-      const shape = pentagon(FACE_W, FACE_H);
-      this.geoBody = new THREE.ExtrudeGeometry(shape, {
-        depth: DEPTH, bevelEnabled: true, bevelThickness: BEVEL_T, bevelSize: BEVEL, bevelSegments: 2, steps: 1,
-      });
-      this.geoFace = new THREE.ShapeGeometry(shape, 4);
-      this.geoFace.scale(.96, .96, 1); // ベベルの縁が額縁のように残るよう少し小さく
-      this._normUV(this.geoFace);
-      this.geoShadow = new THREE.PlaneGeometry(1.04, 1.06);
+      this.camera.position.set(0, 0, 600);
+      // 光は絵に焼いてあるので照明は使わない（MeshBasic）。板は1枚を使い回し、実寸は mesh.scale で
+      this.geoPlane = new THREE.PlaneGeometry(1, 1);
 
       this._readColors();
       this._rebuildAtlas();
-      // 駒書体の読み込みが済んでから焼き直す（未準備なら一旦代替フォントで描いてある）
-      if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(() => { this._rebuildAtlas(); this._draw(); });
-      }
+      // 木目の画像と駒書体がそろってから焼き直す（未準備なら一旦代替で描いてある）
+      ART.ready.then(() => { this._rebuildAtlas(); this._draw(); });
       // 明暗テーマの切替で駒の色・字色を取り直す
       this._themeObs = new MutationObserver(() => {
         this._readColors(); this._rebuildAtlas(); this._recolor(); this._draw();
@@ -239,9 +213,9 @@ window.Kakoi = window.Kakoi || {};
       if (this._raf) cancelAnimationFrame(this._raf);
       for (const pc of [...this.cur]) this._remove(pc);
       this.cur = [];
-      this.geoBody.dispose(); this.geoFace.dispose(); this.geoShadow.dispose();
+      this.geoPlane.dispose();
       for (const tex of this._tex.values()) tex.dispose();
-      if (this._shadowT) this._shadowT.dispose();
+      for (const tex of Object.values(this._shadowT || {})) tex.dispose();
       this.renderer.dispose();
       this.canvas.remove();
     }
@@ -262,7 +236,7 @@ window.Kakoi = window.Kakoi || {};
     // 入場・退場の途中だった駒を再利用するとき、大きさと向きを正規に戻す
     _resetPose(pc) {
       pc.group.scale.set(this._sqW, this._sqH, this._sqW);
-      pc.group.rotation.z = pc.owner === 'gote' ? Math.PI : 0;
+      pc.group.rotation.z = 0;   // 後手の向きは絵の側で反転済み（光の向きを盤に固定するため）
     }
 
     /** 表示モードが要求する不透明度（.pc の off と同じ） */
@@ -283,10 +257,8 @@ window.Kakoi = window.Kakoi || {};
 
     _applyOp(pc) {
       const v = clamp01(pc.op);
-      pc.mats.body.opacity = v;
-      pc.mats.wall.opacity = v;
       pc.mats.face.opacity = v;
-      pc.mats.shadow.opacity = v;
+      pc.mats.shadows.forEach((m, i) => { m.opacity = v * ART.SHADOWS[i].alpha; });
       pc.group.visible = v > .004;
     }
 
@@ -303,28 +275,34 @@ window.Kakoi = window.Kakoi || {};
 
     _make(x) {
       const g = new THREE.Group();
-      const body = this._threeColor(this._colors.piece), wall = body.clone().multiplyScalar(.74);
+      const side = x.owner === 'gote' ? 'g' : 's';
       const mats = {
-        body: new THREE.MeshLambertMaterial({ color: body, transparent: true }),
-        wall: new THREE.MeshLambertMaterial({ color: wall, transparent: true }),
-        face: new THREE.MeshLambertMaterial({ map: this._tileTex(this._tileKey(x)), transparent: true }),
-        shadow: new THREE.MeshBasicMaterial({ map: this._shadowTex(), transparent: true, depthWrite: false }),
+        face: new THREE.MeshBasicMaterial({ map: this._tileTex(this._tileKey(x)), transparent: true, depthWrite: false }),
+        shadows: ART.SHADOWS.map((_, i) => new THREE.MeshBasicMaterial({ map: this._shadowTex(side, i), transparent: true, depthWrite: false })),
       };
-      const mShadow = new THREE.Mesh(this.geoShadow, mats.shadow);
-      mShadow.position.set(.015, -.035, .004); // 光は左上から → 影は右下へ
-      const mBody = new THREE.Mesh(this.geoBody, [mats.body, mats.wall]);
-      const mFace = new THREE.Mesh(this.geoFace, mats.face);
-      mFace.position.z = FRONT_Z;
-      g.add(mShadow, mBody, mFace);
+      // 局所座標は x がマス幅・y がマス高の単位（group.scale = マスの px）。駒の高さはマス高 × k
+      const k = ART.scaleOf(x.p), fh = k, fw = k * (ART.W / ART.H) * (this._sqH / this._sqW || 9.6 / 9);
+      const pad = ART.SHADOW_PAD;
+      ART.SHADOWS.forEach((sh, i) => {   // 光の反対へずらした影（参照のマス幅 54px での px をマス単位へ）
+        const m = new THREE.Mesh(this.geoPlane, mats.shadows[i]);
+        m.scale.set(fw * (ART.W + pad * 2) / ART.W, fh * (ART.H + pad * 2) / ART.H, 1);
+        m.position.set(-ART.LIGHT.x * sh.d / 54, ART.LIGHT.y * sh.d / (54 * 9.6 / 9), .1 + i * .1);
+        m.renderOrder = i;
+        g.add(m);
+      });
+      const mFace = new THREE.Mesh(this.geoPlane, mats.face);
+      mFace.scale.set(fw, fh, 1);
+      mFace.position.z = .5;
+      mFace.renderOrder = 2;
+      g.add(mFace);
       g.scale.set(this._sqW, this._sqH, this._sqW);
-      if (x.owner === 'gote') g.rotation.z = Math.PI; // 後手は盤の逆向き（.pc.gote の rotate(180deg) と同じ）
       this.scene.add(g);
       return { group: g, mats, p: x.p, owner: x.owner, role: x.role, sq: x.sq, op: 0, target: 1 };
     }
 
     _remove(pc) {
       this.scene.remove(pc.group);
-      pc.mats.body.dispose(); pc.mats.wall.dispose(); pc.mats.face.dispose(); pc.mats.shadow.dispose();
+      pc.mats.face.dispose(); pc.mats.shadows.forEach(m => m.dispose());
     }
 
     // 主役の駒を、筋道の各マスの中心を経由する折れ曲がった軌跡で動かす。
@@ -379,10 +357,13 @@ window.Kakoi = window.Kakoi || {};
       if (!w || !h) { this._w = 0; return; } // 表示していない画面では描画を止める
       this._w = w; this._h = h;
       this._sqW = w / 9; this._sqH = h / 9;
+      // canvas は盤の縁まで広い（CSS の inset）。中心は盤と同じなので、カメラの範囲だけ広げる
+      const cr = this.canvas.getBoundingClientRect();
+      const cw = Math.round(cr.width) || w, ch = Math.round(cr.height) || h;
       this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-      this.renderer.setSize(w, h, false);
+      this.renderer.setSize(cw, ch, false);
       const c = this.camera;
-      c.left = -w / 2; c.right = w / 2; c.top = h / 2; c.bottom = -h / 2;
+      c.left = -cw / 2; c.right = cw / 2; c.top = ch / 2; c.bottom = -ch / 2;
       c.updateProjectionMatrix();
       for (const pc of this.cur) {
         this._clearTweens(pc);
@@ -402,62 +383,32 @@ window.Kakoi = window.Kakoi || {};
     _readColors() {
       const cs = getComputedStyle(this.board);
       const v = (n, d) => cs.getPropertyValue(n).trim() || d;
-      this._fontFamily = v('--font-d', '"Shippori Mincho B1",serif');
       this._colors = {
-        piece: v('--piece-1', '#fbf6ea'),
+        wood1: v('--piece-1', '#f6e2ad'),
+        wood2: v('--piece-2', '#ebcb88'),
         ink: v('--ink', '#1b1a17'),
         core: v('--core', '#c8371f'),
         goteInk: v('--gote-ink', '#33507a'),
       };
     }
 
-    /** CSS の色指定（rgba 含む）を THREE.Color へ。canvas の fillStyle で正規化してから渡す */
-    _threeColor(css) {
-      const c = PieceLayer3d._c2d || (PieceLayer3d._c2d = document.createElement('canvas').getContext('2d'));
-      c.fillStyle = css;
-      return new THREE.Color(c.fillStyle);
-    }
-
     _rebuildAtlas() {
       if (!this._keys.length) {
         for (const p of PIECE_CHARS) for (const cls of ['i', 'c', 'g']) this._keys.push(`${p}:${cls}`);
       }
-      const tile = 160, cols = 8;
+      const tw = Math.ceil(ART.W * TILE_S), th = Math.ceil(ART.H * TILE_S), cols = 8;
       const rows = Math.ceil(this._keys.length / cols);
       const cv = this._atlas || (this._atlas = document.createElement('canvas'));
-      cv.width = cols * tile; cv.height = rows * tile;
+      cv.width = cols * tw; cv.height = rows * th;
       const ctx = cv.getContext('2d');
       ctx.clearRect(0, 0, cv.width, cv.height);
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       this._tiles.clear();
       this._keys.forEach((key, i) => {
-        const tx = (i % cols) * tile, ty = Math.floor(i / cols) * tile;
-        this._tiles.set(key, { u: tx / cv.width, v: ty / cv.height, w: tile / cv.width, h: tile / cv.height });
+        const tx = (i % cols) * tw, ty = Math.floor(i / cols) * th;
+        this._tiles.set(key, { u: tx / cv.width, v: ty / cv.height, w: tw / cv.width, h: th / cv.height });
         const [p, cls] = key.split(':');
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(tx, ty, tile, tile);
-        ctx.clip();
-        ctx.fillStyle = this._colors.piece;
-        ctx.fillRect(tx, ty, tile, tile);
-        for (let strand = 0; strand < 24; strand++) {
-          const x = tx + 6 + ((strand * 37 + i * 19) % (tile - 12));
-          const bend = ((strand % 5) - 2) * 1.6;
-          ctx.beginPath();
-          ctx.moveTo(x, ty);
-          ctx.bezierCurveTo(x + bend, ty + 48, x - bend, ty + 112, x + bend * .4, ty + tile);
-          ctx.strokeStyle = strand % 4 === 0 ? 'rgba(255,250,232,.34)' : 'rgba(111,72,28,.16)';
-          ctx.lineWidth = strand % 4 === 0 ? 1.8 : 1.2;
-          ctx.stroke();
-        }
-        ctx.fillStyle = cls === 'c' ? this._colors.core : cls === 'g' ? this._colors.goteInk : this._colors.ink;
-        ctx.font = `800 ${Math.round(tile * .62)}px ${this._fontFamily}`;
-        ctx.shadowColor = 'rgba(47,28,8,.5)';
-        ctx.shadowBlur = 1;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-        ctx.fillText(p, tx + tile / 2, ty + tile * .58); // 駒は字をやや下に置く（.pc i span の padding-top と同じ）
-        ctx.restore();
+        const ink = cls === 'c' ? this._colors.core : cls === 'g' ? this._colors.goteInk : this._colors.ink;
+        ART.paint(ctx, tx, ty, TILE_S, p, cls === 'g' ? 'g' : 's', { ink, wood1: this._colors.wood1, wood2: this._colors.wood2 });
       });
       for (const [key, tex] of this._tex) {
         const t = this._tiles.get(key);
@@ -484,41 +435,21 @@ window.Kakoi = window.Kakoi || {};
       return tex;
     }
 
-    _shadowTex() {
-      if (this._shadowT) return this._shadowT;
-      const c = document.createElement('canvas'); c.width = c.height = 128;
-      const g = c.getContext('2d');
-      const rg = g.createRadialGradient(64, 62, 10, 64, 64, 60);
-      rg.addColorStop(0, 'rgba(30,20,5,.40)');
-      rg.addColorStop(.65, 'rgba(30,20,5,.15)');
-      rg.addColorStop(1, 'rgba(30,20,5,0)');
-      g.fillStyle = rg;
-      g.beginPath(); g.ellipse(64, 64, 60, 56, 0, 0, Math.PI * 2); g.fill();
-      const t = new THREE.CanvasTexture(c);
+    /** 盤に落ちる影の板（向き × 2段）。形のシルエットを光から決めた量だけぼかしたもの */
+    _shadowTex(side, i) {
+      this._shadowT = this._shadowT || {};
+      const key = `${side}${i}`;
+      if (this._shadowT[key]) return this._shadowT[key];
+      const units = ART.SHADOWS[i].blur * ART.pxToUnits(.9);
+      const t = new THREE.CanvasTexture(ART.shadow(side, 1.5, units));
       t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
-      this._shadowT = t;
+      this._shadowT[key] = t;
       return t;
     }
 
-    /** ShapeGeometry の UV を形の外接矩形で 0..1 に正規化（タイルの offset/repeat と組み合わせる前提） */
-    _normUV(geo) {
-      geo.computeBoundingBox();
-      const b = geo.boundingBox, uv = geo.attributes.uv;
-      const sx = b.max.x - b.min.x || 1, sy = b.max.y - b.min.y || 1;
-      for (let i = 0; i < uv.count; i++) {
-        uv.setXY(i, (uv.getX(i) - b.min.x) / sx, (uv.getY(i) - b.min.y) / sy);
-      }
-      uv.needsUpdate = true;
-    }
-
-    /** テーマ切替時: 駒の体色と駒面のタイルを張り替える */
+    /** テーマ切替時: 駒面のタイルを張り替える */
     _recolor() {
-      const body = this._threeColor(this._colors.piece), wall = body.clone().multiplyScalar(.74);
-      for (const pc of this.cur) {
-        pc.mats.body.color.copy(body);
-        pc.mats.wall.color.copy(wall);
-        pc.mats.face.map = this._tileTex(this._tileKey(pc));
-      }
+      for (const pc of this.cur) pc.mats.face.map = this._tileTex(this._tileKey(pc));
     }
   }
 

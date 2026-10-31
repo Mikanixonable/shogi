@@ -417,9 +417,12 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   }
 
   // 選択の文字列表現と握り直し
-  ok(jstr(CS.parseSel('opp.tactic')) === jstr({ who: 'opp', kind: 'tactic' }) && CS.parseSel('me.strategy') === null,
-    'constraints:parseSel は tactic/castle だけ受ける');
+  ok(jstr(CS.parseSel('opp.tactic')) === jstr({ who: 'opp', kind: 'tactic' })
+    && jstr(CS.parseSel('me.strategy')) === jstr({ who: 'me', kind: 'strategy' })
+    && CS.parseSel('me.bogus') === null,
+    'constraints:parseSel は tactic/castle/strategy（戦型は情報を見る選択）を受ける');
   ok(CS.normalizeSelected('opp.castle', false) === 'me.castle' && CS.normalizeSelected('opp.castle', true) === 'opp.castle'
+    && CS.normalizeSelected('opp.strategy', false) === 'me.strategy'
     && CS.normalizeSelected(null, false, 'tactic') === 'me.tactic' && CS.normalizeSelected('zzz', true) === 'me.castle',
   'constraints:normalizeSelected は相手が非表示なら自分側へ・不正は fallback の層へ');
 
@@ -588,10 +591,10 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     ok(jstr(HL.parseHash('')) === jstr(init), 'hash-link:空のハッシュは初期状態', jstr(HL.parseHash('')));
     ok(jstr(HL.parseHash('v=castle&c=yagura&t=bougin')) === jstr(init), 'hash-link:旧 castle/tactic 形式は初期状態');
     ok(jstr(HL.parseHash('v=matchup&ms=ibisha&mc=funa&os=furibisha')) === jstr(init), 'hash-link:旧 matchup 形式は初期状態');
-    // 旧 k= の戦略層（s）・不正な id・不正な sel は黙って捨てる
+    // 旧 k= の戦略層（s）・不正な id は黙って捨てる。sel=ms は「戦型を見る選択」として有効
     const p = HL.parseHash('v=board&k=os:furibisha,ms:ibisha,mt:bougin,mc:nope&sel=ms');
-    ok(jstr(K.constraints.normalizeSlots(p.slots)) === jstr(mk('bougin')) && p.selected === null && p.showOpp === false,
-      'hash-link:s 層・不正な id・不正な sel は捨てる', jstr(p));
+    ok(jstr(K.constraints.normalizeSlots(p.slots)) === jstr(mk('bougin')) && p.selected === 'me.strategy' && p.showOpp === false,
+      'hash-link:k= の s 層・不正な id は捨てる（sel の s は有効）', jstr(p));
   }
   // 往復: buildQuery → parseHash で同じ状態に戻る
   {
@@ -607,6 +610,9 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     ok(HL.buildQuery({ slots: mk(), showOpp: false, selected: 'me.tactic' }) === '', 'hash-link:初期状態は空のハッシュ');
     const q = HL.buildQuery({ slots: mk(), showOpp: true, selected: 'opp.castle' });
     ok(q === 'opp=1&sel=oc' && HL.parseHash(q).showOpp === true, 'hash-link:相手の表示だけの往復', q);
+    const qs = HL.buildQuery({ slots: mk(), showOpp: true, selected: 'me.strategy' });
+    ok(qs === 'opp=1&sel=ms' && HL.parseHash(qs).selected === 'me.strategy',
+      'hash-link:戦型の選択も往復できる', qs);
   }
 }
 

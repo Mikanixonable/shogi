@@ -2,7 +2,7 @@
 // 形式: `#k=mt:bougin,mc:funa,ot:shikenbisha,oc:mino&opp=1&sel=mc`
 //   - `k=` は 側（m=自分/o=相手）＋層（t=戦法/c=囲い）:id をコンマで並べる（並びに意味は無い）
 //   - `opp=1` は相手を盤に出している
-//   - `sel=` は選択中の層（例: mc = me.castle）
+//   - `sel=` は選択中の層（例: mc = me.castle、os = opp.strategy —— 戦型は情報を見る選択だけ）
 // 初期状態は空のハッシュ。`k=`/`opp=` の無いハッシュ（旧形式を含む）は読まず、初期状態で開く。
 // 状態が変わると pushState でハッシュを書く（ブラウザの「戻る」＝元に戻す）。
 // 選択だけの変更は履歴を積まず replaceState。表示の好み（駒の表示・利き・脅威の帯・テーマ）は
@@ -12,8 +12,8 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  const KIND_CHAR = { t: 'tactic', c: 'castle' };
-  const KIND_LETTER = { tactic: 't', castle: 'c' };
+  const KIND_CHAR = { t: 'tactic', c: 'castle', s: 'strategy' };
+  const KIND_LETTER = { tactic: 't', castle: 'c', strategy: 's' };
   const WHO_CHAR = { m: 'me', o: 'opp' };
   const WHO_LETTER = { me: 'm', opp: 'o' };
   // 盤面の状態を持つ store のキー。これらが変わるとハッシュを書き直す
@@ -24,7 +24,7 @@ window.Kakoi = window.Kakoi || {};
     return WHO_LETTER[who] && KIND_LETTER[kind] ? WHO_LETTER[who] + KIND_LETTER[kind] : '';
   };
   const decodeSel = s => {
-    const m = /^([mo])([tc])$/.exec(String(s || ''));
+    const m = /^([mo])([tcs])$/.exec(String(s || ''));
     return m ? `${WHO_CHAR[m[1]]}.${KIND_CHAR[m[2]]}` : null;
   };
 

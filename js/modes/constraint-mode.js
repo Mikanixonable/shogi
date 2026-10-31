@@ -20,7 +20,7 @@ window.Kakoi = window.Kakoi || {};
   class ConstraintMode {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
-     *   els: stage, bandOpp, bandMe, barOpp, barMe,
+     *   els: stage, bandOpp, relations, bandMe, barOpp, barMe,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
     constructor({ repo, store, board, overlay, els }) {
@@ -29,9 +29,9 @@ window.Kakoi = window.Kakoi || {};
       this._pvKey = null;
       this._pvRaf = null;
 
-      // 制約バーは盤の上（相手）と下（自分）の2本
+      // 制約バーは盤の上に2本（上から相手・自分）
       const barHandlers = {
-        onSelect: (w, k) => this._select(w, k),
+        onSelect: (w, k) => this._select(w, k, true),
         onRemove: (w, k) => this._remove(w, k),
       };
       this.bars = {
@@ -40,7 +40,7 @@ window.Kakoi = window.Kakoi || {};
       };
       // 左ドック: 自分／相手のタブで切り替える1枚の面。見ている側・層は state.selected が持つ
       this.dock = new K.DockView(els.rail /* #pickRail */, {
-        onSelect: (w, k) => this._select(w, k),
+        onSelect: (w, k) => this._select(w, k, false),
         onChoose: (w, k, id) => this._set(w, k, id),
         onClear: w => this._clearSide(w),
         onToggleOpponent: on => this._setShowOpp(on),
@@ -77,18 +77,24 @@ window.Kakoi = window.Kakoi || {};
         selected: `${who}.${kind}`, dockTab: kind,
       });
       this._openDrawer();
+      this._revealDetail();
     }
 
-    _select(who, kind) {
+    _select(who, kind, fromBar = false) {
       const before = this.store.state;
       this.store.set({
         selected: `${who}.${kind}`,
-        dockTab: kind,
+        // 戦型は左ドックにタブが無い（情報は右ドック）。dockTab は層タブの記憶なのでそのままにする
+        ...(K.constraints.KINDS.includes(kind) ? { dockTab: kind } : {}),
         ...(who === 'opp' && !before.showOpp ? { showOpp: true } : {}),
       });
       // 中くらいの幅では右ドックはドロワー。制約チップを選んだら開く（§4-6）
       this._openDrawer();
-      // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る）
+      // 狭い画面では、制約チップを選んだとき解説を盤の下までスクロールする
+      // （B2: 一覧側の reveal は止め、代わりに「読む」を見せる）
+      if (fromBar) this._revealDetail();
+      // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る。
+      // 戦型はスロットを持たないので reveal は項目を持たず no-op になる）
       const s = this.store.state;
       this.dock.reveal(kind, K.constraints.sides(s.slots, s.showOpp)[who]);
     }
@@ -97,6 +103,24 @@ window.Kakoi = window.Kakoi || {};
       if (matchMedia('(min-width:980px) and (max-width:1180px)').matches) {
         document.body.dataset.drawer = 'open';
       }
+    }
+
+    // 狭い画面: 盤は sticky で上に残っているので、解説の先頭が盤のすぐ下に来るよう
+    // ページをスクロールする（「選ぶ」と「読む」の切替＝盤の下の領域を見せる）。
+    // 横向き2列では盤は左列なので、解説はヘッダーの下へ
+    _revealDetail() {
+      if (!matchMedia('(max-width:979px)').matches) return;
+      const r = this.els.detail.getBoundingClientRect();
+      const stage = this.els.stage.getBoundingClientRect();
+      const twoCol = stage.width < innerWidth * 0.6;   // 横向きは盤が左の2列
+      const base = twoCol
+        ? document.querySelector('header').getBoundingClientRect().bottom
+        : stage.bottom;
+      const top = window.scrollY + r.top - base - 8;
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      });
     }
 
     // 選択を保ったまま1つ外す。外したあとは戦略既定値の既定チップに変わる

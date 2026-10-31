@@ -30,6 +30,13 @@ window.Kakoi = window.Kakoi || {};
         '</defs>' +
         '<g class="rt-g"></g>';
       this.routeLayer = this.svg.querySelector('.rt-g');
+      this.throughSvg = document.createElementNS(NS, 'svg');
+      this.throughSvg.setAttribute('class', 'overlay overlay-through');
+      this.throughSvg.setAttribute('viewBox', '0 0 9 9');
+      this.throughSvg.setAttribute('preserveAspectRatio', 'none');
+      this.throughSvg.setAttribute('aria-hidden', 'true');
+      this.throughSvg.innerHTML = '<g class="rt-through-g"></g>';
+      this.throughLayer = this.throughSvg.querySelector('.rt-through-g');
 
       // 脅威の帯はマスの下（盤面の木目の上、駒とグリッド線・ヒートの下）に置く。
       // .sq は container-type で自分の重なり順を持つので、帯をマスの内側と外側で
@@ -44,6 +51,7 @@ window.Kakoi = window.Kakoi || {};
       this.contactLayer.className = 'ov-contacts';
       this.contactLayer.setAttribute('aria-hidden', 'true');
       boardEl.appendChild(this.svg);
+      boardEl.appendChild(this.throughSvg);
       boardEl.appendChild(this.contactLayer);
     }
 
@@ -54,17 +62,29 @@ window.Kakoi = window.Kakoi || {};
      */
     routes(list) {
       this.routeLayer.replaceChildren();
+      this.throughLayer.replaceChildren();
       if (!list || !list.length) return;
-      let html = '';
+      let html = '', throughHtml = '';
       for (const rt of list) {
         const squares = rt && rt.squares;
         if (!squares || squares.length < 2) continue;
-        const pts = squares.map(center).map(c => `${c.x},${c.y}`).join(' ');
+        const pts = squares.map(center);
+        const end = pts[pts.length - 1], prev = pts[pts.length - 2];
+        const dx = end.x - prev.x, dy = end.y - prev.y;
+        const length = Math.hypot(dx, dy);
+        if (length) {
+          const inset = Math.min(.42, length * .45);
+          end.x -= dx / length * inset;
+          end.y -= dy / length * inset;
+        }
+        const points = pts.map(c => `${c.x},${c.y}`).join(' ');
         const cls = rt.tone === 'good' ? ' rt-good' : rt.tone === 'bad' ? ' rt-bad' : rt.tone === 'ink' ? ' rt-ink' : '';
         const mk = rt.tone === 'good' ? 'rtHeadGood' : rt.tone === 'bad' ? 'rtHeadBad' : rt.tone === 'ink' ? 'rtHeadInk' : 'rtHead';
-        html += `<polyline class="rt rt-line${cls}" points="${pts}" marker-end="url(#${mk})"/>`;
+        html += `<polyline class="rt rt-line${cls}" points="${points}" marker-end="url(#${mk})"/>`;
+        throughHtml += `<polyline class="rt rt-line${cls}" points="${points}"/>`;
       }
       this.routeLayer.innerHTML = html;
+      this.throughLayer.innerHTML = throughHtml;
     }
 
     /**

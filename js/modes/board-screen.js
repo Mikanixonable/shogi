@@ -1,5 +1,5 @@
 // 統合画面の「見える半分」（計画書 S6 の BoardScreen）: 盤の駒レイヤ・重ね表示・
-// 盤の上下の帯・制約バー・右ドックへの描画をまとめる。スロットの読み書き
+// 盤の上の帯・制約バー・右ドックへの描画をまとめる。スロットの読み書き
 // （コマンド・ホバー予告）は constraint-mode.js のコントローラが持つ。
 // 導出は core/board-model.js の deriveBoard に一本化（S5）。
 window.Kakoi = window.Kakoi || {};
@@ -8,9 +8,8 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { parsePieces, KAN, mirrorSq } = K.notation;
   const parseSel = K.constraints.parseSel;
-  // 主役が飛車ではなく筋道（経路が2マス以上）のある戦法だけ矢印を引く。
-  // 飛車の経路は盤の筋そのものなので矢印が冗長（駒の移動アニメ trace は残す）
-  const hasArrow = t => !!(t && t.route && t.route.length > 1 && t.lead && t.lead.piece !== '飛');
+  // 主役の駒の筋道（経路が2マス以上）がある戦法は矢印で示す。
+  const hasArrow = t => !!(t && t.route && t.route.length > 1 && t.lead);
 
   class BoardScreen {
     /**
@@ -88,6 +87,7 @@ window.Kakoi = window.Kakoi || {};
       if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')
           || changed.has('attackId') || changed.has('showThreat')) {
         this._paintBar(state, d);
+        this._paintRelationships(state, d);
         this._paintStage(state, d);
         this._renderDetail(state, d);
       }
@@ -133,14 +133,28 @@ window.Kakoi = window.Kakoi || {};
         : null);
     }
 
-    // ---------- 制約バー（盤の上=相手・下=自分の2本。導出ラベルは自分側の右端） ----------
+    // ---------- 制約バー（盤の上に相手・自分の2本） ----------
     _paintBar(state, d) {
       const common = { selected: state.selected, nameOf: this._nameOf };
-      this.bars.opp.render({ ...common, st: state.showOpp ? d.S.opp : null, ng: d.ng.opp, labels: null });
-      this.bars.me.render({ ...common, st: d.S.me, ng: d.ng.me, labels: d.labels });
+      this.bars.opp.render({ ...common, st: state.showOpp ? d.S.opp : null, ng: d.ng.opp });
+      this.bars.me.render({ ...common, st: d.S.me, ng: d.ng.me });
     }
 
-    // ---------- 盤の上下の帯（側の表示＋制約バー）・足元 ----------
+    _paintRelationships(state, d) {
+      const labels = state.showOpp ? d.labels : [];
+      const host = this.els.relations;
+      host.dataset.empty = String(!labels.length);
+      host.setAttribute('aria-hidden', String(!labels.length));
+      host.replaceChildren(...labels.map(({ label }) => {
+        const chip = document.createElement('span');
+        chip.className = 'relation-chip';
+        chip.textContent = `#${label}`;
+        chip.title = `対局の関係: ${label}`;
+        return chip;
+      }));
+    }
+
+    // ---------- 盤の上の帯（側の表示＋制約バー）・持ち駒 ----------
     // 伝統的な記法の持ち駒: 主語（▲/△）＋駒＋二枚以上は漢数字（歩二・香 など）
     _handText(pos, mark) {
       const h = (pos && pos.hand) || [];
@@ -154,10 +168,8 @@ window.Kakoi = window.Kakoi || {};
       const e = this.els;
       const sel = parseSel(state.selected);
       const hasOpp = !!state.showOpp;
-      const moved = this._shownOpp !== undefined && this._shownOpp !== hasOpp;
-      const start = moved ? [e.bandOpp, e.bandMe].map(el => [el, el.getBoundingClientRect().top]) : null;
-      // 相手 OFF 時も行トラックは確保して盤の矩形を固定し、自分の帯を盤の上へ移す（F1）。
-      // 表示 ON/OFF は左ドックの駒の見出しで行う
+      // 帯は盤の上に2行（上から相手→自分）。相手 OFF の間も行トラックは残して盤の矩形を
+      // 固定し、相手の帯はフェードで出し入れする（F1）。表示 ON/OFF は左ドックの駒の見出しで行う
       e.bandOpp.dataset.empty = hasOpp ? 'false' : 'true';
       if (!hasOpp) e.bandOpp.dataset.sel = 'false';
 
@@ -169,17 +181,6 @@ window.Kakoi = window.Kakoi || {};
       // 持ち駒は盤の左右（相手=左・自分=右）
       e.handMe.textContent = this._handText(d.mePos.position, '▲');
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
-      if (start && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        for (const [el, top] of start) {
-          const y = top - el.getBoundingClientRect().top;
-          if (Math.abs(y) < 1 || typeof el.animate !== 'function') continue;
-          el.getAnimations().forEach(animation => animation.cancel());
-          el.animate([{ transform: `translateY(${y}px)` }, { transform: 'translateY(0)' }], {
-            duration: 360, easing: 'cubic-bezier(.2,.7,.2,1)',
-          });
-        }
-      }
-      this._shownOpp = hasOpp;
     }
 
     // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------

@@ -1,48 +1,56 @@
 /* 統合画面（board）: 制約バー・制約チップ・右ドックの先頭部品。
-   「墨と余白」: 罫線と記号で示す。色だけに頼らない（種類名・説明・破線を併記） */
+   「墨と余白」: 罫線と記号で示す。色だけに頼らない（種類名・名称・破線を併記） */
 
 /* ===== 制約バー: 見出しと盤の間。チップ1つ=スロット1つ ===== */
-/* .cbar-x は説明つきのカプセルを折り返し、.cbar-lab は導出ラベルを右端に置く */
-.cbar { display:flex; flex:1 1 auto; min-width:0; min-height:0; align-items:center; gap:8px; overflow:hidden; }
-.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-content:center; align-items:stretch; flex-wrap:wrap; gap:7px;
-          overflow:hidden; }
-.cbar-lab { display:flex; flex:none; align-items:center; gap:5px; }
-.cbar-lab:empty { display:none; }
-/* チップ: 種類・名前・短い説明と、独立した解除ボタンをカプセルにまとめる */
-.cchip { --chip-ink:var(--t-silver); --chip-soft:color-mix(in srgb,var(--chip-ink) 12%,var(--bg));
-         display:grid; grid-template-columns:minmax(0,1fr) 40px; align-items:center;
-         flex:1 1 320px; min-width:min(100%,300px); max-width:100%; min-height:70px; padding:7px 8px 7px 10px;
-         border:1px solid var(--line-2); border-left:4px solid var(--chip-ink); border-radius:999px;
-         background:var(--bg); color:var(--fg); }
+/* .cbar-x はカプセルを横一列に流し、リセットは同じ行の右端に置く */
+.cbar { display:flex; flex:1 1 auto; min-width:0; min-height:44px; align-items:center; flex-wrap:nowrap; gap:6px; overflow:visible; }
+.cbar-x { display:flex; flex:1 1 auto; min-width:0; align-items:center; flex-wrap:nowrap; gap:0; padding:2px 12px 2px 0;
+          overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain;
+          mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent); }
+.cbar-x::-webkit-scrollbar { display:none; }
+/* チップ: 種類・名称と解除記号だけを、凹凸が連結する一枚の帯にまとめる */
+.cchip { --chip-ink:var(--t-silver); --chip-bg:color-mix(in srgb,var(--chip-ink) 14%,var(--bg));
+         position:relative; display:flex; flex:none; min-width:0; max-width:100%; height:40px; align-items:center; gap:4px; padding:3px 20px 3px 6px;
+         background:none; color:var(--fg); }
+.cchip[data-position="middle"] { margin-left:-14px; padding-left:22px; }
+.cchip[data-position="last"] { margin-left:-14px; padding-left:22px; }
+.cchip[data-kind="strategy"] { --chip-ink:var(--accent); }
 .cchip[data-kind="castle"] { --chip-ink:var(--accent-2); }
-.cchip .cchip-b { display:grid; grid-template-columns:72px minmax(0,1fr); align-items:center; gap:11px;
-                  min-width:0; padding:0; border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
-.cchip .cchip-b:hover .cchip-nm { color:var(--accent); }
-.cchip-type { display:grid; place-items:center; min-height:48px; padding:5px 7px; border-radius:999px;
-              background:var(--chip-soft); color:var(--chip-ink); font-size:13px; font-weight:700; letter-spacing:.04em; }
-.cchip-copy { display:flex; min-width:0; flex-direction:column; gap:2px; }
-.cchip-name-line { display:flex; min-width:0; align-items:center; gap:6px; }
+.cchip::before { content:""; position:absolute; z-index:0; inset:1px 0; background:var(--chip-bg);
+                 filter:drop-shadow(0 0 1px var(--line-2)); }
+.cchip[data-position="first"][data-strategy="ibisha"]::before { clip-path:polygon(0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
+.cchip[data-position="first"][data-strategy="furibisha"]::before { clip-path:polygon(0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
+.cchip[data-position="middle"][data-strategy="ibisha"]::before { clip-path:polygon(0 20%,14px 50%,0 80%,0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
+.cchip[data-position="middle"][data-strategy="furibisha"]::before { clip-path:polygon(0 22%,14px 22%,14px 78%,0 78%,0 14%,5px 0,calc(100% - 14px) 0,calc(100% - 14px) 100%,5px 100%,0 86%); }
+.cchip[data-position="last"][data-strategy="ibisha"]::before { clip-path:polygon(0 20%,14px 50%,0 80%,0 14%,5px 0,94% 0,100% 14%,100% 86%,94% 100%,5px 100%,0 86%); }
+.cchip[data-position="last"][data-strategy="furibisha"]::before { clip-path:polygon(0 22%,14px 22%,14px 78%,0 78%,0 14%,5px 0,94% 0,100% 14%,100% 86%,94% 100%,5px 100%,0 86%); }
+.cchip[data-position="first"]::after,
+.cchip[data-position="middle"]::after { content:""; position:absolute; z-index:2; top:50%; right:-14px; width:18px; height:20px;
+                                         transform:translateY(-50%); background:var(--chip-bg); filter:drop-shadow(0 0 1px var(--line-2)); }
+.cchip[data-strategy="ibisha"][data-position="first"]::after,
+.cchip[data-strategy="ibisha"][data-position="middle"]::after { clip-path:polygon(0 0,100% 50%,0 100%); }
+.cchip[data-strategy="furibisha"][data-position="first"]::after,
+.cchip[data-strategy="furibisha"][data-position="middle"]::after { right:-13px; width:15px; height:15px; border-radius:2px; }
+.cchip[data-ng="true"] { --chip-bg:color-mix(in srgb,var(--bad) 11%,var(--bg)); }
+.cchip[data-sel="true"]::before, .cchip[data-sel="true"]::after { filter:drop-shadow(0 0 1.5px var(--accent)); }
+.cchip .cchip-b { display:flex; min-width:0; align-items:center; gap:5px; padding:0 2px 0 0;
+                  border:0; background:none; color:inherit; cursor:pointer; text-align:left; }
+.cchip .cchip-b, .cchip-x { position:relative; z-index:3; }
+@media (hover:hover) { .cchip .cchip-b:hover .cchip-nm { color:var(--accent); } }
+.cchip-type { display:grid; flex:none; place-items:center; min-width:32px; height:24px; padding:0 3px;
+              border-radius:999px; color:var(--chip-ink); font-size:10px; font-weight:800; letter-spacing:0; }
 .cchip-ng { flex:none; font-style:normal; font-size:13px; font-weight:900; color:var(--bad); }
 .cchip-ng:empty { display:none; }
-.cchip-nm { min-width:0; font-size:16px; font-weight:800; line-height:1.3; }
-.cchip-desc { display:-webkit-box; overflow:hidden; color:var(--fg2); font-size:13.5px; line-height:1.35;
-              -webkit-box-orient:vertical; -webkit-line-clamp:2; }
-.cchip-x { display:grid; place-items:center; width:38px; height:38px; margin:0; border:1px solid var(--line);
-           border-radius:50%; background:none; color:var(--muted); cursor:pointer; font-size:19px; line-height:1; }
-.cchip-x:hover { border-color:var(--bad); color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); }
+.cchip-nm { display:block; min-width:0; max-width:min(240px,calc(100vw - 200px)); overflow:hidden; color:var(--fg);
+            font-size:14px; font-weight:800; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
+.cchip-x { display:grid; flex:none; place-items:center; width:22px; height:22px; margin:0; border:0;
+           border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; }
+@media (hover:hover) { .cchip-x:hover { border-color:var(--bad); color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); } }
 /* 他の層と両立しないチップ: ✕＋破線枠（理由は title と右ドック。自動では差し替えない） */
-.cchip[data-ng="true"] { border-style:dashed; border-color:var(--bad); }
-/* 選択中のチップは朱の輪郭で示す */
-.cchip[data-sel="true"] { border-color:var(--accent); }
 .cchip[data-sel="true"] .cchip-nm { color:var(--accent); }
 /* 暗黙の層（戦略既定値で補ったもの）: 破線で薄く。×は付かない */
-.cchip[data-implied="true"] { border-style:dashed; border-color:var(--line); opacity:.72; }
+.cchip[data-implied="true"] { opacity:.72; }
 .cchip[data-implied="true"] .cchip-type::after { content:"既定"; margin-top:1px; font-size:9px; letter-spacing:.06em; }
-/* 導出ラベル（戦型など）: .cbar-lab に入る消せない灰色チップ。紙色で固定、褪せない */
-.cchip.cchip-label { display:inline-flex; flex:none; min-width:0; min-height:0; max-width:none; padding:3px 9px;
-                     border:1px solid var(--line); border-radius:999px; background:var(--bg); color:var(--muted); font-size:11px; }
-.cchip.cchip-label .cchip-nm { font-size:11px; font-weight:500; white-space:nowrap; }
-
 /* ===== 右ドック（board-detail-view。U5）: 選択中の制約の説明 ===== */
 /* 先頭: 側の表示名（小）＋項目名（大）。既定値で補った層は破線の「既定」を添える */
 .bd-who { margin:0 0 2px; font-size:11px; letter-spacing:.18em; color:var(--muted); }
@@ -54,13 +62,21 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 .vchips { display:flex; flex-wrap:wrap; gap:6px; }
 .vchip { border:1px solid var(--line); background:none; padding:4px 12px; font-size:12px;
          letter-spacing:.05em; color:var(--fg); cursor:pointer; transition:border-color .2s, color .2s, background .2s; }
-.vchip:hover { border-color:var(--accent); color:var(--accent); }
+@media (hover:hover) { .vchip:hover { border-color:var(--accent); color:var(--accent); } }
 .vchip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
 
 /* ===== narrow ===== */
 @media (max-width:979px) {
   #pickRail { padding:12px 14px; }
-  .cbar { min-height:70px; flex-wrap:wrap; align-content:center; overflow:visible; }
-  .cbar-x { flex:1 1 100%; overflow:visible; }
-  .cbar-lab { margin-left:auto; }
+  .cbar { overflow:visible; }
+  /* フェードは残して「右に続きがある」ことを示し、チップ単位で吸い付くようにする（A3） */
+  .cbar-x { flex:1 1 auto; overflow-x:auto; scroll-snap-type:x proximity;
+            padding-left:2px; }
+  .cchip { height:44px; scroll-snap-align:start; }
+  .cchip-x { position:relative; }
+  .cchip-x::after { content:""; position:absolute; inset:-11px; }   /* C1: 見た目は22pxのまま当たり判定を広げる */
+  /* 「既定」の文字は幅を食うので、種類の角の点線の印だけにする（A3） */
+  .cchip-type { position:relative; }
+  .cchip[data-implied="true"] .cchip-type::after { content:""; position:absolute; top:-4px; right:-4px;
+            width:5px; height:5px; border:1px dashed var(--muted); background:var(--bg); }
 }
