@@ -395,7 +395,7 @@ window.Kakoi = window.Kakoi || {};
     return { position: new Kakoi.Position(pieces), contacts };
   }
 
-  const api = { position, mirror, merge };
+  const api = { position, merge };
   Kakoi.compose = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

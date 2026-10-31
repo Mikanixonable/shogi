@@ -255,5 +255,5 @@ window.Kakoi = window.Kakoi || {};
     return { ...v, fams, items: items(v.el) };
   }
 
-  K.dockGrids = { tactics, castles, items, CASTLE_SORTS };
+  K.dockGrids = { tactics, castles, CASTLE_SORTS };
 })();
