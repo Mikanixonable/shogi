@@ -78,13 +78,16 @@ window.Kakoi = window.Kakoi || {};
     return new Set((isArr(sources) ? sources : []).filter(s => s && isStr(s.ref)).map(s => s.ref));
   }
 
-  /** 先手の駒（盤上＋持ち駒）が全部で1組と一致するか。持ち駒は "角" のような文字列（1文字1枚）か配列 */
-  function fullSet(list, hand, errors) {
+  /** 先手の駒（盤上＋持ち駒）が全部で1組と一致するか。持ち駒は "角" のような文字列（1文字1枚）か配列。
+      setup.missing（駒落ちで欠ける駒）があれば期待枚数から差し引く */
+  function fullSet(list, hand, errors, missing) {
+    const expected = { ...FULL_SET };
+    for (const p of missing || '') if (expected[p] !== undefined) expected[p] -= 1;
     const count = {};
     for (const x of list) count[x.p] = (count[x.p] || 0) + 1;
     if (hand !== undefined && typeof hand !== 'string' && !isArr(hand)) errors.push('handが文字列でも配列でもない');
     else for (const p of hand || []) count[p] = (count[p] || 0) + 1;
-    for (const [p, n] of Object.entries(FULL_SET)) if (count[p] !== n) errors.push(`${p}の枚数 ${count[p] || 0}/${n}`);
+    for (const [p, n] of Object.entries(FULL_SET)) if ((count[p] || 0) !== expected[p]) errors.push(`${p}の枚数 ${count[p] || 0}/${expected[p]}`);
   }
 
   function castleBody(c, ctx, errors, warnings) {
@@ -143,7 +146,7 @@ window.Kakoi = window.Kakoi || {};
     ];
     const squares = dupAndNifu(sente, '', errors);
     deadSquares(sente, 'sente', '先手', errors);
-    if (setup) fullSet(sente, c.hand, errors);
+    if (setup) fullSet(sente, c.hand, errors, setup.missing);
 
     // flex: 戦法に貸し出せる core の駒。sq は core の駒があるマス、to は行き先のマス
     if (c.flex !== undefined) {

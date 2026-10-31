@@ -66,12 +66,12 @@
 | 左多伝囲い | ひだりたでんがこい | ibisha | itadori（新設？） | `?` | 5筋位取り6筋(4筋)歩交換型 [[wj-kakoi|wj-taden]] |
 | 銀雲雀 | ぎんひばり | ibisha | itadori | `?` | 左銀4八銀型5筋位取り [[wj-kakoi]] |
 | 左木村美濃 | ひだりきむらみの | ibisha | mino / kata | `玉88 金78 銀67`（反転推定・要検証） | 6筋位取り用の居飛車版木村美濃 [[wj-kakoi]] |
-| 多伝囲い（銀多伝） | たでんがこい | ibisha（駒落ち） | komaochi（新設） | `玉38 金48 銀47 銀46 桂37` | 二枚落ち下手用。4筋の位が骨子。金多伝型もあり [[wj-taden]] |
-| 金象眼 | きんぞうがん | ibisha（駒落ち・上手） | komaochi | `玉67 銀57 金58 桂77` | 角落ち上手の囲い [[wj-kakoi|we-castle]] |
-| 銀象眼 | ぎんぞうがん | ibisha（駒落ち・上手） | komaochi | `玉67 銀57 銀58 桂77` | 角落ち上手の囲い（金象眼の銀版） [[wj-kakoi|we-castle]] |
-| カギ囲い | かぎがこい | furibisha（駒落ち・上手） | komaochi | `玉78 銀88 金67 銀57 金48` | 角落ち上手の△5三銀型右四間飛車で現れる [[wj-kakoi]] |
-| 金盾囲い | きんじゅんがこい | ibisha | funa | `玉78 角88 金68 金69 銀57` | 舟囲い系統の盾囲い [[wj-kakoi]] |
-| 大盾囲い | おおじゅんがこい | ibisha | funa | `玉78 角88 銀68 金69 金67` | 舟囲い系統の盾囲い（金6七型） [[wj-kakoi]] |
+| 多伝囲い（銀多伝） | たでんがこい | ibisha（駒落ち） | komaochi（新設） | `玉38 金48 銀47 銀46 桂37` | 二枚落ち下手用。4筋の位が骨子。金多伝型もあり [[wj-taden]] → **実装済み**（`gintaden`・`kintaden`） |
+| 金象眼 | きんぞうがん | ibisha（駒落ち・上手） | komaochi | `玉67 銀57 金58 桂77` | 角落ち上手の囲い [[wj-kakoi|we-castle]] → **実装済み**（`kinzogan`、日本語版の5筋型 `玉57 銀47 金58 桂67` を採用。本表は英語版の形） |
+| 銀象眼 | ぎんぞうがん | ibisha（駒落ち・上手） | komaochi | `玉67 銀57 銀58 桂77` | 角落ち上手の囲い（金象眼の銀版） [[wj-kakoi|we-castle]] → **実装済み**（`ginzogan`、同上） |
+| カギ囲い | かぎがこい | furibisha（駒落ち・上手） | komaochi | `玉78 銀88 金67 銀57 金48` | 角落ち上手の△5三銀型右四間飛車で現れる [[wj-kakoi]] → **実装済み**（`kagi`、日本語版の図では金5八・桂7七/3七に従う） |
+| 金盾囲い | きんじゅんがこい | ibisha | funa | `玉78 角88 金68 金69 銀57` | 舟囲い系統の盾囲い [[wj-kakoi]] → **実装済み**（`kinjun`） |
+| 大盾囲い | おおじゅんがこい | ibisha | funa | `玉78 角88 銀68 金69 金67` | 舟囲い系統の盾囲い（金6七型） [[wj-kakoi]] → **実装済み**（`oojun`） |
 | セメント囲い | せめんとがこい | ibisha | funa | `?` | 舟囲い系統に列挙。形未確認 [[wj-kakoi]] |
 | 二枚囲い | にまいがこい | ibisha | funa | `?` | 同上 |
 | カタ囲い | かたがこい | ibisha | nakazumai? | `?` | 相掛かり系に列挙。形未確認 [[wj-kakoi]] |
@@ -79,7 +79,7 @@
 | 半カブト囲い | はんかぶとがこい | ibisha | gangi | `?` | 矢倉系統に列挙。兜矢倉の半形と推定されるが図未確認 [[wj-kakoi]] |
 | 金冠 | きんかんむり | ibisha | yagura | `?` | 矢倉系統の末尾に列挙。図未確認 [[wj-kakoi]] |
 | 高矢倉 | たかやぐら | ibisha | yagura | `?` | 同上 |
-| 半矢倉 | はんやぐら | ibisha | yagura / kata | 片矢倉の別名 | エントリ不要（katayagura の aliases に追加候補） |
+| 半矢倉 | はんやぐら | ibisha | yagura / kata | 片矢倉の別名 | エントリ不要 → **実装済み**（katayagura の aliases に追加済み） |
 | ずれ美濃 | ずれみの | furibisha | mino / zure | `?` | 美濃を一路ずらした形（阪田流向かい飛車・立石流） [[wj-kabegakoi|wj-kakoi]] |
 | 片穴熊 | かたあなぐま | furibisha | anaguma / kata | `?` | 振り飛車穴熊の金1枚型と推定されるが図未確認 [[wj-kakoi]] |
 | 振り飛車ミレニアム | ふりびしゃみれにあむ | furibisha | yagura or mino | `?` | 囲い記事の振り飛車節に列挙。図未確認 [[wj-kakoi]] |
@@ -88,8 +88,8 @@
 | 平美濃 | ひらみの | ibisha | mino | `?` | 左美濃系統の変形として列挙。形未確認 [[wj-kakoi]] |
 | 6七金型穴熊 | ろくななきんがた | ibisha | anaguma | `?` | 居飛車穴熊系統に列挙。6七に金を置く型と推定 [[wj-kakoi]] |
 | 角道開型銀冠 | かくみちひらきがたぎんかん | furibisha（駒落ち） | mino / gincan | `?` | 飛香落ち・飛車落ち下手用 [[wj-kakoi]] |
-| 四段端玉 | よんだんはしぎょく | ibisha | chudan / yondan（新設） | `玉96 金86 金76 銀66 桂77` | 中段玉系統の第二の代表形 [[wj-kakoi|we-castle]] |
-| エア金（銀冠エア金） | えあきん | furibisha | mino / gincan | `玉17 銀27 桂37 金47 金38 香18` | 銀冠を横から攻められたときの終盤の逃げ形。珍形 [[we-castle]] |
+| 四段端玉 | よんだんはしぎょく | ibisha | chudan / yondan（新設） | `玉96 金86 金76 銀66 桂77` | 中段玉系統の第二の代表形 [[wj-kakoi|we-castle]] → **実装済み**（`yondanhashigyoku`） |
+| エア金（銀冠エア金） | えあきん | furibisha | mino / gincan | `玉17 銀27 桂37 金47 金38 香18` | 銀冠を横から攻められたときの終盤の逃げ形。珍形 [[we-castle]] → **実装済み**（`airkin`） |
 | 珍玉・棒玉 | ちんぎょく/ぼうぎょく | ibisha | ? | `?` | 花村流・英春流カメレオン棒銀など。冗談囲い系 [[wj-kakoi]] |
 | 大阪囲い | おおさかがこい | ibisha | kinbiraki | `?` | 金開きのバリエーションとして列挙。形未確認 [[wj-kakoi]] |
 | 矢倉早囲い | やぐらはやがこい | ibisha | yagura | `?` | 戦法名として有名だが固定形は曖昧。将棋ジム一覧にも掲載 [[wj-yagura]] |

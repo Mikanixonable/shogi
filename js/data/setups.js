@@ -27,4 +27,10 @@ Kakoi.SETUPS = {
     label: '囲い側で全駒を指定',
     pieces: '',
   },
+  // 角落ち上手（角を除いた1組）: missing の駒は全駒チェックの期待枚数から差し引く
+  kakuochi: {
+    label: '角落ち上手想定（角なし）',
+    pieces: '',
+    missing: '角',
+  },
 };
