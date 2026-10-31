@@ -139,7 +139,7 @@ Kakoi.CASTLES.push(
   {
     id: 'furianaguma', name: '振り飛車穴熊', short: '振り飛車穴熊', reading: 'ふりびしゃあなぐま', side: 'furibisha', family: 'anaguma', setup: 'furibisha', basic: true,
     core: '玉19 香18 桂29 銀28 金39 金38',
-    shell: '歩17 歩27 歩37',
+    shell: '歩17 歩27 歩36',
     rest: '銀67',
     filler: '歩47',
     tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
@@ -165,7 +165,7 @@ Kakoi.CASTLES.push(
   {
     id: 'ginkananaguma', name: '銀冠穴熊', short: '銀冠穴熊', reading: 'ぎんかんあなぐま', side: 'furibisha', from: 'furianaguma', family: 'anaguma', setup: 'furibisha',
     core: '玉19 香18 桂29 銀27 金38 金47',
-    shell: '歩17 歩26 歩37 歩46',
+    shell: '歩17 歩26 歩36 歩46',
     rest: '銀67',
     filler: '',
     tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
@@ -214,7 +214,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'kinmusou', name: '金無双', short: '金無双', reading: 'きんむそう', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', strategies: ['furibisha'], basic: true,
+    id: 'kinmusou', name: '金無双', short: '金無双', reading: 'きんむそう', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', basic: true,
     core: '玉38 銀28 金48 金58',
     shell: '歩16 歩27 歩37 歩47',
     rest: '銀67',
@@ -239,7 +239,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'migiyagura', name: '右矢倉', short: '右矢倉', reading: 'みぎやぐら', side: 'furibisha', family: 'kinmusou', setup: 'furibisha', strategies: ['furibisha'],
+    id: 'migiyagura', name: '右矢倉', short: '右矢倉', reading: 'みぎやぐら', side: 'furibisha', family: 'kinmusou', setup: 'furibisha',
     core: '玉28 銀37 金38 金47',
     shell: '歩17 歩27 歩36 歩46',
     rest: '銀67',

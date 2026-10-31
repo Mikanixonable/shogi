@@ -483,9 +483,14 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     ok(kakugawari.length === 2 && kakugawari[1].id === 'kakugawari',
       'constraints:labels 角換わりは排他（戦型ラベルは1つ）', jstr(kakugawari));
     // 横歩取り: 両者の戦法が yokofudori タグを持つ（相掛かりタグより先に判定される）
-    const yoko = L(mk('hineribisha', null, 'shigofu-hayajikake'));
+    const yoko = L(mk('shigofu-hayajikake', null, 'shigofu-hayajikake'));
     ok(yoko.length === 2 && yoko[1].id === 'yokofudori',
       'constraints:labels 横歩取り（yokofudori タグ両者）', jstr(yoko));
+    // ひねり飛車は相掛かり系（yokofudori は持たない）: 囲いを雁木判定外のものに
+    // 揃えたミラーなら、決定木の最後まで進んで相掛かりと出る
+    const hineri = L(mk('hineribisha', 'kani', 'hineribisha', 'kani'));
+    ok(hineri.length === 2 && hineri[1].id === 'aigakari',
+      'constraints:labels ひねり飛車のミラーは相掛かり', jstr(hineri));
     // 矢倉系が両者なら相矢倉、片方だけなら矢倉
     const aiyagura = L(mk(null, 'yagura', null, 'ginyagura'));
     ok(aiyagura.length === 2 && aiyagura[1].id === 'aiyagura',
@@ -681,16 +686,21 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
       'placeTactics:空き筋にドット', jstr(a.dots));
   }
 
-  // miniWindow（サムネイルの固定窓）: 玉側の隅の 6筋×4段。中央寄りの囲いはずらす。flip は対角へ
+  // miniWindow（サムネイルの窓）: core 駒の外接矩形を最小 4筋×3段まで広げる。端・自陣の奥へ先に広げる。flip は対角へ
   {
     const anaguma = K.CASTLES.find(x => x.id === 'anaguma');
     const pos = K.Position.fromCastle(anaguma, K.SETUPS[anaguma.setup]);
     const w = K.miniWindow(pos, 'ibisha');
-    ok(w.f0 === 4 && w.f1 === 9 && w.r0 === 6 && w.r1 === 9,
-      'miniWindow:居飛車は4-9筋×6-9段の固定窓', jstr(w));
+    ok(w.f0 === 6 && w.f1 === 9 && w.r0 === 7 && w.r1 === 9,
+      'miniWindow:居飛車穴熊は6-9筋×7-9段（玉側の隅まで）', jstr(w));
     const wf = K.miniWindow(pos, 'ibisha', true);
-    ok(wf.f0 === 1 && wf.f1 === 6 && wf.r0 === 1 && wf.r1 === 4,
+    ok(wf.f0 === 1 && wf.f1 === 4 && wf.r0 === 1 && wf.r1 === 3,
       'miniWindow:flip は対角の隅', jstr(wf));
+    const small = K.CASTLES.every(c => [false, true].every(flip => {
+      const x = K.miniWindow(K.Position.fromCastle(c, K.SETUPS[c.setup]), c.side, flip);
+      return x.f1 - x.f0 + 1 >= 4 && x.r1 - x.r0 + 1 >= 3 && x.f0 >= 1 && x.f1 <= 9 && x.r0 >= 1 && x.r1 <= 9;
+    }));
+    ok(small, 'miniWindow:全囲いで窓は4筋×3段以上・盤の内側', '');
     // 全囲い: core 駒は全て窓の中に収まる（右玉・中住まいのようにずれる場合を含む）
     let allIn = true, detail = '';
     for (const c of K.CASTLES) {
@@ -698,7 +708,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
       for (const flip of [false, true]) {
         const w2 = K.miniWindow(p, c.side, flip);
         const out = p.pieces.filter(x => x.role === 'core')
-          .map(x => (flip ? { f: 10 - x.f, r: 10 - x.r } : x))
+          .map(x => (flip ? K.notation.mirrorPt(x) : x))
           .filter(x => x.f < w2.f0 || x.f > w2.f1 || x.r < w2.r0 || x.r > w2.r1);
         if (out.length) { allIn = false; detail = `${c.id}${flip ? '(flip)' : ''}: ${out.map(x => x.f + ',' + x.r).join(' ')}`; break; }
       }
@@ -706,7 +716,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     }
     ok(allIn, 'miniWindow:全囲いのcore駒が窓に収まる（flip含む）', detail);
     const wsl = K.miniWindow(K.Position.fromCastle(K.CASTLES.find(x => x.id === 'migigyoku'), K.SETUPS.ibisha), 'ibisha');
-    ok(wsl.f0 === 3 && wsl.f1 === 8, 'miniWindow:右玉は窓が1筋分ずれる', jstr(wsl));
+    ok(wsl.f0 === 3 && wsl.f1 === 7, 'miniWindow:右玉は中央寄りの5筋の窓', jstr(wsl));
   }
 
   // evaluate のメモ（S3/S4・R5 完了条件）: 同じ引数では judge の新規計算が0回
@@ -749,6 +759,37 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     cache.set('b', 2);
     ok(cache.delete('a') && !cache.has('a') && cache.delete('missing') === false,
       'LRU:delete は削除結果を返す');
+  }
+  // attackMap: 利きの数え上げ（piece-moves.js 統一後の回帰。count(f,r) は counts[f][r]）
+  {
+    const cnt = (m, f, r) => m[f][r];
+    // 香99: 同じ筋の前方へ滑走。98・97…へ利き、自駒があればそこで止まる
+    const lane = K.Position.fromPieces('香99', {});
+    const mLane = K.attackMap(lane, () => true);
+    ok(cnt(mLane, 9, 8) === 1 && cnt(mLane, 9, 1) === 1 && cnt(mLane, 8, 8) === 0,
+      'attackMap:香は同じ筋の前方へ届く（横には利かない）');
+    const blocked = K.Position.fromPieces('香99 歩97', {});
+    const mB = K.attackMap(blocked, () => true);
+    // 香は98→97（歩のマス）に利いて止まる。97には歩自身は利かない（自分のマス）、
+    // 96 は歩が利くので1、95 には誰も届かない（遮断の証明）
+    ok(cnt(mB, 9, 7) === 1 && cnt(mB, 9, 6) === 1 && cnt(mB, 9, 5) === 0,
+      'attackMap:香の滑走は駒で遮断される', jstr([cnt(mB, 9, 7), cnt(mB, 9, 6), cnt(mB, 9, 5)]));
+    // 桂29: (3,7)・(1,7) へ跳ぶ（間の駒に遮られない）
+    const kn = K.Position.fromPieces('桂29 歩28', {});
+    const mKn = K.attackMap(kn, () => true);
+    ok(cnt(mKn, 3, 7) === 1 && cnt(mKn, 1, 7) === 1 && cnt(mKn, 2, 8) === 0,
+      'attackMap:桂は前の2方向へ跳ぶ（後ろ・真上には利かない）');
+    // 玉55: 全8方向（斜め後退ふくむ）へ1枚ずつ
+    const kg = K.Position.fromPieces('玉55', {});
+    const mKg = K.attackMap(kg, () => true);
+    const ring = [[4,4],[5,4],[6,4],[4,5],[6,5],[4,6],[5,6],[6,6]];
+    ok(ring.every(([f, r]) => cnt(mKg, f, r) === 1) && cnt(mKg, 5, 5) === 0,
+      'attackMap:玉は全8方向へ利く（自身のマスには利かない）');
+    // 角88: 斜めの滑走。77〜11 方向へ届き、直交方向には利かない
+    const bish = K.Position.fromPieces('角88', {});
+    const mBish = K.attackMap(bish, () => true);
+    ok(cnt(mBish, 7, 7) === 1 && cnt(mBish, 1, 1) === 1 && cnt(mBish, 8, 7) === 0 && cnt(mBish, 7, 8) === 0,
+      'attackMap:角は斜めに滑走する（直交方向には利かない）');
   }
 }
 

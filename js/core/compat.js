@@ -63,7 +63,7 @@ window.Kakoi = window.Kakoi || {};
     // castle 優先だと essential が持ち駒に移され、貸し出せる組み合わせまで × になる）
     const composed = Kakoi.compose.position({
       strategy: st.strategy, tacticId: st.tacticId, castleId: st.castleId,
-      side: 'sente', priority: 'tactic', oppStrategy: opp && opp.strategy,
+      side: 'sente', oppStrategy: opp && opp.strategy,
     });
     const ng = [], notes = [];
     for (const c of composed.conflicts || []) {
