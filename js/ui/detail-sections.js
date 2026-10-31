@@ -267,11 +267,12 @@ window.Kakoi = window.Kakoi || {};
     return sec(title, '点線の項目は盤上に表示', `<ul class="mu-reasons">${li}</ul>`);
   }
 
-  // 両軍の接触（compose.merge の contacts: {sq, kind:'pawn'|'ng', text}）
+  // 両軍の接触（compose.merge の contacts: {sq, kind:'pawn'|'ng', text}）。
+  // マスは合成済みの絶対座標なので data-abs を付け、詳細側の側反転（opp 用 mirrorSq）の対象外にする
   function contacts(list, citer) {
     if (!list || !list.length) return '';
     const li = list.map(c =>
-      `<li data-level="${c.kind === 'ng' ? 'ng' : 'ok'}" data-tone="${c.kind === 'ng' ? 'bad' : 'focus'}" data-sq="${esc(c.sq)}">` +
+      `<li data-level="${c.kind === 'ng' ? 'ng' : 'ok'}" data-tone="${c.kind === 'ng' ? 'bad' : 'focus'}" data-sq="${esc(c.sq)}" data-abs="1">` +
       `<span class="mk">${c.kind === 'ng' ? '×' : '＋'}</span><span>${rich(c.text, citer)}</span></li>`).join('');
     return sec('両軍の接触', 'マスに乗せると盤で光る', `<ul class="mu-reasons">${li}</ul>`);
   }

@@ -650,10 +650,10 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'migigyoku', name: '右玉（角換わり型）', short: '右玉', reading: 'みぎぎょく', side: 'ibisha', family: 'migigyoku', setup: 'ibisha', kingWing: 'rook',
+    id: 'migigyoku', name: '右玉（角換わり型）', short: '右玉', reading: 'みぎぎょく', side: 'ibisha', family: 'migigyoku', setup: 'ibisha37', kingWing: 'rook',
     core: '玉48 金58 金78 銀47 銀67 桂37',
     shell: '歩36 歩46 歩56 歩66 歩76',
-    filler: '角88 香99 歩87 歩97',
+    filler: '角88 香99 桂89 歩87 歩97',
     note: '【要確認】配置は代表例。金の置き所（5八／3八／6八）や銀の枚数は資料によって異なる[[wj-migigyoku|sj-migigyoku]]。飛車と同じ翼に玉を置くため、玉飛接近の判定からは kingWing:rook で外す（§6-3）。',
     tags: ['角換わり', 'バランス型', '玉飛接近'],
     desc: '飛車と同じ右側の翼へ玉を移す特殊な構え[[wj-migigyoku|sj-migigyoku]]。「玉飛接近すべからず」の例外で、自分から攻めず手待ちと受けで千日手も視野に入れる戦略の土台になる[[wj-migigyoku|sj-migigyoku]]。金銀が玉の左と正面を覆い、上部への仕掛けを受け止める[[wj-migigyoku]]。',
