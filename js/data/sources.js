@@ -146,4 +146,23 @@ Kakoi.SOURCES = {
   'sj-hirame': { title: '平目戦法とは？', publisher: '将棋研究', url: 'https://www.shougi.jp/senpou/hirame/' },
   'sj-kamaitachi': { title: 'かまいたち戦法とは？', publisher: '将棋研究', url: 'https://www.shougi.jp/senpou/kamaitachi/' },
   'sj-44fu': { title: '4四歩パックマンとは？', publisher: '将棋研究', url: 'https://www.shougi.jp/senpou/44fu/' },
+
+  // ---- 文献監査で追加した直接出典 ----
+  'wj-ishida': { title: '石田流', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%9F%B3%E7%94%B0%E6%B5%81' },
+  'wj-tateishi': { title: '立石流四間飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%AB%8B%E7%9F%B3%E6%B5%81%E5%9B%9B%E9%96%93%E9%A3%9B%E8%BB%8A' },
+  'wj-fujiisystem': { title: '藤井システム', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%97%A4%E4%BA%95%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0' },
+  'wj-kakukoukan-shiken': { title: '角交換四間飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%A7%92%E4%BA%A4%E6%8F%9B%E5%9B%9B%E9%96%93%E9%A3%9B%E8%BB%8A' },
+  'wj-gokigen': { title: 'ゴキゲン中飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%B4%E3%82%AD%E3%82%B2%E3%83%B3%E4%B8%AD%E9%A3%9B%E8%BB%8A' },
+  'wj-shogi-kakugen': { title: '将棋の格言', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B0%86%E6%A3%8B%E3%81%AE%E6%A0%BC%E8%A8%80' },
+  'wj-suzumezashi': { title: '雀刺し', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%9B%80%E5%88%BA%E3%81%97' },
+  'wj-onigoroshi': { title: '鬼殺し（将棋）', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%AC%BC%E6%AE%BA%E3%81%97_(%E5%B0%86%E6%A3%8B)' },
+  'wj-sujichigaikaku': { title: '筋違い角', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%AD%8B%E9%81%95%E3%81%84%E8%A7%92' },
+  'wj-chousoku37gin': { title: '超速3七銀', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%B6%85%E9%80%9F3%E4%B8%83%E9%8A%80' },
+  'wj-gin46hidari': { title: '4六銀左戦法', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/4%E5%85%AD%E9%8A%80%E5%B7%A6%E6%88%A6%E6%B3%95' },
+  'wj-shigofu': { title: '4五歩早仕掛け', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/4%E4%BA%94%E6%AD%A9%E6%97%A9%E4%BB%95%E6%8E%9B%E3%81%91' },
+  'wj-hineribisha': { title: 'ひねり飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%81%B2%E3%81%AD%E3%82%8A%E9%A3%9B%E8%BB%8A' },
+  'note-masuda-ishida': { title: '石田流の基礎知識 升田式石田流とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-masuda-ishida-style/' },
+  'note-kubo-rapid': { title: '石田流の基礎知識 久保流急戦とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-kubo-style-rapid-attack/' },
+  'note-43-senpou': { title: '石田流の基礎知識 4→3戦法とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-43-strategy/' },
+  'note-343-senpou': { title: '石田流の基礎知識 3・4・3戦法とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-343-strategy/' },
 };
