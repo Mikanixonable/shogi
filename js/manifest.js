@@ -2,7 +2,7 @@
 window.Kakoi = window.Kakoi || {};
 Kakoi.MANIFEST = (() => {
   const core = ['js/core/notation.js'];
-  const data = ['js/data/sources.js', 'js/data/taxonomy.js', 'js/data/setups.js', 'js/data/strategies.js', 'js/data/castles-ibisha.js', 'js/data/castles-furibisha.js', 'js/data/tactic-families.js', 'js/data/tactics.js'];
+  const data = ['js/data/sources.js', 'js/data/taxonomy.js', 'js/data/setups.js', 'js/data/strategies.js', 'js/data/castles-ibisha.js', 'js/data/castles-furibisha.js', 'js/data/tactic-families.js', 'js/data/tactics.js', 'js/data/tactic-ratings.js'];
   const vendor = ['js/vendor/three.min.js']; // 立体駒用。UMD（file:// でも読める）を内蔵
   const logic = ['js/core/lookup.js', 'js/core/lru.js', 'js/core/html.js', 'js/core/position.js', 'js/core/defaults.js', 'js/core/matchup.js', 'js/core/compose.js', 'js/core/compat.js', 'js/core/constraints.js', 'js/core/board-model.js', 'js/core/repository.js', 'js/core/attack-map.js', 'js/core/validate.js', 'js/core/piece-match.js'];
   const ui = [
