@@ -18,4 +18,9 @@ Kakoi.SETUPS = {
     pieces: '香99 桂89 角77 飛68 歩97 歩87 歩76 歩66 歩56',
     sources: [{ ref: 'wj-shikenbisha', for: '周辺の駒' }, { ref: 'we-fourth-file-rook', for: '周辺の駒' }],
   },
+  hirame: {
+    label: '平目（5八飛・7七角）想定',
+    pieces: '飛58 角77',
+    sources: [{ ref: 'sj-hirame', for: '基本配置' }, { ref: 'wj-nakabisha', for: '中飛車' }],
+  },
 };
