@@ -31,7 +31,7 @@ window.Kakoi = window.Kakoi || {};
   const tacticIdOf = st => (st && st.tacticId) || defaultTacticId(st && st.strategy);
   const castleIdOf = (st, opp) => (st && st.castleId) || defaultCastleId(st && st.strategy, opp && opp.strategy);
 
-  const api = { stratOf, defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf };
+  const api = { defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf };
   Kakoi.defaults = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

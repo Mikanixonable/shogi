@@ -174,5 +174,5 @@ window.Kakoi = window.Kakoi || {};
     return { ...m, after: next, lead, path: lead >= 0 ? trace.path : null };
   }
 
-  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, pair, plan, routeMs };
+  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, plan, routeMs };
 })();
