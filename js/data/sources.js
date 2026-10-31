@@ -165,4 +165,6 @@ Kakoi.SOURCES = {
   'note-kubo-rapid': { title: '石田流の基礎知識 久保流急戦とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-kubo-style-rapid-attack/' },
   'note-43-senpou': { title: '石田流の基礎知識 4→3戦法とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-43-strategy/' },
   'note-343-senpou': { title: '石田流の基礎知識 3・4・3戦法とは', publisher: '三間飛車のひとくちメモ', url: 'https://thirdfilerook.jp/about-343-strategy/' },
+  'wj-hidarigyoku': { title: '左玉', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%B7%A6%E7%8E%89' },
+  'wj-muteki': { title: '無敵囲い', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%84%A1%E6%95%B5%E5%9B%B2%E3%81%84' },
 };

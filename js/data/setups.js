@@ -23,4 +23,8 @@ Kakoi.SETUPS = {
     pieces: '飛58 角77',
     sources: [{ ref: 'sj-hirame', for: '基本配置' }, { ref: 'wj-nakabisha', for: '中飛車' }],
   },
+  empty: {
+    label: '囲い側で全駒を指定',
+    pieces: '',
+  },
 };
