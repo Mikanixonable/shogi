@@ -1,5 +1,6 @@
 // 単体テスト: compose / compat / matchup の両立判定を node で検査する（対局図 M2）
 // 使い方: node shogi/tools/unit-test.js （失敗があれば終了コード1）
+// マトリクスの意図した変更を記録: node shogi/tools/unit-test.js --update-matrix
 // 読み込みは tools/validate-castles.js と同じく node vm + manifest（core+data+logic）。
 // compose.js / compat.js は manifest 未収録の段階でも直接読む
 'use strict';
@@ -85,7 +86,12 @@ for (const t of K.TACTICS) {
 }
 const matrixText = mlines.map(line => line.trimEnd()).join('\n') + '\n';
 const matrixFile = path.join(ROOT, 'tools', 'expected-matrix.txt');
-if (!fs.existsSync(matrixFile)) {
+const updateMatrix = process.argv.includes('--update-matrix');
+if (updateMatrix) {
+  fs.writeFileSync(matrixFile, matrixText);
+  pass++;
+  console.log('PASS matrix:updated（tools/expected-matrix.txt を更新）');
+} else if (!fs.existsSync(matrixFile)) {
   fs.writeFileSync(matrixFile, matrixText);
   pass++;
   console.log('PASS matrix:baseline-created（tools/expected-matrix.txt を作成。以降は照合される）');
@@ -93,7 +99,7 @@ if (!fs.existsSync(matrixFile)) {
   const expected = fs.readFileSync(matrixFile, 'utf8').replace(/\r\n/g, '\n');
   ok(expected === matrixText, 'matrix:snapshot', 'expected-matrix.txt と不一致（意図した変更ならファイルを消して再生成）');
 }
-console.log(matrixText);
+if (!updateMatrix) console.log(matrixText);
 
 // ---------- 2. §8-C 受け入れ: ng でない組み合わせに二歩と主役ずれが無い ----------
 let c2 = 0, c2fail = [];
@@ -483,7 +489,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     ok(kakugawari.length === 2 && kakugawari[1].id === 'kakugawari',
       'constraints:labels 角換わりは排他（戦型ラベルは1つ）', jstr(kakugawari));
     // 横歩取り: 両者の戦法が yokofudori タグを持つ（相掛かりタグより先に判定される）
-    const yoko = L(mk('shigofu-hayajikake', null, 'shigofu-hayajikake'));
+    const yoko = L(mk('yokofudori', null, 'aonoryu'));
     ok(yoko.length === 2 && yoko[1].id === 'yokofudori',
       'constraints:labels 横歩取り（yokofudori タグ両者）', jstr(yoko));
     // ひねり飛車は相掛かり系（yokofudori は持たない）: 囲いを雁木判定外のものに

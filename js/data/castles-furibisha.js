@@ -194,7 +194,7 @@ Kakoi.CASTLES.push(
     rest: '金69 銀67',
     filler: '香19 桂29',
     tags: ['対居飛車', '中飛車', '急戦向き'],
-    desc: '玉2八・金3八・銀4七の3枚で組む簡易な美濃[[wj-kimuramino|sj-kimuramino]]。木村義雄十四世名人が中飛車で好んで用いたことに由来する[[wj-kimuramino|wj-nakabisha]]。左金を使わないため、5筋に飛車のいる中飛車の陣形と両立しやすい[[wj-kimuramino|wj-nakabisha]]。',
+    desc: '玉2八・金3八・銀4七の3枚で組む簡易な美濃[[wj-kimuramino|sj-kimuramino]]。木村義雄十四世名人が香落ち戦で多用した囲いで、平手戦ではツノ銀中飛車や雁木との相性がよい[[wj-kimuramino|wj-nakabisha]]。左金を使わないため、5筋に飛車のいる中飛車の陣形と両立しやすい[[wj-kimuramino|wj-nakabisha]]。',
     ratings: { hard: 2, wide: 3, top: 3, side: 3, quick: 4 },
     pros: [
       { t: '少ない手数で組め、中飛車の陣形と両立する[[wj-kimuramino|wj-nakabisha]]', sq: ['28', '38', '47'] },
@@ -220,18 +220,19 @@ Kakoi.CASTLES.push(
     rest: '銀67',
     filler: '香19 桂29',
     tags: ['相振り飛車', '持久戦'],
-    desc: '相振り飛車の代表的な囲い[[wj-kinmusou|sj-kinmusou]]。金4八・金5八と金2枚を横に並べ（「金無双」）、玉3八・銀2八で固める[[wj-kinmusou|sj-kinmusou]]。横からの攻めに強く、上部への備えもある[[wj-kinmusou]]。',
-    ratings: { hard: 4, wide: 3, top: 3, side: 4, quick: 2 },
+    desc: '相振り飛車の代表的な囲い[[wj-kinmusou|sj-kinmusou]]。金4八・金5八と金2枚を横に並べ（「金無双」）、玉3八・銀2八で固める[[wj-kinmusou|sj-kinmusou]]。美濃囲いより上部（1・2筋）の攻めに強い一方、側面からの攻めには弱い[[wj-kinmusou]]。',
+    ratings: { hard: 4, wide: 3, top: 4, side: 2, quick: 2 },
     pros: [
-      { t: '金2枚が横に並び、飛車など横からの攻めに強い[[wj-kinmusou|sj-kinmusou]]', sq: ['48', '58', '59'] },
+      { t: '上部（1・2筋）からの攻めに強い[[wj-kinmusou|sj-kinmusou]]', sq: ['28', '38', '27'] },
       { t: '相振り飛車で互いの玉が近い筋同士でも対応しやすい' },
     ],
     cons: [
-      { t: '玉頭（3筋・2筋の上部）はやや薄い', sq: ['37', '27', '26'] },
+      { t: '2八の銀が壁銀となり、側面から攻められると玉の逃げ道が少ない[[wj-kinmusou]]', sq: ['28', '38'] },
+      { t: '4筋からの攻めにも弱く、4筋は「うさぎ耳」と呼ばれる[[wj-kinmusou]]', sq: ['47', '48'] },
       { t: '金を2枚とも守りに使うので攻めの駒が減る' },
     ],
     attacks: [
-      { id: 'gyokuto', name: '玉頭攻め', t: '△3五歩・△2五歩のように玉の真上の3筋・2筋を突いてくる。', gote: '歩35 歩25', target: ['36', '37', '26', '27'] },
+      { id: 'side', name: '4筋・側面攻め', t: '△4五歩〜△4四歩などで「うさぎ耳」と呼ばれる4筋を攻め、壁銀で逃げ道の少ない玉へ迫る[[wj-kinmusou]]。', gote: '歩45', target: ['47', '48', '38'] },
     ],
     sources: [
       { ref: 'wj-kinmusou', for: '配置・解説' },
