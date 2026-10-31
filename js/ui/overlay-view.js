@@ -88,15 +88,6 @@ window.Kakoi = window.Kakoi || {};
     }
 
     /**
-     * マスの列を結ぶ破線の矢印（単一経路。routes への委譲）。null で消す
-     * @param {string[]|null} squares 例: ['39','38','27','26']
-     * @param {{ tone?: 'good'|'bad'|'lead' }} [opts]
-     */
-    route(squares, { tone } = {}) {
-      this.routes(squares ? [{ squares, tone }] : null);
-    }
-
-    /**
      * 脅威の帯: 筋まるごと薄い朱色の帯を引く（相手の飛車の筋・主役の経路の終点の筋）。
      * マスと駒の下、盤面の木目の上に置く。null/[] で消す
      * @param {number[]|null} files 筋番号 1..9（先手から見た絶対座標）
@@ -135,8 +126,6 @@ window.Kakoi = window.Kakoi || {};
         this.contactLayer.appendChild(el);
       }
     }
-
-    clear() { this.routes(null); this.threat(null); this.contacts(null); }
   }
 
   Kakoi.OverlayView = OverlayView;

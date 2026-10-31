@@ -1,5 +1,5 @@
 // 両立判定（対局図用。DOM に依存しない）: 「いまの他の層」と候補を compose して、
-// 盤上の衝突（SQUARE/PAWN/COUNT/CONTACT）と将棋の原則（玉飛接近・同翼・戦略の整合・手数）
+// 盤上の衝突（SQUARE/PAWN/COUNT/HAND）と将棋の原則（玉飛接近・同翼・戦略の整合・手数）
 // から3段階（best/ok/ng）で判定する。選んだ層は自動で差し替えない（✕と理由の表示は
 // constraints.conflicts が担う）。searchAlternative は未選択の層の既定値が ng のときの
 // 補完（constraints.sides）に使う内部API。計画書 §3-2 / §4-2。
@@ -8,7 +8,7 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const { parsePieces, parseSquare, label } = Kakoi.notation;
   const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel, FIELD } = Kakoi.lookup;
-  const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'CONTACT', 'HAND']); // compose の衝突のうち × にするもの
+  const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'HAND']); // compose の衝突のうち × にするもの
   // 相性表の overrides では消せない理由（計画書 L2: 戦略の不一致・玉飛接近・同翼は原則なので
   // データの明示的な上書きの対象から外す）
   const NO_OVERRIDE = new Set(['SIDE', 'KING_ROOK', 'SAME_WING']);
