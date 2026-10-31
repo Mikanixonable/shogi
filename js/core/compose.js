@@ -262,13 +262,19 @@ window.Kakoi = window.Kakoi || {};
 
       const placeShell = () => {
         // 7. castle.shell: 囲いの前線の歩など。ロック済みのマスは戦法の駒を残して飛ばす
-        //    （殻は戦法を追い出さない）。filler は置かない
+        //    （殻は戦法を追い出さない）。filler は置かない。
+        //    置けない殻は盤を壊さず飛ばすが、宣言どおりに置けなかった事実は SHELL として
+        //    記録する（歩が前に進みすぎて戻れない場合など。ng にはしない注記）
         for (const t of parsePieces(castle.shell)) {
           const on = at(t.f, t.r);
           if (on && locked.has(on)) continue;
           if (on && on.p === t.p) { assigned.add(on); continue; } // role はそのまま
           if (on && assigned.has(on)) continue;                    // 確定済みの core は動かせない
-          if (!canSource(t.p, t.f, t.r, on)) continue;             // 置けない殻はあきらめる
+          if (!canSource(t.p, t.f, t.r, on)) {
+            conflicts.push({ code: 'SHELL', squares: [sq(t.f, t.r)],
+              text: `${label(t.f, t.r)}に${t.p}を置けず殻を省略` });
+            continue;
+          }
           if (on) displace(on);
           assigned.add(sourcePlace(t.p, t.f, t.r, 'support'));
         }

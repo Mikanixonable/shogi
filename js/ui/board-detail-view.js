@@ -42,9 +42,16 @@ window.Kakoi = window.Kakoi || {};
       this.el = el;
       this.h = handlers;
       this._sel = { who: 'me', kind: 'castle' };
+      // 詳細の data-sq は選択側の先手視点。相手（opp）の詳細では盤上の駒が回転済みなので
+      // mirrorSq で反転してから照らす。両軍の接触（data-abs）は絶対座標なので反転しない
+      const sqsOf = t => {
+        const list = t.dataset.sq.split(' ');
+        return this._sel.who === 'opp' && !t.dataset.abs
+          ? list.map(s => K.notation.mirrorSq(s)) : list;
+      };
       el.addEventListener('mouseover', e => {
         const t = e.target.closest('[data-sq]');
-        if (t && handlers.onHover) handlers.onHover(t.dataset.sq.split(' '), t.dataset.tone || 'focus');
+        if (t && handlers.onHover) handlers.onHover(sqsOf(t), t.dataset.tone || 'focus');
       });
       el.addEventListener('mouseout', e => {
         const t = e.target.closest('[data-sq]');
@@ -62,7 +69,7 @@ window.Kakoi = window.Kakoi || {};
           const sq = e.target.closest('[data-sq]');
           if (sq && handlers.onHover) {
             if (this._tapSq === sq) { this._tapSq = null; handlers.onHover([], null); }
-            else { this._tapSq = sq; handlers.onHover(sq.dataset.sq.split(' '), sq.dataset.tone || 'focus'); }
+            else { this._tapSq = sq; handlers.onHover(sqsOf(sq), sq.dataset.tone || 'focus'); }
           }
         }
         const c = e.target.closest('[data-act="castle"]');

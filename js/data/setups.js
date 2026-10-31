@@ -6,6 +6,13 @@ Kakoi.SETUPS = {
     pieces: '香19 桂29 飛28 歩25 歩17',
     sources: [{ ref: 'joutatsu-bougin', for: '周辺の駒' }, { ref: 'wj-gangi', for: '周辺の駒' }],
   },
+  // 左桂が3七へ跳んだあとの居飛車（桂37は桂29からしか来られないので29は空く）。
+  // 桂29を盤上に残すと桂89からは届かず、宣言局面が初期配置から到達不能になる
+  ibisha37: {
+    label: '居飛車（2五歩・2八飛、左桂は3七へ）想定・比較用に統一',
+    pieces: '香19 飛28 歩25 歩17',
+    sources: [{ ref: 'joutatsu-bougin', for: '周辺の駒' }, { ref: 'wj-gangi', for: '周辺の駒' }],
+  },
   furibisha: {
     label: '四間飛車（6八飛・7七角）想定・比較用に統一',
     pieces: '香99 桂89 角77 飛68 歩97 歩87 歩76 歩66 歩56',
