@@ -19,7 +19,7 @@ window.Kakoi = window.Kakoi || {};
   const Sec = () => K.detailSections; // 読み込み順に依存しないよう呼び出し時に引く
 
   const { LAYER_JA, FIELD, findTactic, findCastle, tacticFamilyOf, castleFamilyOf, castleSides, strategyLabel } = K.lookup;
-  const WHO_JA = { me: '自分（先手・▲）', opp: '相手（後手・△）' };
+  const WHO_JA = { me: '▲自分', opp: '△相手' };
   const SHORT_WHO = { me: '自分', opp: '相手' };
   // 戦法の多角形の色は主役の駒の系統色（左ドックのタイルの --t-* と同じ）
   const TACTIC_COLOR = { 'furibisha-rook': 'var(--t-rook)', 'ibisha-rook': 'var(--t-rook)',

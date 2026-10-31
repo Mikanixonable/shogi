@@ -111,30 +111,30 @@ async function sweepBoard(page, expect) {
   const mark = async () => r.rects.push(await boardRect(page));
   r.t0 = await snap(page);
   r.rects.push(r.t0.rect);
+  // 「相手の帯・盤・自分の帯」の塊は中央の列の上下中央にある（上下の余白の差）
   r.boardStageOffset = await page.evaluate(() => {
-    const a = document.querySelector('.boardarea').getBoundingClientRect();
-    const b = document.querySelector('#board').getBoundingClientRect();
-    return Math.abs((b.top + b.bottom - a.top - a.bottom) / 2);
+    const st = document.querySelector('.stage');
+    const cs = getComputedStyle(st), sr = st.getBoundingClientRect();
+    const top = document.querySelector('#bandOpp').getBoundingClientRect().top - sr.top - parseFloat(cs.paddingTop);
+    const bottom = sr.bottom - parseFloat(cs.paddingBottom) - document.querySelector('#bandMe').getBoundingClientRect().bottom;
+    return Math.round(Math.abs(top - bottom));
   });
+  // 相手の帯は盤の上・自分の帯は盤の下（盤の向きと同じ）。関係ラベルは相手の帯の中
   r.boardOrder = await page.evaluate(() => {
     const opp = document.querySelector('#bandOpp').getBoundingClientRect();
-    const rel = document.querySelector('#relationshipLabels').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
     return document.querySelector('#bandOpp').dataset.empty === 'true'
       ? getComputedStyle(document.querySelector('#bandOpp')).visibility === 'hidden'
-        && getComputedStyle(document.querySelector('#relationshipLabels')).visibility === 'hidden'
-        && me.bottom <= board.top
-      : opp.bottom <= rel.top && rel.bottom <= me.top && me.bottom <= board.top;
+        && board.bottom <= me.top
+      : opp.bottom <= board.top && board.bottom <= me.top
+        && !!document.querySelector('#bandOpp #relationshipLabels');
   });
   r.boardBandGaps = await page.evaluate(() => {
     const opp = document.querySelector('#bandOpp').getBoundingClientRect();
-    const rel = document.querySelector('#relationshipLabels').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return document.querySelector('#bandOpp').dataset.empty === 'true'
-      ? [board.top - me.bottom]
-      : [rel.top - opp.bottom, me.top - rel.bottom, board.top - me.bottom];
+    return [board.top - opp.bottom, me.top - board.bottom].map(Math.round);
   });
   // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
@@ -165,14 +165,16 @@ async function sweepBoard(page, expect) {
     return [switched, restored].every(rect => rect.every((value, i) => Math.abs(value - before[i]) < .5));
   });
   r.strategyOrder = await page.$$eval(`${DOCK} .dk-strategy button`, els => els.map(el => el.dataset.value));
+  // 層タブと戦型の絞り込みは1行（戦型が左・タブが右）。並べ方はその下。面に側の見出しは無い
   r.controlOrder = await page.evaluate(() => {
     const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
     const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
-    const sort = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
-    return strategy.bottom < tabs.top && tabs.bottom <= sort.top;
+    const sort = document.querySelector('#pickRail .dk-sort').getBoundingClientRect();
+    return strategy.right <= tabs.left && strategy.top >= tabs.top && strategy.bottom <= tabs.bottom + 1
+      && tabs.bottom <= sort.top && !document.querySelector('#pickRail .dk-title');
   });
   r.legendRow = await page.evaluate(() => {
-    const sort = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
+    const sort = document.querySelector('#pickRail .dk-sort').getBoundingClientRect();
     const help = document.querySelector('#pickRail .dk-legend').getBoundingClientRect();
     return help.width > 0 && Math.abs(sort.top + sort.height / 2 - help.top - help.height / 2) < 1;
   });
@@ -250,7 +252,7 @@ async function sweepBoard(page, expect) {
   r.tabSwitch = await page.evaluate(() =>
     __kakoi.store.state.selected === 'me.tactic' && document.querySelectorAll('#pickRail .dk-tile').length > 0);
   r.legendInTactic = await page.evaluate(() => getComputedStyle(document.querySelector('#pickRail .dk-legend')).display !== 'none'
-    && getComputedStyle(document.querySelector('#pickRail .dk-sort-seg')).display === 'none');
+    && getComputedStyle(document.querySelector('#pickRail .dk-sort')).display === 'none');
   r.tiles = await page.$$eval(`${DOCK} .dk-tile`, els => els.length);
   r.vars = await page.$$eval(`${DOCK} .dk-var`, els => els.length);
   r.variantStyle = await page.evaluate(() => {
@@ -294,7 +296,7 @@ async function sweepBoard(page, expect) {
     return st.selected === 'me.strategy'
       && chip.dataset.sel === 'true'
       && chip.querySelector('.cchip-b').tagName === 'BUTTON'
-      && (d.querySelector('.bd-who') || {}).textContent.includes('自分（先手・▲）の戦型')
+      && (d.querySelector('.bd-who') || {}).textContent.includes('▲自分の戦型')
       && (d.querySelector('.bd-t') || {}).textContent.includes(nm)
       && /スロットを持たず/.test(d.textContent)
       && d.querySelectorAll('.vchip[data-act="set"]').length > 0
@@ -337,7 +339,7 @@ async function sweepBoard(page, expect) {
   }, stratB);
   await page.click(`${DOCK} .dk-strategy button[data-value="${stratA}"]`); await wait(250);
   // 並べ方: 発展ツリーは from の子を字下げした行で出し、性質順は段（5→1）のブロックにする。
-  await page.click(`${DOCK} .dk-sort-seg button[data-value="tree"]`); await wait(250);
+  await page.selectOption(`${DOCK} .dk-sort-sel`, 'tree'); await wait(250);
   r.sortTree = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#pickRail .dk-tree .dk-row')];
     const shownRows = rows.filter(row => !row.hidden && !row.closest('.dk-fam').hidden);
@@ -349,30 +351,37 @@ async function sweepBoard(page, expect) {
         return Math.round(thumb.width) === 54 && Math.round(thumb.height) === 36;
       });
   });
-  await page.click(`${DOCK} .dk-sort-seg button[data-value="hard"]`); await wait(250);
+  await page.selectOption(`${DOCK} .dk-sort-sel`, 'hard'); await wait(250);
   r.sortAxis = await page.evaluate(() => [...document.querySelectorAll('#pickRail .dk-fam')]
     .every(s => [...s.querySelectorAll('.dk-card')].every(c =>
       `hard${Kakoi.CASTLES.find(x => x.id === c.dataset.id).ratings.hard}` === s.dataset.family)));
-  await page.click(`${DOCK} .dk-sort-seg button[data-value="family"]`); await wait(250);
+  await page.selectOption(`${DOCK} .dk-sort-sel`, 'family'); await wait(250);
   // A「系統の色と印」: 系統ブロックは系統色の帯（4px）を持ち、並べ方は開かずに全部見える選択肢
   r.famColors = await page.evaluate(() => {
     const fams = [...document.querySelectorAll('#pickRail .dk-fam:not([hidden])')];
-    const sorts = [...document.querySelectorAll('#pickRail .dk-sort-seg button')];
-    const sortIds = sorts.map(button => button.dataset.value);
-      const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
-      const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
-      const sortBar = document.querySelector('#pickRail .dk-sort-seg').getBoundingClientRect();
+    const sorts = [...document.querySelectorAll('#pickRail .dk-sort-sel option')];
+    const sortIds = sorts.map(o => o.value);
+    const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
+    const sortBar = document.querySelector('#pickRail .dk-sort').getBoundingClientRect();
     const cards = document.querySelector('#pickRail .dk-cards');
     const thumb = document.querySelector('#pickRail .dk-card .thumb').getBoundingClientRect();
+    // サムネぴったりの札は3列まで: 各行頭の枚数の最大が3
+    const rowMax = Math.max(...fams.map(s => {
+      const cs = [...s.querySelectorAll('.dk-card:not([hidden])')];
+      if (!cs.length) return 0;
+      const y = cs[0].offsetTop;
+      return cs.filter(c => Math.abs(c.offsetTop - y) < 1).length;
+    }));
     return fams.length > 0 && fams.every(s => s.style.getPropertyValue('--fam').startsWith('var(--f-')
         && getComputedStyle(s).borderLeftWidth === '4px')
-      && sorts.length === Kakoi.dockGrids.CASTLE_SORTS.length && sorts.every(b => b.offsetWidth > 0)
+      && sorts.length === Kakoi.dockGrids.CASTLE_SORTS.length && sorts.every(o => o.textContent.trim().length > 0)
       && !sortIds.includes('wide') && !sortIds.includes('quick')
-        && strategy.bottom < tabs.top
-        && tabs.bottom <= sortBar.top
-      && getComputedStyle(cards).gridTemplateColumns.split(' ').length === 3
-      && Math.round(thumb.height) === 50
-      && !document.querySelector('#pickRail .dk-sort select');
+      && tabs.bottom <= sortBar.top
+      && getComputedStyle(cards).display === 'flex' && getComputedStyle(cards).flexWrap === 'wrap'
+      && rowMax === 3
+      && Math.round(thumb.height) === 65
+      && Math.abs(thumb.width - 94) < 1.5
+      && !!document.querySelector('#pickRail .dk-sort select');
   });
   r.basicStyle = await page.evaluate(() => {
     const basics = [...document.querySelectorAll('#pickRail .dk-item[data-basic="true"]')];
@@ -420,7 +429,7 @@ async function sweepBoard(page, expect) {
     const rel = document.querySelector('#relationshipLabels').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const me = document.querySelector('#bandMe').getBoundingClientRect();
-    return opp.bottom <= rel.top && rel.bottom <= me.top && me.bottom <= board.top;
+    return rel.top >= opp.top && rel.bottom <= opp.bottom && opp.bottom <= board.top && board.bottom <= me.top;
   });
   r.oppOn = r.t5.showOpp && (r.t5.canvas || r.t5.gote > 0) && !r.t5.bandOppEmpty
     && await page.$eval(`${DOCK} .dk-pc[data-who="opp"]`, el => !el.disabled)
@@ -458,7 +467,7 @@ async function sweepBoard(page, expect) {
     const chip = document.querySelector('#cbarOpp .cchip[data-kind="strategy"]');
     return st.selected === 'opp.strategy'
       && chip.dataset.sel === 'true'
-      && (d.querySelector('.bd-who') || {}).textContent.includes('相手（後手・△）の戦型')
+      && (d.querySelector('.bd-who') || {}).textContent.includes('△相手の戦型')
       && (d.querySelector('.bd-t') || {}).textContent.includes(chip.querySelector('.cchip-nm').textContent)
       && /合わせた戦型/.test(d.textContent)   // 相手がいるときは組み合わせの戦型も出る
       && /sel=os/.test(location.hash);
@@ -760,17 +769,17 @@ async function main() {
       ok(b.layerSwitchStable, '囲い／戦法を切り替えてもタブ列が上下に揺れない', '');
       ok(b.legendRow && b.legendAnchor && b.legendInTactic, '記号の見方はソート横にあり、戦法表示でも利用できる', '');
       ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左ドックの戦型トグルは振り飛車→居飛車', b.strategyOrder.join(' → '));
-      ok(b.controlOrder, '戦型、囲い／戦法、囲いソートの順に縦配置', '');
+      ok(b.controlOrder, '囲い／戦法と戦型の絞り込みは1行、その下に並べ方（面に側の見出しは無い）', '');
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
       ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
-      ok(b.famColors, 'A案: 系統色の帯と3列タイル、戦略と並べ方を別段に表示', '');
+      ok(b.famColors, 'A案: 系統色の帯と3列タイル、並べ方は文字のドロップダウン', '');
       ok(b.basicStyle, '基本の囲いは朱の印で識別され、絞り込みトグルは無い', '');
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
       ok(b.bandGhost0, '相手の表示 OFF の間は相手の帯が幽霊行で、後手の駒は出ない', '');
-      ok(b.boardStageOffset <= 8, '盤面は帯の下の残り領域の上下中央に配置される', `${b.boardStageOffset}px`);
-      ok(b.boardOrder && b.boardOrderOppOn, '相手→関係ラベル→自分の制約行を盤の上に並べる', '');
+      ok(b.boardStageOffset <= 8, '相手の帯・盤・自分の帯の塊は中央の列の上下中央に配置される', `${b.boardStageOffset}px`);
+      ok(b.boardOrder && b.boardOrderOppOn, '相手の制約行（関係ラベルつき）は盤の上、自分の制約行は盤の下', '');
       ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と相手・自分の表示帯の余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
       ok(b.oppSmaller, '相手の制約チップは自分のものより小さい', '');
       ok(b.rectDrift === -1, '盤の矩形は全ステップで不変（F1 ±0.5px）', `ずれたステップ=${b.rectDrift}`);
@@ -801,7 +810,7 @@ async function main() {
       ok(b.ngFixed, '直す候補を押すと両立する選択になる（他の層は不変）', JSON.stringify(b.t4b && b.t4b.slots));
       ok(b.oppOffInit && b.oppOn, '相手 △ から相手表示を ON にして相手側を選べる', `${b.t5 && b.t5.hash}`);
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
-      ok(b.labels, '相手と自分の関係ラベルを2行の間に表示', JSON.stringify(b.t5 && b.t5.relationships));
+      ok(b.labels, '相手と自分の関係ラベルを相手の帯の右端に表示', JSON.stringify(b.t5 && b.t5.relationships));
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
       ok(b.resetInOppBar, '相手を選択中は相手の制約行右端に丸いリセット×を表示', '');
       ok(b.oppDockOff && b.oppDockOn && b.oppOnAnimation && b.oppOffAnimation,
@@ -904,7 +913,7 @@ async function main() {
         const opp = R(document.querySelector('#pickRail .dk-pc[data-who="opp"]'));
         const me = R(document.querySelector('#pickRail .dk-pc[data-who="me"]'));
         const paneH = R(document.querySelector('#pickRail .dk-pane-h'));
-        const filter = R(document.querySelector('#pickRail .dk-filter-row'));
+        const filter = R(document.querySelector('#pickRail .dk-tools'));
         // タップ領域: 実寸に、位置が absolute の疑似要素の負の inset（当たり判定の拡張）を足す
         const eff = el => {
           const r = el.getBoundingClientRect();
@@ -919,7 +928,7 @@ async function main() {
           return Math.min(r.width - l - rt, r.height - t - b);
         };
         const SELS = ['#toolsToggle', '#themeToggle', '#aboutOpen', '#pickRail .dk-tab button',
-          '#pickRail .dk-strategy button', '#pickRail .dk-sort-seg button', '#pickRail .dk-legend',
+          '#pickRail .dk-strategy button', '#pickRail .dk-sort-sel', '#pickRail .dk-legend',
           '#pickRail .dk-pc', '#pickRail .dk-pc-x', '#pickRail .dk-tile', '#pickRail .dk-var',
           '#pickRail .dk-fam-h', '#cbarMe .cchip', '#cbarMe .dk-clear'];
         const small = [];
@@ -939,7 +948,7 @@ async function main() {
                    const cs = getComputedStyle(c, '::after');
                    return cs.content === '""' && cs.borderStyle.includes('dashed');
                  })(),
-                 sortName: (document.querySelector('#pickRail .dk-sort-name') || {}).textContent || '',
+                 sortName: (() => { const x = document.querySelector('#pickRail .dk-sort-sel'); return x ? x.selectedOptions[0].textContent : ''; })(),
                  tnote: Kakoi.TACTIC_FAMILIES.some(f => f.note)
                    ? document.querySelectorAll('#pickRail .dk-tnote').length > 0 : true,
                  boardW: Math.round(board.width), iw: innerWidth, small };
