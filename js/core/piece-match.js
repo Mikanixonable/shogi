@@ -53,44 +53,32 @@ window.Kakoi = window.Kakoi || {};
 
   // ---------- moveCount: 「その駒の動きで何手かかるか」（合成の届く判定用。計画書 L3） ----------
   // 盤上の障害物を無視した BFS。先手視点（段が減る向きが前）。上限8手、届かなければ Infinity。
+  // 動きの定義は piece-moves.js が単一権威（未登録の駒は金フォールバック）。
   // moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、届くかどうかは自分で判定する
-  const STEP = {
-    玉: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]], // 全8方向。
-                     // 登録が無いと GOLD_STEP に落ち、斜め後退が届かないと誤判定される
-    歩: [[0, -1]],
-    香: [[0, -1]],   // 前へしか進めない（RAY との組み合わせで同じ筋の前方へ滑走。GOLD_STEP への
-                     // フォールバックを防ぐ＝横・後退・斜めに「届く」と誤判定しない）
-    桂: [[-1, -2], [1, -2]],
-    銀: [[0, -1], [-1, -1], [1, -1], [-1, 1], [1, 1]],
-    角: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
-    飛: [[0, -1], [0, 1], [-1, 0], [1, 0]],
-  };
-  const GOLD_STEP = [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]];
-  const RAY = { 香: 1, 角: 1, 飛: 1 };
-  const stepOf = p => STEP[p] || GOLD_STEP;   // 金（・未登録の駒）は金の動き
+  const { movesOf } = Kakoi.pieceMoves;
   const MAX_PLY = 8;
   const mcMemo = new Map();                    // `${p}:${from}` → Map(toKey → 手数)
   function bfsCount(p, from) {
-    const steps = stepOf(p), ray = !!RAY[p];
+    const mv = movesOf(p);
     const out = new Map();
     let frontier = [[+from[0], +from[1]]];
     for (let d = 1; d <= MAX_PLY && frontier.length; d++) {
       const next = [];
       for (const [f, r] of frontier) {
-        for (const [df, dr] of steps) {
+        for (const [df, dr] of mv.steps || []) {
+          const nf = f + df, nr = r + dr;
+          if (nf < 1 || nf > 9 || nr < 1 || nr > 9) continue;
+          const k = nf * 10 + nr;
+          if (out.has(k)) continue;
+          out.set(k, d);
+          next.push([nf, nr]);
+        }
+        for (const [df, dr] of mv.rays || []) {
           let nf = f + df, nr = r + dr;
-          if (ray) {
-            while (nf >= 1 && nf <= 9 && nr >= 1 && nr <= 9) {
-              const k = nf * 10 + nr;
-              if (!out.has(k)) { out.set(k, d); next.push([nf, nr]); }
-              nf += df; nr += dr;
-            }
-          } else {
-            if (nf < 1 || nf > 9 || nr < 1 || nr > 9) continue;
+          while (nf >= 1 && nf <= 9 && nr >= 1 && nr <= 9) {
             const k = nf * 10 + nr;
-            if (out.has(k)) continue;
-            out.set(k, d);
-            next.push([nf, nr]);
+            if (!out.has(k)) { out.set(k, d); next.push([nf, nr]); }
+            nf += df; nr += dr;
           }
         }
       }

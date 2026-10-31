@@ -21,8 +21,11 @@ window.Kakoi = window.Kakoi || {};
   /** 7,8 → "7八" */
   const label = (f, r) => ARABIC[f] + KAN[r];
 
-  /** "78" → "32": マスを後手側へ回転する（compose.mirror と同じ変換） */
-  const mirrorSq = s => `${10 - +s[0]}${10 - +s[1]}`;
+  /** {f,r} → {f:10−f, r:10−r}: 駒オブジェクトを後手側へ回転する（compose.mirror と同じ変換） */
+  const mirrorPt = x => ({ f: 10 - x.f, r: 10 - x.r });
 
-  Kakoi.notation = { ZEN, KAN, key, parseSquare, parsePieces, label, mirrorSq };
+  /** "78" → "32": マスを後手側へ回転する（mirrorPt の文字列版） */
+  const mirrorSq = s => { const m = mirrorPt(parseSquare(s)); return `${m.f}${m.r}`; };
+
+  Kakoi.notation = { ZEN, KAN, key, parseSquare, parsePieces, label, mirrorPt, mirrorSq };
 })();
