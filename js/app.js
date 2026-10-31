@@ -55,7 +55,7 @@
   const mode = new K.ConstraintMode({
     repo, store, board, overlay,
     els: {
-      stage: $('stageMain'), bandOpp: $('bandOpp'), bandMe: $('bandMe'),
+      stage: $('stageMain'), bandOpp: $('bandOpp'), relations: $('relationshipLabels'), bandMe: $('bandMe'),
       barOpp: $('cbarOpp'), barMe: $('cbarMe'),
       handOpp: $('handOpp'), handMe: $('handMe'),
       rail: $('pickRail'),

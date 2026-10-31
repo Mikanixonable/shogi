@@ -148,21 +148,33 @@ main { max-width:1240px; margin:0 auto; padding:0 24px 72px; }
 .tile-c .remove { grid-column:2; grid-row:1; width:44px; height:44px; }
 .tile-c + .tile-c { margin-top:2px; }
 
-/* 04: 色のラベルを固定位置に置き、複数の条件を一目で比較する */
+/* 04: 色のラベルと戦略別の凹凸を付け、3枚を横につなぐ */
+#option-04 .tiles { flex-wrap:nowrap; gap:0; overflow-x:auto; padding:5px 12px 8px 0; }
 .tile-d {
-  display:grid; grid-template-columns:82px minmax(0,1fr) 40px; align-items:center; gap:13px;
-  flex:1 1 420px; min-height:86px; padding:10px 12px 10px 10px; border:1px solid var(--line);
-  border-radius:999px; background:var(--bg);
+  --tile-ink:var(--blue); position:relative; display:grid; grid-template-columns:max-content max-content 24px;
+  align-items:center; gap:5px; flex:0 0 auto; height:36px; padding:4px 12px 4px 6px;
+  background:color-mix(in srgb,var(--tile-ink) 7%,var(--paper)); color:var(--fg);
+  filter:drop-shadow(0 0 1px var(--line-2));
 }
+.tile-d[data-kind="strategy"] { --tile-ink:var(--accent); grid-template-columns:max-content max-content; }
+.tile-d[data-kind="castle"] { --tile-ink:var(--sand); }
+.tile-d[data-position="first"] { z-index:1; }
+.tile-d[data-position="middle"] { z-index:2; margin-left:-11px; padding-left:18px; }
+.tile-d[data-position="last"] { z-index:3; margin-left:-11px; padding-left:18px; }
 .tile-d .tile-type {
-  justify-content:center; min-height:56px; border-radius:999px;
-  color:var(--blue); background:var(--blue-soft); font-size:13px; letter-spacing:.04em;
+  justify-content:center; min-width:32px; height:24px; padding:0 3px; border-radius:999px;
+  color:var(--tile-ink); background:none; font-size:10px; font-weight:800; letter-spacing:0;
 }
-.tile-d[data-kind="castle"] .tile-type { color:var(--sand); background:var(--sand-soft); }
 .tile-d .tile-type::before { display:none; }
-.tile-d .tile-name { font-size:19px; }
-.tile-d .tile-desc { font-size:14px; }
-.tile-d .remove { background:var(--paper); }
+.tile-d .tile-content { display:block; }
+.tile-d .tile-name { font-size:14px; font-weight:800; white-space:nowrap; }
+.tile-d .remove { width:22px; height:22px; border:0; border-radius:50%; background:none; font-size:16px; }
+.tile-d[data-position="first"][data-strategy="ibisha"] { clip-path:polygon(0 14%,5px 0,calc(100% - 11px) 0,calc(100% - 11px) 28%,100% 50%,calc(100% - 11px) 72%,calc(100% - 11px) 100%,5px 100%,0 86%); }
+.tile-d[data-position="first"][data-strategy="furibisha"] { clip-path:polygon(0 14%,5px 0,calc(100% - 11px) 0,calc(100% - 11px) 25%,100% 25%,100% 75%,calc(100% - 11px) 75%,calc(100% - 11px) 100%,5px 100%,0 86%); }
+.tile-d[data-position="middle"][data-strategy="ibisha"] { clip-path:polygon(0 28%,11px 50%,0 72%,0 14%,5px 0,calc(100% - 11px) 0,calc(100% - 11px) 28%,100% 50%,calc(100% - 11px) 72%,calc(100% - 11px) 100%,5px 100%,0 86%); }
+.tile-d[data-position="middle"][data-strategy="furibisha"] { clip-path:polygon(0 25%,11px 25%,11px 75%,0 75%,0 14%,5px 0,calc(100% - 11px) 0,calc(100% - 11px) 25%,100% 25%,100% 75%,calc(100% - 11px) 75%,calc(100% - 11px) 100%,5px 100%,0 86%); }
+.tile-d[data-position="last"][data-strategy="ibisha"] { clip-path:polygon(0 28%,11px 50%,0 72%,0 14%,5px 0,94% 0,100% 14%,100% 86%,94% 100%,5px 100%,0 86%); }
+.tile-d[data-position="last"][data-strategy="furibisha"] { clip-path:polygon(0 25%,11px 25%,11px 75%,0 75%,0 14%,5px 0,94% 0,100% 14%,100% 86%,94% 100%,5px 100%,0 86%); }
 
 .is-removing { opacity:0; transform:scale(.97); transition:opacity .14s ease,transform .14s ease; }
 @media (max-width:760px) {
@@ -240,7 +252,7 @@ main { max-width:1240px; margin:0 auto; padding:0 24px 72px; }
         <div class="tiles">
           <article class="tile tile-a" data-kind="tactic">
             <div class="tile-content"><span class="tile-type">戦法</span><span class="tile-name">九間飛車</span><span class="tile-desc">飛車を9筋へ振る戦法</span></div>
-            <button class="remove" type="button" aria-label="九間飛車を外す" title="九間飛車を外す" data-remove>×</button>
+            <button class="remove" type="button" aria-label="矢倉囲いを外す" title="矢倉囲いを外す" data-remove>×</button>
           </article>
           <article class="tile tile-a" data-kind="castle">
             <div class="tile-content"><span class="tile-type">囲い</span><span class="tile-name">矢倉囲い（金矢倉）</span><span class="tile-desc">やぐらがこい · 矢倉型 · 金銀で玉の上部を守る</span></div>
@@ -275,7 +287,7 @@ main { max-width:1240px; margin:0 auto; padding:0 24px 72px; }
           <article class="tile tile-b" data-kind="castle">
             <span class="piece-mark" aria-hidden="true">玉</span>
             <div class="tile-content"><span class="tile-type">囲い</span><span class="tile-name">矢倉囲い（金矢倉）</span><span class="tile-desc">やぐらがこい · 矢倉型 · 金銀で玉の上部を守る</span></div>
-            <button class="remove" type="button" aria-label="矢倉囲いを外す" title="矢倉囲いを外す" data-remove>×</button>
+            <button class="remove" type="button" aria-label="九間飛車を外す" title="九間飛車を外す" data-remove>×</button>
           </article>
         </div>
         <div class="derived">導かれる分類 <strong>矢倉型</strong></div>
@@ -317,31 +329,35 @@ main { max-width:1240px; margin:0 auto; padding:0 24px 72px; }
   <section class="proposal" id="option-04">
     <header class="proposal-head">
       <div>
-        <h2 class="proposal-title"><span class="proposal-no">04</span>色で種類を素早く判別する型</h2>
-        <p>種類ラベルの位置と色を固定し、戦法と囲いを一覧の中で見分けやすく。色は控えめにして、名前と説明のコントラストを保ちます。</p>
+        <h2 class="proposal-title"><span class="proposal-no">04</span>色で判別する横並び型</h2>
+        <p>戦型・囲い・戦法を順につなぎ、居飛車は三角、振り飛車は四角の凹凸で示します。</p>
       </div>
       <span class="verdict">一覧性を重視</span>
     </header>
     <div class="preview">
-      <div class="preview-caption"><span>自分側の制約帯</span><span class="caption-note">戦法は青、囲いは砂色で区別</span></div>
+      <div class="preview-caption"><span>自分側の制約帯</span><span class="caption-note">居飛車＝三角 ／ 振り飛車＝四角</span></div>
       <div class="band">
-        <div class="side-head"><span class="turn">▲</span><span class="side-name">自分<small>先手</small></span><span class="condition-count">選択中 <b data-count>2</b> 件</span></div>
+        <div class="side-head"><span class="turn">▲</span><span class="side-name">自分<small>先手</small></span><span class="condition-count">表示中 <b data-count>3</b> 件</span></div>
         <div class="tiles">
-          <article class="tile tile-d" data-kind="tactic">
-            <span class="tile-type">戦法</span>
-            <div class="tile-content"><span class="tile-name">九間飛車</span><span class="tile-desc">飛車を9筋へ振る戦法</span></div>
+          <article class="tile tile-d" data-kind="strategy" data-strategy="furibisha" data-position="first">
+            <span class="tile-type">戦型</span>
+            <div class="tile-content"><span class="tile-name">振り飛車</span></div>
+          </article>
+          <article class="tile tile-d" data-kind="castle" data-strategy="ibisha" data-position="middle">
+            <span class="tile-type">囲い</span>
+            <div class="tile-content"><span class="tile-name">矢倉囲い（金矢倉）</span></div>
             <button class="remove" type="button" aria-label="九間飛車を外す" title="九間飛車を外す" data-remove>×</button>
           </article>
-          <article class="tile tile-d" data-kind="castle">
-            <span class="tile-type">囲い</span>
-            <div class="tile-content"><span class="tile-name">矢倉囲い（金矢倉）</span><span class="tile-desc">やぐらがこい · 矢倉型 · 金銀で玉の上部を守る</span></div>
+          <article class="tile tile-d" data-kind="tactic" data-strategy="furibisha" data-position="last">
+            <span class="tile-type">戦法</span>
+            <div class="tile-content"><span class="tile-name">九間飛車</span></div>
             <button class="remove" type="button" aria-label="矢倉囲いを外す" title="矢倉囲いを外す" data-remove>×</button>
           </article>
         </div>
         <div class="derived">導かれる分類 <strong>矢倉型</strong></div>
       </div>
       <div class="mock-board" aria-hidden="true"><span>将棋盤</span></div>
-      <div class="preview-foot"><span>情報の順：種類（固定位置・色） → 名前と説明</span><button type="button" data-reset>この案をリセット</button></div>
+      <div class="preview-foot"><span>情報の順：種類（固定位置・色） → 名前</span><button type="button" data-reset>この案をリセット</button></div>
     </div>
   </section>
 </main>

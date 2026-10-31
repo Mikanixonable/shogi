@@ -12,6 +12,8 @@ window.Kakoi = window.Kakoi || {};
       if (li) li.classList.toggle('cite-on', on);
     };
     container.addEventListener('mouseover', e => mark(linkOf(e.target), true));
+    // タッチでも連動するよう、タップで出典行を強調する（B3）
+    container.addEventListener('click', e => mark(linkOf(e.target), true));
     container.addEventListener('mouseout', e => {
       const a = linkOf(e.target);
       if (a && !(e.relatedTarget && a.contains(e.relatedTarget))) mark(a, false);

@@ -18,9 +18,36 @@ window.Kakoi = window.Kakoi || {};
       this.squares = document.createElement('div');
       this.squares.className = 'squares';
       els.board.prepend(this.squares);
+      els.board.prepend(this._woodLayers());
       this._lasting = { squares: [], tone: null };
       this._pieces = [];    // いま盤に描いている駒（次の移動リストの before。駒レイヤの並びと同じ）
       this.layer = this._pickLayer();
+    }
+
+    // 盤の地: 縁まで続く榧の柾目（.board-grain）と、漆を盛った太刀盛りの罫線・星（.board-lines）。
+    // 光は左上に固定（Kakoi.kayaArt と css/board.css の --lx/--ly と同じ）
+    _woodLayers() {
+      const frag = document.createDocumentFragment();
+      const NS = 'http://www.w3.org/2000/svg';
+      const grain = document.createElementNS(NS, 'svg');
+      grain.setAttribute('class', 'board-grain');
+      grain.setAttribute('aria-hidden', 'true');
+      grain.innerHTML = `<filter id="kaya-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">${
+        Kakoi.kayaArt.grainFilter(Kakoi.kayaArt.BOARD_GRAIN)}</filter><rect width="100%" height="100%" fill="#fff" filter="url(#kaya-grain)"/>`;
+      // 罫は盤の比率（9:9.6）のまま 90×96 の座標で引く（星が楕円にならない）
+      const lines = document.createElementNS(NS, 'svg');
+      lines.setAttribute('class', 'board-lines');
+      lines.setAttribute('viewBox', '0 0 90 96');
+      lines.setAttribute('aria-hidden', 'true');
+      let d = '';
+      for (let i = 0; i <= 9; i++) d += `M${i * 10} 0V96M0 ${(i * 96 / 9).toFixed(3)}H90`;
+      const hoshi = [[3, 3], [6, 3], [3, 6], [6, 6]]
+        .map(([x, y]) => `<circle cx="${x * 10}" cy="${(y * 96 / 9).toFixed(3)}" r=".75" fill="url(#kaya-hoshi)"/>`).join('');
+      lines.innerHTML = `<radialGradient id="kaya-hoshi" cx="50%" cy="50%" fx="36%" fy="30%" r="50%">
+          <stop offset="0" stop-color="#6b4a2a"/><stop offset=".6" style="stop-color:var(--wood-ink)"/></radialGradient>
+        <path class="board-rule" d="${d}"/>${hoshi}`;
+      frag.append(grain, lines);
+      return frag;
     }
 
     // 既定は立体駒。?flat 指定・three 未読込・WebGL 非対応・初期化失敗は DOM 駒に逃がす

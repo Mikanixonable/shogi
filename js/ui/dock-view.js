@@ -14,7 +14,7 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { VS_MARK, findTactic, KINDS, FIELD } = K.lookup;
   const { esc } = K.html;
-  const STRATEGY_IDS = ['ibisha', 'furibisha'];
+  const STRATEGY_IDS = ['furibisha', 'ibisha'];
   const castlePos = c => K.Position.fromCastle(c, K.SETUPS[c.setup]);
   // 一覧の並べ方は表示の好み（盤面の状態ではない）なのでここで localStorage に持つ
   const PREF = 'shogi-castle:dock';
@@ -46,35 +46,30 @@ window.Kakoi = window.Kakoi || {};
       this.filter = { me: 'ibisha', opp: 'ibisha' };   // 戦略の絞り込み（側ごと。表示だけの状態）
       this._strat = { me: null, opp: null };           // 絞り込みを最後に合わせた、導出した戦略
       this._last = null;
-      const pref = loadPref();
+      this._whoPrev = null;                            // 前回表示していた側（切り替わりの向きの演出用）
+        const pref = loadPref();
       this.sort = K.dockGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
       el.innerHTML =
         `<div class="dk">` +
-        `<div class="dk-top">` +
-        `<div class="dk-title"><b></b><small></small></div>` +
-        // 凡例（U6）: ✕◎△点線の読み方を開く小さな ? ボタン
-        `<button type="button" class="dk-legend" aria-expanded="false" ` +
-        `aria-label="記号の見方" title="記号の見方">?</button></div>` +
-        `<section class="dk-pane">` +
-        `<header class="dk-pane-h">` +
-        // 層: 塗りの大きな2択（アイコン付き）
-        `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
-        `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
-        `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
-        `<div class="dk-filter-row">` +
-        // 戦略: 「居／振」の丸印を添えた朱のピル
-        `<div class="seg dk-strategy" role="group" aria-label="戦略で絞り込む">` +
-        STRATEGY_IDS.map(id => `<button type="button" data-value="${id}"><b aria-hidden="true">${STRAT_MARK[id]}</b>` +
-          `${esc(K.STRATEGIES[id].label)}</button>`).join('') +
-        `</div>` +
-        // 並べ方（囲いのみ）: 戦略ピルの横にアイコンを並べ、開かずに選べるようにする
-        `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
-        K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
+         `<div class="dk-top">` +
+         `<div class="dk-title"><b></b><small></small></div></div>` +
+         `<div class="dk-filter-row">` +
+         `<div class="seg dk-strategy" role="group" aria-label="戦型（振り飛車／居飛車）">` +
+         STRATEGY_IDS.map(id => `<button type="button" data-value="${id}"><b aria-hidden="true">${STRAT_MARK[id]}</b>` +
+           `${esc(K.STRATEGIES[id].label)}</button>`).join('') +
+         `</div></div>` +
+         `<section class="dk-pane">` +
+         `<header class="dk-pane-h">` +
+         `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
+         `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
+         `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
+         `<div class="dk-tools"><div class="seg dk-sort-seg" role="group" aria-label="囲いの並べ方">` +
+         K.dockGrids.CASTLE_SORTS.map(x => `<button type="button" data-value="${x.id}" aria-label="${esc(x.label)}" title="${esc(x.label)}"` +
           `${x.axis ? ' class="ax"' : ''}>${SORT_ICON[x.id] || x.label}</button>`).join('') +
-        `</div></div>` +
-        `</div>` +
-        `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
-        `</section></div>` +
+         `</div><span class="dk-sort-name" aria-hidden="true"></span><button type="button" class="dk-legend" aria-expanded="false" ` +
+         `aria-label="記号の見方" title="記号の見方">?</button></div>` +
+         `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
+         `</section></div>` +
         // 駒の見出し（バインダー）: 上=相手・下=自分。相手の駒の角の × で相手の表示を OFF にする
         `<div class="dk-binder" role="tablist" aria-orientation="vertical" aria-label="自分／相手">` +
         `<span class="dk-pc-ghost" aria-hidden="true"></span>` +
@@ -93,7 +88,7 @@ window.Kakoi = window.Kakoi || {};
       this.clearBtn = document.createElement('button');
       this.clearBtn.type = 'button';
       this.clearBtn.className = 'dk-clear';
-      this.clearBtn.textContent = 'リセット';
+      this.clearBtn.textContent = '×';
       this._bindBinder();
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
@@ -101,7 +96,8 @@ window.Kakoi = window.Kakoi || {};
         if (this._last) this.update(this._last.state, this._last.S);
       });
       this.clearBtn.addEventListener('click', () => h.onClear(this.who));
-      this.sortWrap = this.root.querySelector('.dk-tools');
+      this.sortWrap = this.root.querySelector('.dk-sort-seg');
+      this.sortName = this.root.querySelector('.dk-sort-name');
       const savePref = () => {
         try { localStorage.setItem(PREF, JSON.stringify({ sort: this.sort })); } catch { /* 無視 */ }
         if (this._last) this.update(this._last.state, this._last.S);
@@ -109,9 +105,11 @@ window.Kakoi = window.Kakoi || {};
       this.sortSeg = new K.Segmented(this.root.querySelector('.dk-sort-seg'), v => {
         this.sort = v;
         this.sortSeg.setValue(v);
+        this._sortLabel();
         savePref();
       });
       this.sortSeg.setValue(this.sort);
+      this._sortLabel();
       // タイル・チップは roving tabindex（U3）。矢印でフォーカスを移し Enter で選ぶ
       this.roving = K.roving.attach(this.body, '.dk-item');
       this.views = {};   // `${who}:${kind}` → 一覧の中身（構築は1回だけ。update では属性だけを書き換える）
@@ -133,16 +131,27 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 駒の見出し: 押すとその側の面へ（相手が OFF なら表示して開く）。縦のタブなので ↑=相手・↓=自分 ----------
     _bindBinder() {
       this.binder.addEventListener('click', e => {
-        if (e.target.closest('.dk-pc-x')) { this.h.onToggleOpponent(false); return; }
+        if (e.target.closest('.dk-pc-x')) {
+          this.h.onToggleOpponent(false);
+          this.pcs.me.focus();
+          return;
+        }
         const pc = e.target.closest('.dk-pc');
         if (pc) this.h.onSelect(pc.dataset.who, this.kind);
       });
       this.binder.addEventListener('keydown', e => {
-        if (!e.target.closest('.dk-pc') || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
-        e.preventDefault();
-        const who = e.key === 'ArrowUp' ? 'opp' : 'me';
-        this.h.onSelect(who, this.kind);
-        this.pcs[who].focus();
+        if (!e.target.closest('.dk-pc')) return;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const who = e.key === 'ArrowUp' ? 'opp' : 'me';
+          this.h.onSelect(who, this.kind);
+          this.pcs[who].focus();
+        } else if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.closest('[data-who="opp"]')) {
+          // 駒を下げる＝相手の表示 OFF
+          e.preventDefault();
+          this.h.onToggleOpponent(false);
+          this.pcs.me.focus();
+        }
       });
     }
 
@@ -169,12 +178,22 @@ window.Kakoi = window.Kakoi || {};
           `<li><span class="lg-ex">↳ 名称</span>派生の戦法</li>` +
           `<li><span class="lg-ex lg-basic">名称</span>朱の印：基本の形</li>` +
           `</ul>`;
+        const rootRect = this.root.getBoundingClientRect();
+        const btnRect = btn.getBoundingClientRect();
+        pop.style.top = `${btnRect.bottom - rootRect.top + 6}px`;
+        pop.style.right = `${rootRect.right - btnRect.right}px`;
         this.root.appendChild(pop);
         btn.setAttribute('aria-expanded', 'true');
       });
       document.addEventListener('pointerdown', e => {
         if (pop && !e.target.closest('.dk-legend-pop') && !e.target.closest('.dk-legend')) close();
       });
+    }
+
+    // 並べ方アイコンの横に、選択中の並べ方の名前を文字で出す（B4: title はタッチで読めない）
+    _sortLabel() {
+      const cur = K.dockGrids.CASTLE_SORTS.find(x => x.id === this.sort);
+      this.sortName.textContent = cur ? cur.label : '';
     }
 
     // ---------- イベント（委譲。一覧の作り直しをまたいで有効） ----------
@@ -236,8 +255,20 @@ window.Kakoi = window.Kakoi || {};
       const sel = K.constraints.parseSel(state.selected) || { who: 'me', kind: 'castle' };
       const showOpp = !!state.showOpp;
       const who = sel.who === 'opp' && !showOpp ? 'me' : sel.who;
-      const kind = KINDS.includes(sel.kind) ? sel.kind : 'castle';
+      // 選択層に対応するタブを開く。戦型（スロットを持たない情報の選択）のときは
+      // 最後に見ていた層タブの一覧をそのままにする
+      const kind = KINDS.includes(sel.kind) ? sel.kind
+        : (KINDS.includes(state.dockTab) ? state.dockTab : 'castle');
       this.who = who; this.kind = kind;
+      // 側が切り替わったときだけ、押した駒のいる向きから面が入る（相手=上・自分=下）
+      if (this._whoPrev && this._whoPrev !== who &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        this.root.animate(
+          [{ opacity: 0, transform: `translateY(${who === 'opp' ? -12 : 12}px)` },
+           { opacity: 1, transform: 'none' }],
+          { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)' });
+      }
+      this._whoPrev = who;
       this.root.dataset.who = who;
       this.el.dataset.who = who;
       this.title.firstChild.textContent = who === 'opp' ? '相手' : '自分';
@@ -252,11 +283,12 @@ window.Kakoi = window.Kakoi || {};
       this.oppOffBtn.hidden = !showOpp;
       this.tabSeg.setValue(kind);
       this.sortWrap.hidden = kind !== 'castle';   // 戦法は筋の表のまま（並べ方は囲いだけ）
+      this.sortName.hidden = this.sortWrap.hidden;
       const side = state.slots[who];
       const clearHost = document.querySelector(`#stageMain .sideband[data-side="${who}"] .cbar`);
       if (clearHost && this.clearBtn.parentElement !== clearHost) clearHost.append(this.clearBtn);
       this.clearBtn.hidden = KINDS.every(k => side[k] == null);
-      this.clearBtn.title = `${who === 'opp' ? '相手' : '自分'}の戦法・囲いをリセット`;
+      this.clearBtn.title = `${who === 'opp' ? '相手' : '自分'}の囲い・戦法をリセット`;
       this.clearBtn.setAttribute('aria-label', this.clearBtn.title);
 
       // 絞り込みは、導出した戦略が変わったとき（戦法を選んだ・ハッシュで開いた）にそれへ合わせる
@@ -316,6 +348,9 @@ window.Kakoi = window.Kakoi || {};
     // 制約チップを選んだときの連動（U5）: 種類のタブへ切り替わった一覧で、その側の実効値 st の
     // 項目までスクロールする（フォーカスは奪わず、一瞬だけ輪郭を添える）
     reveal(kind, st) {
+      // 狭い画面では一覧のスクロールはページ全体のスクロールになるので行わない
+      // （B2: 代わりに constraint-mode が解説を盤の下へ持ってくる）
+      if (matchMedia('(max-width:979px)').matches) return;
       requestAnimationFrame(() => {
         const id = st && st[FIELD[kind]];
         let t = id && this.body.querySelector(`.dk-item[data-id="${id}"]`);

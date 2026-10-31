@@ -88,4 +88,11 @@ Kakoi.SOURCES = {
   'we-right-fourth-file-rook': { title: 'Right Fourth File Rook', publisher: 'Wikipedia英語版', url: 'https://en.wikipedia.org/wiki/Right_Fourth_File_Rook' },
   'wj-yagura-nakabisha': { title: '矢倉中飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%9F%A2%E5%80%89%E4%B8%AD%E9%A3%9B%E8%BB%8A' },
   'wj-gosuji-kuraidori': { title: '5筋位取り', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/5%E7%AD%8B%E4%BD%8D%E5%8F%96%E3%82%8A' },
+  'wj-ureshinoryu': { title: '嬉野流', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%AC%89%E9%87%8E%E6%B5%81' },
+  'wj-torisashi': { title: '鳥刺し (将棋)', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E9%B3%A5%E5%88%BA%E3%81%97_(%E5%B0%86%E6%A3%8B)' },
+  'wj-tsunogin': { title: 'ツノ銀中飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%83%84%E3%83%8E%E9%8A%80%E4%B8%AD%E9%A3%9B%E8%BB%8A' },
+  'wj-kanikanigin': { title: 'カニカニ銀', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%82%AB%E3%83%8B%E3%82%AB%E3%83%8B%E9%8A%80' },
+  'wj-morishita': { title: '森下システム', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%A3%AE%E4%B8%8B%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0' },
+  'maid-yui': { title: 'わかる！勝てる！メイドシステム！', publisher: 'YouTube（将棋メイドゆい）', url: 'https://www.youtube.com/watch?v=sUh1KBSmkNs' },
+  'minor-maid': { title: '『メイドシステム 真実のゾーン！』初見実況プレイ', publisher: 'マイナー将棋ブログ', url: 'https://minorshogi.com/20190724maid-system-the-world-of-truth/' },
 };
