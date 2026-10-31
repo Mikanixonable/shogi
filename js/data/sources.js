@@ -181,4 +181,9 @@ Kakoi.SOURCES = {
   'wj-nakata-XP': { title: '中田功XP', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E4%B8%AD%E7%94%B0%E5%8A%9FXP' },
   'wj-murata': { title: '村田システム', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%9D%91%E7%94%B0%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0' },
   'wj-yonenaga': { title: '米長流急戦矢倉', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%B1%B3%E9%95%B7%E6%B5%81%E6%80%A5%E6%88%A6%E7%9F%A2%E5%80%89' },
+
+  // ---- 戦型（senkei.js）----
+  'wj-kakugawari': { title: '角換わり', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%A7%92%E6%8F%9B%E3%82%8F%E3%82%8A' },
+  'wj-aigakari': { title: '相掛かり', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E7%9B%B8%E6%8E%9B%E3%81%8B%E3%82%8A' },
+  'wj-yokofudori': { title: '横歩取り', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E6%A8%AA%E6%AD%A9%E5%8F%96%E3%82%8A' },
 };

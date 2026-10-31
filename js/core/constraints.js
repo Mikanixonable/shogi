@@ -256,9 +256,16 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- 導出ラベル（戦型は制約にしないで表示だけする） ----------
-  const SENKEI_LABELS = {
+  // 表示名は js/data/senkei.js の Kakoi.SENKEI に寄せる（SENKEI_RESOLVE で
+  // 相矢倉 → 矢倉 を解決）。データが無いときは下のフォールバック名を使う
+  const SENKEI_FALLBACK = {
     kakugawari: '角換わり', yokofudori: '横歩取り', aiyagura: '相矢倉',
     yagura: '矢倉', gangi: '雁木', aigakari: '相掛かり',
+  };
+  const senkeiName = id => {
+    const S = Kakoi.SENKEI || {};
+    const e = S[id] || S[(Kakoi.SENKEI_RESOLVE || {})[id]];
+    return (e && e.name) || SENKEI_FALLBACK[id];
   };
   /**
    * 両側の実効状態から戦型ラベルを導出する。
@@ -297,7 +304,7 @@ window.Kakoi = window.Kakoi || {};
     else if (isYagura(c1) || isYagura(c2)) id = 'yagura';
     else if (isGangi(c1) || isGangi(c2)) id = 'gangi';
     else if (has(t1, 'aigakari') && has(t2, 'aigakari')) id = 'aigakari';
-    if (id) out.push({ id, label: SENKEI_LABELS[id] });
+    if (id) out.push({ id, label: senkeiName(id) });
     return out;
   }
 

@@ -547,8 +547,9 @@ window.Kakoi = window.Kakoi || {};
         results.push({ kind: 'strategy', id: sid, ...r });
       }
     }
-    // 手筋・格言・定番セット（tesuji.js / combos.js）の出典も参照済みとして数える
-    for (const t of [...(isArr(ctx.TESUJI) ? ctx.TESUJI : []), ...(isArr(ctx.COMBOS) ? ctx.COMBOS : [])]) {
+    // 手筋・格言・定番セット（tesuji.js / combos.js）と戦型（senkei.js）の出典も参照済みとして数える
+    for (const t of [...(isArr(ctx.TESUJI) ? ctx.TESUJI : []), ...(isArr(ctx.COMBOS) ? ctx.COMBOS : []),
+        ...Object.values(ctx.SENKEI || {})]) {
       for (const s of (t && isArr(t.sources) ? t.sources : [])) if (s && s.ref) used.add(s.ref);
     }
     for (const [ref, s] of Object.entries(ctx.SOURCES || {})) {
