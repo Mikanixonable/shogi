@@ -10,8 +10,7 @@ window.Kakoi = window.Kakoi || {};
   const TACTIC_RATING_KEYS = ['attack', 'speed', 'flex', 'safety', 'easy'];
   const TOKEN = /^[玉飛角金銀桂香歩][1-9][1-9]$/;
   const SQ = /^[1-9][1-9]$/;
-  // [[ref]] / [[ref1|ref2]] の出典トークン（html.js の TOKEN と同じ形）
-  const CITE = /\[\[([^\][|]+(?:\|[^\][|]+)*)\]\]/g;
+  // [[ref]] / [[ref1|ref2]] の出典トークンの形は html.js が唯一の権威（Kakoi.html.citeRefs を使う）
   const isStr = v => typeof v === 'string' && v.length > 0;
   const isArr = Array.isArray;
   const result = () => ({ errors: [], warnings: [] });
@@ -66,13 +65,11 @@ window.Kakoi = window.Kakoi || {};
    */
   function cites(ctx, text, declared, label, errors) {
     const out = new Set();
-    if (typeof text !== 'string' || text.indexOf('[[') < 0) return out;
-    for (const m of text.matchAll(CITE))
-      for (const ref of m[1].split('|').map(r => r.trim()).filter(Boolean)) {
-        out.add(ref);
-        if (!ctx.SOURCES || !ctx.SOURCES[ref]) errors.push(`${label}: 未登録の出典トークン ${ref}`);
-        else if (!declared.has(ref)) errors.push(`${label}: 出典トークンがsourcesに宣言されていない ${ref}`);
-      }
+    for (const ref of Kakoi.html.citeRefs(text)) {
+      out.add(ref);
+      if (!ctx.SOURCES || !ctx.SOURCES[ref]) errors.push(`${label}: 未登録の出典トークン ${ref}`);
+      else if (!declared.has(ref)) errors.push(`${label}: 出典トークンがsourcesに宣言されていない ${ref}`);
+    }
     return out;
   }
 
