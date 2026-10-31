@@ -1,5 +1,6 @@
 node_modules/
 tools/shots/
+.claude/worktrees/
 
 # macOS
 .DS_Store
