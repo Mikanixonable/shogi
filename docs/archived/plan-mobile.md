@@ -13,7 +13,7 @@
 
 - 現象: 「＋相手」が「自分」の見出しに被り、「自分 先手▲」の駒が約 180px 下にずれて、
   囲い/戦法タブと並べ方ボタンを隠す。盤とドックの間の約 75px の空白も同じ原因。
-- 原因: [dock.css](../css/dock.css) の `.dk-pc[data-who="opp"] { top:30px }` と
+- 原因: [dock.css](../../css/dock.css) の `.dk-pc[data-who="opp"] { top:30px }` と
   `.dk-pc[data-who="me"] { top:calc(30px + min(150px,28vh)) }` のほうが、狭幅ブロックの
   `.dk-pc { top:auto }` より詳細度が高く、狭幅でも効き続ける（`position:relative` なので見た目だけずれる）。
 - 修正案: 狭幅ブロックに `.dk-pc[data-who] { top:auto; }` を追加する。
@@ -21,7 +21,7 @@
 ### A2. 横向き（844×390）で盤が画面の約 2 倍の高さになる
 
 - 現象: 盤が 754×804px になり、全体を一度に見られない。
-- 原因: [board.css](../css/board.css) と [layout.css](../css/layout.css) の `@media (max-width:979px)` が幅だけで判定しており、
+- 原因: [board.css](../../css/board.css) と [layout.css](../../css/layout.css) の `@media (max-width:979px)` が幅だけで判定しており、
   盤の幅を `100cqw` で決めている。
 - 修正案（どちらか）:
   - 盤の幅に高さの上限を入れる:
@@ -31,7 +31,7 @@
 ### A3. 制約バーのチップが右端で切れ、続きがあると分からない
 
 - 現象: 「戦法 居飛車（2筋）」が半分しか見えない。
-- 原因: 横スクロール自体はできるが、[constraint.css](../css/constraint.css) の狭幅ブロックで
+- 原因: 横スクロール自体はできるが、[constraint.css](../../css/constraint.css) の狭幅ブロックで
   `mask-image:none` にしているため、フェードによる「続きあり」の手がかりが消えている。
 - 修正案:
   - フェードを戻し、`scroll-snap` を付ける。
@@ -54,17 +54,17 @@
 - 現象: 盤上のチップをタップすると、ページが 335px 下へスクロールする（実測）。
   盤は上へ流れるが、解説は 2000px 下のまま。
 - 原因:
-  - [dock-view.js](../js/ui/dock-view.js) の `reveal()` が `scrollIntoView` を呼び、狭幅ではドックが
+  - [dock-view.js](../../js/ui/dock-view.js) の `reveal()` が `scrollIntoView` を呼び、狭幅ではドックが
     `overflow:visible` なのでページ全体がスクロールする。
-  - [constraint-mode.js](../js/modes/constraint-mode.js) の `_openDrawer` は 980–1180px でしか働かない。
+  - [constraint-mode.js](../../js/modes/constraint-mode.js) の `_openDrawer` は 980–1180px でしか働かない。
 - 修正案: 狭幅では `reveal` を止め、代わりに解説を開く（B1 のボトムシート、またはドロワー）。
 
 ### B3. ホバー前提の機能がタッチで働かない／表示が残る
 
 - `mouseover` に頼っている箇所:
-  - [board-detail-view.js](../js/ui/board-detail-view.js): `data-sq` の項目で盤のマスを光らせる（「点線の項目は盤上に表示」）
-  - [dock-view.js](../js/ui/dock-view.js): 候補のプレビュー
-  - [cites.js](../js/ui/cites.js): 本文の [n] と出典行の連動
+  - [board-detail-view.js](../../js/ui/board-detail-view.js): `data-sq` の項目で盤のマスを光らせる（「点線の項目は盤上に表示」）
+  - [dock-view.js](../../js/ui/dock-view.js): 候補のプレビュー
+  - [cites.js](../../js/ui/cites.js): 本文の [n] と出典行の連動
 - CSS の `:hover` は 34 箇所あり、`@media (hover:hover)` で囲ったものがない。
   iOS ではタップ後にカードが浮いたまま（`translateY`）になる。
 - 修正案:
@@ -132,7 +132,7 @@
 
 ### D4. テストの範囲
 
-- [ui-check.js](../tools/ui-check.js) は 390 の縦しか見ていないため、A1〜A3 を検出できない。
+- [ui-check.js](../../tools/ui-check.js) は 390 の縦しか見ていないため、A1〜A3 を検出できない。
 - 追加案: 360 縦・844×390 横の幅を加え、次を検査する。
   - 要素の重なり（バインダーの駒と一覧の見出しなど）
   - 盤が画面の高さに収まるか
