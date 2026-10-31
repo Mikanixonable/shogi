@@ -32,7 +32,7 @@ Kakoi.TACTICS = [
       { t: '中央が薄く角打ちの隙ができやすい' },
       { t: '8八の角の処理が必要で一般的な定跡が乏しい[[note-nifusen-kyuken]]' },
     ],
-    note: '配置図は出典に例がないため一般的な美濃囲いから組み立てた例。8八の角が飛車の通り道をふさぐため、角を動かしてから振る。1筋に振る場合は一間飛車と呼ぶ[[wj-ikkenbisha]]',
+    note: '配置図は出典に例がないため一般的な美濃囲いから組み立てた例。8八の角が飛車の通り道をふさぐため、角を動かしてから振る。なお飛車を反対側の端筋である1筋に振る場合は一間飛車と呼ぶ（「一間」は筋の番号「1」のことで、端から1マス内側という意味ではない）[[wj-ikkenbisha]]',
     sources: [
       { ref: 'wj-ikkenbisha', for: '解説' },
       { ref: 'shinrar-hashibisha', for: '解説' },
@@ -130,11 +130,12 @@ Kakoi.TACTICS = [
       { t: '棒金など早い段階での角道利用の反撃に弱い[[wj-sankenbisha]]' },
       { t: '歩の突き捨てが前提になり手順を覚える必要がある' },
     ],
-    note: '図は角8八型（角道オープン）の例。角7七に構える「7七角型の石田本組」もある[[wj-sankenbisha]]',
+    note: '図は角8八型（角道オープン）の例。角7七に構える「7七角型の石田本組」もある[[wj-sankenbisha]]。系譜は三間飛車→石田流で、そこから急戦系の早石田・角交換型の升田式・新・石田流が派生する[[note-ishida-summary]]',
     sources: [
       { ref: 'wj-sankenbisha', for: '配置・解説' },
       { ref: 'wj-furibisha', for: '解説' },
       { ref: 'we-ranging-rook', for: '解説' },
+      { ref: 'note-ishida-summary', for: '系譜' },
     ],
   },
   {
@@ -152,9 +153,12 @@ Kakoi.TACTICS = [
     desc: '石田流の急戦型[[wj-sankenbisha]]。玉を4八に寄せただけで囲わず、▲7四歩からの早い仕掛けと角交換を絡めた両取りや王手飛車取りを狙う[[wj-furibisha]]。ハメ手とされ防御策が定跡化されてからはプロでは指されなくなった[[wj-furibisha]]。',
     pros: [{ t: '仕掛けが早く、不意を突ければ破壊力が高い' }],
     cons: [{ t: '玉が薄く、受け切られると不利になりやすい' }],
+    note: '石田流は角を交換しない▲9七角・▲7七桂型の「石田流本組」（角道クローズ型）と、角交換を前提とする升田式（▲7八金型）に大別される。早石田は角道を開けたままなので角交換が本筋の変化に含まれており、「角交換早石田」という独立した戦法名はない[[note-ishida-summary]]。7手目▲7四歩からの新構想は新・石田流として升田幸三賞を受賞した[[note-newishida]]',
     sources: [
       { ref: 'wj-sankenbisha', for: '派生' },
       { ref: 'wj-furibisha', for: '解説' },
+      { ref: 'note-ishida-summary', for: '分類' },
+      { ref: 'note-newishida', for: '関連戦法' },
     ],
   },
   {
@@ -652,7 +656,7 @@ Kakoi.TACTICS = [
     hand: '歩歩',
     essential: '飛86',
     pace: 'both',
-    senkei: ['aigakari', 'yokofudori'],
+    senkei: ['aigakari'],
     against: { ibisha: 'ok' },
     pairings: [
       { castle: 'kani', level: 'ok', why: '玉を中央に構える駒組みと相性がよい' },
@@ -684,7 +688,7 @@ Kakoi.TACTICS = [
     hand: '歩歩',
     essential: '飛86 歩75',
     pace: 'both',
-    senkei: ['aigakari', 'yokofudori'],
+    senkei: ['aigakari'],
     against: { ibisha: 'ok' },
     pairings: [
       { castle: 'kani', level: 'ok', why: '玉を中央に構える駒組みと相性がよい' },
