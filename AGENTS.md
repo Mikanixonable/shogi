@@ -7,3 +7,8 @@
 - 既存履歴の文体に合わせる。`feat:` `fix:` などのプレフィックスは付けない
 - `Co-Authored-By:` などのトレーラー行は英語のまま残す
 - ファイル名・関数名・CSSクラス・将棋のローマ字表記（gangi, kyukenbisha など）は英語のままでよい
+
+## design-refs のファイル名
+
+- `design-refs-` のプレフィックスは付けない（ディレクトリ名で分かるため）
+- `トピック-YYYY-MM-DD.html` の形式にする（例: `detail-body-2026-11-02.html`）
