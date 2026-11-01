@@ -59,9 +59,14 @@ window.Kakoi = window.Kakoi || {};
       `C${pt(P(.645, -.08 * d))} ${pt(P(.685, -.09 * d))} ${pt(P(.70))}` +
       `L${pt(p1)}`;
   };
-  const boxJ = (x, y, w, h, e, d = 7, jw = 1) => `M${pt([x, y])}` +
-    jEdge([x, y], [x + w, y], e.n, d, jw) + jEdge([x + w, y], [x + w, y + h], e.e, d, jw) +
-    jEdge([x + w, y + h], [x, y + h], e.s, d, jw) + jEdge([x, y + h], [x, y], e.w, d, jw) + 'Z';
+  const boxJ = (x, y, w, h, e, d = 7, jw = 1) => {
+    const depth = typeof d === 'number' ? { n: d, e: d, s: d, w: d } : d;
+    return `M${pt([x, y])}` +
+      jEdge([x, y], [x + w, y], e.n, depth.n, jw) +
+      jEdge([x + w, y], [x + w, y + h], e.e, depth.e, jw) +
+      jEdge([x + w, y + h], [x, y + h], e.s, depth.s, jw) +
+      jEdge([x, y + h], [x, y], e.w, depth.w, jw) + 'Z';
+  };
   // 駒のシルエット五角形（.pt-tile の頂点比 50-86-100-0-14）
   const pieceV = (x, y, w, h) => [[x + w * .5, y], [x + w * .86, y + h * .14], [x + w, y + h], [x, y + h], [x + w * .14, y + h * .14]];
   const polyPath = pts => 'M' + pts.map(pt).join('L') + 'Z';
@@ -213,9 +218,10 @@ window.Kakoi = window.Kakoi || {};
              `<text class="ch${on ? ' on' : ''}" x="${cx}" y="${cy - 1}">${ch}</text>` +
              `<text class="sub${on ? ' on' : ''}" x="${cx}" y="${cy + 10}">飛車</text>`;
       }
-      // 囲い: パズルのピース（上=凸・左=凹・右=凸）。戦法: 駒形五角形。開いている層は朱縁
-      s += `<path d="${boxJ(119, 14, 88, 46, { n: 1, e: 1, s: 0, w: -1 }, 5)}" class="shp${tab === 'castle' ? ' on' : ''}" data-layer="castle"/>` +
-           `<text class="nm" x="163" y="40">囲い</text>` +
+      // 囲い: 外接寸法94×52は維持し、辺長に合わせた突起深さでパズル形状の比率を保つ
+      // 戦法: 駒形五角形。開いている層は朱縁
+      s += `<path d="${boxJ(119, 20, 88, 40, { n: 1, e: 1, s: 0, w: -1 }, { n: 10, e: 5, s: 0, w: 5 })}" class="shp${tab === 'castle' ? ' on' : ''}" data-layer="castle"/>` +
+           `<text class="nm" x="163" y="45">囲い</text>` +
            `<path d="${polyPath(pieceV(227, 8, 88, 52))}" class="shp${tab === 'tactic' ? ' on' : ''}" data-layer="tactic"/>` +
            `<text class="nm" x="271" y="40">戦法</text>`;
       // 開いている層の型から面の罫へ点線の茎

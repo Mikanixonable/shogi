@@ -65,7 +65,7 @@
 .dk-tab .knob, .dk-strategy .knob { display:none; }
 .dk-strategy button[data-value="furibisha"] { left:2.8%; top:12.5%; width:15.5%; height:75%; }
 .dk-strategy button[data-value="ibisha"] { left:15.6%; top:12.5%; width:15.5%; height:75%; }
-.dk-tab button[data-value="castle"] { left:36.5%; top:12.5%; width:27%; height:81.25%; }
+.dk-tab button[data-value="castle"] { left:36.5%; top:12.5%; width:28.8%; height:81.25%; }
 .dk-tab button[data-value="tactic"] { left:69.5%; top:12.5%; width:27%; height:81.25%; }
 .dk-clear { display:grid; flex:none; place-items:center; width:28px; height:28px; padding:0;
             border:1px solid var(--line-2); border-radius:50%; background:none; color:var(--muted);
@@ -280,10 +280,6 @@
 .dk-row .from { font-size:10.5px; color:var(--muted); letter-spacing:.02em; }
 .dk-row .dk-marks { flex:none; }
 .dk-row .dk-seal { left:auto; right:-1px; }
-/* 戦法タイルは小さいので、落款は字を消して朱の角印にする（名に重ねない） */
-.dk-tl .dk-seal { width:0; height:0; padding:0; background:none; font-size:0;
-                  border-top:9px solid var(--accent); border-right:9px solid transparent; }
-
 /* ===== 駒の見出し（バインダー）: 左ドックと盤の境の罫をまたいで2枚の駒を立てる =====
    盤と同じく上=相手（先が下）・下=自分（先が上）。2枚の先は河の高さ（ドックの縦中央）で向き合う。
    開いている側は生成りの地に塗って盤側へ張り出す。もう一方は罫だけの駒。

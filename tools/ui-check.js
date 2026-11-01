@@ -232,9 +232,11 @@ async function sweepBoard(page, expect) {
       extent([art.querySelector('.shp[data-layer="castle"]')]),
       extent([art.querySelector('.shp[data-layer="tactic"]')]),
     ].map(([top, bottom]) => bottom - top);
+    const castleBounds = art.querySelector('.shp[data-layer="castle"]').getBBox();
     return switcher.width > 0 && switcher.height > 0 && switcher.bottom <= sort.top
       && names.includes('戦型') && names.includes('囲い') && names.includes('戦法')
       && Math.max(...heights) - Math.min(...heights) < 1
+      && Math.abs(castleBounds.width - 94) < .5 && Math.abs(castleBounds.height - 52) < .5
       && buttons.length === 4 && buttons.every(button => button.getBoundingClientRect().width > 0)
       && !document.querySelector('#pickRail .dk-title');
   });
@@ -335,11 +337,14 @@ async function sweepBoard(page, expect) {
   r.tiles = await page.$$eval(`${DOCK} .dk-tile`, els => els.length);
   r.vars = await page.$$eval(`${DOCK} .dk-var`, els => els.length);
   r.variantStyle = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll('#pickRail .dk-trow:not([hidden])')];
+    const allRows = [...document.querySelectorAll('#pickRail .dk-trow')];
+    const rows = allRows.filter(row => !row.hidden);
     const variants = rows.flatMap(row => [...row.querySelectorAll('.dk-var')]);
     const basics = rows.flatMap(row => [...row.querySelectorAll('.dk-tile[data-basic="true"]')]);
-    return variants.length > 0 && variants.every(el => !!el.querySelector('.dk-branch'))
-      && basics.length > 0 && basics.every(el => !!el.querySelector('.dk-seal'))
+    const rowsOpen = allRows.length > 0 && allRows.every(row =>
+      row.dataset.closed !== 'true' && row.querySelector('.dk-fam-h').getAttribute('aria-expanded') === 'true');
+    return rowsOpen && variants.length > 0 && variants.every(el => !!el.querySelector('.dk-branch'))
+      && basics.length > 0 && basics.every(el => el.querySelector('.dk-seal')?.textContent.trim() === '基本')
       && !!document.querySelector('.dk-vf')   // 派生は親札の下の帯に畳む
       && !document.querySelector('.dk-vshow');
   });
@@ -476,7 +481,7 @@ async function sweepBoard(page, expect) {
   });
   r.basicStyle = await page.evaluate(() => {
     const basics = [...document.querySelectorAll('#pickRail .dk-item[data-basic="true"]')];
-    return basics.length > 0 && basics.every(el => !!el.querySelector('.dk-seal'))
+    return basics.length > 0 && basics.every(el => el.querySelector('.dk-seal')?.textContent.trim() === '基本')
       && !document.querySelector('.dk-basic');
   });
 
@@ -1102,7 +1107,7 @@ async function main() {
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
       ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
       ok(b.famColors, 'A案: 系統色の帯と3列タイル、並べ方は文字のドロップダウン', '');
-      ok(b.basicStyle, '基本の囲いは朱の印で識別され、絞り込みトグルは無い', '');
+      ok(b.basicStyle, '囲い・戦法の基本項目はどちらも「基本」の朱札で識別する', '');
       ok(b.noOldUi, '廃止した UI（画面切替・相手を加える・全部はずす・骨格線・利きの範囲・スプリッタ・面の折りたたみ・ドックの脅威スイッチ）が無い', '');
       ok(b.noClusterCss, '分類マップの CSS を読み込まない', '');
       ok(b.hashEmpty0, '初期状態のハッシュは空', '');
@@ -1133,7 +1138,7 @@ async function main() {
       ok(b.strategySel, '戦型チップを押すと右 detailに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
       ok(b.oppStrategySel, '相手側の戦型チップも右 detailに出る（相手の面・組み合わせの戦型つき）', '');
       ok(b.railPick, 'レールの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
-      ok(b.variantStyle, '派生戦法は親札の下の「派生 n」の帯に畳む（↳チップ）', `${b.vars}件`);
+      ok(b.variantStyle, '戦法の駒列は初期展開し、基本札と派生チップは明示する', `${b.vars}件`);
       ok(b.fileMap, '戦法の札に筋の地図（9目盛りで立つ筋を塗る）', '');
       ok(b.segFilter && b.famFilter, '戦略セグは一覧の絞り込みだけ（スロット・導出した戦略は不変）', `rows=${b.segFilter} fams=${b.famFilter}`);
       ok(b.ngBadges > 0, 'いまの組み合わせと両立しない項目に✕の印（data-ng）が出る', `${b.ngBadges}件`);

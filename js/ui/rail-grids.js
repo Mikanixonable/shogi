@@ -1,10 +1,10 @@
 // 左レールの一覧の中身（計画書 S6 の tactic-grid / castle-grid）:
 // 戦法タイルと囲いカードの「構築」だけを持つ純粋な描画部品。状態の書き換え
 // （バッジ・戦略に合わない項目の非表示・採用の裏返し）は rail-badges.js / rail-view.js
-//   - 戦法（design-refs-tactic-select 案A「駒棚」）: 行=主役の駒（飛銀角桂歩金玉の7系統）。
+//   - 戦法（design-refs-tactic-select 案A「駒棚」）: 行=主役の駒（飛銀角桂歩金玉の7系統）。初期状態は全行展開。
 //     行の中は筋順（9→1）に並ぶ札。各札は9目盛りの筋地図を内蔵し、主役の駒が立つ
 //     筋を駒色で塗る（lead.files。相手の面は絶対座標に反転）。下に最終マスとペース。
-//     variantOf の派生は親札の下に「派生 n」の帯で畳む。薄い行（2件以下）は畳む
+//     variantOf の派生は親札の下に「派生 n」の帯で畳む。系統行は件数にかかわらず初期展開
 //   - 基本の項目（データの basic）は「基本」の印を付けて系統の先頭に置く
 //   - 囲いタイル: 並べ方（CASTLE_SORTS）ごとの折りたたみブロック。既定は CASTLE_FAMILIES ごと。サムネイルは core 駒の
 //     外接矩形を最小 5筋×3段に広げた窓で、歩の壁・周辺の駒ごと見せる。タイルの幅は窓の描画幅
@@ -116,13 +116,11 @@ window.Kakoi = window.Kakoi || {};
       sec.style.setProperty('--tc', tc);
       sec.style.setProperty('--fam', tc);
       const roots = ts.filter(t => !t.variantOf);
-      // 薄い行（2件以下）は見出しだけ畳んでおく。選択中を含む行は rail-view が開く
-      const closed = roots.length <= 2;
-      if (closed) sec.dataset.closed = 'true';
+      // 全ての駒の行を初期展開する。利用者が見出しを押して個別に畳むことはできる
       // 見出しの筋の列挙: その駒が実際に使う筋（重複なし・筋の大きい順）
       const files = [...new Set(ts.flatMap(t => t.lead.files))].sort((a, b) => b - a)
         .map(f => ZEN[absF(f, flip)]).join('・');
-      sec.innerHTML = `<button type="button" class="dk-fam-h" aria-expanded="${!closed}" ` +
+      sec.innerHTML = `<button type="button" class="dk-fam-h" aria-expanded="true" ` +
         `title="${esc(family.note ? `${family.name}\n${family.note}` : family.name)}">` +
         `<span class="caret" aria-hidden="true">▾</span>` +
         `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>` +
