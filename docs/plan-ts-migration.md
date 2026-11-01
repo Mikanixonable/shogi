@@ -35,12 +35,26 @@ dev.md の「TSへの移行」「囲いを型で表す」に対応する本格�
 
 `js/` のまま型を育てる。成果物は後の Phase で `src/` に移すだけなので、ここで雑に始めてよい。
 
+- **現在のデータ形状（vm + manifest で実測）**:
+  - `Castle` は89件。配置欄は `core/shell/filler`、`rest` と `hand` は任意。
+    `ratings` は5軸、`pros/cons/attacks/sources` は配列。`flex`・`from`・`aliases`・
+    `history`・`kingWing` 等は任意なので、段階的な optional 型にする
+  - `Tactic` は75件。`lead`・`route`・`pieces`・`essential` は全件にあり、
+    `ratings` は55件だけ、`variantOf`・`againstTactic`・`turn` 等は任意。
+    `lead.files` は数値または数値配列のため union にする
+  - `Tesuji` は20件で `diagram` を持ち、`onCastle` / `detect` / `counters` は一部だけ。
+    `Combo` は12件で `vs` は任意
+  - これは現在のデータを調べた結果であり、追加データの可能性を考えて「出現件数=必須」とは
+    決めず、`validate.js` の検査条件とデータ記述規約を型の根拠にする
 - `types/kakoi.d.ts` にドメイン型を定義する
   - `Castle` / `Tactic` / `TacticFamily` / `CastleFamily` / `Source` / `Setup`
   - `side: 'ibisha' | 'furibisha'`、`ratings` の5キー（hard/wide/top/side/quick）、`level`・`pace` などはリテラル union
   - 盤面型: `type File = '1'|…|'9'`、`type Rank = '1'|…|'9'`、`type Square = `${File}${Rank}``、`type PieceKanji = '玉'|'飛'|…`、`type Placement = `${PieceKanji}${Square}``。1駒の表記は template literal 型で表せるが、空白区切りの文字列全体は型で縛れないので引き続き validate に任せる
   - アプリ状態: `Slots`（`{me:{tactic,castle}, opp:{…}}`）、`AppState`（store の初期値の形）、`deriveBoard` の返り値 `BoardVM`
-- `tsconfig.json`（`allowJs`, `checkJs`, `strict: false`, `noEmit`）と `npm run typecheck` を足し、`js/core/` から `// @ts-check` を付ける
+- `tsconfig.json` は初期状態を `allowJs: true`, `checkJs: false`, `strict: false`, `noEmit: true` にする。
+  まず `.d.ts` とコンパイラの導入を分離確認し、その後 `notation.js` など依存の少ない純関数から
+  `// @ts-check` を付ける。いきなり core 全体をチェック対象にしない
+- `npm run typecheck` を追加する。compiler は現状未導入のため、依存追加はネットワーク許可を得てから行う
 - ここで型の揺れ（id のつづり、欠けたキー）が見つかったらデータ側を直す
 
 ## Phase 2：ビルド基盤 [S]
