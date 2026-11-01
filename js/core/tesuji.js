@@ -25,19 +25,8 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- 利き ----------
-  // 先手から見た方向（dr<0 が前、df>0 が先手から見た右＝筋が減る方向）。attack-map.js と同じ
-  const STEPS = {
-    玉: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]],
-    金: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [0, 1]],
-    銀: [[-1, -1], [0, -1], [1, -1], [-1, 1], [1, 1]],
-    桂: [[-1, -2], [1, -2]],
-    歩: [[0, -1]],
-  };
-  const SLIDES = {
-    香: [[0, -1]],
-    飛: [[0, -1], [0, 1], [-1, 0], [1, 0]],
-    角: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
-  };
+  // 動きの定義は pieces.js が単一権威（成駒を含む）。[df, dr] は先手視点の増減（dr<0 が前）
+  const { STEPS, SLIDES } = K.pieces;
   const inBoard = (f, r) => f >= 1 && f <= 9 && r >= 1 && r <= 9;
   const sq = (f, r) => `${f}${r}`;
 
@@ -166,5 +155,98 @@ window.Kakoi = window.Kakoi || {};
     return { sq: sq(pick, 9), kinzoko: goldAbove(pick), nifu };
   }
 
-  K.tesuji = { comboOf, combosWith, reach, covered, between, forks, sokofu };
+  // ---------- frames の投影（coverage-tesuji §5-2） ----------
+  // 手筋の図は「技を指す側が下（先手）」に統一。後手の囲いへ重ねるときだけ
+  // 180度回して先手・後手を入れ替える（BoardScreen._attackInfo の mirror と同じ変換）
+  const flipToken = t => `${t[0]}${10 - +t[1]}${10 - +t[2]}`;
+  const flipList = str => (str || '').trim().split(/\s+/).filter(Boolean).map(flipToken).join(' ');
+
+  /** frame を実盤へ投影する。flip:true で座標を180度回し、sente↔gote・hand↔handGote を入れ替える */
+  function project(frame, { flip = false } = {}) {
+    if (!flip) return { sente: frame.sente, gote: frame.gote, hand: frame.hand, handGote: frame.handGote };
+    return {
+      sente: flipList(frame.gote), gote: flipList(frame.sente),
+      hand: frame.handGote, handGote: frame.hand,
+    };
+  }
+
+  // ---------- 囲い ↔ 手筋（coverage-tesuji §5-4） ----------
+  /**
+   * この囲いに結びつく手筋（崩し方）の一覧。
+   * 手筋側の onCastle.ids/mirrorIds と、囲い側の attacks[].tesuji の両方から引く
+   */
+  function forCastle(castle, tesuji = K.TESUJI || []) {
+    if (!castle) return [];
+    const linked = new Set((castle.attacks || []).flatMap(a => a.tesuji || []));
+    return tesuji.filter(t =>
+      linked.has(t.id)
+      || (t.onCastle && (t.onCastle.ids || []).includes(castle.id))
+      || (t.onCastle && (t.onCastle.mirrorIds || []).includes(castle.id)));
+  }
+
+  /** この囲いの急所（onCastle.weak。囲いの持ち主＝先手視点の座標）の一覧 */
+  function weakSquares(castle, tesuji = K.TESUJI || []) {
+    return [...new Set(forCastle(castle, tesuji).flatMap(t => (t.onCastle && t.onCastle.weak) || []))];
+  }
+
+  // ---------- 格言（coverage-tesuji §5-9） ----------
+  // links.castles の判定式（一覧を持たず式で引く。囲いが増えても追従する）
+  function castleWhen(castle, when) {
+    if (!castle || typeof when !== 'string' || !when.trim()) return false;
+    const core = K.notation.parsePieces(castle.core || '');
+    return when.trim().split(/\s+/).every(cond => {
+      const [k, v] = cond.split(':');
+      switch (k) {
+        case 'kingFile': {   // 玉の筋（端玉: '1,9' など）
+          const king = core.find(x => x.p === '玉');
+          return !!king && String(v).split(',').map(Number).includes(king.f);
+        }
+        case 'goldRank':     // 金のいる段（先手視点）
+          return core.some(x => x.p === '金' && String(v).split(',').map(Number).includes(x.r));
+        case 'kingWing':     // 右玉などの構え（castle.kingWing）
+          return castle.kingWing === v;
+        case 'family':
+          return castle.family === v;
+        default: return false;
+      }
+    });
+  }
+
+  /**
+   * 選択中の囲い・戦法に結びつく格言を引く（§5-9 の links。basis:'source' のみ既定。
+   * 囲いは判定式か id 列、戦法は id 列、手筋は手筋 id、攻め筋は攻め筋 id、系統は戦法系統 id）
+   * @param {{castle?:Object, tactic?:Object, attackIds?:string[]}} sel
+   * @returns {Array<{proverb:Object, basis:string}>}
+   */
+  function proverbsFor(sel, { basis = 'source' } = {}) {
+    const out = [];
+    for (const p of K.PROVERBS || []) {
+      const L = p.links || {};
+      let hit = null;
+      for (const l of L.tesuji || []) {
+        // 手筋の結びつきは basis を持つ（source ◎ / inferred ○ / weak △）
+        if (sel.tesuji && sel.tesuji.id === l.id) hit = l.basis || 'inferred';
+      }
+      if (!hit && sel.castle && L.castles) {
+        const c = L.castles;
+        if ((Array.isArray(c) && c.includes(sel.castle.id))
+          || (c.ids || []).includes(sel.castle.id)
+          || (c.when && castleWhen(sel.castle, c.when))) hit = 'source';
+      }
+      if (!hit && sel.tactic && (L.tactics || []).includes(sel.tactic.id)) hit = 'source';
+      if (!hit && sel.tactic && (L.families || []).includes(sel.tactic.family)) hit = 'source';
+      if (!hit && sel.attackIds && (L.attacks || []).some(id => sel.attackIds.includes(id))) hit = 'source';
+      if (hit && (basis === 'all' || hit === basis)) out.push({ proverb: p, basis: hit });
+    }
+    return out;
+  }
+
+  // ---------- 登録表（coverage-tesuji §5-4） ----------
+  // 受けの手筋 id → 受けの位置を求める関数（BoardScreen._defenses が引く）
+  const defenders = { sokofu };
+  // 検出器 id → 検出関数（tesuji.detect が指す。'fork' は王手飛車の筋）
+  const detectors = { fork: forks };
+
+  K.tesuji = { comboOf, combosWith, reach, covered, between, forks, sokofu,
+    project, forCastle, weakSquares, proverbsFor, castleWhen, defenders, detectors };
 })();

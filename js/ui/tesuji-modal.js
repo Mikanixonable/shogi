@@ -52,7 +52,7 @@ window.Kakoi = window.Kakoi || {};
     for (const x of cur.values()) {
       const c = f1 - +x.sq[0], r = +x.sq[1] - r0;
       const cx = x0 + c * W + W / 2, cy = y0 + r * H + H / 2;
-      s += `<text class="tj-pc ${x.owner}${x.p === 'と' ? ' prom' : ''}" x="${cx}" y="${cy + 1}"` +
+      s += `<text class="tj-pc ${x.owner}${'と杏圭全馬龍'.includes(x.p) ? ' prom' : ''}" x="${cx}" y="${cy + 1}"` +
         `${x.owner === 'gote' ? ` transform="rotate(180 ${cx} ${cy})"` : ''}>${x.p}</text>`;
     }
     return s + '</svg>';
@@ -116,6 +116,8 @@ window.Kakoi = window.Kakoi || {};
       return diagramSVG(d, i) +
         `<figcaption><p class="tj-move">${esc(fr.move || '初形')}</p><p class="tj-cap">${esc(fr.caption)}</p>` +
         `<p class="tj-hand">先手の持ち駒：${esc(handText(fr.hand))}</p>` +
+        (fr.handGote !== undefined ? `<p class="tj-hand">後手の持ち駒：${esc(handText(fr.handGote))}</p>` : '') +
+        (d.turn === 'gote' ? '<p class="tj-hand">△後手の番から始まる図</p>' : '') +
         `<div class="tj-nav"><button type="button" class="ib txt" data-step="${i - 1}" ${i === 0 ? 'disabled' : ''} aria-label="前の手">◀</button>` +
         `<span class="tj-steps">${steps}</span>` +
         `<button type="button" class="ib txt" data-step="${i + 1}" ${i === n - 1 ? 'disabled' : ''} aria-label="次の手">▶</button></div>` +
