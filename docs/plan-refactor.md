@@ -20,10 +20,10 @@
 
 | 計画書 | 状態 | 扱い |
 |---|---|---|
-| `plan-fix-unified.md` | ほぼ消化済み（S1〜S6 の構造項目はコードに実装痕跡あり） | 未消化の残りを確認して archived へ |
-| `plan-next-actions.md` | 陳腐化（3画面時代の記述。分類マップは削除済み） | archived へ |
-| `plan-castle-tactic-tabs.md` | 実装済み（dockTab: 'castle'/'tactic'） | archived へ |
-| `plan-tactics-and-clusters.md` | 陳腐化（分類マップ削除済み） | archived へ |
+| `plan-fix-unified.md` | 消化済み（残課題は plan-bug-audit.md の R-1/R-2 として管理） | **archived へ移動済み** |
+| `plan-next-actions.md` | 陳腐化（3画面時代の記述。分類マップは削除済み） | **archived へ移動済み** |
+| `plan-castle-tactic-tabs.md` | 実装済み（dockTab: 'castle'/'tactic'） | **archived へ移動済み** |
+| `plan-tactics-and-clusters.md` | 陳腐化（分類マップ削除済み） | **archived へ移動済み** |
 | `plan-dev-infra.md` | 新しい（2026-11-01）。A-2 テスト分割・A-4 CI は未実施 | 本計画の Phase 0 に吸収 |
 | `plan-ui-overhaul.md` | 新しい（2026-11-01）。UI 改善案でリファクタではない | 別計画として残す |
 | `plan-ts-migration.md` | 未着手だが方向は有効 | 本計画の Phase 3 で現状版に更新 |
@@ -43,9 +43,7 @@
 - **0-1. テストを速い層と遅い層に分ける**（plan-dev-infra A-2）
   - `npm run test:fast`：`validate-castles.js` と `unit-test.js`（数秒）
   - `npm test`：全体（今と同じ）。リファクタ中は test:fast を頻繁に回す
-- **0-2. 古い計画書を archived へ**
-  - 上の表の「archived へ」の4本を移す。`plan-fix-unified.md` は未消化の残り
-    （特に P2 の構造項目が全部済みか）だけ確認してから
+- **0-2. 古い計画書を archived へ**（実施済み: 4本を `docs/archived/` へ git mv）
   - `dev.md` を「未着手／進行中／完了」に分ける
 - **0-3. 死コードの棚卸し**
   - `Kakoi.*` の各公開 API が実際に呼ばれているか grep で洗う
