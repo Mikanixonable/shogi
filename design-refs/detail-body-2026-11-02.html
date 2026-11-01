@@ -70,6 +70,20 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
 .hr { border:0; border-top:1px solid var(--line); margin:14px 0; }
 .ghost { border-bottom:1px dotted var(--line-2); cursor:pointer; }
 
+/* ===== 図版（ペンタグラム・部分盤面・駒チップ） ===== */
+.fig { display:flex; gap:12px; align-items:flex-start; }
+.fig svg { flex:none; }
+.pieces { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+.piece { border:1px solid var(--piece-edge); background:var(--piece-1); font:700 13px/1 var(--font-d);
+         padding:5px 7px 4px; clip-path:polygon(50% 0,100% 20%,92% 100%,8% 100%,0 20%); }
+.piece small { display:block; font:400 8.5px var(--font-b); color:var(--muted); }
+.bar { display:grid; grid-template-columns:64px 1fr 22px; gap:2px 8px; align-items:center; font-size:11px; }
+.bar .tr { height:5px; background:var(--faint); position:relative; }
+.bar .tr i { position:absolute; inset:0 auto 0 0; background:var(--accent); }
+.bar .v { font:600 11px var(--font-n); color:var(--fg2); }
+.spark { display:flex; align-items:flex-end; gap:3px; height:22px; }
+.spark i { width:7px; background:var(--accent-2); opacity:.85; }
+
 /* ===== 案A「帳簿」: 先頭固定＋索引。一覧性を重視 ===== */
 .A .a-head { position:sticky; top:-16px; background:var(--bg); padding:10px 0 8px;
              border-bottom:2px solid var(--fg); z-index:3; }
@@ -117,6 +131,40 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
 .D .klist .m { width:14px; flex:none; text-align:center; font-weight:700; }
 .D .klist .g { color:var(--good); } .D .klist .b { color:var(--bad); }
 </style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="penta" viewBox="0 0 200 136">
+  <g fill="none" stroke="var(--line)">
+    <polygon points="102,32 142.5,61.6 127,113.4 77,113.4 61.5,61.6" />
+    <polygon points="102,53.6 126.3,71.4 117.3,102.1 86.7,102.1 77.7,71.4" />
+    <polygon points="102,75.2 110.2,81.1 107.6,90.9 96.4,90.9 93.8,81.1" />
+    <line x1="102" y1="74" x2="102" y2="32"/><line x1="102" y1="74" x2="142.5" y2="61.6"/>
+    <line x1="102" y1="74" x2="127" y2="113.4"/><line x1="102" y1="74" x2="77" y2="113.4"/><line x1="102" y1="74" x2="61.5" y2="61.6"/>
+  </g>
+  <polygon points="102,53.4 118.9,67.5 122.7,97.4 85.3,105.9 77.2,75.9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+  <g font-size="10" fill="var(--muted)" font-family="var(--font-b)" text-anchor="middle">
+    <text x="102" y="18">堅さ</text><text x="168" y="62">玉の広さ</text><text x="133" y="128">上部の強さ</text><text x="67" y="128">横の強さ</text><text x="32" y="62">組みやすさ</text>
+  </g>
+</symbol>
+<symbol id="minoboard" viewBox="0 0 176 130">
+  <g stroke="var(--line-2)" fill="none">
+    <rect x="4" y="4" width="168" height="122"/>
+    <line x1="60" y1="4" x2="60" y2="126"/><line x1="116" y1="4" x2="116" y2="126"/>
+    <line x1="4" y1="65" x2="172" y2="65"/>
+  </g>
+  <g font-size="15" fill="var(--fg)" font-family="var(--font-d)" text-anchor="middle">
+    <text x="32" y="26">香</text><text x="88" y="26">桂</text><text x="144" y="26">香</text>
+    <text x="32" y="50">歩</text><text x="88" y="50">歩</text><text x="144" y="50">歩</text>
+    <text x="88" y="80">歩</text><text x="144" y="80">歩</text>
+    <text x="32" y="106">銀</text><text x="88" y="106">金</text><text x="144" y="106">金</text>
+    <text x="32" y="128" font-size="11" fill="var(--muted)">7八</text>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-dasharray="3 2">
+    <path d="M20,96 L52,96 L88,72 L144,72 L144,50" />
+  </g>
+  <circle cx="32" cy="104" r="11" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+</symbol>
+</defs></svg>
+
 </head>
 <body>
 <div class="wrap">
@@ -132,7 +180,11 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
         <p class="ttl">美濃囲い（本美濃）<small>みのがこい</small> <span class="defbadge">既定</span></p>
         <div class="a-nav"><a href="#">特徴</a><a href="#">説明</a><a href="#">発展</a><a href="#">長所</a><a href="#">短所</a><a href="#">攻め筋</a><a href="#">崩し</a><a href="#">出典</a></div>
       </div>
-      <div class="penta secbody">[ペンタグラム] 堅さ3 玉の広さ3 上部2 横4 組みやすさ4</div>
+      <div class="fig" style="margin-top:12px">
+        <svg width="150" height="102"><use href="#penta"/></svg>
+        <svg width="176" height="130"><use href="#minoboard"/></svg>
+      </div>
+      <div class="pieces"><span class="piece">玉<small>7八</small></span><span class="piece">銀<small>3八</small></span><span class="piece">金<small>5八</small></span><span class="piece">金<small>4九</small></span></div>
       <div class="sec"><h3>説明</h3>
         <p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む<span class="ref">[1][2][3]</span>。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる<span class="ref">[1]</span>。</p>
       </div>
@@ -153,11 +205,12 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
       </div>
       <div class="card kv">
         <div>
-          <div class="secbody">堅さ <span class="meter"><i style="width:60%"></i></span>
-          横の強さ <span class="meter slow"><i style="width:80%"></i></span>
-          組みやすさ <span class="meter slow"><i style="width:80%"></i></span></div>
+          <svg width="150" height="102"><use href="#penta"/></svg>
+          <div class="bar"><span>堅さ</span><span class="tr"><i style="width:60%"></i></span><span class="v">3</span>
+          <span>横の強さ</span><span class="tr"><i style="width:80%"></i></span><span class="v">4</span>
+          <span>組みやすさ</span><span class="tr"><i style="width:80%"></i></span><span class="v">4</span></div>
         </div>
-        <div class="secbody" style="text-align:right">#美濃型<br>#本美濃<br>#基本の囲い</div>
+        <svg width="118" height="88"><use href="#minoboard"/></svg>
       </div>
       <div class="card"><h3>説明</h3><p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む<span class="ref">[1][2][3]</span>。</p></div>
       <div class="card"><h3>発展</h3><div class="pairs"><button class="chip">片美濃</button><button class="chip">高美濃</button><button class="chip">銀美濃</button><button class="chip">ちょんまげ美濃</button></div></div>
@@ -177,7 +230,12 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
       <div class="sec"><h3>説明</h3><p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる。</p>
         <div class="rel"><a href="#">高美濃</a><a href="#">銀冠穴熊</a><a href="#">相掛かり</a></div>
       </div>
-      <div class="sec"><h3>特徴の目安 <small>5段階・主観</small></h3><div class="secbody">堅さ 3/5　横 4/5　上部 2/5<br>玉の広さ 3/5　組みやすさ 4/5</div></div>
+      <div class="sec"><h3>特徴の目安 <small>5段階・主観</small></h3>
+        <div class="fig"><svg width="150" height="102"><use href="#penta"/></svg>
+        <div class="bar" style="flex:1;align-self:center"><span>堅さ</span><span class="tr"><i style="width:60%"></i></span><span class="v">3</span>
+        <span>横の強さ</span><span class="tr"><i style="width:80%"></i></span><span class="v">4</span>
+        <span>上部</span><span class="tr"><i style="width:40%"></i></span><span class="v">2</span>
+        <span>組みやすさ</span><span class="tr"><i style="width:80%"></i></span><span class="v">4</span></div></div></div>
       <div class="sec deep"><h3>長所・短所 <small>点線の項目は盤上に表示</small></h3>
         <ul class="pc good"><li>手数が少なく、堅さとのバランスがよい</li><li>金銀が斜めにつながり、横からの攻めに強い</li></ul>
         <ul class="pc bad"><li>上部（玉頭）からの攻めに弱い</li><li>端攻め（1筋）に注意</li></ul>
@@ -197,6 +255,12 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
       <div class="d-tabs"><span class="on">概要</span><span>長短所</span><span>攻め・崩し</span><span>出典</span></div>
       <div class="secbody" style="margin-bottom:10px">
         <span class="pill act">端攻め</span><span class="pill">2筋の位</span><span class="pill">美濃の急所</span>
+      </div>
+      <div class="fig" style="margin-bottom:10px">
+        <svg width="176" height="130"><use href="#minoboard"/></svg>
+        <div style="flex:1"><div class="secbody" style="font-size:11px;color:var(--muted)">特徴</div>
+        <div class="spark"><i style="height:60%"></i><i style="height:60%"></i><i style="height:40%"></i><i style="height:80%"></i><i style="height:80%"></i></div>
+        <div class="secbody" style="font-size:10px;color:var(--muted)">堅/広/上/横/早</div></div>
       </div>
       <div class="card" style="border:1px solid var(--line);padding:12px 14px;margin-bottom:12px">
         <p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる<span class="ref">[1]</span>。</p>
