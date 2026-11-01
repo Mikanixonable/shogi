@@ -215,8 +215,10 @@ window.Kakoi = window.Kakoi || {};
       const vsRows = j ? Sec().vsRows(j.vs) : [];
       const body = [
         this._head(sel, t.name, implied, t.reading),
+        Sec().figRow(
+          Sec().tacticFigure(t, { flip: sel.who === 'opp', color: TACTIC_COLOR[t.family] || '' }),
+          Sec().tacticPenta(t, t.variantOf ? findTactic(t.variantOf) : null, TACTIC_COLOR[t.family] || '')),
         this._conflict(sel, p, citer),
-        Sec().tacticPenta(t, t.variantOf ? findTactic(t.variantOf) : null, TACTIC_COLOR[t.family] || ''),
         Sec().tacticTags(t, family),
         Sec().desc(t.desc, citer),
         Sec().note(t.note, citer),
@@ -265,10 +267,12 @@ window.Kakoi = window.Kakoi || {};
       const ngTexts = new Set((p.ng || []).map(r => r.text));
       const body = [
         this._head(sel, c.name, implied, c.reading),
+        Sec().figRow(
+          Sec().castleFigure(c, { flip: sel.who === 'opp' }),
+          Sec().penta(c.ratings, th
+            ? { weights: th.weights, small: '朱の破線＝この戦型で効く軸' }
+            : {})),
         this._conflict(sel, p, citer),
-        Sec().penta(c.ratings, th
-          ? { weights: th.weights, small: '朱の破線＝この戦型で効く軸' }
-          : {}),
         fit != null ? Sec().fitness(fit, th, c) : '',
         th ? Sec().distanceNote(th.distance, SHORT_WHO[sel.who], SHORT_WHO[sel.who === 'me' ? 'opp' : 'me']) : '',
         Sec().castleTags(c, family, subtype),

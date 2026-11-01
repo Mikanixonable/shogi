@@ -867,6 +867,40 @@ if (!K.constraints || !K.constraints.effectiveSides || !K.constraints.setSlot ||
     ok(wsl.f0 === 3 && wsl.f1 === 7, 'miniWindow:右玉は中央寄りの5筋の窓', jstr(wsl));
   }
 
+  // moveWindow（戦法の動き図の窓）: 経路∪必須∪主役の外接矩形を最小 5筋×3段まで広げる
+  {
+    let allIn = true, detail = '';
+    for (const t of K.TACTICS) {
+      const side = (K.catalog.tacticFamilyOf(t) || {}).side || 'ibisha';
+      for (const flip of [false, true]) {
+        const w = K.moveWindow(t, side, flip);
+        if (!(w.f0 >= 1 && w.f1 <= 9 && w.r0 >= 1 && w.r1 <= 9
+          && w.f1 - w.f0 + 1 >= 5 && w.r1 - w.r0 + 1 >= 3)) {
+          allIn = false; detail = `${t.id}${flip ? '(flip)' : ''}: ${jstr(w)}`; break;
+        }
+        const pts = [...(t.route || []), t.lead && t.lead.square,
+          ...(t.essential ? K.notation.parsePieces(t.essential).map(x => `${x.f}${x.r}`) : [])]
+          .filter(Boolean).map(s => (flip ? K.notation.mirrorSq(s) : s));
+        const out = pts.filter(s => {
+          const p = K.notation.parseSquare(s);
+          return p.f < w.f0 || p.f > w.f1 || p.r < w.r0 || p.r > w.r1;
+        });
+        if (out.length) { allIn = false; detail = `${t.id}${flip ? '(flip)' : ''}: 外 ${out.join(' ')}`; break; }
+      }
+      if (!allIn) break;
+    }
+    ok(allIn, 'moveWindow:全戦法で経路・必須・主役のマスが窓に収まる（flip含む）', detail);
+    // 3間飛車（振り飛車側）: 経路 28→78・必須（飛78 角77 歩76）を含む窓
+    const t3 = K.TACTICS.find(x => x.id === 'sankenbisha');
+    const w3 = K.moveWindow(t3, 'furibisha');
+    const inside = s => {
+      const p = K.notation.parseSquare(s);
+      return p.f >= w3.f0 && p.f <= w3.f1 && p.r >= w3.r0 && p.r <= w3.r1;
+    };
+    ok(inside('28') && inside('78') && inside('77') && inside('76'),
+      'moveWindow:3間飛車は経路28→78と必須の駒を含む', jstr(w3));
+  }
+
   // evaluate のメモ（S3/S4・R5 完了条件）: 同じ引数では judge の新規計算が0回
   {
     const slots = K.constraints.emptySlots();
@@ -1042,6 +1076,30 @@ if (!K.constraints || !K.constraints.effectiveSides || !K.constraints.setSlot ||
   const d = DS.desc('角を使う[[book-a]]。', citer);
   ok(d === '<p class="desc">角を使う<sup class="cite"><a href="#src-1">[1]</a></sup>。</p>',
     'detail-sections:desc は [[ref]] を [n] リンクにする', d);
+  // 記事頭の図: 囲い=タイルと同じミニ盤、戦法=経路の矢印つきの一部盤
+  const cf = DS.castleFigure(K.CASTLES.find(x => x.id === 'mino'));
+  ok(cf.indexOf('bd-fig') >= 0 && cf.indexOf('<svg') >= 0 && cf.indexOf('mini-pc') >= 0,
+    'detail-sections:castleFigure はミニ盤のSVGを出す', cf.slice(0, 120));
+  const tf = DS.tacticFigure(K.TACTICS.find(x => x.id === 'sankenbisha'));
+  ok(tf.indexOf('bd-fig') >= 0 && tf.indexOf('class="mini-rt"') >= 0 && tf.indexOf('mini-pc lead') >= 0
+    && tf.indexOf('mini-co') >= 0,
+    'detail-sections:tacticFigure は経路の矢印と主役の駒の一部盤を出す', tf.slice(0, 120));
+  // 経路1マスの戦法（相掛かりなど）は矢印なし。主役の駒の字は出る
+  const tf1 = DS.tacticFigure(K.TACTICS.find(x => x.id === 'aigakari'));
+  ok(tf1.indexOf('class="mini-rt"') < 0 && tf1.indexOf('mini-pc lead') >= 0,
+    'detail-sections:tacticFigure は経路1マスなら矢印なし', tf1.slice(0, 120));
+  // 相手の面（flip）でも破綻なく描ける
+  const tf2 = DS.tacticFigure(K.TACTICS.find(x => x.id === 'sankenbisha'), { flip: true });
+  ok(tf2.indexOf('class="mini-rt"') >= 0 && tf2.indexOf('mini-pc lead') >= 0,
+    'detail-sections:tacticFigure はflipでも描ける', tf2.slice(0, 120));
+  const cf2 = DS.castleFigure(K.CASTLES.find(x => x.id === 'mino'), { flip: true });
+  ok(cf2.indexOf('mini-pc') >= 0, 'detail-sections:castleFigure はflipでも描ける', '');
+  // figRow: 図と特徴の目安を横並びにする。図かペンタが無ければ片方だけ返す
+  const row = DS.figRow(cf, svg);
+  ok(row.indexOf('bd-figrow') >= 0 && row.indexOf('bd-figrow-p') >= 0
+    && row.indexOf(cf) >= 0 && row.indexOf(svg) >= 0
+    && DS.figRow('', svg) === svg && DS.figRow(cf, '') === cf,
+    'detail-sections:figRow は図とペンタグラムを横並びにする', '');
 }
 
 console.log(`---\n${pass + fail} tests, ${pass} pass, ${fail} fail`);

@@ -86,6 +86,33 @@ window.Kakoi = window.Kakoi || {};
   const senkeiChip = (id, text) =>
     `<button class="vchip" data-act="senkei" data-id="${esc(id)}" aria-pressed="false">${esc(text)}</button>`;
 
+  // ===== 記事頭の図 =====
+  // 囲い: 左ドックのタイルと同じミニ盤（囲いの駒=字・他の駒=点）
+  function castleFigure(castle, { flip = false } = {}) {
+    if (!castle || !K.Position || !K.miniBoardSVG) return '';
+    const pos = K.Position.fromCastle(castle, K.SETUPS[castle.setup] || { pieces: '' });
+    return `<figure class="bd-fig" aria-label="${esc(castle.name)}の駒配置">` +
+      K.miniBoardSVG(pos, castle.side, { flip }) + `</figure>`;
+  }
+
+  // 戦法: 主役の駒の経路と必須の駒を含む盤の一部（経路=破線の矢印。詳しくは下の「主役の駒の動き」）
+  function tacticFigure(tactic, { flip = false, color = '' } = {}) {
+    if (!tactic || !K.Position || !K.moveBoardSVG) return '';
+    const pos = K.Position.fromPieces(tactic.pieces, {
+      leadSquare: tactic.lead && tactic.lead.square, hand: tactic.hand || '',
+    });
+    const side = (K.catalog.tacticFamilyOf(tactic) || {}).side || 'ibisha';
+    return `<figure class="bd-fig mv" aria-label="${esc(tactic.name)}の主役の駒の動き">` +
+      K.moveBoardSVG(pos, tactic, { flip, side, color }) + `</figure>`;
+  }
+
+  // 記事頭の図は小さくして特徴の目安（ペンタグラム）と横並びにする。狭い幅では折り返す
+  function figRow(figure, pentaHTML) {
+    if (!figure) return pentaHTML || '';
+    if (!pentaHTML) return figure;
+    return `<div class="bd-figrow">${figure}<div class="bd-figrow-p">${pentaHTML}</div></div>`;
+  }
+
   /**
    * 特徴の目安: 5軸×5段階のレーダーチャート。
    * @param {Object} ratings 囲いの強み {hard,wide,top,side,quick}
@@ -470,6 +497,7 @@ window.Kakoi = window.Kakoi || {};
 
   K.detailSections = {
     RATINGS, TACTIC_RATINGS, RADAR, sec, head, vchips, setChip, senkeiChip,
+    castleFigure, tacticFigure, figRow,
     penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,

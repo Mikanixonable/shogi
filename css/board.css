@@ -86,9 +86,17 @@
 .mini-ln { stroke:var(--line); stroke-width:.4; }
 .mini-pc { font:700 9px var(--font-d); fill:var(--fg); text-anchor:middle; dominant-baseline:central; }
 .mini-pc.core { fill:var(--fg); }
+.mini-pc.lead { fill:var(--tc, var(--fg)); }
 .mini-pc.k { fill:#fbf6ea; font-size:8.6px; }
 .mini-k { fill:var(--accent); }
 .mini-dot { fill:var(--muted); opacity:.55; }
+
+/* 戦法の動き図（記事頭）: 筋・段の座標、経路の破線矢印、出発点の薄塗り。主役色は --tc */
+.mini-co { font:500 4px/1 var(--font-b); fill:var(--muted); text-anchor:middle; dominant-baseline:middle; }
+.mini-from { fill:color-mix(in srgb, var(--tc, var(--fg)) 16%, transparent); }
+.mini-rt { fill:none; stroke:var(--tc, var(--fg)); stroke-width:.75; stroke-dasharray:2.1 1.5;
+           stroke-linecap:round; stroke-linejoin:round; }
+.mini-rth { fill:var(--tc, var(--fg)); }
 
 /* 盤の重ね表示（筋道の矢印）。矢印はマス・駒の下、盤面の上 */
 .overlay { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; overflow:visible; }

@@ -99,6 +99,13 @@ header { position:relative; }
 /* ===== detail: 解説を読む（タブなし・一続き） ===== */
 .detail { padding:16px 22px 18px; display:grid; grid-template-rows:minmax(0,1fr); gap:14px; }
 .detail-body { overflow:auto; min-height:0; display:flex; flex-direction:column; gap:16px; }
+/* 記事頭の図: 囲い=タイルと同じミニ盤、戦法=主役の駒の動きの一部盤（図鑑・右detail共通） */
+.bd-fig { margin:0 auto; width:min(100%, 240px); flex:none; }
+.bd-fig svg { display:block; width:100%; height:auto; }
+/* 図は小さく、特徴の目安（ペンタグラム）と横並び。狭い幅では折り返す */
+.bd-figrow { display:flex; align-items:center; gap:8px 14px; flex-wrap:wrap; }
+.bd-figrow .bd-fig { width:min(46%, 150px); margin:0; }
+.bd-figrow-p { flex:1 1 190px; min-width:0; }
 /* 描き直しのたび、上から順に静かに現れる */
 .detail-body > * { animation:swap .45s var(--ease) both; }
 .detail-body > :nth-child(2) { animation-delay:30ms; } .detail-body > :nth-child(3) { animation-delay:60ms; }
