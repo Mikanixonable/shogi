@@ -91,9 +91,9 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
 /* ===== 共通: 切り替え部（.sw = svg + 透明ボタン。制約フィールドと同じ二層） ===== */
 .sw { position:relative; width:326px; }
 .sw svg { display:block; width:100%; height:auto; overflow:visible; }
-.sw .hit { position:absolute; z-index:2; border:0; padding:0; margin:0; background:transparent; cursor:pointer; border-radius:8px; }
-@media (hover:hover) { .sw .hit:hover { background:color-mix(in srgb,var(--fg) 5%,transparent); } }
-.sw .hit:focus-visible { outline:2px solid var(--fg); outline-offset:0; }
+.sw .hit, .swC .hit { position:absolute; z-index:2; border:0; padding:0; margin:0; background:transparent; cursor:pointer; border-radius:8px; }
+@media (hover:hover) { .sw .hit:hover, .swC .hit:hover { background:color-mix(in srgb,var(--fg) 5%,transparent); } }
+.sw .hit:focus-visible, .swC .hit:focus-visible { outline:2px solid var(--fg); outline-offset:0; }
 
 /* svg 内のパーツ（クラス名は制約フィールドのものを踏襲） */
 .shp-fill { fill:var(--bg); stroke:none; }
@@ -236,11 +236,11 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
       <div class="rail kA">
         <div class="pg">
           <div class="sw" data-mock="A">
-            <svg class="swsvg" viewBox="0 0 326 76" aria-hidden="true"></svg>
-            <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:9.5px;top:14px;width:46px;height:54px" aria-label="戦型を振飛車に絞る"></button>
-            <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:56px;top:14px;width:47px;height:54px" aria-label="戦型を居飛車に絞る"></button>
-            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:103px;top:14px;width:110px;height:56px" aria-label="囲いの一覧を開く"></button>
-            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:218px;top:12px;width:104px;height:60px" aria-label="戦法の一覧を開く"></button>
+            <svg class="swsvg" viewBox="0 0 326 72" aria-hidden="true"></svg>
+            <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:9.5px;top:10px;width:46px;height:52px" aria-label="戦型を振飛車に絞る"></button>
+            <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:56px;top:10px;width:47px;height:52px" aria-label="戦型を居飛車に絞る"></button>
+            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:103px;top:10px;width:118px;height:56px" aria-label="囲いの一覧を開く"></button>
+            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:214px;top:8px;width:108px;height:60px" aria-label="戦法の一覧を開く"></button>
           </div>
           <div class="tstub"></div>
           <div class="liststub" data-list></div>
@@ -250,13 +250,13 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
       <div class="notes">
         <div><h4>よいところ</h4><ul>
           <li>三つが物理的につながるので「同じレイヤー」が一目で分かる。盤上の蜂の巣と同じ「辺を共有する」言語。</li>
-          <li>型の中に実効値（美濃囲い／四間飛車）が見えるので、ヘッダだけで今の条件が読める。</li>
+          <li>トグルは切り替え機能なので、帯の中はパラメータ名（振飛車|居飛車・囲い・戦法）だけ。実効値は開いた一覧に委ねる。</li>
         </ul></div>
         <div><h4>気になるところ</h4><ul>
-          <li>凹凸の継ぎ目はこの幅（326px）ぎりぎり。文字が窮屈（囲い名は4〜5字まで）。</li>
+          <li>凹凸の継ぎ目はこの幅（326px）ぎりぎり（凸タブは約14px、凹は約12px）。</li>
           <li>戦型の対が一覧に綴じない（絞り込みなので当然）が、帯に同化して「タブの一種」に見える危うさは残る。</li>
         </ul></div>
-        <p class="try">動かしてみる: 六角形を押すと戦型が切り替わり、囲い・戦法の中身も連動して変わる。パズル／五角形を押すと開く一覧が切り替わり、開いている側の底辺が一覧に綴じる。</p>
+        <p class="try">動かしてみる: 六角形を押すと戦型の絞り込みが切り替わり、下の一覧の中身も連動して変わる。パズル／五角形を押すと開く一覧が切り替わり、開いている側の底辺が一覧に綴じる。</p>
       </div>
     </figure>
   </section>
@@ -264,16 +264,16 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
   <!-- ============ B 型の三印 ============ -->
   <section class="plan" id="kB">
     <h2><span class="no">B</span>型の三印</h2>
-    <p class="lead">三つの型を同じ大きさの枡目に一つずつ収めた標本。型の下にパラメータ名（戦型・囲い・戦法）を添え、開いている層の型から一覧の罫へ点線の茎を垂らす（盤上の戦型胞→群れの茎と同じ決まり）。整列が最も素直な「並列」。</p>
+    <p class="lead">戦型の六角トグルを大きく、囲い・戦法の型を少し小さくして、三つを等間隔に並べる。囲い・戦法はボタン形状の内側にパラメータ名を表示し、戦型は六角トグルの下に添える。三つのパラメータ名は同じ文字サイズ。開いている層の型から一覧の罫へ点線の茎を垂らす（盤上の戦型胞→群れの茎と同じ決まり）。</p>
     <figure class="demo">
       <div class="rail kB">
         <div class="pg">
           <div class="sw" data-mock="B">
             <svg class="swsvg" viewBox="0 0 326 92" aria-hidden="true"></svg>
-            <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:27px;top:12px;width:29px;height:36px" aria-label="戦型を振飛車に絞る"></button>
-            <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:56px;top:12px;width:29px;height:36px" aria-label="戦型を居飛車に絞る"></button>
-            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:115px;top:2px;width:96px;height:64px" aria-label="囲いの一覧を開く"></button>
-            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:223px;top:0;width:96px;height:66px" aria-label="戦法の一覧を開く"></button>
+            <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:13px;top:6px;width:42px;height:48px" aria-label="戦型を振飛車に絞る"></button>
+            <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:55px;top:6px;width:42px;height:48px" aria-label="戦型を居飛車に絞る"></button>
+            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:119px;top:4px;width:88px;height:60px" aria-label="囲いの一覧を開く"></button>
+            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:227px;top:2px;width:88px;height:62px" aria-label="戦法の一覧を開く"></button>
           </div>
           <div class="tstub"></div>
           <div class="liststub" data-list></div>
@@ -282,12 +282,12 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
       </div>
       <div class="notes">
         <div><h4>よいところ</h4><ul>
-          <li>等間隔・等重量の三つ並び。パラメータ名が揃って見下ろせるので読み違えにくい。</li>
-          <li>型は独立しているので、凹凸を無理に合わせずそれぞれ最適な大きさにできる（戦法の五角形は駒形）。</li>
+          <li>三つを等間隔に保ちながら、選択肢のある戦型は大きく、囲い・戦法の形は少し小さく見せ分ける。</li>
+          <li>囲い・戦法の文字は型の中に収めたまま、外形だけを縮小。パズル形状と駒形の違いも保てる。</li>
           <li>茎で「どの一覧が開いているか」を示すので、紙タブより薄く済む。</li>
         </ul></div>
         <div><h4>気になるところ</h4><ul>
-          <li>六角形が小さい（r=16.5）ので「振飛車」の3字が入らず、大きな1字＋小さな「飛車」の組み合わせになる。</li>
+          <li>六角形を拡大（r=24）しても「振飛車」の3字を横一列には置けないため、大きな1字＋小さな「飛車」の表記を維持する。</li>
           <li>茎の点線は繊細。遠目には薄い。</li>
         </ul></div>
         <p class="try">六角形を押すと墨の塗りが移る。囲い／戦法を押すと茎がその型へ移り、下の一覧が変わる。</p>
@@ -298,7 +298,7 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
   <!-- ============ C 三段の盤 ============ -->
   <section class="plan" id="kC">
     <h2><span class="no">C</span>三段の盤</h2>
-    <p class="lead">パラメータごとに一段。戦型は線路の両駅を結ぶ滑走する六角形（振飛車=左へ、居飛車=右へ。飛車の振る向きそのまま）、囲いは横長のパズルピース、戦法は右へ指す五角形。各段は同じ高さ・同じ左の軸で揃えて「並列」を作る。文字が一番よく読める。</p>
+    <p class="lead">パラメータごとに一段。戦型は線路の両駅を結ぶ滑走する六角形（振飛車=左へ、居飛車=右へ。飛車の振る向きそのまま）、囲いは横長のパズルピース、戦法は右へ指す五角形。各段は同じ高さ・同じ左の軸で揃えて「並列」を作る。パラメータ名は段の左に揃う。</p>
     <figure class="demo">
       <div class="rail kC">
         <div class="pg">
@@ -354,7 +354,7 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
         <div class="pg">
           <div class="sw" data-mock="D">
             <svg class="swsvg" viewBox="0 0 326 84" aria-hidden="true"></svg>
-            <button type="button" class="hit" data-act="strat" data-v="flip" style="left:10px;top:6px;width:68px;height:72px" aria-label="戦型を切り替える"></button>
+            <button type="button" class="hit" data-act="strat" data-v="flip" style="left:0;top:6px;width:88px;height:76px" aria-label="戦型を切り替える（裏面の胞も押せる）"></button>
             <button type="button" class="hit" data-act="tab" data-v="castle" style="left:92px;top:4px;width:230px;height:36px" aria-label="囲いの一覧を開く"></button>
             <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:92px;top:44px;width:230px;height:36px" aria-label="戦法の一覧を開く"></button>
           </div>
@@ -366,7 +366,7 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
       <div class="notes">
         <div><h4>よいところ</h4><ul>
           <li>盤上の胞と同じ墨の六角形＋縦書きで、盤とドックの対応が最も強い。</li>
-          <li>横幅を取らないので、囲い・戦法の枠が広く、名が5〜6字でも読める。</li>
+          <li>戦型が縦に置けるので横幅を取らず、囲い・戦法の枠を広く使える。</li>
         </ul></div>
         <div><h4>気になるところ</h4><ul>
           <li>三つは「並列」ではなく「根元と枝」。要件の並列感とは発想が違う（従属を示すならこちらが正しい）。</li>
@@ -385,20 +385,21 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
       <thead><tr><th></th><th>A つながる帯</th><th>B 型の三印</th><th>C 三段の盤</th><th>D 根元の胞</th></tr></thead>
       <tbody>
         <tr><th>並列感</th><td>辺の共有で最も強い（三つが一続き）</td><td>等間隔の標本。素直</td><td>段のリズム。同格だが機構が違う</td><td>根元と枝（従属。並列とは別の答え）</td></tr>
-        <tr><th>高さ</th><td>76px</td><td>92px</td><td>約118px</td><td>84px</td></tr>
+        <tr><th>高さ</th><td>72px</td><td>92px</td><td>約118px</td><td>84px</td></tr>
         <tr><th>戦型の見え方</th><td>両方が常に見える（2胞）</td><td>両方が常に見える（小）</td><td>駅＋滑走ノブ（向きが意味）</td><td>片面のみ＋裏面チップ</td></tr>
-        <tr><th>文字の収まり</th><td>厳しめ（値は4〜5字）</td><td>標準</td><td>最もよい（値は6字超も可）</td><td>よい（枠が広い）</td></tr>
+        <tr><th>名の置き場</th><td>型の内側</td><td>囲い・戦法は型の内側、戦型は下</td><td>段の左の軸</td><td>枠の内側</td></tr>
         <tr><th>一覧との綴じ</th><td>開いている型の底辺が開く</td><td>茎の点線</td><td>段の左の朱印</td><td>枠の朱縁</td></tr>
-        <tr><th>実装量の目安</th><td>多い（継（継ぎ目の幾何）</td><td>中（型は独立で簡単）</td><td>少ない（SVG3枚）</td><td>少ない</td></tr>
+        <tr><th>実装量の目安</th><td>多い（継ぎ目の幾何）</td><td>中（型は独立で簡単）</td><td>少ない（SVG3枚）</td><td>少ない</td></tr>
       </tbody>
     </table>
     <div class="notes" style="max-width:none;margin-top:18px">
       <div><h4>共通の決まり</h4><ul>
         <li>モチーフ: 戦型=正六角形（頂点が上、盤上の胞と同じ向き）／囲い=パズルピース（凹凸は制約リファレンス v6 の浅い突起の曲線を流用）／戦法=駒のシルエット五角形（.pt-tile と同じ頂点比 50-86-100-0-14）。</li>
-        <li>状態: 戦型のON=胞の墨の墨塗り（盤上と同じ）。開いている一覧=型の朱縁か綴じ。選択中の値=型の中の文字。implied（既定値で補った値）は45°網掛け＋破線で例外的に薄く。</li>
+        <li>状態: 戦型のON=胞の墨塗り（盤上と同じ）。開いている一覧=型の朱縁か綴じ。implied（既定値で補った値）は45°網掛け＋破線で例外的に薄く。</li>
+        <li>トグルに載せる文字: 切り替え機能のトグルには現在の状態（囲い名・戦法名）を出さず、パラメータ名「囲い」「戦法」だけを示す。実効値は開いた一覧と盤上の胞に委ねる。戦型だけはトグル自身が状態（振飛車|居飛車のどちらがONか）を示す。</li>
         <li>当たり判定: svg の形に沿わず、制約フィールドと同じく透明な矩形ボタンを重ねる（ロービング tabindex・矢印キー対応は現行どおり）。</li>
         <li>改名: 「振飛車」は <code>js/data/strategies.js</code> の label とドックの aria-label。本文中の「振り飛車」（相振り飛車・角交換振り飛車を含む戦型名・説明文・ヘッダの紹介文）は別途どこまで改めるか決める。</li>
-        <li>狭い画面（979px以下）: いま戦型セグメントは「並べ方」の行へ、バインダーはタブ行へ移る。案B/Cはそのまま縮めやすい、案Aは継、案Aは継ぎ目が詰まるので凹凸を浅くするかB相当の並びに切り替える。</li>
+        <li>狭い画面（979px以下）: いま戦型セグメントは「並べ方」の行へ、バインダーはタブ行へ移る。案B/Cはそのまま縮めやすい。案Aは継ぎ目が詰まるので凹凸を浅くするか、案B相当の並びへ切り替える。</li>
       </ul></div>
       <p class="try">推奨は <b>案A（つながる帯）</b>: 「同じレイヤー」を形そのもので示せるのはこれだけで、盤上の蜂の巣と言語が揃う。素直さ優先なら案B。従属関係（戦型→囲い・戦法）を教えたいなら案Dが実は正しいモデル。</p>
     </div>
@@ -448,13 +449,15 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
       `C${pt(P(.645, -.08 * d))} ${pt(P(.685, -.09 * d))} ${pt(P(.70))}` +
       `L${pt(p1)}`;
   }
-  // 直方体のピース（e={n,e,s,w} は各辺の凹凸）。bottom=開いて一覧に綴じる用の開いた輪郭も返せる
+  // 直方体のピース（e={n,e,s,w} は各辺の凹凸、d も同じ形で辺ごとの深さにできる）。
+  // openS=true で底辺を描かない輪郭（一覧に綴じる開いている層用）
   const boxJ = (x, y, w, h, e, d = 7, jw = 1, openS = false) => {
+    const dd = typeof d === 'number' ? { n: d, e: d, s: d, w: d } : d;
     const head = openS ? `M${pt([x, y + h])}` : `M${pt([x, y])}`;
     const seq = openS
-      ? jig([x, y + h], [x, y], e.w, d, jw) + jig([x, y], [x + w, y], e.n, d, jw) + jig([x + w, y], [x + w, y + h], e.e, d, jw)
-      : jig([x, y], [x + w, y], e.n, d, jw) + jig([x + w, y], [x + w, y + h], e.e, d, jw) +
-        jig([x + w, y + h], [x, y + h], e.s, d, jw) + jig([x, y + h], [x, y], e.w, d, jw) + 'Z';
+      ? jig([x, y + h], [x, y], e.w, dd.w, jw) + jig([x, y], [x + w, y], e.n, dd.n, jw) + jig([x + w, y], [x + w, y + h], e.e, dd.e, jw)
+      : jig([x, y], [x + w, y], e.n, dd.n, jw) + jig([x + w, y], [x + w, y + h], e.e, dd.e, jw) +
+        jig([x + w, y + h], [x, y + h], e.s, dd.s, jw) + jig([x, y + h], [x, y], e.w, dd.w, jw) + 'Z';
     return head + seq;
   };
   // 駒のシルエット五角形（.pt-tile の頂点比）。左の肩辺に凹を付けられる
@@ -470,11 +473,11 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
   const chevPath = (x, y, w, h, tip = 18) =>
     `M${f1(x)} ${f1(y)}L${f1(x + w - tip)} ${f1(y)}L${f1(x + w)} ${f1(y + h / 2)}L${f1(x + w - tip)} ${f1(y + h)}L${f1(x)} ${f1(y + h)}Z`;
 
-  // ---------- 見本データ（戦型で中身が連動して変わる） ----------
+  // ---------- 見本データ（戦型で一覧の中身が連動して変わる） ----------
   const DEMO = {
-    ibisha:    { castle: '矢倉',     cfam: '矢倉型', tactics: ['角換わり'],       castub: ['矢倉', '雁木', '舟囲い'],
+    ibisha:    { castub: ['矢倉', '雁木', '舟囲い'],
                  trows: [['角', ['角換わり', '筋違い角'], 'var(--t-kaku)'], ['銀', ['腰掛け銀', '棒銀'], 'var(--t-silver)']] },
-    furibisha: { castle: '美濃囲い', cfam: '美濃型', tactics: ['四間飛車', '向かい飛車'], castub: ['美濃囲い', '高美濃', '金無双'],
+    furibisha: { castub: ['美濃囲い', '高美濃', '金無双'],
                  trows: [['飛', ['四間飛車', '三間飛車', '中飛車'], 'var(--t-rook)']] },
   };
   const STNAME = { ibisha: '居飛車', furibisha: '振飛車' };
@@ -498,73 +501,68 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
   }
 
   // ---------- 案A: つながる帯 ----------
+  // トグルは切り替え機能なので中身はパラメータ名だけ（実効値は開いた一覧に委ねる）
   function paintA(svg, st) {
-    const D = DEMO[st.strat];
     let s = '';
-    // パラメータ名（帯の上の小さな軸ラベル）
-    s += `<text class="tx-lb" x="56" y="9">戦型</text><text class="tx-lb" x="158" y="9">囲い</text><text class="tx-lb" x="269" y="9">戦法</text>`;
-    // 戦型: 正六角形の対（辺を共有）。左=振を共有）。左=振飛車（飛車が左へ）右=居飛車。ON=墨塗り
-    const HXC = [[33, 40, 'furibisha', '振'], [79.8, 40, 'ibisha', '居']];
+    // 底辺の罫（先に描いて型の下に敷く）: 開いている層の下は描かない（底辺が開いて一覧に綴じる）
+    const spans = st.tab === 'castle' ? [[4, 102.3], [212, 322]] : [[4, 216], [322, 326]];
+    for (const [a, b] of spans) s += `<path d="M${a} 66H${b}" class="base"/>`;
+    // 戦型: 正六角形の対（縦の辺を共有）。左=振飛車（飛車が左へ振る向き）右=居飛車。ON=墨塗り
+    const HXC = [[33, 36, 'furibisha', '振'], [79.8, 36, 'ibisha', '居']];
     for (const [cx, cy, id, ch] of HXC) {
       const on = st.strat === id;
       s += `<path d="${roundPath(hexV(cx, cy, 26), 2.5)}" class="hx-fill${on ? ' on' : ''}"/>` +
            `<text class="tx-big${on ? ' on' : ''}" x="${cx}" y="${cy - 1}">${ch}</text>` +
            `<text class="tx-s${on ? ' on' : ''}" x="${cx}" y="${cy + 12}">飛車</text>`;
     }
-    // 囲い: パズルピース（上=凹・右=凸・左=六角の右辺と共有）
-    const px = 102.3, py = 16, pw = 110, ph = 54;
+    // 囲い: パズルピース（上=凹・右=深めの凸で五角形の凹へ・左=六角の右辺と共有）
+    const px = 102.3, py = 12, pw = 110, ph = 54;
     const pe = { n: -1, e: 1, s: 0, w: 0 };
-    s += `<path d="${boxJ(px, py, pw, ph, pe, 8)}" class="shp-fill"/>` +
-         `<path d="${boxJ(px, py, pw, ph, pe, 8, 1, st.tab === 'castle')}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>`;
-    s += `<text class="tx-v" x="158" y="42">${D.castle}</text><text class="tx-s" x="158" y="57">${D.cfam}</text>`;
-    // 戦法: 駒形五角形（左の肩辺に凹=パズルの凸を受ける）
-    const cx0 = 216, cy0 = 14, cw = 106, ch0 = 56;
-    const sock = { s: -1, d: 10, c: .6 };
+    s += `<path d="${boxJ(px, py, pw, ph, pe, { n: 8, e: 12 })}" class="shp-fill"/>` +
+         `<path d="${boxJ(px, py, pw, ph, pe, { n: 8, e: 12 }, 1, st.tab === 'castle')}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
+         `<text class="tx-v" style="font-size:15px" x="158" y="44">囲い</text>`;
+    // 戦法: 駒形五角形（左の肩辺に凹=パズルの凸を受ける。c=辺上の位置をタブの高さに合わせる）
+    const cx0 = 216, cy0 = 10, cw = 106, ch0 = 56;
+    const sock = { s: -1, d: 10, c: .56 };
     s += `<path d="${piecePath(cx0, cy0, cw, ch0, sock, false)}" class="shp-fill"/>` +
-         `<path d="${piecePath(cx0, cy0, cw, ch0, sock, st.tab === 'tactic')}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>`;
-    s += `<text class="tx-v" x="269" y="42">${D.tactics[0]}</text>` +
-         `<text class="tx-s" x="269" y="57">${D.tactics.length > 1 ? `採用 ${D.tactics.length}` : D.cfam === '矢倉型' ? '角・採用 1' : '採用 1'}</text>`;
-    // 底辺の罫: 開いている層の下は描かない（型の底辺が開いて一覧に綴じる）
-    const spans = st.tab === 'castle' ? [[4, 102.3], [212, 322]] : [[4, 216], [322, 322]];
-    for (const [a, b] of spans) s += `<path d="M${a} 70H${b}" class="base"/>`;
+         `<path d="${piecePath(cx0, cy0, cw, ch0, sock, st.tab === 'tactic')}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
+         `<text class="tx-v" style="font-size:15px" x="269" y="44">戦法</text>`;
     svg.innerHTML = s;
   }
 
   // ---------- 案B: 型の三印 ----------
+  // 囲い・戦法のパラメータ名は型の内側、戦型は六角トグルの下に置く
   function paintB(svg, st) {
-    const D = DEMO[st.strat];
     let s = '';
     const CX = [55, 163, 271];
-    // 戦型: 小さな六角の対（1字＋飛車）
-    [[41.7, 30, 'furibisha', '振'], [70.3, 30, 'ibisha', '居']].forEach(([cx, cy, id, ch]) => {
+    // 戦型: 拡大した六角の対（1字＋飛車）
+    [[34.2, 30, 'furibisha', '振'], [75.8, 30, 'ibisha', '居']].forEach(([cx, cy, id, ch]) => {
       const on = st.strat === id;
-      s += `<path d="${roundPath(hexV(cx, cy, 16.5), 2)}" class="hx-fill${on ? ' on' : ''}"/>` +
-           `<text class="tx-big${on ? ' on' : ''}" style="font-size:11px" x="${cx}" y="${cy - 1}">${ch}</text>` +
-           `<text class="tx-s${on ? ' on' : ''}" style="font-size:7px" x="${cx}" y="${cy + 9}">飛車</text>`;
+      s += `<path d="${roundPath(hexV(cx, cy, 24), 2)}" class="hx-fill${on ? ' on' : ''}"/>` +
+           `<text class="tx-big${on ? ' on' : ''}" style="font-size:16px" x="${cx}" y="${cy - 1}">${ch}</text>` +
+           `<text class="tx-s${on ? ' on' : ''}" style="font-size:10px" x="${cx}" y="${cy + 13}">飛車</text>`;
     });
-    // 囲い: パズル（上=凸・左=凹・右=凸）
+    // 囲い: 少し縮小したパズル（上=凸・左=凹・右=凸）。名は共通サイズで内側に置く
     const pe = { n: 1, e: 1, s: 0, w: -1 };
-    s += `<path d="${boxJ(115, 8, 96, 52, pe, 6)}" class="shp-fill"/>` +
-         `<path d="${boxJ(115, 8, 96, 52, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
-         `<text class="tx-v" style="font-size:12px" x="163" y="30">${D.castle}</text>` +
-         `<text class="tx-s" x="163" y="45">${D.cfam}</text>`;
-    // 戦法: 駒形五角形
-    s += `<path d="${piecePath(223, 6, 96, 56, null, false)}" class="shp-fill"/>` +
-         `<path d="${piecePath(223, 6, 96, 56, null, false)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
-         `<text class="tx-v" style="font-size:12px" x="271" y="34">${D.tactics[0]}</text>` +
-         `<text class="tx-s" x="271" y="48">${D.tactics.length > 1 ? `採用 ${D.tactics.length}` : '採用 1'}</text>`;
-    // パラメータ名（型の下の見出し）
-    s += `<text class="tx-lb" x="${CX[0]}" y="78">戦型</text><text class="tx-lb" x="${CX[1]}" y="78">囲い</text><text class="tx-lb" x="${CX[2]}" y="78">戦法</text>`;
-    // 開いている層の型から一覧の罫へ点線の茎
+    s += `<path d="${boxJ(119, 10, 88, 48, pe, 6)}" class="shp-fill"/>` +
+         `<path d="${boxJ(119, 10, 88, 48, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
+         `<text class="tx-v" style="font-size:16px" x="163" y="41">囲い</text>`;
+    // 戦法: 少し縮小した駒形五角形。名は共通サイズで内側に置く
+    s += `<path d="${piecePath(227, 8, 88, 52, null, false)}" class="shp-fill"/>` +
+         `<path d="${piecePath(227, 8, 88, 52, null, false)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
+         `<text class="tx-v" style="font-size:16px" x="271" y="41">戦法</text>`;
+    // 囲い・戦法は形の内側にラベル。戦型のみ六角トグルの下に示す
     const sx = st.tab === 'castle' ? CX[1] : CX[2];
     s += `<path d="M${sx} 64V88" class="stem"/>`;
+    s += `<rect x="${CX[0] - 28}" y="67" width="56" height="21" fill="var(--bg)"/>` +
+         `<text class="tx-v" style="font-size:16px" x="${CX[0]}" y="83">戦型</text>`;
     s += `<path d="M4 88H322" class="base"/>`;
     svg.innerHTML = s;
   }
 
   // ---------- 案C: 三段の盤 ----------
+  // パラメータ名は段の左の軸（.rl）に載せる。枠の中はモチーフだけ
   function paintC(mock, st) {
-    const D = DEMO[st.strat];
     const [rStr, rCas, rTac] = mock.querySelectorAll('.swsvg');
     // 戦型: 線路・両駅の破線のホーム・滑走する墨の六角ノブ
     const dx = st.strat === 'furibisha' ? 0 : 172;
@@ -578,42 +576,40 @@ code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0
     // 囲い: 横長のパズルピース（左=凹・右=小さな凸）
     const pe = { n: 0, e: 1, s: 0, w: -1 };
     rCas.innerHTML =
-      `<path d="${boxJ(4, 2, 228, 30, pe, 6)}" class="shp-fill"/>` +
-      `<path d="${boxJ(4, 2, 228, 30, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
-      `<text x="18" y="20" style="font:700 12px/1 var(--font-b);fill:var(--fg)">${D.castle}<tspan class="tx-s" dx="10">${D.cfam}</tspan></text>`;
+      `<path d="${boxJ(4, 2, 224, 30, pe, 6)}" class="shp-fill"/>` +
+      `<path d="${boxJ(4, 2, 224, 30, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>`;
     // 戦法: 右へ指す五角形の帯
     rTac.innerHTML =
       `<path d="${chevPath(4, 2, 228, 30, 16)}" class="shp-fill"/>` +
-      `<path d="${chevPath(4, 2, 228, 30, 16)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
-      `<text x="18" y="20" style="font:700 12px/1 var(--font-b);fill:var(--fg)">${D.tactics.join('＋')}<tspan class="tx-s" dx="10">採用 ${D.tactics.length}</tspan></text>`;
+      `<path d="${chevPath(4, 2, 228, 30, 16)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>`;
     for (const r of mock.querySelectorAll('.row')) r.classList.toggle('on', r.dataset.row === st.tab);
   }
 
   // ---------- 案D: 根元の胞 ----------
+  // 枠の中はパラメータ名だけ（実効値は開いた一覧に委ねる）
   function paintD(svg, st) {
-    const D = DEMO[st.strat];
     let s = '';
     // 戦型の大きな胞（墨塗り・縦書き。押すと裏返る）＋裏面を示唆する小さな胞
+    // （もう一方は向きの側の辺に半分隠れて付く: 振=左・居=右）
     const other = st.strat === 'ibisha' ? '振' : '居';
-    s += `<path d="${roundPath(hexV(44, 41, 34), 3)}" class="hx-fill on"/>` +
+    const chipC = st.strat === 'ibisha' ? [9, 41] : [79, 41];
+    s += `<path d="${roundPath(hexV(chipC[0], chipC[1], 10), 1.5)}" class="hx-fill"/>` +
+         `<text class="tx-s" x="${chipC[0]}" y="${chipC[1] + 3}">${other}</text>` +
+         `<path d="${roundPath(hexV(44, 41, 34), 3)}" class="hx-fill on"/>` +
          [...STNAME[st.strat]].map((c, i) =>
            `<text class="tx-big on" style="font-size:15px" x="44" y="${26 + i * 15}">${c}</text>`).join('') +
-         `<path d="${roundPath(hexV(83, 66, 11), 1.5)}" class="hx-fill"/>` +
-         `<text class="tx-s" x="83" y="69">${other}</text>` +
          `<text class="tx-lb" x="44" y="82">戦型</text>`;
     // 胞から二つの枠へ茎
-    s += `<path d="M73 30C80 26 86 23 92 21" class="stem"/><path d="M73 54C80 56 86 58 92 60" class="stem"/>`;
+    s += `<path d="M73 30C80 26 86 23 92 23" class="stem"/><path d="M73 54C80 57 86 60 92 63" class="stem"/>`;
     // 囲い: 左に凹（戦型の向きから受ける）の横長ピース
     const pe = { n: 0, e: 1, s: 0, w: -1 };
-    s += `<path d="${boxJ(92, 8, 230, 30, pe, 6)}" class="shp-fill"/>` +
-         `<path d="${boxJ(92, 8, 230, 30, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
-         `<text x="114" y="27" style="font:700 9px/1 var(--font-b);fill:var(--muted);letter-spacing:.12em">囲い</text>` +
-         `<text x="150" y="27.5" style="font:800 13px/1 var(--font-d);fill:var(--fg)">${D.castle}<tspan style="font:600 8.5px/1 var(--font-b);fill:var(--muted)" dx="8">${D.cfam}</tspan></text>`;
+    s += `<path d="${boxJ(92, 8, 224, 30, pe, 6)}" class="shp-fill"/>` +
+         `<path d="${boxJ(92, 8, 224, 30, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
+         `<text class="tx-v" x="200" y="27.5">囲い</text>`;
     // 戦法: 右へ指す五角形
-    s += `<path d="${chevPath(92, 48, 230, 30, 16)}" class="shp-fill"/>` +
-         `<path d="${chevPath(92, 48, 230, 30, 16)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
-         `<text x="110" y="67" style="font:700 9px/1 var(--font-b);fill:var(--muted);letter-spacing:.12em">戦法</text>` +
-         `<text x="150" y="67.5" style="font:800 13px/1 var(--font-d);fill:var(--fg)">${D.tactics.join('＋')}<tspan style="font:600 8.5px/1 var(--font-b);fill:var(--muted)" dx="8">採用 ${D.tactics.length}</tspan></text>`;
+    s += `<path d="${chevPath(92, 48, 224, 30, 16)}" class="shp-fill"/>` +
+         `<path d="${chevPath(92, 48, 224, 30, 16)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
+         `<text class="tx-v" x="200" y="67.5">戦法</text>`;
     svg.innerHTML = s;
   }
 
