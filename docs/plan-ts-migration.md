@@ -5,11 +5,12 @@ dev.md の「TSへの移行」「囲いを型で表す」に対応する本格�
 ## 背景（現状）
 
 - ビルド不要の静的サイト。`window.Kakoi` 名前空間に各ファイルが IIFE で定義を足し、読み込み順は `js/manifest.js` が唯一の定義。index.html は manifest を読んで `<script>` を動的に挿入するため `file://` で動く
-- `js/` は55ファイル・約8.5k行（`data/` が約2.6k行、`tools/` が約2.9k行）。`"type": "commonjs"`、devDependency は `playwright-core` のみ
-- データは手書き JS（`tactics.js` 1228行など）。`'玉78 銀79 …'` の配置文字列や `from`/`family`/`castle` の id 参照の誤りは `validate-castles.js` を回すまで分からない
-- テストは `node:vm` + manifest で core/data/logic を1コンテキストに読み込む方式（`validate-castles.js`・`unit-test.js`）。`ui-check.js` はローカル http サーバー + Playwright なので `file://` 非依存
+- `js/` は62ファイル・約14.2k行（`data/` 約4.9k、`core/` 約3.7k、`ui/` 約4.6k、`screen/` 約1k）。`"type": "commonjs"`、devDependency は `playwright-core` のみ。TypeScript/tsc は未導入
+- データは手書き JS（`tactics.js` 約1.5k行など）。`'玉78 銀79 …'` の配置文字列や `from`/`family`/`castle` の id 参照の誤りは `validate-castles.js` を回すまで分からない
+- データ実測は89囲い・75戦法。テストは `node:vm` + manifest で core/data/logic を1コンテキストに読み込む方式（`validate-castles.js`・`unit-test.js`）。`unit-test.js` は196件。`ui-check.js` はローカル http サーバー + Playwright
 - 配布は GitHub Pages の静的配信（`mikanixonable.github.io/shogi/`）。`js/vendor/three.min.js` は UMD r152
 - design-refs HTML は実データをコピーして内蔵しており `js/` を直接読んでいない（移行で壊れない）
+- 主要な責務整理は完了: `tacticIds` 一本化、`catalog` 索引、`piece-rules`/`piece-pairing`、`screen/`、`rail-*`/`detail-view`。直近ではユーザーが制約フィールドの新デザインを作業中。E2E の既存 UI 前提を更新し、その作業が落ち着いてから型・ビルド導入を開始する
 
 ## 方針の選択
 
@@ -51,17 +52,17 @@ dev.md の「TSへの移行」「囲いを型で表す」に対応する本格�
 
 ## Phase 3：TS 化とモジュール化 [L]
 
-manifest の並び（core → data → logic → ui → modes → app）に沿って、ディレクトリ単位で `.js` → `.ts` に変えて `src/` へ移す。バンドルが都度再生成されるので、半分 TS・半分グローバル参照の混在状態でも `npm test` は通る。
+manifest の並び（core → data → logic → ui → screen → app）に沿って、ディレクトリ単位で `.js` → `.ts` に変えて `src/` へ移す。バンドルが都度再生成されるので、半分 TS・半分グローバル参照の混在状態でも `npm test` は通る。
 
 - **手順（各ステップで `npm run build && npm test`）**
   1. `src/types.ts` に Phase 1 の型を移し、`window.Kakoi` の型を `declare global` で manifest と突き合わせる
-  2. `core/` → `data/` → `ui/` → `modes/` → `app.js` の順に変換。ファイル内の `K.xxx` 参照を import に、`Kakoi.X = …` の定義を export に置き換える
+  2. `core/` → `data/` → `ui/` → `screen/` → `app.js` の順に変換。ファイル内の `K.xxx` 参照を import に、`Kakoi.X = …` の定義を export に置き換える
   3. `Kakoi.CASTLES.push(...)` 形式の data ファイルは `export const castlesIbisha = [...] satisfies Castle[]` 形式にし、`src/data/index.ts` で連結して `CASTLES` を export
   4. 全部 import 化したら `Kakoi` グローバルへの依存を消し、`js/`・`js/manifest.js`・index.html の動的挿入を削除。`?debug` 用の `window.__kakoi` だけ app.ts で立てる
 - **変換時の注意**
   - `module.exports` は一部ファイルに残っているが tools は vm で読んでおり実質未使用。移行で全部消してよい
   - DOM 系ファイルの `document.getElementById` は nullable になるので、起動時にまとめて null チェックするか `!` を使う方針を CLAUDE.md に書いておく
-  - 進行中の UI 作業（worktrees の並行ブランチ）と全ファイル変更が競合する。未コミット・未マージの作業が少ないタイミングで、短いコミットを manifest 順に積む。大きな機能ブランチがあるならそちらを先にマージする
+  - 進行中の UI 作業（制約フィールドの新デザイン等）と全ファイル変更が競合する。未コミット・未マージの作業が少なく、UI チェックも更新済みのタイミングで、短いコミットを manifest 順に積む。大きな機能ブランチがあるならそちらを先にマージする
 
 ## Phase 4：strict 化 [M〜L]
 
@@ -86,7 +87,7 @@ manifest の並び（core → data → logic → ui → modes → app）に沿�
 
 1. **ビルド不要方針の転換を受け入れるか** — dist コミット + file:// 維持なら利用者側の影響はほぼゼロ。 Actions ビルドに寄せるなら dist コミットは不要
 2. **file:// 対応を維持するか** — 維持するなら案C（IIFE バンドル）一択。捨てるなら案D（`type="module"` でバンドルすら不要）もあり
-3. **移行のタイミング** — 進行中の UI 改修（constraint バーのパズル化など）と全ファイル変更がぶつかる。区切りの良いところで一気にやる
+3. **移行のタイミング** — 進行中の UI 改修（制約フィールドの再設計など）と全ファイル変更がぶつかる。区切りの良いところで一気にやる
 4. **`kakoi.cjs` の公開面** — テストが使う API を洗って barrel に並べる（直近の「公開 API を狭める」コミットと同じ方向）
 
 ## 推奨の順序
