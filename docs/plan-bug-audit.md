@@ -87,8 +87,73 @@ validate-castles は 86囲い・68戦法 OK、警告7件は sources 1件のみ�
 - S4（メモの無制限増加）: evalMemo/judgeMemo/bandMemo/evalCache すべて共有 LRU 化済み
 - 歩の横滑りアニメーション（dev.md）: moveCost が歩・香の横・後退を null にして防止済み
 
+## 残課題の修正方針
+
+### R-1（P1）merge の 'ng' 接触を制約の ✕ にも届ける
+
+**設計判断**: 現状の「盤に赤印が出るが制約胞は無印」は、ユーザーに「両立」の誤認を与える。
+接触は選択の結果なので、制約の不一致としても表面化させる方が一貫する。
+
+**方針A（推奨）**: `deriveBoard` で merge の `contacts`（kind='ng' のみ、pawn は解消済みなので除く）
+を conflicts に接続する。帰属は接触した駒の role から層へ写す:
+
+1. `lead` → その側の該当戦法 id（`lead.square` と接触マスが一致する戦法。複数あれば共有扱い）
+2. `core` / `rest` → `'castle'`
+3. `setup` / `support` → layers なし（共有＝両側の全明示層にかかる）
+
+実装場所は `js/core/board-model.js` の `deriveBoard` 末尾: `merged.contacts` の 'ng' を
+`{ code:'CONTACT', squares:[c.sq], layers:[...], text:c.text }` の理由に変換し、
+`conflicts()` と同じ hitsLayer 規則で `d.ng[who].tactic[id]` / `d.ng[who].castle` に追記する。
+既存の表示経路（胞の ✕・点線・detail の理由一覧）にそのまま乗るので、
+UI 側の変更は原則不要。`text` は merge が作る説明文を流用（「3四で飛と飛が重なる」）。
+
+- 注意: 戦法の `lead.piece` が setup の駒と重なる場合など、片側にしか帰属しない接触もある。
+  その場合は帰属した側だけ ✕ を出す（もう片側は共有理由があれば全層）。
+- 後方互換: `d.ng` の形状は変えず理由を足すだけ。conflicts() 自体は pure のまま保ち、
+  接続は deriveBoard 側に閉じ込める（unit-test からも検査できる）。
+- 検証: 監査H節と同じ総当たりで「merge-ng が出たら必ず d.ng が空でない」ことを不変条件にする。
+  逆に d.ng があるのに接触が無いケース（従来の SQUARE/SIDE 系）はそのまま残す。
+
+**方針B（却下）**: 接触専用の警告ピルを河（labels 列）に出す案。実装は軽いが、
+「両立しない」が ✕ とピルの2系統に分かれ、既存の理由一覧・胞の強調と連動しないため。
+
+### R-2（P2）w=360 の胞タップ領域 44px 未満
+
+- 現状: 胞ボタンの実効高さが 31〜38px（viewBox の hex 実寸由来）。WCAG AA の 24px は満たすが
+  ui-check の 44px 基準を下回る。
+- 方針: `.cf-hit` の当たり矩形を、胞の外接矩形から行ピッチの中間まで上下に広げる
+  （`w2.y/h` の拡張。隣接行との重なりは半分ずつ折り合い、先勝ち or z-index で調整）。
+  ドミノ左右方向は既に胞+gap を含むので、主に縦の余白を `rowH*0.25` ずつ足す。
+- 合わせて `.cf-x`/`.cf-clear`（18px/22px）も、外側へはみ出した当たり判定を 24px 以上に広げる
+  （胞本体と重ならない右上方向の帯に限る）。
+- 検証: ui-check のタップ領域計測を流用し、w=360 で全胞 44px 未満の警告が消えるか
+  少なくとも悪化しないこと。広げすぎて隣の胞を誤タップしないことを目視で1件確認。
+
+### R-3（P2）`matchup.threat(null)` が作られた結果を返す
+
+- 方針: `matchup.threat(me, opp)` の先頭に `if (!me || !opp) return null;` を足す。
+- 呼び出し側の確認: 現行の到達可能な呼び出しはすべて非null
+  （`constraints.labels` はガード済み、`board-detail-view` は `other &&`、
+  compat は `layer==='castle' && opp` の内側）。戻り値が null になりうるのは
+  直接呼び出しだけなので、fitness 系の呼び出しは `th ? ... : 中立値` で受ける形にしておく。
+- 検証: `threat(null,null)===null`、`threat(me,null)===null` を unit-test に1行足す。
+
+### R-4（P3）`.dk-item` の scrollWidth 超過
+
+- 実質は `.dk-item[aria-current]::before`（right:-7px の ✓ バッジ）がカードの外へ
+  はみ出す設計。表示上の破綻ではない。
+- 方針: 見た目の意図（枠外に判子がかかる）を残すなら現状維持で「既知」とする。
+  静かにするなら `right:-1px` 内側寄せに変えるだけ。優先度は低い。
+
+### R-5（P3）モバイル小ボタンの scrollWidth 超過
+
+- `BUTTON.about` 等はアイコン表示に対し textContent が残って計測だけ超過している。
+- 方針: `.about` 系ボタンに `overflow:hidden`（または幅を text-indent で押し出した
+  視覚隠しに変更）を当てる。数行の CSS で済む。合わせて `aria-label` が残っていることを確認。
+
 ## 未着手・今後の候補
 
-- R-1 の設計判断（接触を制約の ✕ にも出すか、盤の印だけでよいか）
 - 将棋データの正確さの本格照合（今回は軽量チェックのみ。validate は通過）
 - `tools/` の使い捨てスクリプト（_repro 等）と .scratch-review の整理
+- 監査で使った不変条件（merge-ng→conflicts 到達・胞の可視性）を
+  unit-test / ui-check に恒常化するかどうか（R-1・F-2 の回帰防止になる）
