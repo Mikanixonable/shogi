@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>左ドック 切り替え部の型 — デザイン案</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* 左ドックの切り替え部（戦型＝振飛車/居飛車・囲い・戦法）の修正案。
+   要件: 振り飛車→振飛車 / 戦型=正六角形モチーフのトグル / 囲い=パズルのピース /
+   戦法=五角形など多角形 / 3パラメータは同じレイヤーなので並列に見せる。
+   モチーフは盤上の制約フィールドの言語（戦型=六角胞・囲い=継ぎ目の群れ・戦法=多角形）を
+   そのままドックに持ち込む。器は実寸（ドック 390px・中身 326px）。 */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f;
+  --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --gote-ink:#33507a;
+  --f-mino:#c8371f; --f-yagura:#33507a; --f-gangi:#4a6b3f;
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b;
+  --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --gote-ink:#8ea6cf;
+  --f-mino:#e2563b; --f-yagura:#8ea6cf; --f-gangi:#9cbf8a;
+  --t-rook:#e2563b; --t-silver:#8ea6cf; --t-kaku:#9cbf8a;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); scroll-behavior:smooth; }
+body { margin:0; font:14px/1.7 var(--font-b); color:var(--fg); background:var(--bg); }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+/* ===== ページの枠 ===== */
+.top { position:sticky; top:0; z-index:30; display:flex; gap:6px 14px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 12px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 10px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.top button { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; }
+.intro { max-width:1100px; margin:22px auto 0; padding:0 16px; color:var(--fg2); font-size:13.5px; }
+.intro ul { margin:6px 0 0; padding-left:1.3em; }
+section.plan { max-width:1100px; margin:40px auto 0; padding:0 16px 36px; border-bottom:1px solid var(--line); }
+section.plan h2 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:800 24px/1.3 var(--font-d); letter-spacing:.06em; }
+section.plan h2 .no { font:800 34px/1 var(--font-d); color:var(--accent); }
+section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-width:880px; }
+figure.demo { margin:0; display:flex; gap:36px; align-items:flex-start; flex-wrap:wrap; }
+.notes { font-size:12.5px; color:var(--fg2); display:flex; flex-direction:column; gap:10px; max-width:560px; }
+.notes h4 { margin:0 0 2px; font-size:12px; letter-spacing:.14em; color:var(--muted); }
+.notes ul { margin:0; padding-left:1.2em; }
+.notes .try { padding:8px 12px; border-left:2px solid var(--accent); background:var(--accent-soft); }
+table.spec { width:100%; max-width:1100px; border-collapse:collapse; margin-top:14px; font-size:12.5px; }
+table.spec th, table.spec td { text-align:left; padding:7px 12px 7px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+table.spec th { font-size:11px; letter-spacing:.14em; color:var(--muted); font-weight:600; white-space:nowrap; }
+code { font:500 .92em ui-monospace,monospace; background:var(--faint); padding:0 3px; }
+
+/* ===== 共通: 左ドックの器（実寸）と駒の見出し ===== */
+.rail { position:relative; width:390px; border-right:1px solid var(--line); }
+.rail .pg { padding:20px 32px 12px; }
+.binder { position:absolute; z-index:6; top:0; bottom:0; right:-17px; width:34px; display:flex; flex-direction:column;
+          justify-content:center; gap:12px; pointer-events:none; }
+.bpc { position:relative; width:34px; height:132px; pointer-events:auto; color:var(--muted); }
+.bpc .bd { position:absolute; inset:0; background:var(--line-2); clip-path:polygon(50% 0,100% 12%,100% 100%,0 100%,0 12%); }
+.bpc .bd::after { content:""; position:absolute; inset:1px; background:var(--bg); clip-path:polygon(50% 0,100% 12%,100% 100%,0 100%,0 12%); }
+.bpc.opp .bd { transform:scaleY(-1); }
+.bpc .v { position:absolute; inset:12px 0 0; display:flex; align-items:center; justify-content:center; gap:4px;
+          writing-mode:vertical-rl; font:700 14px/1 var(--font-d); letter-spacing:.28em; }
+.bpc.opp .v { inset:0 0 12px; }
+.bpc .v small { font:500 9px/1 var(--font-b); letter-spacing:.04em; }
+.bpc.sel { color:var(--ink, var(--fg)); }
+.bpc.sel .bd { background:var(--piece-edge); }
+.bpc.sel .bd::after { background:var(--piece-1); }
+
+/* ===== 共通: 切り替え部（.sw = svg + 透明ボタン。制約フィールドと同じ二層） ===== */
+.sw { position:relative; width:326px; }
+.sw svg { display:block; width:100%; height:auto; overflow:visible; }
+.sw .hit { position:absolute; z-index:2; border:0; padding:0; margin:0; background:transparent; cursor:pointer; border-radius:8px; }
+@media (hover:hover) { .sw .hit:hover { background:color-mix(in srgb,var(--fg) 5%,transparent); } }
+.sw .hit:focus-visible { outline:2px solid var(--fg); outline-offset:0; }
+
+/* svg 内のパーツ（クラス名は制約フィールドのものを踏襲） */
+.shp-fill { fill:var(--bg); stroke:none; }
+.shp-line { fill:none; stroke:var(--line-2); stroke-width:1.2; stroke-linejoin:round; }
+.shp-line.on { stroke:var(--accent); stroke-width:1.8; }
+.hx-fill { fill:var(--bg); stroke:var(--line-2); stroke-width:1.2; stroke-linejoin:round; }
+.hx-fill.on { fill:var(--fg); stroke:var(--fg); }
+.tx-lb  { font:700 9px/1 var(--font-b); fill:var(--muted); letter-spacing:.1em; text-anchor:middle; }
+.tx-v   { font:800 13px/1 var(--font-d); fill:var(--fg); text-anchor:middle; }
+.tx-v.on { fill:var(--bg); }
+.tx-s   { font:600 8.5px/1 var(--font-b); fill:var(--muted); text-anchor:middle; }
+.tx-s.on { fill:var(--bg); font-weight:700; }
+.tx-big { font:800 14px/1 var(--font-d); fill:var(--fg); text-anchor:middle; }
+.tx-big.on { fill:var(--bg); }
+.stem { fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:1 3; }
+.base { fill:none; stroke:var(--line-2); stroke-width:1; }
+.track { fill:none; stroke:var(--line-2); stroke-width:1; }
+.station { fill:none; stroke:var(--line-2); stroke-width:1.2; stroke-dasharray:2 2.5; }
+.knobg { transition:transform .3s var(--ease); }
+
+/* ===== 共通: スタブ（切り替え部の下にあるもの。実UIは変えない） ===== */
+.tstub { display:flex; align-items:center; gap:5px; margin:8px 0 8px; }
+.tstub .vchip { flex:none; padding:3px 10px; border:1px solid var(--line); font-size:11px; color:var(--fg2); }
+.tstub .vchip.on { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.tstub .sp { flex:1; }
+.tstub .sortst { font-size:11px; color:var(--muted); }
+.tstub .leg { display:grid; place-items:center; width:18px; height:18px; border:1px solid var(--line-2); border-radius:50%;
+              color:var(--muted); font:600 11px/1 var(--font-n); }
+.liststub { border-top:0; min-height:150px; }
+.liststub .cap { font:700 10px/1 var(--font-b); letter-spacing:.14em; color:var(--muted); margin:8px 0 6px; }
+.lgrid { display:flex; gap:7px; }
+.lcard { position:relative; width:96px; padding:0 0 5px; border:1px solid var(--line-2); }
+.lcard .th { height:56px; border-bottom:3px solid var(--fam,var(--line-2));
+             background:repeating-linear-gradient(90deg,var(--wood-line) 0 1px,transparent 1px 20%),
+                        linear-gradient(135deg,var(--wood-1),var(--wood-2)); }
+.lcard .nm { margin-top:4px; text-align:center; font:600 11px/1.25 var(--font-b); }
+.lcard.cur { outline:2.5px solid var(--accent); outline-offset:1px; }
+.lcard.cur::before { content:"✓"; position:absolute; z-index:3; top:-8px; right:-7px; width:16px; height:16px;
+                     border-radius:50%; background:var(--accent); color:#fbf6ea; font:700 10px/16px var(--font-b); text-align:center; }
+.lrow { display:flex; align-items:center; gap:7px; margin-bottom:7px; }
+.lrow .pz { display:grid; place-items:center; width:22px; height:24px; padding-top:3px; flex:none;
+            font:800 12px/1 var(--font-d); color:var(--bg); background:var(--tc,var(--t-rook));
+            clip-path:polygon(50% 0,86% 14%,100% 100%,0 100%,14% 14%); }
+.lrow .tls { display:flex; flex-wrap:wrap; gap:5px; }
+.ltl { width:60px; padding:3px 1px 4px; border:1px solid var(--line-2); border-top:3px solid var(--tc,var(--t-rook));
+       text-align:center; font:600 11px/1.2 var(--font-b); }
+.ltl.cur { border-color:var(--tc); background:var(--tc); color:#fbf6ea; }
+
+/* ===== 0. いま（比較用。実ドックの再現） ===== */
+.k0 .h { display:flex; align-items:flex-end; gap:10px; border-bottom:1px solid var(--line-2); margin-bottom:8px; }
+.k0 .strat { display:flex; margin-bottom:1px; }
+.k0 .strat button { border:0; background:none; padding:7px 9px 6px; font:700 13px/1 var(--font-b); letter-spacing:.05em;
+                    color:var(--muted); cursor:pointer; white-space:nowrap; }
+.k0 .strat button[aria-pressed="true"] { color:var(--fg); font-weight:800; box-shadow:inset 0 -2.5px 0 var(--accent); }
+.k0 .tabs { display:flex; flex:1; height:42px; margin-bottom:-1px; padding-left:4px; }
+.k0 .tabs button { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; height:41px;
+                   border:1px solid var(--line-2); border-radius:9px 9px 0 0;
+                   background:color-mix(in srgb,var(--fg) 4%,var(--bg));
+                   font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted); cursor:pointer; }
+.k0 .tabs button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
+.k0 .tabs button[aria-pressed="true"] { z-index:1; border-color:var(--accent-2); border-bottom-color:var(--bg);
+                                       background:var(--bg); color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); font-weight:800; }
+.k0 .liststub { border-top:0; }
+
+/* ===== A. つながる帯 — 六角の対・パズル・五角形が辺を共有する一本の帯 ===== */
+.kA .sw { height:auto; }
+
+/* ===== B. 型の三印 — 同じ器に3つの型が浮かぶ標本 ===== */
+/* ===== C. 三段の盤 — パラメータごとの段 ===== */
+.kC .row { display:flex; align-items:center; gap:10px; }
+.kC .row + .row { margin-top:7px; }
+.kC .rl { flex:none; width:3em; font:700 11px/1 var(--font-b); letter-spacing:.14em; color:var(--muted); text-align:right; }
+.kC .rf { position:relative; flex:1; }
+.kC .rf svg { display:block; width:100%; height:auto; }
+.kC .row.on .rl { color:var(--fg); }
+.kC .row.on .rl::after { content:""; display:block; height:2px; margin-top:4px; background:var(--accent); }
+
+/* ===== D. 根元の胞 — 戦型の大きな胞に囲い・戦法が連なる ===== */
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>左ドック 切り替え部の型（実寸）</h1>
+  <nav>
+    <a href="#k0">0 いま</a><a href="#kA">A つながる帯</a><a href="#kB">B 型の三印</a>
+    <a href="#kC">C 三段の盤</a><a href="#kD">D 根元の胞</a><a href="#spec">部品仕様</a>
+  </nav>
+  <span class="sp"></span>
+  <button type="button" id="themeBtn">明／暗</button>
+</header>
+
+<div class="intro">
+  <p>左ドックの切り替え部（戦型＝<b>振飛車</b>／居飛車・囲い・戦法）を、盤上の制約フィールドと同じモチーフで作り直す案です。<b>三つのパラメータは同じレイヤーの選択肢</b>なので、帯・格子・段・根元の4つの配置で「並列に見える」形を探ります。すべて実寸（ドック 390px・中身 326px）で、六角形トグルと囲い／戦法タブは実際に動きます。下の一覧はスタブです。</p>
+  <ul>
+    <li>モチーフの対応: <b>戦型=正六角形</b>（盤上の戦型胞と同じ。頂点が上）・<b>囲い=パズルのピース</b>（駒つぎの凹凸）・<b>戦法=五角形</b>（駒のシルエット）。</li>
+    <li>表記は「振飛車」。実装時は <code>STRATEGIES.furibisha.label</code> と aria-label を改める（本文中の「振り飛車」はコンテンツ側の判断。部品仕様に一覧）。</li>
+    <li>色の決まりは変えない: 選択の印=朱、戦型のON=墨の塗り、フォーカス=墨の輪。</li>
+  </ul>
+</div>
+
+<main id="plans">
+
+  <!-- ============ 0 いま ============ -->
+  <section class="plan" id="k0">
+    <h2><span class="no">0</span>いま（比較用）</h2>
+    <p class="lead">左が戦型の絞り込み（文字セグメント）、右が層タブ（紙タブ）。二つの要素は別々の語彙で、並列感はない。振り飛車は旧表記。</p>
+    <figure class="demo">
+      <div class="rail k0">
+        <div class="pg">
+          <div class="h">
+            <div class="strat">
+              <button type="button" data-act="strat" data-v="furibisha">振り飛車</button>
+              <button type="button" data-act="strat" data-v="ibisha" aria-pressed="true">居飛車</button>
+            </div>
+            <div class="tabs">
+              <button type="button" data-act="tab" data-v="castle" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+              <button type="button" data-act="tab" data-v="tactic"><svg viewBox="0 0 24 24"><path d="M12 3.2 18.6 6.7 20.2 20.5H3.8L5.4 6.7Z"/><path d="M8.6 14.6 15.4 8.4M15.4 8.4h-4.2M15.4 8.4v4.2"/></svg>戦法</button>
+            </div>
+          </div>
+          <div class="tstub"></div>
+          <div class="liststub" data-list></div>
+        </div>
+        <div class="binder"><span class="bpc opp"><i class="bd"></i><span class="v"><b>相手</b><small>△</small></span></span><span class="bpc sel"><i class="bd"></i><span class="v"><b>自分</b><small>▲</small></span></span></div>
+      </div>
+      <div class="notes">
+        <div><h4>構造</h4><ul>
+          <li>戦型セグメント（絞り込み）と層タブ（一覧の切替）が同じ行に同居。どちらが「上の概念」か見えにくい。</li>
+          <li>戦型は盤上では大きな六角胞なのに、ドックでは文字だけ。</li>
+        </ul></div>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============ A つながる帯 ============ -->
+  <section class="plan" id="kA">
+    <h2><span class="no">A</span>つながる帯</h2>
+    <p class="lead">三つの型が辺を共有して一本の帯になる。六角形の対（振飛車|居飛車）の右辺にパズルピースがつながり、その右の凸タブが五角形の凹に刺さる。<b>「同じレイヤーの選択肢」を、文字通りつながった形で示す</b>案。開いている層（囲い／戦法）は底辺が開いて一覧に綴じる。</p>
+    <figure class="demo">
+      <div class="rail kA">
+        <div class="pg">
+          <div class="sw" data-mock="A">
+            <svg class="swsvg" viewBox="0 0 326 76" aria-hidden="true"></svg>
+            <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:9.5px;top:14px;width:46px;height:54px" aria-label="戦型を振飛車に絞る"></button>
+            <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:56px;top:14px;width:47px;height:54px" aria-label="戦型を居飛車に絞る"></button>
+            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:103px;top:14px;width:110px;height:56px" aria-label="囲いの一覧を開く"></button>
+            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:218px;top:12px;width:104px;height:60px" aria-label="戦法の一覧を開く"></button>
+          </div>
+          <div class="tstub"></div>
+          <div class="liststub" data-list></div>
+        </div>
+        <div class="binder"><span class="bpc opp"><i class="bd"></i><span class="v"><b>相手</b><small>△</small></span></span><span class="bpc sel"><i class="bd"></i><span class="v"><b>自分</b><small>▲</small></span></span></div>
+      </div>
+      <div class="notes">
+        <div><h4>よいところ</h4><ul>
+          <li>三つが物理的につながるので「同じレイヤー」が一目で分かる。盤上の蜂の巣と同じ「辺を共有する」言語。</li>
+          <li>型の中に実効値（美濃囲い／四間飛車）が見えるので、ヘッダだけで今の条件が読める。</li>
+        </ul></div>
+        <div><h4>気になるところ</h4><ul>
+          <li>凹凸の継ぎ目はこの幅（326px）ぎりぎり。文字が窮屈（囲い名は4〜5字まで）。</li>
+          <li>戦型の対が一覧に綴じない（絞り込みなので当然）が、帯に同化して「タブの一種」に見える危うさは残る。</li>
+        </ul></div>
+        <p class="try">動かしてみる: 六角形を押すと戦型が切り替わり、囲い・戦法の中身も連動して変わる。パズル／五角形を押すと開く一覧が切り替わり、開いている側の底辺が一覧に綴じる。</p>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============ B 型の三印 ============ -->
+  <section class="plan" id="kB">
+    <h2><span class="no">B</span>型の三印</h2>
+    <p class="lead">三つの型を同じ大きさの枡目に一つずつ収めた標本。型の下にパラメータ名（戦型・囲い・戦法）を添え、開いている層の型から一覧の罫へ点線の茎を垂らす（盤上の戦型胞→群れの茎と同じ決まり）。整列が最も素直な「並列」。</p>
+    <figure class="demo">
+      <div class="rail kB">
+        <div class="pg">
+          <div class="sw" data-mock="B">
+            <svg class="swsvg" viewBox="0 0 326 92" aria-hidden="true"></svg>
+            <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:27px;top:12px;width:29px;height:36px" aria-label="戦型を振飛車に絞る"></button>
+            <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:56px;top:12px;width:29px;height:36px" aria-label="戦型を居飛車に絞る"></button>
+            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:115px;top:2px;width:96px;height:64px" aria-label="囲いの一覧を開く"></button>
+            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:223px;top:0;width:96px;height:66px" aria-label="戦法の一覧を開く"></button>
+          </div>
+          <div class="tstub"></div>
+          <div class="liststub" data-list></div>
+        </div>
+        <div class="binder"><span class="bpc opp"><i class="bd"></i><span class="v"><b>相手</b><small>△</small></span></span><span class="bpc sel"><i class="bd"></i><span class="v"><b>自分</b><small>▲</small></span></span></div>
+      </div>
+      <div class="notes">
+        <div><h4>よいところ</h4><ul>
+          <li>等間隔・等重量の三つ並び。パラメータ名が揃って見下ろせるので読み違えにくい。</li>
+          <li>型は独立しているので、凹凸を無理に合わせずそれぞれ最適な大きさにできる（戦法の五角形は駒形）。</li>
+          <li>茎で「どの一覧が開いているか」を示すので、紙タブより薄く済む。</li>
+        </ul></div>
+        <div><h4>気になるところ</h4><ul>
+          <li>六角形が小さい（r=16.5）ので「振飛車」の3字が入らず、大きな1字＋小さな「飛車」の組み合わせになる。</li>
+          <li>茎の点線は繊細。遠目には薄い。</li>
+        </ul></div>
+        <p class="try">六角形を押すと墨の塗りが移る。囲い／戦法を押すと茎がその型へ移り、下の一覧が変わる。</p>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============ C 三段の盤 ============ -->
+  <section class="plan" id="kC">
+    <h2><span class="no">C</span>三段の盤</h2>
+    <p class="lead">パラメータごとに一段。戦型は線路の両駅を結ぶ滑走する六角形（振飛車=左へ、居飛車=右へ。飛車の振る向きそのまま）、囲いは横長のパズルピース、戦法は右へ指す五角形。各段は同じ高さ・同じ左の軸で揃えて「並列」を作る。文字が一番よく読める。</p>
+    <figure class="demo">
+      <div class="rail kC">
+        <div class="pg">
+          <div class="swC" data-mock="C">
+            <div class="row" data-row="strat">
+              <span class="rl">戦型</span>
+              <div class="rf">
+                <svg class="swsvg" viewBox="0 0 236 40" aria-hidden="true"></svg>
+                <button type="button" class="hit" data-act="strat" data-v="furibisha" style="left:4%;top:0;width:19%;height:100%" aria-label="戦型を振飛車に絞る"></button>
+                <button type="button" class="hit" data-act="strat" data-v="ibisha" style="left:76%;top:0;width:19%;height:100%" aria-label="戦型を居飛車に絞る"></button>
+              </div>
+            </div>
+            <div class="row" data-row="castle">
+              <span class="rl">囲い</span>
+              <div class="rf">
+                <svg class="swsvg" viewBox="0 0 236 34" aria-hidden="true"></svg>
+                <button type="button" class="hit" data-act="tab" data-v="castle" style="left:0;top:0;width:100%;height:100%" aria-label="囲いの一覧を開く"></button>
+              </div>
+            </div>
+            <div class="row" data-row="tactic">
+              <span class="rl">戦法</span>
+              <div class="rf">
+                <svg class="swsvg" viewBox="0 0 236 34" aria-hidden="true"></svg>
+                <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:0;top:0;width:100%;height:100%" aria-label="戦法の一覧を開く"></button>
+              </div>
+            </div>
+          </div>
+          <div class="tstub"></div>
+          <div class="liststub" data-list></div>
+        </div>
+        <div class="binder"><span class="bpc opp"><i class="bd"></i><span class="v"><b>相手</b><small>△</small></span></span><span class="bpc sel"><i class="bd"></i><span class="v"><b>自分</b><small>▲</small></span></span></div>
+      </div>
+      <div class="notes">
+        <div><h4>よいところ</h4><ul>
+          <li>「振飛車=左・居飛車=右」のスライドで、飛車を振る向きとUIの向きが一致する。</li>
+          <li>段のリズムが一定なので、狭い画面（モバイル）にもそのまま縮めやすい。ラベルが明確。</li>
+        </ul></div>
+        <div><h4>気になるところ</h4><ul>
+          <li>縦に3段使う（約118px）。ヘッダが一番重い案。</li>
+          <li>戦型だけ仕組みが違う（スライダー）ので、三つの「同格感」はA・Bより弱い。</li>
+        </ul></div>
+        <p class="try">駅のどちらかを押すと六角形のノブが滑る。囲い／戦法の段を押すと段の印が動き、一覧が切り替わる。</p>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============ D 根元の胞 ============ -->
+  <section class="plan" id="kD">
+    <h2><span class="no">D</span>根元の胞</h2>
+    <p class="lead">盤上の制約フィールドをそのまま縮小したような構図。左に戦型の大きな墨の胞（押すと駒のように裏返って 振飛車⇄居飛車）、その右に囲いのピースと戦法の五角形が2段で連なる。点線の茎が胞から二つの枠へ伸びる。戦型が「根元」で囲い・戦法が「枝」という本来の従属関係を形にする案。</p>
+    <figure class="demo">
+      <div class="rail kD">
+        <div class="pg">
+          <div class="sw" data-mock="D">
+            <svg class="swsvg" viewBox="0 0 326 84" aria-hidden="true"></svg>
+            <button type="button" class="hit" data-act="strat" data-v="flip" style="left:10px;top:6px;width:68px;height:72px" aria-label="戦型を切り替える"></button>
+            <button type="button" class="hit" data-act="tab" data-v="castle" style="left:92px;top:4px;width:230px;height:36px" aria-label="囲いの一覧を開く"></button>
+            <button type="button" class="hit" data-act="tab" data-v="tactic" style="left:92px;top:44px;width:230px;height:36px" aria-label="戦法の一覧を開く"></button>
+          </div>
+          <div class="tstub"></div>
+          <div class="liststub" data-list></div>
+        </div>
+        <div class="binder"><span class="bpc opp"><i class="bd"></i><span class="v"><b>相手</b><small>△</small></span></span><span class="bpc sel"><i class="bd"></i><span class="v"><b>自分</b><small>▲</small></span></span></div>
+      </div>
+      <div class="notes">
+        <div><h4>よいところ</h4><ul>
+          <li>盤上の胞と同じ墨の六角形＋縦書きで、盤とドックの対応が最も強い。</li>
+          <li>横幅を取らないので、囲い・戦法の枠が広く、名が5〜6字でも読める。</li>
+        </ul></div>
+        <div><h4>気になるところ</h4><ul>
+          <li>三つは「並列」ではなく「根元と枝」。要件の並列感とは発想が違う（従属を示すならこちらが正しい）。</li>
+          <li>もう一方の戦型が隠れる（裏面の小さい胞で示唆する）。トグルとしては発見性が低い。</li>
+        </ul></div>
+        <p class="try">大きな胞を押すと裏返るように戦型が切り替わる。囲い・戦法の枠を押すと一覧が切り替わる。</p>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============ spec ============ -->
+  <section class="plan" id="spec">
+    <h2><span class="no">§</span>部品仕様と比較</h2>
+    <p class="lead">共通の決まり（実装時の規約案）と、四案の比較表。</p>
+    <table class="spec">
+      <thead><tr><th></th><th>A つながる帯</th><th>B 型の三印</th><th>C 三段の盤</th><th>D 根元の胞</th></tr></thead>
+      <tbody>
+        <tr><th>並列感</th><td>辺の共有で最も強い（三つが一続き）</td><td>等間隔の標本。素直</td><td>段のリズム。同格だが機構が違う</td><td>根元と枝（従属。並列とは別の答え）</td></tr>
+        <tr><th>高さ</th><td>76px</td><td>92px</td><td>約118px</td><td>84px</td></tr>
+        <tr><th>戦型の見え方</th><td>両方が常に見える（2胞）</td><td>両方が常に見える（小）</td><td>駅＋滑走ノブ（向きが意味）</td><td>片面のみ＋裏面チップ</td></tr>
+        <tr><th>文字の収まり</th><td>厳しめ（値は4〜5字）</td><td>標準</td><td>最もよい（値は6字超も可）</td><td>よい（枠が広い）</td></tr>
+        <tr><th>一覧との綴じ</th><td>開いている型の底辺が開く</td><td>茎の点線</td><td>段の左の朱印</td><td>枠の朱縁</td></tr>
+        <tr><th>実装量の目安</th><td>多い（継（継ぎ目の幾何）</td><td>中（型は独立で簡単）</td><td>少ない（SVG3枚）</td><td>少ない</td></tr>
+      </tbody>
+    </table>
+    <div class="notes" style="max-width:none;margin-top:18px">
+      <div><h4>共通の決まり</h4><ul>
+        <li>モチーフ: 戦型=正六角形（頂点が上、盤上の胞と同じ向き）／囲い=パズルピース（凹凸は制約リファレンス v6 の浅い突起の曲線を流用）／戦法=駒のシルエット五角形（.pt-tile と同じ頂点比 50-86-100-0-14）。</li>
+        <li>状態: 戦型のON=胞の墨の墨塗り（盤上と同じ）。開いている一覧=型の朱縁か綴じ。選択中の値=型の中の文字。implied（既定値で補った値）は45°網掛け＋破線で例外的に薄く。</li>
+        <li>当たり判定: svg の形に沿わず、制約フィールドと同じく透明な矩形ボタンを重ねる（ロービング tabindex・矢印キー対応は現行どおり）。</li>
+        <li>改名: 「振飛車」は <code>js/data/strategies.js</code> の label とドックの aria-label。本文中の「振り飛車」（相振り飛車・角交換振り飛車を含む戦型名・説明文・ヘッダの紹介文）は別途どこまで改めるか決める。</li>
+        <li>狭い画面（979px以下）: いま戦型セグメントは「並べ方」の行へ、バインダーはタブ行へ移る。案B/Cはそのまま縮めやすい、案Aは継、案Aは継ぎ目が詰まるので凹凸を浅くするかB相当の並びに切り替える。</li>
+      </ul></div>
+      <p class="try">推奨は <b>案A（つながる帯）</b>: 「同じレイヤー」を形そのもので示せるのはこれだけで、盤上の蜂の巣と言語が揃う。素直さ優先なら案B。従属関係（戦型→囲い・戦法）を教えたいなら案Dが実は正しいモデル。</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('shogi-theme', root.dataset.theme); } catch (e) {}
+  });
+
+  const PI = Math.PI, f1 = n => +n.toFixed(2), pt = p => `${f1(p[0])} ${f1(p[1])}`;
+  const polyV = (cx, cy, r, n, rot = -90) => Array.from({ length: n }, (_, i) => {
+    const a = (rot + i * 360 / n) * PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+  const hexV = (cx, cy, r) => polyV(cx, cy, r, 6, -90);   // 頂点が上の正六角形
+  const polyPath = pts => 'M' + pts.map(pt).join('L') + 'Z';
+  // 角をわずかに丸める（constraint-field.js の roundPath と同じ）
+  const roundPath = (pts, r = 2) => {
+    const n = pts.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n];
+      const to = q => { const dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy); return [p[0] + dx / d * r, p[1] + dy / d * r]; };
+      out.push(`${i ? 'L' : 'M'}${pt(to(a))}Q${pt(p)} ${pt(to(b))}`);
+    }
+    return out.join('') + 'Z';
+  };
+  // パズルの凹凸（design-refs-constraint-puzzle-v6 の浅い突起。s=+1 出 / -1 入。c=辺上の中心位置）
+  function jig(p0, p1, s = 0, d = 7, w = 1, c = .5) {
+    if (!s) return `L${pt(p1)}`;
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy);
+    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+    const P = (t, o = 0) => { const tt = c + (t - .5) * w; return [p0[0] + ux * tt * L + nx * o * s, p0[1] + uy * tt * L + ny * o * s]; };
+    return `L${pt(P(.30))}` +
+      `C${pt(P(.315, -.09 * d))} ${pt(P(.355, -.08 * d))} ${pt(P(.395, .18 * d))}` +
+      `C${pt(P(.415, .38 * d))} ${pt(P(.425, .52 * d))} ${pt(P(.40, .68 * d))}` +
+      `C${pt(P(.375, .88 * d))} ${pt(P(.36, 1.02 * d))} ${pt(P(.42, 1.13 * d))}` +
+      `C${pt(P(.45, 1.19 * d))} ${pt(P(.55, 1.19 * d))} ${pt(P(.58, 1.13 * d))}` +
+      `C${pt(P(.64, 1.02 * d))} ${pt(P(.625, .88 * d))} ${pt(P(.60, .68 * d))}` +
+      `C${pt(P(.575, .52 * d))} ${pt(P(.585, .38 * d))} ${pt(P(.605, .18 * d))}` +
+      `C${pt(P(.645, -.08 * d))} ${pt(P(.685, -.09 * d))} ${pt(P(.70))}` +
+      `L${pt(p1)}`;
+  }
+  // 直方体のピース（e={n,e,s,w} は各辺の凹凸）。bottom=開いて一覧に綴じる用の開いた輪郭も返せる
+  const boxJ = (x, y, w, h, e, d = 7, jw = 1, openS = false) => {
+    const head = openS ? `M${pt([x, y + h])}` : `M${pt([x, y])}`;
+    const seq = openS
+      ? jig([x, y + h], [x, y], e.w, d, jw) + jig([x, y], [x + w, y], e.n, d, jw) + jig([x + w, y], [x + w, y + h], e.e, d, jw)
+      : jig([x, y], [x + w, y], e.n, d, jw) + jig([x + w, y], [x + w, y + h], e.e, d, jw) +
+        jig([x + w, y + h], [x, y + h], e.s, d, jw) + jig([x, y + h], [x, y], e.w, d, jw) + 'Z';
+    return head + seq;
+  };
+  // 駒のシルエット五角形（.pt-tile の頂点比）。左の肩辺に凹を付けられる
+  const pieceV = (x, y, w, h) => [[x + w * .5, y], [x + w * .86, y + h * .14], [x + w, y + h], [x, y + h], [x + w * .14, y + h * .14]];
+  const piecePath = (x, y, w, h, sock, openBottom) => {
+    const [t, ur, br, bl, ul] = pieceV(x, y, w, h);
+    const left = jig(bl, ul, sock ? sock.s : 0, sock ? sock.d : 0, .72, sock ? sock.c : .5);
+    return openBottom
+      ? `M${pt(bl)}` + left + `L${pt(t)}L${pt(ur)}L${pt(br)}`
+      : `M${pt(t)}L${pt(ur)}L${pt(br)}L${pt(bl)}` + left + 'Z';
+  };
+  // 右へ指す五角形の帯（案C/D の戦法フィールド）
+  const chevPath = (x, y, w, h, tip = 18) =>
+    `M${f1(x)} ${f1(y)}L${f1(x + w - tip)} ${f1(y)}L${f1(x + w)} ${f1(y + h / 2)}L${f1(x + w - tip)} ${f1(y + h)}L${f1(x)} ${f1(y + h)}Z`;
+
+  // ---------- 見本データ（戦型で中身が連動して変わる） ----------
+  const DEMO = {
+    ibisha:    { castle: '矢倉',     cfam: '矢倉型', tactics: ['角換わり'],       castub: ['矢倉', '雁木', '舟囲い'],
+                 trows: [['角', ['角換わり', '筋違い角'], 'var(--t-kaku)'], ['銀', ['腰掛け銀', '棒銀'], 'var(--t-silver)']] },
+    furibisha: { castle: '美濃囲い', cfam: '美濃型', tactics: ['四間飛車', '向かい飛車'], castub: ['美濃囲い', '高美濃', '金無双'],
+                 trows: [['飛', ['四間飛車', '三間飛車', '中飛車'], 'var(--t-rook)']] },
+  };
+  const STNAME = { ibisha: '居飛車', furibisha: '振飛車' };
+
+  // ---------- スタブ（一覧・道具行。実UIの再現ではなく場を埋めるもの） ----------
+  const toolsStub = `<span class="vchip on">すべて</span><span class="vchip">相居飛車</span><span class="vchip">対抗形</span>` +
+    `<span class="sp"></span><span class="sortst">並べ方 ▾</span><span class="leg">?</span>`;
+  function stubList(el, tab, strat) {
+    const D = DEMO[strat];
+    if (tab === 'castle') {
+      el.innerHTML = `<div class="cap">系統別 ▸ 囲い</div><div class="lgrid">` +
+        D.castub.map((n, i) =>
+          `<div class="lcard${i === 0 ? ' cur' : ''}" style="--fam:var(--f-${i === 0 ? 'yagura' : 'mino'})">` +
+          `<div class="th"></div><div class="nm">${n}</div></div>`).join('') + `</div>`;
+    } else {
+      el.innerHTML = `<div class="cap">駒棚 ▸ 戦法</div>` + D.trows.map(([pz, ns, tc]) =>
+        `<div class="lrow"><span class="pz" style="--tc:${tc}">${pz}</span><span class="tls">` +
+        ns.map((n, i) => `<span class="ltl${i === 0 ? ' cur' : ''}" style="--tc:${tc}">${n}</span>`).join('') +
+        `</span></div>`).join('');
+    }
+  }
+
+  // ---------- 案A: つながる帯 ----------
+  function paintA(svg, st) {
+    const D = DEMO[st.strat];
+    let s = '';
+    // パラメータ名（帯の上の小さな軸ラベル）
+    s += `<text class="tx-lb" x="56" y="9">戦型</text><text class="tx-lb" x="158" y="9">囲い</text><text class="tx-lb" x="269" y="9">戦法</text>`;
+    // 戦型: 正六角形の対（辺を共有）。左=振を共有）。左=振飛車（飛車が左へ）右=居飛車。ON=墨塗り
+    const HXC = [[33, 40, 'furibisha', '振'], [79.8, 40, 'ibisha', '居']];
+    for (const [cx, cy, id, ch] of HXC) {
+      const on = st.strat === id;
+      s += `<path d="${roundPath(hexV(cx, cy, 26), 2.5)}" class="hx-fill${on ? ' on' : ''}"/>` +
+           `<text class="tx-big${on ? ' on' : ''}" x="${cx}" y="${cy - 1}">${ch}</text>` +
+           `<text class="tx-s${on ? ' on' : ''}" x="${cx}" y="${cy + 12}">飛車</text>`;
+    }
+    // 囲い: パズルピース（上=凹・右=凸・左=六角の右辺と共有）
+    const px = 102.3, py = 16, pw = 110, ph = 54;
+    const pe = { n: -1, e: 1, s: 0, w: 0 };
+    s += `<path d="${boxJ(px, py, pw, ph, pe, 8)}" class="shp-fill"/>` +
+         `<path d="${boxJ(px, py, pw, ph, pe, 8, 1, st.tab === 'castle')}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>`;
+    s += `<text class="tx-v" x="158" y="42">${D.castle}</text><text class="tx-s" x="158" y="57">${D.cfam}</text>`;
+    // 戦法: 駒形五角形（左の肩辺に凹=パズルの凸を受ける）
+    const cx0 = 216, cy0 = 14, cw = 106, ch0 = 56;
+    const sock = { s: -1, d: 10, c: .6 };
+    s += `<path d="${piecePath(cx0, cy0, cw, ch0, sock, false)}" class="shp-fill"/>` +
+         `<path d="${piecePath(cx0, cy0, cw, ch0, sock, st.tab === 'tactic')}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>`;
+    s += `<text class="tx-v" x="269" y="42">${D.tactics[0]}</text>` +
+         `<text class="tx-s" x="269" y="57">${D.tactics.length > 1 ? `採用 ${D.tactics.length}` : D.cfam === '矢倉型' ? '角・採用 1' : '採用 1'}</text>`;
+    // 底辺の罫: 開いている層の下は描かない（型の底辺が開いて一覧に綴じる）
+    const spans = st.tab === 'castle' ? [[4, 102.3], [212, 322]] : [[4, 216], [322, 322]];
+    for (const [a, b] of spans) s += `<path d="M${a} 70H${b}" class="base"/>`;
+    svg.innerHTML = s;
+  }
+
+  // ---------- 案B: 型の三印 ----------
+  function paintB(svg, st) {
+    const D = DEMO[st.strat];
+    let s = '';
+    const CX = [55, 163, 271];
+    // 戦型: 小さな六角の対（1字＋飛車）
+    [[41.7, 30, 'furibisha', '振'], [70.3, 30, 'ibisha', '居']].forEach(([cx, cy, id, ch]) => {
+      const on = st.strat === id;
+      s += `<path d="${roundPath(hexV(cx, cy, 16.5), 2)}" class="hx-fill${on ? ' on' : ''}"/>` +
+           `<text class="tx-big${on ? ' on' : ''}" style="font-size:11px" x="${cx}" y="${cy - 1}">${ch}</text>` +
+           `<text class="tx-s${on ? ' on' : ''}" style="font-size:7px" x="${cx}" y="${cy + 9}">飛車</text>`;
+    });
+    // 囲い: パズル（上=凸・左=凹・右=凸）
+    const pe = { n: 1, e: 1, s: 0, w: -1 };
+    s += `<path d="${boxJ(115, 8, 96, 52, pe, 6)}" class="shp-fill"/>` +
+         `<path d="${boxJ(115, 8, 96, 52, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
+         `<text class="tx-v" style="font-size:12px" x="163" y="30">${D.castle}</text>` +
+         `<text class="tx-s" x="163" y="45">${D.cfam}</text>`;
+    // 戦法: 駒形五角形
+    s += `<path d="${piecePath(223, 6, 96, 56, null, false)}" class="shp-fill"/>` +
+         `<path d="${piecePath(223, 6, 96, 56, null, false)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
+         `<text class="tx-v" style="font-size:12px" x="271" y="34">${D.tactics[0]}</text>` +
+         `<text class="tx-s" x="271" y="48">${D.tactics.length > 1 ? `採用 ${D.tactics.length}` : '採用 1'}</text>`;
+    // パラメータ名（型の下の見出し）
+    s += `<text class="tx-lb" x="${CX[0]}" y="78">戦型</text><text class="tx-lb" x="${CX[1]}" y="78">囲い</text><text class="tx-lb" x="${CX[2]}" y="78">戦法</text>`;
+    // 開いている層の型から一覧の罫へ点線の茎
+    const sx = st.tab === 'castle' ? CX[1] : CX[2];
+    s += `<path d="M${sx} 64V88" class="stem"/>`;
+    s += `<path d="M4 88H322" class="base"/>`;
+    svg.innerHTML = s;
+  }
+
+  // ---------- 案C: 三段の盤 ----------
+  function paintC(mock, st) {
+    const D = DEMO[st.strat];
+    const [rStr, rCas, rTac] = mock.querySelectorAll('.swsvg');
+    // 戦型: 線路・両駅の破線のホーム・滑走する墨の六角ノブ
+    const dx = st.strat === 'furibisha' ? 0 : 172;
+    rStr.innerHTML =
+      `<path d="M32 17H204" class="track"/>` +
+      `<path d="${roundPath(hexV(32, 17, 12.5), 2)}" class="station"/>` +
+      `<path d="${roundPath(hexV(204, 17, 12.5), 2)}" class="station"/>` +
+      `<g class="knobg" style="transform:translateX(${dx}px)"><path d="${roundPath(hexV(32, 17, 12.5), 2)}" class="hx-fill on"/>` +
+      `<text class="tx-big on" style="font-size:11px" x="32" y="20.5">${st.strat === 'furibisha' ? '振' : '居'}</text></g>` +
+      `<text class="tx-s" x="32" y="35">振飛車</text><text class="tx-s" x="204" y="35">居飛車</text>`;
+    // 囲い: 横長のパズルピース（左=凹・右=小さな凸）
+    const pe = { n: 0, e: 1, s: 0, w: -1 };
+    rCas.innerHTML =
+      `<path d="${boxJ(4, 2, 228, 30, pe, 6)}" class="shp-fill"/>` +
+      `<path d="${boxJ(4, 2, 228, 30, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
+      `<text x="18" y="20" style="font:700 12px/1 var(--font-b);fill:var(--fg)">${D.castle}<tspan class="tx-s" dx="10">${D.cfam}</tspan></text>`;
+    // 戦法: 右へ指す五角形の帯
+    rTac.innerHTML =
+      `<path d="${chevPath(4, 2, 228, 30, 16)}" class="shp-fill"/>` +
+      `<path d="${chevPath(4, 2, 228, 30, 16)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
+      `<text x="18" y="20" style="font:700 12px/1 var(--font-b);fill:var(--fg)">${D.tactics.join('＋')}<tspan class="tx-s" dx="10">採用 ${D.tactics.length}</tspan></text>`;
+    for (const r of mock.querySelectorAll('.row')) r.classList.toggle('on', r.dataset.row === st.tab);
+  }
+
+  // ---------- 案D: 根元の胞 ----------
+  function paintD(svg, st) {
+    const D = DEMO[st.strat];
+    let s = '';
+    // 戦型の大きな胞（墨塗り・縦書き。押すと裏返る）＋裏面を示唆する小さな胞
+    const other = st.strat === 'ibisha' ? '振' : '居';
+    s += `<path d="${roundPath(hexV(44, 41, 34), 3)}" class="hx-fill on"/>` +
+         [...STNAME[st.strat]].map((c, i) =>
+           `<text class="tx-big on" style="font-size:15px" x="44" y="${26 + i * 15}">${c}</text>`).join('') +
+         `<path d="${roundPath(hexV(83, 66, 11), 1.5)}" class="hx-fill"/>` +
+         `<text class="tx-s" x="83" y="69">${other}</text>` +
+         `<text class="tx-lb" x="44" y="82">戦型</text>`;
+    // 胞から二つの枠へ茎
+    s += `<path d="M73 30C80 26 86 23 92 21" class="stem"/><path d="M73 54C80 56 86 58 92 60" class="stem"/>`;
+    // 囲い: 左に凹（戦型の向きから受ける）の横長ピース
+    const pe = { n: 0, e: 1, s: 0, w: -1 };
+    s += `<path d="${boxJ(92, 8, 230, 30, pe, 6)}" class="shp-fill"/>` +
+         `<path d="${boxJ(92, 8, 230, 30, pe, 6)}" class="shp-line${st.tab === 'castle' ? ' on' : ''}"/>` +
+         `<text x="114" y="27" style="font:700 9px/1 var(--font-b);fill:var(--muted);letter-spacing:.12em">囲い</text>` +
+         `<text x="150" y="27.5" style="font:800 13px/1 var(--font-d);fill:var(--fg)">${D.castle}<tspan style="font:600 8.5px/1 var(--font-b);fill:var(--muted)" dx="8">${D.cfam}</tspan></text>`;
+    // 戦法: 右へ指す五角形
+    s += `<path d="${chevPath(92, 48, 230, 30, 16)}" class="shp-fill"/>` +
+         `<path d="${chevPath(92, 48, 230, 30, 16)}" class="shp-line${st.tab === 'tactic' ? ' on' : ''}"/>` +
+         `<text x="110" y="67" style="font:700 9px/1 var(--font-b);fill:var(--muted);letter-spacing:.12em">戦法</text>` +
+         `<text x="150" y="67.5" style="font:800 13px/1 var(--font-d);fill:var(--fg)">${D.tactics.join('＋')}<tspan style="font:600 8.5px/1 var(--font-b);fill:var(--muted)" dx="8">採用 ${D.tactics.length}</tspan></text>`;
+    svg.innerHTML = s;
+  }
+
+  // ---------- 各モックの配線 ----------
+  function wire(rail, painter) {
+    const list = rail.querySelector('[data-list]');
+    const tstub = rail.querySelector('.tstub');
+    if (tstub) tstub.innerHTML = toolsStub;
+    const st = { strat: 'ibisha', tab: 'castle' };
+    const paint = () => { painter(rail, st); stubList(list, st.tab, st.strat); };
+    rail.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      if (b.dataset.act === 'strat') {
+        st.strat = b.dataset.v === 'flip' ? (st.strat === 'ibisha' ? 'furibisha' : 'ibisha') : b.dataset.v;
+      } else if (b.dataset.act === 'tab') st.tab = b.dataset.v;
+      paint();
+    });
+    paint();
+  }
+  wire(document.querySelector('#k0 .rail'), (rail, st) => {
+    rail.querySelectorAll('.strat button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.v === st.strat)));
+    rail.querySelectorAll('.tabs button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.v === st.tab)));
+  });
+  wire(document.querySelector('#kA .rail'), (rail, st) => paintA(rail.querySelector('.swsvg'), st));
+  wire(document.querySelector('#kB .rail'), (rail, st) => paintB(rail.querySelector('.swsvg'), st));
+  wire(document.querySelector('#kC .rail'), (rail, st) => paintC(rail.querySelector('[data-mock="C"]'), st));
+  wire(document.querySelector('#kD .rail'), (rail, st) => paintD(rail.querySelector('.swsvg'), st));
+})();
+</script>
+</body>
+</html>
