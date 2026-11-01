@@ -68,14 +68,27 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
   Repository への経路を統一するかは実装時に決める
 - 少なくとも「どちらを使うか」の規則をコメントで明文化し、UI が両方を使う理由を揃える
 
-### 1-2. tacticId / tacticIds の二重表現の整理 [M]
+### 1-2. tacticId / tacticIds の二重表現を tacticIds に一本化 [M]
 
 複数戦法対応で `tacticId`（主の戦法・飛車優先）と `tacticIds`（全リスト）が併存し、
 `compat.tacticIdsOf`・`constraints.sides`・`hash-link`・`board-screen`・`defaults` に
-同じ変換ロジックが散っている。
+同じ変換ロジックが散っている。実態として `tacticId` は
+`primaryTacticId(tacticIds)` の導出値で独立した情報を持たないので、
+**導出のまま残すのではなく消して `tacticIds` に一本化する**。
 
-- **実効状態は `tacticIds` のみを正にし、`tacticId` は導出値**として扱う方向に揃える
-- 旧形式（単独 id 文字列）の読み取りは `normalizeSlots`・`hash-link` の境界に閉じ込める
+- `sides()` の出力から `tacticId` を外す（現在は `tacticIds` と並んで導出値を持つ。
+  <ref>constraints.js L143 付近</ref>）。`fillImplied` も `tacticIds` だけを書く
+- 代表戦法が欲しい読み側（`compat.tacticIdOf`・`board-screen`・`board-detail-view`・
+  `keyboard-nav`・`matchup._resolveTactic` など）は `primaryTacticId(st.tacticIds)` を
+  その場で呼ぶ。頻出なら `defaults` に薄いヘルパー（`primaryOf(st)` など）を足す
+- `lookup.FIELD` の `tactic: 'tacticId'` を消す。`compat.judgeFull` の
+  `st[FIELD[layer]] = candidateId` は層ごとの代入に分け、castle は `castleId`、
+  tactic は既存の `tacticIds` 駒枠ロジックのみとする
+- 入力境界（`compat.judge` の `me`/`opp` や unit-test の `{strategy, tacticId}`）は
+  `compat.tacticIdsOf` が旧形式を配列に正規化し続けるので、外部仕様は変えない
+- 削る前に確認: `judgeFull` が `tacticId=candidateId` に立てると `ev.tactic` が
+  「候補そのもの」になる経路（`pairingBestOf` 内部など）がある。観測できる振る舞いの
+  差は出ないと読み取れるが、unit-test で固定してから削る
 - `compat.judgeFull` の `candPiece` 差し替えロジックを `constraints.setTactic` と重複なく共有する
 
 ### 1-3. 選択文字列（selected）のパース/構築の一元化 [S]
