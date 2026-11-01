@@ -1,7 +1,7 @@
 // 駒の対応づけ（共有ロジック）: 局面の切り替えで「どの駒がどこへ動いたか」を、
 // 駒の動きの自然さをコスト化した貪欲ペアリングで決める。plan が「移動リスト」を1回だけ計算し
 // （BoardView が呼ぶ）、立体版（piece-layer-3d）はそれを描く。DOM 版は静止表示なので使わない。
-// 純粋関数だけなので DOM を持たない。
+// 「届くか」の判定（moveCount）は core/piece-rules.js が権威。純粋関数だけなので DOM を持たない。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -50,60 +50,6 @@ window.Kakoi = window.Kakoi || {};
     }
     return c <= MAX_COST ? c : null;
   };
-
-  // ---------- moveCount: 「その駒の動きで何手かかるか」（合成の届く判定用。計画書 L3） ----------
-  // 盤上の障害物を無視した BFS。先手視点（段が減る向きが前）。上限8手、届かなければ Infinity。
-  // 動きの定義は piece-moves.js が単一権威（未登録の駒は金フォールバック）。
-  // moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、届くかどうかは自分で判定する
-  const { movesOf } = Kakoi.pieceMoves;
-  const MAX_PLY = 8;
-  // メモは compat.js / constraints.js と同じく Kakoi.LRU。キー空間は駒種×81マスと
-  // 有限だが、上限＋最近使った順の保持に揃えておく（Map フォールバックは上限なしの従来動作）
-  const mcMemo = new (Kakoi.LRU || Map)(512);   // `${p}:${from}` → Map(toKey → 手数)
-  function bfsCount(p, from) {
-    const mv = movesOf(p);
-    const out = new Map();
-    let frontier = [[+from[0], +from[1]]];
-    for (let d = 1; d <= MAX_PLY && frontier.length; d++) {
-      const next = [];
-      for (const [f, r] of frontier) {
-        for (const [df, dr] of mv.steps || []) {
-          const nf = f + df, nr = r + dr;
-          if (nf < 1 || nf > 9 || nr < 1 || nr > 9) continue;
-          const k = nf * 10 + nr;
-          if (out.has(k)) continue;
-          out.set(k, d);
-          next.push([nf, nr]);
-        }
-        for (const [df, dr] of mv.rays || []) {
-          let nf = f + df, nr = r + dr;
-          while (nf >= 1 && nf <= 9 && nr >= 1 && nr <= 9) {
-            const k = nf * 10 + nr;
-            if (!out.has(k)) { out.set(k, d); next.push([nf, nr]); }
-            nf += df; nr += dr;
-          }
-        }
-      }
-      frontier = next;
-    }
-    return out;
-  }
-  /**
-   * 駒 p が from → to へ自分の動きだけで行く最小手数（障害物無視。上限8手）。
-   * 届かなければ Infinity。歩・香は前進のみ、桂は前方のみになる（二歩・横歩・桂の後退を防ぐ）
-   * @param {string} p 駒の字 @param {string} from 例 '39' @param {string} to 例 '79'
-   * @returns {number}
-   */
-  function moveCount(p, from, to) {
-    if (from === to) return 0;
-    const ck = `${p}:${from}`;
-    let m = mcMemo.get(ck);
-    if (!m) {
-      m = bfsCount(p, from);
-      mcMemo.set(ck, m);
-    }
-    return m.has(+to[0] * 10 + +to[1]) ? m.get(+to[0] * 10 + +to[1]) : Infinity;
-  }
 
   /**
    * before → after の駒の対応づけ。
@@ -163,5 +109,5 @@ window.Kakoi = window.Kakoi || {};
     return { ...m, after: next, lead, path: lead >= 0 ? trace.path : null };
   }
 
-  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, plan, routeMs };
+  Kakoi.piecePairing = { MAX_COST, moveCost, plan, routeMs };
 })();

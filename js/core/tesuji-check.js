@@ -1,6 +1,6 @@
 // 手筋の frames の検算器（coverage-tesuji §5-3・付録A/B）: 各コマの move（▲/△の指し手）を
 // 前のコマの局面から再生し、合法手の列になっていて、次のコマの盤面・持ち駒に一致するかを調べる。
-// 純関数（DOM 非依存）。駒の動きは pieces.js が単一権威。
+// 純関数（DOM 非依存）。駒の動きは piece-rules.js が単一権威。
 //   読むもの: frames[i] = { move?, sente, gote, hand?, handGote?, caption?, mate? }
 //   hand=先手の持ち駒、handGote=後手の持ち駒（文字列、1文字1枚）。どのコマにも handGote が
 //   無ければ「後手は何でも打てる」として検算する
@@ -11,7 +11,7 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { PROMOTED: PROM, BASE, STEPS: STEP, SLIDES: SLIDE, HAND_CHARS } = Kakoi.pieces;
+  const { PROMOTED: PROM, BASE, STEPS: STEP, SLIDES: SLIDE, HAND_CHARS } = Kakoi.pieceRules;
 
   const KAN = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
   const HAND_KINDS = [...HAND_CHARS];

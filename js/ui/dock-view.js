@@ -298,7 +298,7 @@ window.Kakoi = window.Kakoi || {};
      */
     update(state, S) {
       this._last = { state, S };
-      const sel = K.constraints.parseSel(state.selected) || { who: 'me', kind: 'castle' };
+      const sel = K.constraints.parseSel(state.selected) || K.constraints.DEFAULT_SEL;
       const showOpp = !!state.showOpp;
       const who = sel.who === 'opp' && !showOpp ? 'me' : sel.who;
       // 選択層に対応するタブを開く。戦型（スロットを持たない情報の選択）のときは
@@ -471,7 +471,7 @@ window.Kakoi = window.Kakoi || {};
       const kind = sel && sel.kind;
       requestAnimationFrame(() => {
         const id = (sel && sel.id && findTactic(sel.id) && sel.id)
-          || (st && st[FIELD[kind]]);
+          || (st && (kind === 'tactic' ? K.defaults.primaryOf(st) : st[FIELD[kind]]));
         let t = id && this.body.querySelector(`.dk-item[data-id="${id}"]`);
         if (!t && id && kind === 'tactic') {   // 派生選択中は親タイルを示す
           const p = (findTactic(id) || {}).variantOf;

@@ -267,7 +267,7 @@ window.Kakoi = window.Kakoi || {};
         // 状態の反映: 選択・既定・両立しない・相性
         if (m.kind === 'tactic') {
           m.sel = sel.who === m.who && sel.kind === 'tactic'
-            && (sel.id ? sel.id === (m.id || m.famId) : m.id === m.st.tacticId);
+            && (sel.id ? sel.id === (m.id || m.famId) : m.id === Kakoi.defaults.primaryOf(m.st));
           m.implied = !m.empty && !!m.st.implied.tactic;
           m.removable = !m.empty && !m.implied;
           const reasons = !m.empty && !m.implied && ng[m.who] && ng[m.who].tactic

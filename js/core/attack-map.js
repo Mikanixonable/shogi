@@ -3,9 +3,9 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  // 動きの定義は piece-moves.js が単一権威。[df, dr] は盤座標の増減（dr<0 が前）。
+  // 動きの定義は piece-rules.js が単一権威。[df, dr] は盤座標の増減（dr<0 が前）。
   // sliding（rays）は盤端か駒にぶつかるまで進む
-  const { movesOf } = Kakoi.pieceMoves;
+  const { movesOf } = Kakoi.pieceRules;
   const inBoard = (f, r) => f >= 1 && f <= 9 && r >= 1 && r <= 9;
 
   /**

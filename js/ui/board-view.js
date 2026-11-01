@@ -1,5 +1,5 @@
 // 盤の表示: マス・利きヒート・ハイライト（data-tone）の DOM を管理する。
-// 駒の対応づけ（どの駒がどこへ動いたか＝移動リスト）はここで1回だけ計算し（pieceMatch.plan）、
+// 駒の対応づけ（どの駒がどこへ動いたか＝移動リスト）はここで1回だけ計算し（piecePairing.plan）、
 // 駒そのものの生成・表示モードは駒レイヤが描くだけ:
 //   立体版 js/ui/piece-layer-3d.js（既定。移動リストどおり滑らせる） / DOM版 js/ui/piece-layer-dom.js（?flat・WebGL 非対応時。静止）
 window.Kakoi = window.Kakoi || {};
@@ -70,7 +70,7 @@ window.Kakoi = window.Kakoi || {};
     render(position, { mode, heat, animate, trace }) {
       const anim = animate && !reducedMotion();
       const after = position.pieces.map(x => ({ p: x.p, owner: x.owner, role: x.role, sq: `${x.f}${x.r}` }));
-      const plan = Kakoi.pieceMatch.plan(this._pieces, after, anim ? trace : null);
+      const plan = Kakoi.piecePairing.plan(this._pieces, after, anim ? trace : null);
       this._pieces = plan.after;
       let html = '';
       for (let r = 1; r <= 9; r++) for (let f = 9; f >= 1; f--) {

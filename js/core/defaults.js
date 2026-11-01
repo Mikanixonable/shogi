@@ -37,11 +37,15 @@ window.Kakoi = window.Kakoi || {};
     }
     return list[0] || null;
   };
+  // 実効状態（sides() の出力。戦法は tacticIds のみが実効表現）の主の戦法を取る窓口。
+  // 旧形式（tacticId の単独値）の入力も吸収する。tacticIdOf と違い戦略既定値までは降りない
+  const primaryOf = st =>
+    st ? primaryTacticId(st.tacticIds) || st.tacticId || null : null;
   const tacticIdOf = st =>
     (st && (st.tacticId || primaryTacticId(st.tacticIds))) || defaultTacticId(st && st.strategy);
   const castleIdOf = (st, opp) => (st && st.castleId) || defaultCastleId(st && st.strategy, opp && opp.strategy);
 
-  const api = { defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf, primaryTacticId };
+  const api = { defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf, primaryTacticId, primaryOf };
   Kakoi.defaults = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

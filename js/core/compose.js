@@ -8,8 +8,8 @@
 //     置けなくても衝突にしない（囲いが「守り駒すべて」の行き先を決める。計画書 §2 L1）
 //   - どこにも属さない金・銀は空いている初期位置へ戻す（届かなければ持ち駒）
 //   - castle.hand の駒（兜・ボナンザの角など）は、戦法の持ち駒に無ければ盤上から持ち駒へ移す
-//   - 「届くか」は pieceMatch.moveCount（その駒の動きで何手かかるかの BFS）で判定し、
-//     donor の優劣は pieceMatch.moveCost（アニメ用コスト）で決める
+//   - 「届くか」は pieceRules.moveCount（その駒の動きで何手かかるかの BFS）で判定し、
+//     donor の優劣は piecePairing.moveCost（アニメ用コスト）で決める
 //   - core の目標マスがロック駒に塞がれているときは castle.flex の to へ逃がす（崩し形）
 //   - core の駒が足りないときは、flex.to にいるロック済みの同種の駒が「貸し出し」で兼ねられる
 window.Kakoi = window.Kakoi || {};
@@ -22,9 +22,9 @@ window.Kakoi = window.Kakoi || {};
   // 金・銀の帰る場所（初期配置のマス。どこにも属さない守り駒はここへ戻す）
   const HOME = { 金: ['49', '69'], 銀: ['39', '79'] };
   // アニメ用の滑らせやすさ（donor の優劣付け用。null なら滑らせない＝多手数の移動）
-  const canSlide = (p, from, to) => Kakoi.pieceMatch.moveCost(p, from, to);
+  const canSlide = (p, from, to) => Kakoi.piecePairing.moveCost(p, from, to);
   // その駒の動きで何手かかるか（届く判定用。Infinity なら届かない。計画書 L3）
-  const moveCount = (p, from, to) => Kakoi.pieceMatch.moveCount(p, from, to);
+  const moveCount = (p, from, to) => Kakoi.pieceRules.moveCount(p, from, to);
 
   // 戦略テンプレートの既定囲い。既定値の解決規則は Kakoi.constraints が唯一の権威
   // （defaultCastle は文字列または {vsIbisha,vsFuribisha}。相手の戦略で振り分け、不明なら vsIbisha）

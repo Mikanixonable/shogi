@@ -155,10 +155,10 @@ window.Kakoi = window.Kakoi || {};
       ], 'bad');
       // 自分の戦法が変わったときは主役の駒を経路どおりに滑らせる（旧戦法画面と同じ。
       // 複数採用では主の戦法=飛車優先を動かす）
-      const meT = this.repo.tacticById(S.me.tacticId);
+      const meT = this.repo.tacticById(K.defaults.primaryOf(S.me));
       const trace = animate && meT && this._meTactic !== meT.id && meT.route && meT.route.length > 1
         ? { square: meT.lead.square, piece: meT.lead.piece, path: meT.route } : null;
-      this._meTactic = S.me.tacticId;
+      this._meTactic = meT ? meT.id : null;
       this.board.render(position, { mode: state.mode, heat, animate, trace });
       this._overlays(state, d);
     }
@@ -235,10 +235,10 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------
     // 選んだ層が他の層と両立しないときは、理由と直す候補（constraints.suggest）も渡す
     _renderDetail(state, d) {
-      const sel = parseSel(state.selected) || { who: 'me', kind: 'castle' };
+      const sel = parseSel(state.selected) || K.constraints.DEFAULT_SEL;
       const attack = this._attackInfo(state, d.S);
       // 戦法は駒ごとの枠: 選択中の駒枠（無ければ主の戦法）の ng を取る
-      const tacId = sel.id || d.S[sel.who].tacticId;
+      const tacId = sel.id || K.defaults.primaryOf(d.S[sel.who]);
       const ng = sel.kind === 'tactic'
         ? ((d.ng[sel.who].tactic || {})[tacId] || null)
         : (d.ng[sel.who][sel.kind] || null);

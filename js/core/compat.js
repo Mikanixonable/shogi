@@ -8,7 +8,7 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { parsePieces, parseSquare, label } = Kakoi.notation;
-  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel, FIELD } = Kakoi.lookup;
+  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel } = Kakoi.lookup;
 
   // ========== 共通部品: 選択状態の正規化と戦法・囲いの参照（全ブロックが使う） ==========
   // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則の権威は Kakoi.defaults
@@ -256,7 +256,11 @@ window.Kakoi = window.Kakoi || {};
 
   function judgeFull(me, layer, candidateId, opp) {
     me = me || {};
-    const st = { ...me, [FIELD[layer]]: candidateId };
+    // 層ごとの代入に分ける: 囲いは単一値の castleId、戦法は駒ごとの枠なので
+    // 単独のフィールドを持たない（実効表現は tacticIds のみ。旧形式の tacticId は捨てる）
+    const st = { ...me };
+    if (layer === 'castle') st.castleId = candidateId;
+    else delete st.tacticId;
     // 戦法は駒ごとの枠: 候補は同じ駒（lead.piece）の枠を差し替える。他の駒の戦法はそのまま残る
     const candPiece = layer === 'tactic'
       ? ((findTactic(candidateId) || {}).lead || {}).piece : null;

@@ -274,7 +274,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 }
 {
   // L3: 手数判定（moveCount）。届くものは置ける（ミレニアム・ビッグ4・松尾流・四枚美濃）
-  const mc = K.pieceMatch.moveCount;
+  const mc = K.pieceRules.moveCount;
   ok(mc('銀', '39', '88') === 5 && mc('銀', '39', '79') === 4 && mc('金', '49', '58') === 1,
     'moveCount:銀39→88=5手・39→79=4手・金49→58=1手', `${mc('銀', '39', '88')},${mc('銀', '39', '79')},${mc('金', '49', '58')}`);
   ok(mc('歩', '37', '36') === 1 && !isFinite(mc('歩', '37', '47')) && !isFinite(mc('歩', '37', '38')),
@@ -314,7 +314,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 {
   // 玉は全8方向へ1手（STEP 未登録で GOLD_STEP に落ちると斜め後退が届かないと誤判定される。
   // 金との対比で玉専用の定義があることも確かめる）
-  const mc = K.pieceMatch.moveCount;
+  const mc = K.pieceRules.moveCount;
   const king1 = ['44', '54', '64', '45', '65', '46', '56', '66']
     .every(to => mc('玉', '55', to) === 1);
   ok(king1, 'moveCount:玉は全8方向へ1手（斜め後退ふくむ）',
@@ -323,7 +323,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
     'moveCount:金の斜め後退は2手（玉と区別できる）',
     `46=${mc('金', '55', '46')},66=${mc('金', '55', '66')}`);
   // 銀の滑らせコスト: 斜め前は合法手なので罰則なし。真横・真後ろより安いこと
-  const cst = K.pieceMatch.moveCost;
+  const cst = K.piecePairing.moveCost;
   ok(cst('銀', '55', '46') != null && cst('銀', '55', '44') != null
     && cst('銀', '55', '46') < cst('銀', '55', '45'),
     'moveCost:銀の斜め前は罰則なし（真横より安い）',
@@ -391,10 +391,11 @@ for (const sid of Object.keys(K.STRATEGIES)) {
     'removeTactic:その戦法だけ外す（他の枠は残る）', jstr(t4.me.tactic));
   ok(CS.setTactic(base, 'me', 'no-such') === base && CS.removeTactic(base, 'me', 'bougin') === base,
     'setTactic/removeTactic:存在しない id は入力の参照を返す');
-  // 実効状態: 複数戦法は tacticIds に全て、主の戦法（飛車）は tacticId に
+  // 実効状態: 複数戦法は tacticIds に全て（主の戦法=飛車は primaryOf で導く導出値）
   const S2 = CS.sides(t3, false);
-  ok(jstr(S2.me.tacticIds) === jstr(['shikenbisha', 'bougin']) && S2.me.tacticId === 'shikenbisha',
-    'sides:複数戦法は tacticIds に全て・主（飛車）が tacticId', jstr(S2.me));
+  ok(jstr(S2.me.tacticIds) === jstr(['shikenbisha', 'bougin']) && K.defaults.primaryOf(S2.me) === 'shikenbisha'
+    && S2.me.tacticId === undefined,
+    'sides:複数戦法は tacticIds に全て・主（飛車）は primaryOf で導く', jstr(S2.me));
 
   // 両立しない選択は conflicts が理由つきで返し、suggest が直す候補を返す
   const S = CS.sides(r, false);
@@ -468,7 +469,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   // sides: 戦略の導出と暗黙の補完
   {
     const s = CS.sides(mk(null, 'funa'));
-    ok(s.me.castleId === 'funa' && s.me.strategy === 'ibisha' && s.me.tacticId === 'ibisha-base',
+    ok(s.me.castleId === 'funa' && s.me.strategy === 'ibisha' && K.defaults.primaryOf(s.me) === 'ibisha-base',
       'constraints:sides 囲いだけ→戦略は囲いの側・戦法は既定値で補完', jstr(s.me));
     ok(s.me.implied.tactic === true && !s.me.implied.castle && !s.me.implied.strategy,
       'constraints:sides implied フラグ（戦法だけが暗黙。戦略は層ではない）', jstr(s.me.implied));
@@ -487,7 +488,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
       'constraints:sides 戦略は戦法が決め、明示した囲いは差し替えない', jstr(t.me));
     // 囲いだけなら囲いの側から導く（美濃→振り飛車の既定戦法）
     const u = CS.sides(mk(null, 'mino'));
-    ok(u.me.strategy === 'furibisha' && u.me.tacticId === 'shikenbisha',
+    ok(u.me.strategy === 'furibisha' && K.defaults.primaryOf(u.me) === 'shikenbisha',
       'constraints:sides 囲いだけ（美濃）→ 戦略 furibisha・既定戦法で補完', jstr(u.me));
   }
   {
@@ -687,10 +688,12 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     const rnd = mulberry32(20240511);
     const tIds = K.TACTICS.map(t => t.id), cIds = K.CASTLES.map(c => c.id);
     const candsOf = k => k === 'tactic' ? tIds : cIds;
+    // 実効値（FIELD は単一値を持つ層＝castle だけ。戦法は主の戦法を primaryOf で導く）
+    const effId = (st, k) => k === 'tactic' ? K.defaults.primaryOf(st) : st[FIELD[k]];
     // その層に「いまの値以外で両立する候補」があるか（暗黙の層が飽和しているかの判定用。
     // 例: 早石田のように玉を囲わずに仕掛ける戦法は、両立する囲いが1つも無い）
     const hasAlternative = (st, k, opp) =>
-      candsOf(k).some(id => id !== st[FIELD[k]] && K.compat.judge(st, k, id, opp).level !== 'ng');
+      candsOf(k).some(id => id !== effId(st, k) && K.compat.judge(st, k, id, opp).level !== 'ng');
     let slots = CS.emptySlots(), showOpp = true, touched = 0, mutated = 0, nondet = 0, sugBad = 0, sugCount = 0;
     const ngLeft = [];
     for (let i = 0; i < 1000; i++) {
@@ -722,8 +725,8 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
             if (jstr(effVal) !== jstr(k === 'tactic' ? slotVal : slotVal)) touched++;
             continue;
           }
-          if (K.compat.judge(st, k, st[FIELD[k]], opp).level === 'ng' && hasAlternative(st, k, opp) && ngLeft.length < 5) {
-            ngLeft.push(`i=${i} ${w}.${k}=${st[FIELD[k]]} slots=${jstr(slots)}`);
+          if (K.compat.judge(st, k, effId(st, k), opp).level === 'ng' && hasAlternative(st, k, opp) && ngLeft.length < 5) {
+            ngLeft.push(`i=${i} ${w}.${k}=${effId(st, k)} slots=${jstr(slots)}`);
           }
         }
       }
@@ -858,28 +861,28 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     K.compat.judge = orig;
     ok(r0 === r1 && n === 0, 'constraints:evaluate は同じ引数でキャッシュを返し judge を再計算しない', `judge ${n}回`);
   }
-  // pieceMatch.plan: 局面の切り替えの移動リストを1回だけ計算する（駒レイヤは結果を描くだけ）
+  // piecePairing.plan: 局面の切り替えの移動リストを1回だけ計算する（駒レイヤは結果を描くだけ）
   {
-    const PM = K.pieceMatch;
+    const PM = K.piecePairing;
     const mk = (p, sq, owner = 'sente') => ({ p, sq, owner, role: 'core' });
     const before = [mk('銀', '39'), mk('歩', '37'), mk('玉', '59'), mk('歩', '33', 'gote')];
     const after = [mk('銀', '38'), mk('歩', '36'), mk('玉', '59'), mk('歩', '33', 'gote')];
     const pl = PM.plan(before, after, null);
     ok(pl.pairs.length === 4 && pl.gone.length === 0 && pl.appear.length === 0 && pl.lead === -1 && pl.path === null
       && pl.after !== after && after.every(x => x.skip === undefined),
-    'pieceMatch.plan:全駒が対応づく移動リスト（入力は書き換えない）', jstr(pl));
+    'piecePairing.plan:全駒が対応づく移動リスト（入力は書き換えない）', jstr(pl));
     // 戦法の主役の駒（trace）は筋道専用になり、通常の対応づけから外れて appear に入る
     const trace = { square: '38', piece: '銀', path: ['39', '38'] };
     const pl2 = PM.plan(before, after, trace);
     ok(pl2.lead === 0 && pl2.after[0].skip === 'lead' && pl2.appear.includes(0) && !pl2.pairs.some(q => q.n === 0)
-      && jstr(pl2.path) === jstr(trace.path), 'pieceMatch.plan:主役の駒は筋道専用に外す', jstr(pl2));
-    ok(PM.plan(before, after, { ...trace, path: ['38'] }).lead === -1, 'pieceMatch.plan:経路が1マスなら筋道にしない');
-    ok(PM.plan(before, after, { ...trace, piece: '金' }).lead === -1, 'pieceMatch.plan:該当する駒がなければ lead なし');
+      && jstr(pl2.path) === jstr(trace.path), 'piecePairing.plan:主役の駒は筋道専用に外す', jstr(pl2));
+    ok(PM.plan(before, after, { ...trace, path: ['38'] }).lead === -1, 'piecePairing.plan:経路が1マスなら筋道にしない');
+    ok(PM.plan(before, after, { ...trace, piece: '金' }).lead === -1, 'piecePairing.plan:該当する駒がなければ lead なし');
     const pl3 = PM.plan(before, [mk('玉', '59'), mk('金', '49')], null);
     ok(pl3.gone.length === 3 && jstr(pl3.appear) === jstr([1]) && pl3.pairs.length === 1,
-      'pieceMatch.plan:消える駒（gone）と現れる駒（appear）', jstr(pl3));
+      'piecePairing.plan:消える駒（gone）と現れる駒（appear）', jstr(pl3));
     ok(PM.routeMs(['39', '38', '27']) === 560 && PM.routeMs(new Array(20).fill('11')) === 1500,
-      'pieceMatch.routeMs:区画数に比例し 1500ms で頭打ち');
+      'piecePairing.routeMs:区画数に比例し 1500ms で頭打ち');
   }
   {
     const cache = new K.LRU(2);
@@ -888,7 +891,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     ok(cache.delete('a') && !cache.has('a') && cache.delete('missing') === false,
       'LRU:delete は削除結果を返す');
   }
-  // attackMap: 利きの数え上げ（piece-moves.js 統一後の回帰。count(f,r) は counts[f][r]）
+  // attackMap: 利きの数え上げ（piece-rules.js 統一後の回帰。count(f,r) は counts[f][r]）
   {
     const cnt = (m, f, r) => m[f][r];
     // 香99: 同じ筋の前方へ滑走。98・97…へ利き、自駒があればそこで止まる
@@ -923,13 +926,13 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
 
 // ---------- 9. K.tesuji: 共有の駒の動き・frames の検算・forCastle/defenders（coverage-tesuji） ----------
 {
-  ok(K.pieces && K.tesuji && K.tesujiCheck, 'tesuji: pieces/tesuji/tesujiCheck が読み込まれている');
-  if (K.pieces) {
+  ok(K.pieceRules && K.tesuji && K.tesujiCheck, 'tesuji: pieceRules/tesuji/tesujiCheck が読み込まれている');
+  if (K.pieceRules) {
     // 成駒の動き: と・杏・圭・全は金と同じ、馬は角の滑走＋縦横、龍は飛の滑走＋斜め
     const g = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [0, 1]];
-    for (const p of ['と', '杏', '圭', '全']) ok(jstr(K.pieces.STEPS[p]) === jstr(g), `pieces:${p} は金の動き`);
-    ok(K.pieces.SLIDES['馬'] && K.pieces.SLIDES['龍'] && !K.pieces.SLIDES['と'], 'pieces:馬・龍は滑走を持つ');
-    ok(K.pieces.PROMOTED['角'] === '馬' && K.pieces.BASE['龍'] === '飛', 'pieces:成りの対応（竜は龍に畳む）');
+    for (const p of ['と', '杏', '圭', '全']) ok(jstr(K.pieceRules.STEPS[p]) === jstr(g), `pieceRules:${p} は金の動き`);
+    ok(K.pieceRules.SLIDES['馬'] && K.pieceRules.SLIDES['龍'] && !K.pieceRules.SLIDES['と'], 'pieceRules:馬・龍は滑走を持つ');
+    ok(K.pieceRules.PROMOTED['角'] === '馬' && K.pieceRules.BASE['龍'] === '飛', 'pieceRules:成りの対応（竜は龍に畳む）');
     const has = () => false;
     ok(K.tesuji.reach('馬', 5, 5, 'sente', has).length === 20 && K.tesuji.reach('龍', 5, 5, 'sente', has).length === 20,
       'tesuji:reach は馬・龍の利きを返す（滑走16+歩み4）', jstr([K.tesuji.reach('馬', 5, 5, 'sente', has).length, K.tesuji.reach('龍', 5, 5, 'sente', has).length]));

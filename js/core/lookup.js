@@ -2,12 +2,30 @@
 // 系統の参照、層の日本語名、整合/相手との相性の記号。重複していた定義をここに集約する（計画書 S2）
 // 層のスキーマ定数（KINDS/FIELD/WHOS）と表示名の解決（nameOf/castleSides）もここが唯一の定義 ——
 // manifest の最上流なので compat / constraints / UI のすべてが同じ定義を共有できる
+// 役割分担: lookup はグローバルデータ（Kakoi.TACTICS 等）への軽い参照とスキーマ定数。
+// core の純関数はここを使い、UI 用の組み立て済みデータ窓口（Map 化・出典の解決・
+// 系統順の並び）は js/core/repository.js の Repository が担う
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  const findTactic = id => (Kakoi.TACTICS || []).find(t => t && t.id === id) || null;
-  const findCastle = id => (Kakoi.CASTLES || []).find(c => c && c.id === id) || null;
+  // id → オブジェクトの索引。data ファイルは `Kakoi.CASTLES.push(...)` 形式で
+  // あとから追記することがあるので、配列の参照・長さが変わっていたら作り直す。
+  // 索引に無い id は線形走査にフォールバックする（置き換えられた項目を拾う保険）
+  const idIndex = get => {
+    let arr = null, len = -1, map = new Map();
+    return id => {
+      const a = get() || [];
+      if (a !== arr || a.length !== len) {
+        map = new Map();
+        for (const x of a) if (x && x.id != null) map.set(x.id, x);
+        arr = a; len = a.length;
+      }
+      return map.has(id) ? map.get(id) : a.find(x => x && x.id === id) || null;
+    };
+  };
+  const findTactic = idIndex(() => Kakoi.TACTICS);
+  const findCastle = idIndex(() => Kakoi.CASTLES);
   // 戦型（SENKEI）の参照窓口。SENKEI_RESOLVE で別名 id（aiyagura → yagura）を解決する
   const findSenkei = id => {
     const S = Kakoi.SENKEI || {}, R = Kakoi.SENKEI_RESOLVE || {};
@@ -21,10 +39,12 @@ window.Kakoi = window.Kakoi || {};
   // senkei は strategy（居飛車／振り飛車）の「戦型」と区別するため「戦型（細）」とする
   // （文献の戦型＝矢倉・角換わり…の細分類。coverage-senkei §3-4-4 の次善案）
   const LAYER_JA = { tactic: '戦法', castle: '囲い', strategy: '戦型', senkei: '戦型（細）' };
-  // 制約モデルのスキーマ: 層の既定順・側・層 → 実効値（sides() の戻り値）のフィールド名
+  // 制約モデルのスキーマ: 層の既定順・側・層 → 実効値（sides() の戻り値）のフィールド名。
+  // 戦法は複数採用できるので単一のフィールドを持たない（実効値は tacticIds。
+  // 主の戦法は defaults.primaryOf で導く）。FIELD は単一値を持つ層（castle）だけ
   const KINDS = ['tactic', 'castle'];
   const WHOS = ['me', 'opp'];
-  const FIELD = { tactic: 'tacticId', castle: 'castleId' };
+  const FIELD = { castle: 'castleId' };
   // 相手との相性の印（◎=良い △=悪い）。ドックのバッジと右ドックで同じ意味に統一する（計画書 U1）
   const VS_MARK = { good: '◎', bad: '△', neutral: '' };
 

@@ -25,8 +25,8 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- 利き ----------
-  // 動きの定義は pieces.js が単一権威（成駒を含む）。[df, dr] は先手視点の増減（dr<0 が前）
-  const { STEPS, SLIDES } = K.pieces;
+  // 動きの定義は piece-rules.js が単一権威（成駒を含む）。[df, dr] は先手視点の増減（dr<0 が前）
+  const { STEPS, SLIDES } = K.pieceRules;
   const inBoard = (f, r) => f >= 1 && f <= 9 && r >= 1 && r <= 9;
   const sq = (f, r) => `${f}${r}`;
 

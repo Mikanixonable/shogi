@@ -14,7 +14,7 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
 
   const { findTactic, findCastle, tacticFamilyOf, castleSides, KINDS, FIELD, WHOS } = Kakoi.lookup;
-  const { defaultIdOf, primaryTacticId } = Kakoi.defaults;
+  const { defaultIdOf, primaryTacticId, primaryOf } = Kakoi.defaults;
 
   // ---------- スロット（tactic: null | [id,…] / castle: null | id） ----------
   const emptySide = () => ({ tactic: null, castle: null });
@@ -99,7 +99,7 @@ window.Kakoi = window.Kakoi || {};
   // 実効状態で ng なら、compat.searchAlternative と同じ規則で両立する値を選ぶ
   // （例: 四枚美濃だけ選んだとき既定戦法では駒が足りない）。明示した層は動かさない
   function fillImplied(s, opp) {
-    const eff = { strategy: s.strategy, tacticId: s.tacticId, tacticIds: s.tacticIds, castleId: s.castleId };
+    const eff = { strategy: s.strategy, tacticIds: s.tacticIds, castleId: s.castleId };
     for (const k of KINDS) {
       if (k === 'tactic' ? s.tacticIds.length : eff[FIELD[k]] != null) continue;
       s.implied[k] = true;
@@ -107,7 +107,7 @@ window.Kakoi = window.Kakoi || {};
       let v = d;
       if (Kakoi.compat) {
         const base = k === 'tactic'
-          ? { ...eff, tacticId: d, tacticIds: d == null ? [] : [d] }
+          ? { ...eff, tacticIds: d == null ? [] : [d] }
           : { ...eff, [FIELD[k]]: d };
         if (d == null || Kakoi.compat.judgeFull(base, k, d, opp).level === 'ng') {
           const rep = Kakoi.compat.searchAlternative(base, k, d, opp);
@@ -116,7 +116,6 @@ window.Kakoi = window.Kakoi || {};
       }
       if (k === 'tactic') {
         s.tacticIds = v == null ? [] : [v];
-        s.tacticId = v;
       } else {
         s[FIELD[k]] = eff[FIELD[k]] = v;
       }
@@ -128,9 +127,10 @@ window.Kakoi = window.Kakoi || {};
    * @param {{me:{tactic,castle}, opp:{tactic,castle}}} slots  tactic は [id,…] または単独 id
    * @param {boolean} [showOpp=true] 相手を表示しているか。表示していないとき、自分の既定囲いは
    *   相手の戦略で振り分けず（vsIbisha）、fitness も相手を見ない
-   * @returns {{ me:{strategy:string, tacticId:string|null, tacticIds:string[],
+   * @returns {{ me:{strategy:string, tacticIds:string[],
    *              castleId:string|null, implied:{tactic?:true, castle?:true}}, opp:Object }}
-   *   - tacticId は主の戦法（飛車優先）。tacticIds が全リスト
+   *   - 主の戦法（飛車優先）は tacticIds の導出値なので出力には持たない。
+   *     必要な読み側は defaults.primaryOf(st) で取る
    *   - 戦法が1つも無ければ戦略既定値で1つだけ補い implied.tactic を立てる
    */
   function sides(slots, showOpp = true) {
@@ -140,12 +140,12 @@ window.Kakoi = window.Kakoi || {};
       const ids = tacticList(sl.tactic);
       S[who] = {
         strategy: strategyOf(sl), tacticIds: ids,
-        tacticId: primaryTacticId(ids), castleId: sl.castle, implied: {},
+        castleId: sl.castle, implied: {},
       };
     }
     // 相手の明示値（既定で補う前）。他方の既定値の振り分けと fitness の相手に使う
     const explicit = who => ({
-      strategy: S[who].strategy, tacticId: S[who].tacticId,
+      strategy: S[who].strategy,
       tacticIds: S[who].tacticIds.slice(), castleId: slots[who].castle,
     });
     fillImplied(S.me, showOpp ? explicit('opp') : null);
@@ -236,7 +236,14 @@ window.Kakoi = window.Kakoi || {};
   // dock-view / board-screen / board-detail-view / constraint-mode / hash-link で共有する（S2）
   // strategy はスロットを持たない（sides() が導く値）が、選択はできる。
   // tactic は駒ごとの枠が複数あるので、第3要素に戦法の id を持てる（'me.tactic.bougin'）
+  // SEL_RE は内部表現（'me.tactic.bougin'。側・層はフル名）の文法。
+  // js/ui/hash-link.js の decodeSel が使う /[mo][tcsk]/ は URL ハッシュの短縮形
+  // （'mt.bougin'。側・層は1文字コード）で、同じ概念の別文法 —— 末尾の id 部は
+  // どちらも [^\s.]+。両者を行き来する対応表は hash-link の WHO_CHAR/KIND_CHAR が持つ
   const SEL_RE = /^(me|opp)\.(tactic|castle|strategy|senkei)(?:\.([^\s.]+))?$/;
+  // 既定の選択（形式不正・初期状態・相手 OFF 時の握り直し先）: 自分の囲い。
+  // 文字列 'me.castle' と {who,kind} オブジェクトの両方で参照されるのでここに置く
+  const DEFAULT_SEL = Object.freeze({ who: 'me', kind: 'castle' });
   /** 'me.tactic.bougin' → {who:'me', kind:'tactic', id:'bougin'}。形式が違えば null */
   const parseSel = s => {
     const m = SEL_RE.exec(String(s || ''));
@@ -246,11 +253,11 @@ window.Kakoi = window.Kakoi || {};
    * 選択を握り直す: 形式不正なら 'me.{kind}'、相手を表示していないのに相手側を指すなら自分側の同じ層
    * @param {string|null} selected
    * @param {boolean} showOpp
-   * @param {string} [fallbackKind='castle'] 形式不正のときの層
+   * @param {string} [fallbackKind=DEFAULT_SEL.kind] 形式不正のときの層
    */
-  function normalizeSelected(selected, showOpp, fallbackKind = 'castle') {
+  function normalizeSelected(selected, showOpp, fallbackKind = DEFAULT_SEL.kind) {
     const sel = parseSel(selected);
-    if (!sel) return `me.${fallbackKind}`;
+    if (!sel) return `${DEFAULT_SEL.who}.${fallbackKind}`;
     if (sel.who === 'opp' && !showOpp) return `me.${sel.kind}`;
     return sel.id ? `${sel.who}.${sel.kind}.${sel.id}` : `${sel.who}.${sel.kind}`;
   }
@@ -276,7 +283,7 @@ window.Kakoi = window.Kakoi || {};
   // 主の戦法（飛車優先）の筋。明示層優先: useImplied=false のパスでは暗示の層を根拠にしない
   const rookFileOf = (st, useImplied) => {
     if (!useImplied && st.implied && st.implied.tactic) return null;
-    const t = findTactic(st.tacticId);
+    const t = findTactic(primaryOf(st));
     return t && t.lead && t.lead.piece === '飛' ? t.lead.files[0] : null;
   };
   // 居飛車側の方針: 明示した戦法の pace（rapid→急戦 / slow→持久戦）、
@@ -386,7 +393,7 @@ window.Kakoi = window.Kakoi || {};
     }
     if (me.strategy !== 'ibisha' || opp.strategy !== 'ibisha') return out;
     const evidence = (st, useImplied) => {                    // その側の根拠。useImplied=false なら明示した層だけ
-      const ids = st.tacticIds && st.tacticIds.length ? st.tacticIds : [st.tacticId];
+      const ids = st.tacticIds && st.tacticIds.length ? st.tacticIds : [primaryOf(st)].filter(Boolean);
       const ts = (useImplied || !(st.implied && st.implied.tactic) ? ids : []).map(findTactic).filter(Boolean);
       const c = (useImplied || !(st.implied && st.implied.castle)) ? findCastle(st.castleId) : null;
       return { tags: new Set(ts.flatMap(t => t.senkei || [])),
@@ -420,7 +427,7 @@ window.Kakoi = window.Kakoi || {};
   const api = {
     emptySlots, normalizeSlots, setSlot, setTactic, removeTactic, clearSide,
     sides, conflicts, evaluate, suggest, labels, parseSel, normalizeSelected,
-    tacticList, KINDS, FIELD,
+    tacticList, KINDS, FIELD, DEFAULT_SEL,
   };
   Kakoi.constraints = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用

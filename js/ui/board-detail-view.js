@@ -45,7 +45,7 @@ window.Kakoi = window.Kakoi || {};
     constructor(el, handlers = {}) {
       this.el = el;
       this.h = handlers;
-      this._sel = { who: 'me', kind: 'castle' };
+      this._sel = K.constraints.DEFAULT_SEL;
       // 詳細の data-sq は選択側の先手視点。相手（opp）の詳細では盤上の駒が回転済みなので
       // mirrorSq で反転してから照らす。両軍の接触（data-abs）は絶対座標なので反転しない
       const sqsOf = t => {
@@ -134,7 +134,7 @@ window.Kakoi = window.Kakoi || {};
       }
       const S = p.S || {};
       const sel = (typeof p.sel === 'string' ? parseSel(p.sel) : p.sel)
-        || { who: 'me', kind: 'castle' };
+        || K.constraints.DEFAULT_SEL;
       const who = sel.who === 'opp' ? 'opp' : 'me';
       const kind = sel.kind === 'tactic' ? 'tactic' : 'castle';
       const norm = { who, kind, id: sel.id };
@@ -185,7 +185,7 @@ window.Kakoi = window.Kakoi || {};
     // ---------- *.tactic ----------
     // 戦法は駒ごとの枠が複数ある: 選択中の枠（sel.id、無ければ主の戦法）の詳細を出す
     _tactic(sel, st, S, showOpp, citer, p) {
-      const t = findTactic(sel.id || st.tacticId);
+      const t = findTactic(sel.id || K.defaults.primaryOf(st));
       if (!t) {
         return {
           body: this._head(sel, '（未選択）', st.implied && st.implied.tactic)
@@ -257,7 +257,7 @@ window.Kakoi = window.Kakoi || {};
       const j = K.compat ? K.compat.judge(st, 'castle', c.id, other) : null;
       // 出典: 囲い＋想定配置に加え、「組み合わせの理由」で出す相性表（pairing.why）の出典も併記する
       // （[[ref]] を本文に引く文を出す以上、その ref はパネルの出典リストに載っている必要がある）
-      const tactic = findTactic(st.tacticId);
+      const tactic = findTactic(K.defaults.primaryOf(st));
       const pairing = tactic && (tactic.pairings || []).find(pp => pp.castle === c.id);
       const setupSrc = this.h.repo.setupOf(c).sources;
       const defs = p.defenses || [];
@@ -300,7 +300,7 @@ window.Kakoi = window.Kakoi || {};
       const s = K.STRATEGIES[st.strategy];
       const name = s ? s.label : strategyLabel(st.strategy);
       const other = this._other(sel, S, showOpp);
-      const t = findTactic(st.tacticId), c = findCastle(st.castleId);
+      const t = findTactic(K.defaults.primaryOf(st)), c = findCastle(st.castleId);
       const imp = st.implied || {};
       // 導出元（constraints の strategyOf と同じ順序）: 明示した戦法の系統→明示した囲いの側→既定
       const from = t && !imp.tactic ? `戦法「${t.name}」の系統から導いています`
@@ -318,8 +318,10 @@ window.Kakoi = window.Kakoi || {};
       ].filter(d => d.id);
       const defChips = `<div class="vchips">` + defs.map(d => {
         const it = d.kind === 'tactic' ? findTactic(d.id) : findCastle(d.id);
+        // 戦法は実効値が配列（tacticIds）なので主の戦法と比べ、囲いは単一値と比べる
+        const cur = d.kind === 'tactic' ? K.defaults.primaryOf(st) : st[FIELD[d.kind]];
         return `<button class="vchip" data-act="set" data-kind="${d.kind}" data-id="${esc(d.id)}"` +
-          ` aria-pressed="${st[FIELD[d.kind]] === d.id}">${esc(LAYER_JA[d.kind])}：${esc(it ? it.name : d.id)}</button>`;
+          ` aria-pressed="${cur === d.id}">${esc(LAYER_JA[d.kind])}：${esc(it ? it.name : d.id)}</button>`;
       }).join('') + `</div>`;
       // この戦型の囲い（系統順。押すとその囲いを制約にする）
       const castles = this.h.repo.ofSideByFamily(st.strategy);

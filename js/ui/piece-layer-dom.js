@@ -1,7 +1,7 @@
 // 駒レイヤ（DOM版）: Kakoi.kayaArt が焼いた彫駒の絵を .sq の中に画像で置く静止表示（アニメーションなし）。
 // ?flat が付いているとき・WebGL が使えないときのフォールバックとして BoardView から選ばれる。
 // 盤に落ちる影は CSS の drop-shadow（css/board.css .pc）。
-// 駒の移動リストは BoardView が1回だけ計算する（pieceMatch.plan）が、静止表示なので使わない
+// 駒の移動リストは BoardView が1回だけ計算する（piecePairing.plan）が、静止表示なので使わない
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -28,7 +28,7 @@ window.Kakoi = window.Kakoi || {};
 
     /**
      * 駒を描く（.sq は BoardView が先に作り直してある）
-     * @param {{ after:Array<{p:string, owner:string, role:string, sq:string}> }} plan pieceMatch.plan の結果
+     * @param {{ after:Array<{p:string, owner:string, role:string, sq:string}> }} plan piecePairing.plan の結果
      * @param {{ mode:string }} opts
      */
     render(plan, { mode }) {

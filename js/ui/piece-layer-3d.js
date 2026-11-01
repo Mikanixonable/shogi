@@ -95,11 +95,11 @@ window.Kakoi = window.Kakoi || {};
     // ---- 駒の入れ替え ----
 
     /**
-     * 局面を描く。駒の対応づけ（移動リスト）は BoardView が pieceMatch.plan で1回だけ計算して渡す。
+     * 局面を描く。駒の対応づけ（移動リスト）は BoardView が piecePairing.plan で1回だけ計算して渡す。
      * いま盤にいる駒（this.cur）は、前回の plan.after と同じ並びで持っている
      * @param {{ after:Array<{p:string,owner:string,role:string,sq:string,skip?:string}>,
      *   pairs:Array<{o:number,n:number}>, gone:number[], appear:number[],
-     *   lead:number, path:string[]|null }} plan pieceMatch.plan の結果
+     *   lead:number, path:string[]|null }} plan piecePairing.plan の結果
      * @param {{ mode:string, animate:boolean }} opts
      */
     render(plan, { mode, animate }) {
@@ -311,7 +311,7 @@ window.Kakoi = window.Kakoi || {};
       const pts = path.map(sq => this._pos(sq));
       if (pts.length < 2) { this.board.style.removeProperty('--rt-d'); return; }
       pc.group.position.set(pts[0].x, pts[0].y, 0);
-      const dur = Kakoi.pieceMatch.routeMs(path);
+      const dur = Kakoi.piecePairing.routeMs(path);
       this._anim(dur, EASE_ROUTE, k => {
         const t = k * (pts.length - 1);
         const i = Math.min(Math.floor(t), pts.length - 2), f = t - i;
