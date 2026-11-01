@@ -2,6 +2,8 @@
 // 両側の実効状態・合成局面・merge（両軍の接触）・脅威・導出ラベル・両立しない選択を一括で返す。
 // View はこの結果（vm）を受け取るだけにし、compose/matchup を再計算しない。
 // DOM に依存しない純粋関数（unit-test からも使える）。
+// 依存方向（計画書 1-6）: 参照先は constraints・compose・matchup・catalog・notation だけ。
+// 逆向きの参照は持たない（全導出の窓口として下流だけを見る）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -18,7 +20,7 @@ window.Kakoi = window.Kakoi || {};
   function attachContactReasons(slots, S, merged, ng, showOpp) {
     const bad = (merged.contacts || []).filter(c => c.kind === 'ng');
     if (!bad.length) return;
-    const { findTactic } = K.catalog;
+    const { findTactic, WHOS } = K.catalog;
     const { mirrorSq } = K.notation;
     const pos = merged.position;
     const layerOf = (who, piece) => {
@@ -35,7 +37,7 @@ window.Kakoi = window.Kakoi || {};
     };
     for (const c of bad) {
       const xs = pos.pieces.filter(x => `${x.f}${x.r}` === c.sq);
-      for (const who of ['me', 'opp']) {
+      for (const who of WHOS) {
         if (who === 'opp' && !showOpp) continue;
         const piece = xs.find(x => x.owner === (who === 'me' ? 'sente' : 'gote'));
         if (!piece) continue;

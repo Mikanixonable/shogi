@@ -7,10 +7,11 @@
 
 ## 背景（現状）
 
-- `js/` は57ファイル・約11.9k行（data 約3.7k・core 約3.0k・ui 約4.0k・modes 約0.6k）。
+- `js/` は62ファイル・約14.2k行（data 約4.9k・core 約3.7k・ui 約4.6k・screen 約1.0k）。
   `window.Kakoi` 名前空間に IIFE で定義を足し、読み込み順は `js/manifest.js` が唯一の定義。
   index.html が manifest を読んで `<script>` を動的に挿入するため `file://` で動く
-- データは手書き JS（`tactics.js` 1548行・`castles-ibisha.js` 1327行）。86囲い・68戦法・8+14系統・13手筋
+- データは手書き JS（`tactics.js` 約1.5k行・`castles-ibisha.js` 約1.3k行）。
+  89囲い・75戦法・13手筋（`validate-castles.js` の実測）
 - テストは `validate-castles.js`（データ）・`unit-test.js`（純関数＋matrix スナップショット）・
   `ui-check.js`（Playwright）の3段。`npm test` 全体で約46秒、大半は `ui-check`
 - ビルド不要の静的サイト。配布は GitHub Pages。CI・lint・formatter は無し
@@ -24,7 +25,7 @@
 | `plan-next-actions.md` | 陳腐化（3画面時代の記述。分類マップは削除済み） | **archived へ移動済み** |
 | `plan-castle-tactic-tabs.md` | 実装済み（dockTab: 'castle'/'tactic'） | **archived へ移動済み** |
 | `plan-tactics-and-clusters.md` | 陳腐化（分類マップ削除済み） | **archived へ移動済み** |
-| `plan-dev-infra.md` | 新しい（2026-11-01）。A-2 テスト分割・A-4 CI は未実施 | 本計画の Phase 0 に吸収 |
+| `plan-dev-infra.md` | A-2 テスト分割済み。A-4 CI は UI テスト更新待ち | 本計画の Phase 0 に吸収 |
 | `plan-ui-overhaul.md` | 新しい（2026-11-01）。UI 改善案でリファクタではない | 別計画として残す |
 | `plan-ts-migration.md` | 未着手だが方向は有効 | 本計画の Phase 3 で現状版に更新 |
 
@@ -57,50 +58,25 @@
 core は既に純粋層として健全だが、複数戦法対応の過渡期の痕跡と大きい関数が残る。
 **振る舞い不変の機械的な整理**として行い、単体テストで固定する。
 
-### 1-1. データ参照の一本化 [S〜M]（完了: lookup を Map 索引化→catalog.js へ改名）
+### 1-1. データ参照の一本化 [S〜M]（完了）
 
-`Kakoi.lookup.findTactic`/`findCastle`（配列の線形走査）と `Repository` の Map が
-**2系統の参照経路**になっている。core は lookup、UI は両方を使い分けている現状を整理する。
-
-- `lookup` を index 化（初回アクセス時に id→オブジェクトの Map を構築）するか、
-  Repository への経路を統一するかは実装時に決める
-- 少なくとも「どちらを使うか」の規則をコメントで明文化し、UI が両方を使う理由を揃える
+`catalog.findTactic/findCastle` を Map 索引化し、配列の追加・置き換えに追従する。
+`catalog` はグローバルデータとスキーマ定数、`Repository` は UI 用の組み立て済み窓口と役割を明記。
 
 ### 1-2. tacticId / tacticIds の二重表現を tacticIds に一本化 [M]（完了: sides() から tacticId を削除し defaults.primaryOf に集約）
 
-複数戦法対応で `tacticId`（主の戦法・飛車優先）と `tacticIds`（全リスト）が併存し、
-`compat.tacticIdsOf`・`constraints.sides`・`hash-link`・`board-screen`・`defaults` に
-同じ変換ロジックが散っている。実態として `tacticId` は
-`primaryTacticId(tacticIds)` の導出値で独立した情報を持たないので、
-**導出のまま残すのではなく消して `tacticIds` に一本化する**。
-
-- `sides()` の出力から `tacticId` を外す（現在は `tacticIds` と並んで導出値を持つ。
-  <ref>constraints.js L143 付近</ref>）。`fillImplied` も `tacticIds` だけを書く
-- 代表戦法が欲しい読み側（`compat.tacticIdOf`・`board-screen`・`board-detail-view`・
-  `keyboard-nav`・`matchup._resolveTactic` など）は `primaryTacticId(st.tacticIds)` を
-  その場で呼ぶ。頻出なら `defaults` に薄いヘルパー（`primaryOf(st)` など）を足す
-- `lookup.FIELD` の `tactic: 'tacticId'` を消す。`compat.judgeFull` の
-  `st[FIELD[layer]] = candidateId` は層ごとの代入に分け、castle は `castleId`、
-  tactic は既存の `tacticIds` 駒枠ロジックのみとする
-- 入力境界（`compat.judge` の `me`/`opp` や unit-test の `{strategy, tacticId}`）は
-  `compat.tacticIdsOf` が旧形式を配列に正規化し続けるので、外部仕様は変えない
-- 削る前に確認: `judgeFull` が `tacticId=candidateId` に立てると `ev.tactic` が
-  「候補そのもの」になる経路（`pairingBestOf` 内部など）がある。観測できる振る舞いの
-  差は出ないと読み取れるが、unit-test で固定してから削る
-- `compat.judgeFull` の `candPiece` 差し替えロジックを `constraints.setTactic` と重複なく共有する
+実効状態は `tacticIds` のみを持つ。代表戦法が必要な読み側は `defaults.primaryOf(st)` で導出。
+旧 `tacticId` 入力は `compat` などの境界で正規化し、`lookup.FIELD` から tactic を除去。
+32万ケースの旧新判定を比較して差分0、unit-test で回帰確認済み。
 
 ### 1-3. 選択文字列（selected）のパース/構築の一元化 [S]（完了: constraints.DEFAULT_SEL に集約）
 
-`constraints.parseSel`（`'me.tactic.bougin'` 形式）と `hash-link.encodeSel/decodeSel`（`'mt.bougin'` 形式）は
-同じ概念の2つの文法。フォーマット自体は変えず、以下を整理する。
-
-- `'me.castle'` フォールバックが `constraints.normalizeSelected` と
-  `board-screen._renderDetail`（`{who:'me',kind:'castle'}` の直書き）に重複しているのを一元化
-- `SEL_RE` と `hash-link` の `decodeSel` の正規表現の意味差をコメントで明記
+内部選択文字列（`me.tactic.bougin`）と URL 短縮文字列（`mt.bougin`）は形式を維持。
+既定選択は `constraints.DEFAULT_SEL` に集約し、両形式の文法差をコメントで明記。
 
 ### 1-4. compose.js の分割 [M]（完了）
 
-**実施済み**: `position()` を約35行のオーケストレータにし、フェーズを `ctx` を
+**実施済み**: `build()` を約35行のオーケストレータにし、フェーズを `ctx` を
 受け取る名前つき関数（`buildBase`/`makeCtx`/`lockTactic`/`placeSubTactics`/
 `placeCore`/`lendMissingCore`/`placeRest`/`normalizeGuardPieces`/`placeShell`/
 `applyCastleHand`/`rescueKing`/`verifyPawns`/`countMoved`）に分割。
@@ -113,12 +89,11 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
 メモ・定数は使う責務のブロック内に配置。コード行の多重集合は完全一致で
 振る舞い不変を確認。unit-test 187/187 PASS。426行 → 429行。
 
-### 1-6. 依存方向の固定 [S]（保留: 改名で実質解消を確認後に判断）
+### 1-6. 依存方向の固定 [S]（完了）
 
-実行時に `constraints → compat → compose → defaults/lookup` の参照がグローバル経由で
-張られている（`constraints.sides` が `Kakoi.compat.judgeFull` を呼ぶ等）。
-循環は `defaults` の分離で既に解消済みだが、依存図を manifest/コメントで明文化し、
-新しいコードが逆方向を張らないようにする。
+`manifest.js` と `constraints` / `compat` / `compose` / `derive-board` の先頭コメントに
+依存の方向を明記。既定値の権威に関する古いコメント（`compose`・`matchup`）も
+`defaults` に修正した。`tesuji-check → pieceRules` は既存コメントで明記済み。
 
 ## Phase 2：UI の整理 [M]
 
@@ -127,32 +102,38 @@ Phase 1 が終わってから、大きい UI ファイルに手を入れる。re
 
 ### 2-1. constraint-field.js の分割 [M]（完了: 6ブロックに整理、703→760行）
 
-645行で最大の UI ファイル。六角グリッドのレイアウト計算・SVG/DOM 構築・
-イベント配線・胞の状態更新が同居している。
+レイアウト計算・DOM/SVG 構築・イベント配線・ヒット領域更新のブロックに整理。
+現在は新しい「駒つぎ」デザインへユーザー側で変更中のため、その表示は別途 E2E 更新が必要。
 
-- レイアウト計算（座標・辺の共有判定）を純粋関数として分離
-- DOM 構築とイベントは別層に。現状は描画と配線が混在
+### 2-2. detail-sections / detail-view の整理 [M]（完了）
 
-### 2-2. detail-sections / board-detail-view の整理 [M]
+**実施済み**: `detail-sections.js` に `head` / `setChip` / `senkeiChip` / `vchips`
+を追加し、`detail-view.js` の直接 HTML 構築を部品関数へ寄せた。`unit-test.js` に
+detail-sections のスモークテスト5件を追加。旧版との DOM 出力を15シナリオで比較し
+byte-identical を確認。
 
-419行＋352行の `innerHTML` 文字列構築。動作は安定しているので全面書き換えはしない。
+**別途要対応の表示バグ**: `_strategy` / `_senkei` でボタンHTMLを `Sec().note()` に渡すと
+`rich()` がHTMLをエスケープしてボタンが文字として表示される箇所がある。今回の
+振る舞い不変の整理では直していないため、独立したバグ修正タスクにする。
 
-- 長いセクション関数を責務（概要・ペンタグラム・相性・出典）ごとに分割
-- `innerHTML` 経路は据え置くが、XSS/属性エスケープの扱いを確認
-  （`Kakoi.html` が HTML 構築の唯一権威ならそれに寄せる）
+### 2-3. マジック値・フォールバックの統一 [S]（完了）
 
-### 2-3. マジック値・フォールバックの統一 [S]
+`constraints.DEFAULT_SEL` へ既定選択を集約。`derive-board.LATE='opp'` は
+「選んだ順を持たないので相手側固定」の意図が既に明記されているため維持。
+`Kakoi.newLRU(n)` を導入し、compat / constraints / piece-rules に散っていた
+LRU生成を統一。`derive-board` の側ループは `catalog.WHOS` を使う。
 
-`'me.castle'` や `{who:'me',kind:'castle'}` の既定選択、`board-model` の `LATE='opp'`、
-`Kakoi.LRU || Map` の繰り返しなど、散在する小さな重複を揃える。
+## Phase 0-4：CI [S]（保留）
+
+現在の未コミット UI デザイン変更により `ui-check.js` の既存セレクタ前提がずれ、
+`npm test` は unit 196件の後、UI 7件失敗となる。新デザインに合わせた UI チェックを更新し、
+全件 PASS を確認してから CI を有効化する。`test:fast` / `test:ui` の分離は完了済み。
 
 ## 命名の整理（責務が読める名前へ）[S〜M]（b〜e表は実施済み）
 
 調査の結果、kebab-case のファイル名・「データ=ALL_CAPS・ロジック=camelCase・DOM クラス=PascalCase」
-の規約は概ね統一されている。残るのは **同名衝突・責務が読めない名・画面領域名の揺れ**。
-Phase 3 でファイル名がそのまま import パスになるので、モジュール化の前に済ませる。
-改名だけのコミットとし（振る舞い不変）、manifest・tools/ の読み込みパス・`Kakoi.*` の
-参照を機械的に置き換える。
+の規約は概ね統一されている。**同名衝突・責務が読めない名・画面領域名の揺れ**を
+b〜e表の方針で改名済み。下表は変更前の名前と採用した名前の記録。
 
 ### a. 同名・近似名の衝突（最優先）
 
@@ -214,13 +195,13 @@ index.html では左=`.rail`・右=`.detail`・上=`#cfield`・中央=盤。フ�
 ## Phase 3：モジュール化・型（plan-ts-migration の現状版）[L]
 
 `docs/plan-ts-migration.md` の方向（esbuild で IIFE バンドル、`file://` 維持）は依然として有効。
-数字と対象が変わっているので、着手前に同書を現状に更新する。
+現状では TypeScript/compiler が依存にないため、導入時は `typescript` の追加が必要。
 
-- 更新点: 55→57ファイル、data 約3.7k行、`ui-check.js` の Playwright パターン、
+- 更新点: 55→62ファイル、data 約4.9k行、`ui-check.js` の Playwright パターン、
   `js/vendor/three.min.js` の取り扱い、`docs/archived/` 運用
 - Phase 1〜2 で責務が整理されたあとにモジュール化すると、import 境界が自然に決まる
-- 型は `types/kakoi.d.ts` の骨格から（`plan-ts-migration` Phase 1）か、
-  core の整理と並行して進めてもよい
+- 次の実装候補は `types/kakoi.d.ts` と `tsconfig.json` による型骨格。ただし `tsc` を
+  実行するには依存導入が必要なので、ネットワークを使えるタイミングで同時に着手する
 
 ## Phase 4：リポジトリ整備（随時・並行可）
 

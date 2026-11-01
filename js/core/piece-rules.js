@@ -52,9 +52,9 @@ window.Kakoi = window.Kakoi || {};
   // piece-pairing.js の slideCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、
   // 届くかどうかはこちらで判定する
   const MAX_PLY = 8;
-  // メモは compat.js / constraints.js と同じく Kakoi.LRU。キー空間は駒種×81マスと
-  // 有限だが、上限＋最近使った順の保持に揃えておく（Map フォールバックは上限なしの従来動作）。
-  // lru.js より先に読み込まれるので、初回呼び出し時に作る
+  // メモは compat.js / constraints.js と同じく共有 LRU（Kakoi.newLRU で作る定型）。
+  // キー空間は駒種×81マスと有限だが、上限＋最近使った順の保持に揃えておく。
+  // lru.js より先に読み込まれるので、初回呼び出し時に作る（その時点では lru.js 済み）
   let mcMemo = null;                    // `${p}:${from}` → Map(toKey → 手数)
   function bfsCount(p, from) {
     const mv = movesOf(p);
@@ -92,7 +92,7 @@ window.Kakoi = window.Kakoi || {};
    */
   function reachPly(p, from, to) {
     if (from === to) return 0;
-    if (!mcMemo) mcMemo = new (Kakoi.LRU || Map)(512);
+    if (!mcMemo) mcMemo = Kakoi.newLRU(512);
     const ck = `${p}:${from}`;
     let m = mcMemo.get(ck);
     if (!m) {

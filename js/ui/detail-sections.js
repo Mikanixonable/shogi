@@ -52,6 +52,40 @@ window.Kakoi = window.Kakoi || {};
   const sec = (title, small, body) =>
     `<div class="sec"><h3>${title}${small ? `<small>${small}</small>` : ''}</h3>${body}</div>`;
 
+  // ===== パネル先頭・チップの定型 =====
+  /**
+   * パネル先頭（.bd-h）: 上段の小見出し（側・層や分類のパンくず）＋項目名。
+   * reading は項目名の脇の小字。implied は「既定」の印と暗黙の補完の注記を添える
+   * @param {string} who 小見出し（「▲自分の戦法」「対戦形式（大分類）」など）
+   * @param {string} name 項目名
+   * @param {{ reading?:string, implied?:boolean }} [opt]
+   */
+  function head(who, name, { reading = '', implied = false } = {}) {
+    return `<div class="bd-h"><p class="bd-who">${esc(who)}</p>` +
+      `<h2 class="bd-t">${esc(name)}${reading ? ` <span class="bd-imp">${esc(reading)}</span>` : ''}` +
+      `${implied ? ' <small class="bd-imp">既定</small>' : ''}</h2>` +
+      (implied
+        ? '<p class="note">未選択のため、戦略の既定値（または他の層との相性から選んだ値）で補っています。左ドックで選ぶと置き換わります。</p>'
+        : '') +
+      `</div>`;
+  }
+
+  // .vchips: チップ（.vchip）を横に並べる器。中身は呼び側で組む
+  const vchips = inner => `<div class="vchips">${inner}</div>`;
+
+  /**
+   * [data-act="set"] の vchip: 押すとその層を制約に立てる。
+   * who を渡すときだけ data-who を出す（戦型の面から側を指定して立てる場合）
+   * @param {{ who?:string, kind:string, id:string, text:string, pressed?:boolean }} o
+   */
+  const setChip = ({ who = '', kind, id, text, pressed = false }) =>
+    `<button class="vchip" data-act="set"${who ? ` data-who="${esc(who)}"` : ''} data-kind="${esc(kind)}"` +
+    ` data-id="${esc(id)}" aria-pressed="${!!pressed}">${esc(text)}</button>`;
+
+  // [data-act="senkei"] の vchip: 制約ではなく戦型の解説への導線
+  const senkeiChip = (id, text) =>
+    `<button class="vchip" data-act="senkei" data-id="${esc(id)}" aria-pressed="false">${esc(text)}</button>`;
+
   /**
    * 特徴の目安: 5軸×5段階のレーダーチャート。
    * @param {Object} ratings 囲いの強み {hard,wide,top,side,quick}
@@ -220,9 +254,8 @@ window.Kakoi = window.Kakoi || {};
   function variants(items) {
     if (!items || items.length < 2) return '';
     const chips = items.map(v =>
-      `<button class="vchip" data-act="set" data-kind="tactic" data-id="${esc(v.id)}"` +
-      ` aria-pressed="${!!v.current}">${esc(v.name)}</button>`).join('');
-    return sec('派生の切替', '同じ形の変化。押すとその戦法を制約にする', `<div class="vchips">${chips}</div>`);
+      setChip({ kind: 'tactic', id: v.id, text: v.name, pressed: v.current })).join('');
+    return sec('派生の切替', '同じ形の変化。押すとその戦法を制約にする', vchips(chips));
   }
 
   /**
@@ -316,11 +349,11 @@ window.Kakoi = window.Kakoi || {};
     const li = reasons.map(r =>
       `<li data-level="ng" data-tone="bad"${sqAttr(r.squares)}><span class="mk">✕</span><span>${rich(r.text, citer)}</span></li>`).join('');
     const chips = suggestions.map(c =>
-      `<button class="vchip" data-act="set" data-kind="${kind}" data-id="${esc(c.id)}" aria-pressed="false">${esc(c.name)}</button>`).join('');
+      setChip({ kind, id: c.id, text: c.name })).join('');
     return sec('いまの組み合わせでは両立しません', '自動では差し替えません',
       `<ul class="mu-reasons">${li}</ul>` +
       (chips
-        ? `<p class="note">代わりの候補（押すと差し替え）</p><div class="vchips">${chips}</div>`
+        ? `<p class="note">代わりの候補（押すと差し替え）</p>${vchips(chips)}`
         : '<p class="note">差し替えで直せる候補はありません。もう一方の層を外すか選び直してください。</p>'));
   }
 
@@ -377,7 +410,7 @@ window.Kakoi = window.Kakoi || {};
       return `<div class="combo${done ? ' done' : ''}">` +
         `<h3 class="combo-h">${esc(c.name)}${c.basic ? '<span class="combo-basic">基本</span>' : ''}${done ? '<span class="combo-ok">完成</span>' : ''}</h3>` +
         `<p class="desc">${rich(c.desc, citer)}</p>` +
-        `<div class="vchips"><button class="vchip" data-act="combo" data-id="${esc(c.id)}" aria-pressed="${done}">${done ? 'そろっています' : 'このセットにする'}</button>${vs}</div>` +
+        vchips(`<button class="vchip" data-act="combo" data-id="${esc(c.id)}" aria-pressed="${done}">${done ? 'そろっています' : 'このセットにする'}</button>${vs}`) +
         `</div>`;
     }).join('');
     return sec('定番セット', '戦法と囲いを両方選ぶと完成', items);
@@ -436,7 +469,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   K.detailSections = {
-    RATINGS, TACTIC_RATINGS, RADAR, sec,
+    RATINGS, TACTIC_RATINGS, RADAR, sec, head, vchips, setChip, senkeiChip,
     penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,

@@ -1,4 +1,6 @@
 // スクリプト一覧: 読み込み順の唯一の定義（index.html と tools/validate-castles.js が共有する）
+// 依存方向は data → core → logic → ui → screen → app。logic 内の参照も一方向
+// （constraints→compat→compose→defaults/catalog→pieceRules。逆向きの参照を増やさない）
 window.Kakoi = window.Kakoi || {};
 Kakoi.MANIFEST = (() => {
   const core = ['js/core/notation.js', 'js/core/piece-rules.js'];

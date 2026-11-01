@@ -35,6 +35,8 @@ ctx.URLSearchParams = URLSearchParams;
 load('js/ui/hash-link.js');
 load('js/ui/tactic-nav.js');
 load('js/ui/mini-board.js');
+// detail-sections も HTML文字列を返すだけの純関数群（依存は notation + html）なので試す
+load('js/ui/detail-sections.js');
 
 const K = ctx.Kakoi;
 if (!K.compose || !K.compose.build) {
@@ -1013,6 +1015,33 @@ if (!K.constraints || !K.constraints.effectiveSides || !K.constraints.setSlot ||
   ok(K.matchup.threat(null, null) === null
     && K.matchup.threat({ strategy: 'ibisha', tacticIds: [], castleId: null }, null) === null,
     'matchup:threat(null) は null を返す');
+}
+
+// ---------- 11. detail-sections: HTML文字列を返す純関数のスモーク ----------
+{
+  const DS = K.detailSections;
+  ok(DS && DS.penta && DS.head && DS.setChip && DS.senkeiChip,
+    'detail-sections:読み込みと主要APIの存在');
+  // esc 連携: id/text に HTML 特殊文字が来ても属性・本文が壊れない
+  const chip = DS.setChip({ kind: 'castle', id: 'a"b', text: '<x>', pressed: true });
+  ok(chip === '<button class="vchip" data-act="set" data-kind="castle" data-id="a&quot;b" aria-pressed="true">&lt;x&gt;</button>',
+    'detail-sections:setChip は id/text を esc する', chip);
+  // head: パネル先頭の bd-h/bd-who/bd-t と読み・「既定」の印
+  const h = DS.head('▲自分の囲い', '美濃囲い', { reading: 'みのがこい', implied: true });
+  ok(h.indexOf('class="bd-h"') >= 0 && h.indexOf('class="bd-who"') >= 0
+    && h.indexOf('class="bd-t"') >= 0 && h.indexOf('bd-imp') >= 0 && h.indexOf('既定') >= 0,
+    'detail-sections:head は bd-h/bd-who/bd-t・読み・既定を出す', h);
+  // penta: 5つの環・値多角形・5軸ラベル・aria-label を含む
+  const svg = DS.penta({ hard: 3, wide: 4, top: 2, side: 1, quick: 5 });
+  ok(svg.indexOf('class="penta"') >= 0 && svg.indexOf('aria-label="特徴の目安（5軸・5段階）"') >= 0
+    && (svg.match(/penta-ring/g) || []).length === 5 && svg.indexOf('penta-val') >= 0
+    && svg.indexOf('堅さ') >= 0 && svg.indexOf('組みやすさ') >= 0,
+    'detail-sections:penta は5環・値多角形・5軸ラベルを出す', '');
+  // desc: 本文中の [[ref]] が citer の番号の [n] リンクになる
+  const citer = K.html.makeCiter();
+  const d = DS.desc('角を使う[[book-a]]。', citer);
+  ok(d === '<p class="desc">角を使う<sup class="cite"><a href="#src-1">[1]</a></sup>。</p>',
+    'detail-sections:desc は [[ref]] を [n] リンクにする', d);
 }
 
 console.log(`---\n${pass + fail} tests, ${pass} pass, ${fail} fail`);

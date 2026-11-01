@@ -9,6 +9,8 @@
 // 無ければ囲い）から導く。ただし選択（'who.strategy'）としては受ける。
 // 既定値の解決規則の権威は core/defaults.js、層のスキーマ定数（KINDS/FIELD/WHOS）は
 // core/catalog.js が唯一の定義。両立の判定は compat.judge と同じものを使う。
+// 依存方向（計画書 1-6）: 参照先は compat・matchup・defaults・catalog・共有 LRU と
+// データ（Kakoi.TACTICS 等）だけ。逆向きの参照は持たない
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -183,7 +185,7 @@ window.Kakoi = window.Kakoi || {};
   // ---------- 候補の評価: レールのバッジ・ホバー予告・直す候補で共有する窓口 ----------
   // 「候補を置いた後」の側を土台に compat.judge するので、その側のスロットが空でも
   // 候補から導いた戦略で評価され、「駒が足りない」といった嘘の ng 理由が出ない
-  const evalCache = new (Kakoi.LRU || Map)(512);
+  const evalCache = Kakoi.newLRU(512);
   /**
    * @param {{me:Object, opp:Object}} slots
    * @param {boolean} showOpp

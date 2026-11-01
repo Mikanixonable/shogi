@@ -24,6 +24,11 @@ window.Kakoi = window.Kakoi || {};
     get size() { return this.map.size; }
   }
 
+  // 共有 LRU を作る定型（compat・constraints・piece-rules のメモで使う）。
+  // この関数が参照できる時点では lru.js の読み込み済みなので Map フォールバックは持たない
+  const newLRU = n => new LRU(n);
+
   Kakoi.LRU = LRU;
+  Kakoi.newLRU = newLRU;
   if (typeof module !== 'undefined' && module.exports) module.exports = LRU;
 })();

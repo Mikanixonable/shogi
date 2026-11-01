@@ -4,6 +4,8 @@
 // constraints.conflicts が担う）。searchAlternative は未選択の層の既定値が ng のときの
 // 補完（constraints.effectiveSides）に使う内部API。計画書 §3-2 / §4-2。
 // 中身は責務ごとのブロック分け: 共通部品 → compose 評価 → 相性表・castleFit → judge → searchAlternative。
+// 依存方向（計画書 1-6）: 参照先は compose・matchup・defaults・catalog・notation・共有 LRU と
+// データ（Kakoi.TACTICS 等）だけ。逆向き（constraints 側）への参照は持たない
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -51,7 +53,7 @@ window.Kakoi = window.Kakoi || {};
 
   // ngReasons（×の理由）と notes（○のまま付ける注記）を分けて返す。結果は選択状態をキーに
   // 共有 LRU でメモ化（S4: 長時間のセッションでメモが際限なく増えないよう上限を設ける）
-  const evalMemo = new (Kakoi.LRU || Map)(512);
+  const evalMemo = Kakoi.newLRU(512);
   function evaluate(st, opp) {
     const k = JSON.stringify([normSide(st), normSide(opp)]);
     if (evalMemo.has(k)) return evalMemo.get(k);
@@ -212,7 +214,7 @@ window.Kakoi = window.Kakoi || {};
 
   // ---------- 囲いの対戦相性スコアの上位帯（§3-2: 上位2件 または 最高点−0.5 以内） ----------
   // 両立する候補だけを対象に、全囲いの castleFit を (strategy,tacticId,opp) 単位で1回だけ計算する
-  const bandMemo = new (Kakoi.LRU || Map)(128);
+  const bandMemo = Kakoi.newLRU(128);
   function fitnessBand(st, opp) {
     const ctx = { strategy: st.strategy || null,
       tacticId: st.tacticId || null, tacticIds: tacticIdsOf(st) };
@@ -237,7 +239,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ========== judge: 候補と「いまの他の層」の両立判定 ==========
-  const judgeMemo = new (Kakoi.LRU || Map)(512);
+  const judgeMemo = Kakoi.newLRU(512);
   // 同じ内容を別の言い回しで2度言う理由をまとめる（U6: 穴熊の「手数がかかる」が
   // 自動生成の TEMPO 注記と相性表の why で二重に出ていたのを防ぐ）。
   // 記号・括弧・空白を除いた正規形で一方が他方を含むとき、情報量の多い側を残す

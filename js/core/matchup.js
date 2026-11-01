@@ -24,7 +24,7 @@ window.Kakoi = window.Kakoi || {};
   const { findTactic, findCastle } = Kakoi.catalog;
 
   // その側の戦法を解決する。未選択なら戦略テンプレートの既定戦法
-  // （既定値の解決規則は Kakoi.constraints が唯一の権威）
+  // （既定値の解決規則は Kakoi.defaults が唯一の権威）
   // 複数戦法: tacticIds があれば全て、主の戦法（primaryTacticId）が先頭
   function _resolveTactics(side) {
     const ids = (side && Array.isArray(side.tacticIds) && side.tacticIds.length)

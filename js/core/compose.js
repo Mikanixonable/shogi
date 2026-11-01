@@ -12,6 +12,8 @@
 //     donor の優劣は piecePairing.slideCost（アニメ用コスト）で決める
 //   - core の目標マスがロック駒に塞がれているときは castle.flex の to へ逃がす（崩し形）
 //   - core の駒が足りないときは、flex.to にいるロック済みの同種の駒が「貸し出し」で兼ねられる
+// 依存方向（計画書 1-6）: 参照先は defaults・catalog・notation・Position・
+// pieceRules・piecePairing とデータ（Kakoi.SETUPS 等）だけ。逆向き（compat・constraints 側）への参照は持たない
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -26,7 +28,7 @@ window.Kakoi = window.Kakoi || {};
   // その駒の動きで何手かかるか（届く判定用。Infinity なら届かない。計画書 L3）
   const reachPly = (p, from, to) => Kakoi.pieceRules.reachPly(p, from, to);
 
-  // 戦略テンプレートの既定囲い。既定値の解決規則は Kakoi.constraints が唯一の権威
+  // 戦略テンプレートの既定囲い。既定値の解決規則は Kakoi.defaults が唯一の権威
   // （defaultCastle は文字列または {vsIbisha,vsFuribisha}。相手の戦略で振り分け、不明なら vsIbisha）
   function templateCastleOf(strategy, oppStrategy) {
     const id = Kakoi.defaults.defaultCastleId(strategy, oppStrategy);
