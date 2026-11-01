@@ -322,14 +322,15 @@ async function sweepBoard(page, expect) {
     const rows = [...document.querySelectorAll('#pickRail .dk-trow:not([hidden])')];
     const variants = rows.flatMap(row => [...row.querySelectorAll('.dk-var')]);
     const basics = rows.flatMap(row => [...row.querySelectorAll('.dk-tile[data-basic="true"]')]);
-    return variants.length > 0 && variants.every(el => !el.hidden
-      && getComputedStyle(el).display !== 'none' && !!el.querySelector('.dk-branch'))
+    return variants.length > 0 && variants.every(el => !!el.querySelector('.dk-branch'))
       && basics.length > 0 && basics.every(el => !!el.querySelector('.dk-seal'))
+      && !!document.querySelector('.dk-vf')   // 派生は親札の下の帯に畳む
       && !document.querySelector('.dk-vshow');
   });
-  r.fileHdr = await page.evaluate(() => {   // 筋の番号ヘッダ: 列は盤の絶対座標（左=9筋）
-    const fh = document.querySelector('#pickRail .dk-fh');
-    return !!fh && [...fh.querySelectorAll('span')].map(s => s.textContent).join('') === '９８７６５４３２１';
+  r.fileMap = await page.evaluate(() => {   // 各札が筋の地図（9目盛り）を持ち、立つ筋が塗られている
+    const tiles = [...document.querySelectorAll('#pickRail .dk-tile:not([hidden])')];
+    return tiles.length > 0 && tiles.every(t =>
+      t.querySelectorAll('.dk-map i').length === 9 && t.querySelectorAll('.dk-map i.on').length >= 1);
   });
   await page.click(`${DOCK} .dk-tile:not([hidden])`); await wait(350);
   r.t2 = await snap(page);
@@ -379,7 +380,7 @@ async function sweepBoard(page, expect) {
   const tA = (r.t2.slots.me.tactic || []).join(','), cA = r.t2.slots.me.castle;
   await page.evaluate(() => {
     const t = [...document.querySelectorAll('#pickRail .dk-tile:not([hidden])')]
-      .find(el => el.getAttribute('aria-current') !== 'true');
+      .find(el => el.getAttribute('aria-pressed') !== 'true');
     if (t) t.click();
   });
   await wait(350);
@@ -570,10 +571,9 @@ async function sweepBoard(page, expect) {
   r.oppTab = await page.evaluate(() => __kakoi.store.state.selected.startsWith('opp.')
     && document.querySelector('#pickRail .dk').dataset.who === 'opp');
   await page.click(`${DOCK} .dk-tab button[data-value="tactic"]`); await wait(250);
-  r.flipCol = await page.evaluate(() => {   // 相手の面は筋が反転: 四間飛車（先手6筋）は盤の4筋=グリッド列6
+  r.flipCol = await page.evaluate(() => {   // 相手の面は筋が反転: 四間飛車（先手6筋）は盤の4筋=地図の左から6番目
     const t = document.querySelector('#pickRail .dk-tile[data-id="shikenbisha"]');
-    const cell = t && t.closest('.dk-cell');
-    return cell ? getComputedStyle(cell).gridColumnStart : null;
+    return t ? String([...t.querySelectorAll('.dk-map i')].findIndex(i => i.classList.contains('on')) + 1) : null;
   });
   await page.click(`${DOCK} .dk-tile:not([hidden])`); await wait(400);
   r.t5b = await snap(page);
@@ -972,8 +972,8 @@ async function main() {
       ok(b.strategySel, '戦型チップを押すと右ドックに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
       ok(b.oppStrategySel, '相手側の戦型チップも右ドックに出る（相手の面・組み合わせの戦型つき）', '');
       ok(b.dockPick, 'ドックの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
-      ok(b.variantStyle, '派生戦法は分岐チップで常に表示され、表示トグルは無い', `${b.vars}件`);
-      ok(b.fileHdr, '戦法グリッドの上に筋の番号（９…１）', '');
+      ok(b.variantStyle, '派生戦法は親札の下の「派生 n」の帯に畳む（↳チップ）', `${b.vars}件`);
+      ok(b.fileMap, '戦法の札に筋の地図（9目盛りで立つ筋を塗る）', '');
       ok(b.segFilter && b.famFilter, '戦略セグは一覧の絞り込みだけ（スロット・導出した戦略は不変）', `rows=${b.segFilter} fams=${b.famFilter}`);
       ok(b.ngBadges > 0, 'いまの組み合わせと両立しない項目に✕の印（data-ng）が出る', `${b.ngBadges}件`);
       ok(b.ngKept, '両立しない囲いを選んでも戦法は自動で差し替わらない', JSON.stringify(b.t4 && b.t4.slots));

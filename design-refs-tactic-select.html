@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>戦法の選択UI — 駒棚・帳簿・表の改修（実寸）</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* 戦法の選択UIの改修リファレンス。
+   課題（現状の棚卸し）:
+   1) 系統が「飛・銀・角(・桂・歩)」の3行しかなく、桂・歩・金・玉が主役の戦法は
+      「角・桂・歩の筋」の1行に角を代表駒として無理やり畳まれている。
+      実データ: 飛35 銀18 角9 桂2 歩2 金1 玉1（計68・派生22）。
+   2) 戦法は駒ごとの枠に複数採用できる（st.tacticIds）のに、タイルの選択表示は
+      囲いと同じ単一選択の見た目（朱の枠＋✓）を流用しており、
+      「何を・いくつ・どの駒で選んでいるか」が一覧を見ても分からない。
+   3) タイルは9列グリッドで幅≈34px、cqwで名が縮み、筋は数字だけで直感的でない。 */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f;
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --ink:#1b1a17; --gote-ink:#33507a;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-n:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  /* 主役の駒の色（theme.css の --t-*。不足分は同じ和の系統から採る） */
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
+  --t-kei:#b5652b; --t-fu:#77694f; --t-kin:#a07a1f; --t-gyoku:#55504a;
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b;
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --gote-ink:#8ea6cf;
+  --t-rook:#e2563b; --t-silver:#8ea6cf; --t-kaku:#9cbf8a;
+  --t-kei:#d98a50; --t-fu:#b4a88f; --t-kin:#d1a94a; --t-gyoku:#b4ada2;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); }
+body { margin:0; font:14px/1.6 var(--font-b); color:var(--fg); background:var(--bg); }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+/* ===== ページの枠 ===== */
+.top { position:sticky; top:0; z-index:30; display:flex; gap:6px 14px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 12px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 10px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.top button { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; }
+.intro { max-width:1100px; margin:22px auto 0; padding:0 16px; color:var(--fg2); font-size:13.5px; }
+.intro ul { margin:6px 0 0; padding-left:1.3em; }
+section.plan { max-width:1100px; margin:40px auto 0; padding:0 16px 40px; border-bottom:1px solid var(--line); }
+section.plan h2 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:800 24px/1.3 var(--font-d); letter-spacing:.06em; }
+section.plan h2 .no { font:800 34px/1 var(--font-d); color:var(--accent); }
+section.plan h2 .rec { font:700 11px/1 var(--font-b); color:var(--bg); background:var(--accent); padding:3px 9px; letter-spacing:.14em; }
+section.plan .lead { margin:0 0 18px; color:var(--fg2); font-size:13.5px; max-width:860px; }
+.stage { display:grid; grid-template-columns:390px minmax(0,1fr); gap:0 40px; align-items:start; }
+.stage .cap { font-size:11px; color:var(--muted); letter-spacing:.14em; margin-bottom:4px; }
+.notes { font-size:12.5px; color:var(--fg2); display:flex; flex-direction:column; gap:12px; padding-left:8px; }
+.notes h4 { margin:0 0 2px; font-size:12px; letter-spacing:.14em; color:var(--muted); }
+.notes ul { margin:0; padding-left:1.2em; }
+.notes .try { padding:8px 12px; border-left:2px solid var(--accent); background:var(--accent-soft); }
+.notes .warn { padding:8px 12px; border-left:2px solid var(--accent-2); }
+.notes code { font:600 11px/1.4 ui-monospace,monospace; background:var(--faint); padding:1px 4px; }
+table.cmp { border-collapse:collapse; font-size:12px; }
+table.cmp th, table.cmp td { border:1px solid var(--line-2); padding:4px 10px; text-align:left; }
+table.cmp th { background:var(--faint); font-weight:600; }
+@media (max-width:880px) { .stage { grid-template-columns:390px; } .notes { padding:16px 0 0; } }
+
+/* ===== 共通: 左ドックの器（実寸） ===== */
+.rail { position:relative; width:390px; border-right:1px solid var(--line); }
+.rail .pg { position:relative; padding:10px 14px 16px; display:flex; flex-direction:column; }
+.body { padding:8px 9px 2px 0; }
+
+/* ===== 共通: 面の上端 ===== */
+.ph { display:flex; flex-wrap:nowrap; align-items:flex-end; gap:12px; margin-bottom:8px; border-bottom:1px solid var(--line-2); }
+.strat2 { flex:none; display:flex; align-self:flex-end; margin-bottom:2px; }
+.strat2 button { border:0; background:none; padding:7px 10px 6px; cursor:pointer; font:700 13px/1 var(--font-b);
+                 letter-spacing:.06em; color:var(--muted); }
+.strat2 button[aria-pressed="true"] { color:var(--fg); font-weight:700; box-shadow:inset 0 -2.5px 0 var(--accent); }
+.tabs { position:relative; display:flex; align-items:flex-end; gap:4px; flex:1 1 auto; height:42px; min-width:0; margin-bottom:-1px; }
+.tabs button { position:relative; flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:7px;
+               height:41px; min-width:0; padding:6px 3px; border:1px solid var(--line-2);
+               border-radius:9px 9px 0 0; background:color-mix(in srgb,var(--fg) 4%,var(--bg));
+               font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted); }
+.tabs button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
+.tabs button[aria-pressed="true"] { z-index:1; border-color:var(--accent-2); border-bottom:1px solid var(--bg);
+                                   background:var(--bg); color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); font-weight:800; }
+.tools { display:flex; align-items:center; gap:6px 10px; flex-wrap:wrap; min-height:28px; margin:0 0 8px; }
+.lg-badge { display:inline-block; min-width:1.9em; margin-right:3px; padding:0 4px; border-radius:999px;
+            font:700 9.5px/1.6 var(--font-b); text-align:center; }
+.lg-good { background:var(--good); color:var(--bg); }
+.lg-bad { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
+.lg-ng { background:var(--bad); color:#fbf6ea; }
+.legend { margin-left:auto; width:18px; height:18px; padding:0; border:1px solid var(--line-2); border-radius:50%;
+          background:none; color:var(--muted); font:600 11px/1 var(--font-b); cursor:pointer; flex:none; }
+.key { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; font-size:11px; color:var(--muted); }
+
+/* ===== 共通: 選択状態の記号（◎△✕）と選択中 ===== */
+.it { position:relative; font:inherit; color:inherit; cursor:pointer; min-width:0; }
+.it .vs, .it .ng { display:inline-block; min-width:18px; padding:1px 5px; border-radius:999px;
+                   font:700 9.5px/1.35 var(--font-b); font-style:normal; text-align:center; }
+.it .vs:empty, .it .ng:empty { display:none; }
+.it[data-vs="good"] .vs { background:var(--good); color:var(--bg); }
+.it[data-vs="bad"] .vs { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
+.it .ng { background:var(--bad); color:#fbf6ea; }
+.it[data-ng="true"] { border-style:dashed !important; border-color:var(--line-2) !important; }
+.it[data-implied="true"]::after { content:""; position:absolute; top:2px; right:2px; width:5px; height:5px;
+                                 border:1px dashed var(--muted); pointer-events:none; }
+.seal { position:absolute; top:-1px; left:-1px; z-index:2; width:0; height:0; font-size:0; pointer-events:none;
+        border-top:9px solid var(--accent); border-right:9px solid transparent; }
+
+/* 駒の小タイル（行見出しと同じ形） */
+.pt-tile { display:grid; place-items:center; font:700 11px var(--font-d); color:var(--core, var(--fg));
+           background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
+           clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
+
+/* ペースの記号: 急=稲妻の縦二本、持=横一本、両=菱 */
+.pace { display:inline-flex; align-items:center; gap:3px; font:600 9.5px/1 var(--font-b); color:var(--muted);
+        letter-spacing:.04em; }
+.pace i { font-style:normal; }
+.pace[data-p="rapid"] { color:var(--accent); }
+.pace svg { width:10px; height:10px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; }
+
+/* ============================================================
+   案A「駒棚」: 行=駒（全7種）。タイルは筋の地図を内蔵した札。
+   ============================================================ */
+/* 選んだ戦法の盆（複数選択を見せる。一覧の最上段・選択ゼロでは畳む） */
+.tray { display:flex; flex-wrap:wrap; align-items:center; gap:5px 6px; margin:0 0 10px;
+        padding:7px 9px 7px 7px; border:1px solid var(--line-2); border-left:3px solid var(--accent);
+        background:var(--accent-soft); }
+.tray .tray-h { flex:none; font:700 10px/1 var(--font-b); letter-spacing:.12em; color:var(--accent); }
+.tray .tray-h b { font:800 13px/1 var(--font-n); }
+.chip { display:inline-flex; align-items:center; gap:5px; min-width:0; padding:2px 3px 2px 2px;
+        border:1px solid var(--tc, var(--line-2)); background:var(--bg); color:var(--fg);
+        font:600 11.5px/1 var(--font-b); cursor:pointer; }
+.chip .pt-tile { width:15px; height:17px; padding-top:2px; font-size:9px; }
+.chip .nm { max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chip .x { display:grid; place-items:center; width:15px; height:15px; border-radius:50%;
+           font:600 11px/1 var(--font-b); color:var(--muted); }
+.chip:hover { border-color:var(--bad); }
+.chip:hover .x { color:var(--bad); }
+.chip[data-ng="true"] { border-style:dashed; }
+.tray .tray-all { flex:none; margin-left:auto; border:0; background:none; padding:2px 4px;
+                  color:var(--muted); font:600 10.5px/1 var(--font-b); cursor:pointer; }
+.tray .tray-all:hover { color:var(--bad); }
+
+/* 系統の行: 見出しは駒＋筋の範囲＋件数。選択中の数は朱の丸 */
+.fam { display:flex; flex-direction:column; gap:6px; border-left:4px solid var(--tc, var(--line-2));
+       padding-left:8px; margin-bottom:13px; }
+.famh { display:flex; align-items:center; gap:7px; width:100%; padding:2px 0; border:0; background:none;
+        font:700 13.5px/1.2 var(--font-d); letter-spacing:.07em; color:var(--fg); cursor:pointer; text-align:left; }
+.famh:hover { color:var(--tc); }
+.famh .caret { font-size:10px; color:var(--muted); transition:transform .2s var(--ease); }
+.fam[data-closed="true"] .famh .caret { transform:rotate(-90deg); }
+.famh .pt-tile { width:24px; height:27px; padding-top:4px; font-size:14px; background:var(--tc); color:var(--bg);
+                 box-shadow:none; }
+.famh .fr { font:500 10px/1 var(--font-n); color:var(--muted); letter-spacing:.05em; }
+.famh .n { margin-left:auto; min-width:22px; padding:1px 6px; border-radius:999px; background:var(--tc);
+           color:var(--bg); font:700 11px/1.4 var(--font-b); text-align:center; }
+.famh .n[data-sel]:not([data-sel=""])::after { content:" " attr(data-sel); }
+.famh .seldot { flex:none; min-width:17px; padding:0 4px; border-radius:999px; background:var(--accent);
+                color:#fbf6ea; font:800 10px/1.6 var(--font-b); text-align:center; }
+.famh .seldot:empty { display:none; }
+.fam[data-closed="true"] .stand { display:none; }
+
+/* 駒棚: 筋順（9→1）に並ぶ札。各札が自分の筋の地図を持つので共通の筋ヘッダは要らない */
+.stand { display:flex; flex-wrap:wrap; gap:7px 6px; align-items:flex-start; }
+.tl { display:flex; flex-direction:column; align-items:stretch; width:64px; padding:0 0 4px;
+      border:1px solid var(--line-2); border-top:3px solid var(--tc, var(--line-2)); background:var(--bg);
+      text-align:center; transition:border-color .2s, background .2s, transform .15s var(--ease), box-shadow .15s; }
+.tl:hover { border-color:var(--fg); transform:translateY(-1px); box-shadow:0 3px 8px rgba(24,18,8,.10); }
+/* 筋の地図: 9つの目盛り。主役の駒が立つ筋を駒色で塗る（帯は lead.files） */
+.tl .map { display:grid; grid-template-columns:repeat(9,1fr); gap:1px; height:9px; padding:0 3px; align-items:end; }
+.tl .map i { display:block; height:3px; background:var(--line-2); }
+.tl .map i.on { height:8px; background:var(--tc); }
+.tl .sq { margin-top:2px; font:700 10px/1 var(--font-n); color:var(--muted); letter-spacing:.05em; }
+.tl .nm { display:block; padding:3px 2px 0; font:600 12.5px/1.2 var(--font-b); letter-spacing:.01em;
+          overflow-wrap:anywhere; }
+.tl .ft { display:flex; align-items:center; justify-content:center; gap:4px; min-height:12px; margin-top:2px; }
+.tl[data-basic="true"] { border-color:var(--tc); background:color-mix(in srgb, var(--tc) 10%, var(--bg)); }
+/* 複数選択の状態: 枠ではなく「裏返した駒」——駒色の地に白抜き。複数あっても1枚ずつ読める */
+.tl[aria-pressed="true"] { border-color:var(--tc); background:var(--tc); color:#fbf6ea;
+                           transform:translateY(-1px); box-shadow:0 3px 8px rgba(24,18,8,.18); }
+.tl[aria-pressed="true"] .nm { color:#fbf6ea; font-weight:700; }
+.tl[aria-pressed="true"] .sq { color:rgba(251,246,234,.8); }
+.tl[aria-pressed="true"] .map i { background:rgba(251,246,234,.35); }
+.tl[aria-pressed="true"] .map i.on { background:#fbf6ea; }
+.tl[aria-pressed="true"] .pace { color:rgba(251,246,234,.85); }
+.tl[aria-pressed="true"] .pace svg { stroke:#fbf6ea; }
+/* 派生の束: 親札の下に畳まれた帯。開くとチップが並ぶ */
+.vars { display:flex; flex-direction:column; width:64px; margin-top:-6px; }
+.vars .vf { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; height:13px;
+            border:1px solid var(--tc); border-top:0; border-radius:0 0 7px 7px; background:none;
+            color:var(--muted); font:700 9px/1 var(--font-b); letter-spacing:.06em; cursor:pointer; }
+.vars .vf:hover { color:var(--fg); border-style:solid; }
+.vars .vf b { color:var(--tc); }
+.vars .vf .caret { font-size:8px; transition:transform .2s var(--ease); }
+.vars[data-open="true"] .vf .caret { transform:rotate(180deg); }
+.vars .vlist { display:none; flex-direction:column; gap:2px; padding-top:3px; }
+.vars[data-open="true"] .vlist { display:flex; }
+.vt { display:flex; align-items:center; gap:4px; width:100%; min-width:0; padding:3px 4px; border:1px dashed var(--line-2);
+      background:none; color:var(--fg2); font:500 10px/1.25 var(--font-b); text-align:left; cursor:pointer; }
+.vt .br { flex:none; color:var(--muted); }
+.vt .nm { flex:1; overflow-wrap:anywhere; }
+.vt .pace { flex:none; font-size:8.5px; }
+.vt:hover { border-style:solid; color:var(--fg); }
+.vt[aria-pressed="true"] { border-style:solid; border-color:var(--tc); color:var(--fg); font-weight:700;
+                          box-shadow:inset 0 0 0 1px var(--tc); }
+/* 少数派の駒（桂・歩・金・玉）: 件数が少ない行は見出しだけ畳んでおく */
+
+/* ============================================================
+   案B「帳簿」: 1行1戦法の横段。筋は目盛り帯、ペースとタグを列で読む
+   ============================================================ */
+.ledger { display:flex; flex-direction:column; }
+.ld-r { display:grid; grid-template-columns:26px minmax(0,1fr) 64px 42px auto; align-items:center;
+        gap:8px; width:100%; padding:5px 6px; border:0; border-bottom:1px solid var(--line);
+        background:none; text-align:left; }
+.ld-r:hover { background:var(--faint); }
+.ld-r .pt-tile { width:20px; height:22px; padding-top:3px; font-size:11px; }
+.ld-r .nm { font:600 12.5px/1.3 var(--font-b); min-width:0; overflow-wrap:anywhere; }
+.ld-r .nm small { display:block; font:400 10px/1.3 var(--font-n); color:var(--muted); letter-spacing:.03em; }
+.ld-map { display:grid; grid-template-columns:repeat(9,1fr); gap:1px; height:8px; align-items:end; }
+.ld-map i { display:block; height:3px; background:var(--line-2); }
+.ld-map i.on { height:7px; background:var(--tc); }
+.ld-r[data-v] { padding-left:38px; }
+.ld-r[data-v] .nm { font-size:11.5px; font-weight:500; color:var(--fg2); }
+.ld-r[aria-pressed="true"] { background:color-mix(in srgb, var(--tc) 12%, var(--bg));
+                             box-shadow:inset 3px 0 0 var(--tc); }
+.ld-r[aria-pressed="true"] .pt-tile { background:var(--tc); color:var(--bg); box-shadow:none; }
+.ld-r .mk { display:flex; justify-content:flex-end; gap:3px; }
+.fam-b { margin-bottom:2px; }
+.fam-b .stand, .fam-b .ledger { margin-bottom:12px; }
+
+/* ============================================================
+   案C「表の改修」: 今の9列表を保ちつつ、行・複数選択・字の大きさを直す
+   ============================================================ */
+.pfh { display:grid; grid-template-columns:repeat(9,1fr); gap:0 4px; margin-bottom:2px;
+       font:500 10.5px/1 var(--font-d); color:var(--muted); text-align:center; }
+.pfh span { border-bottom:1px solid var(--line); padding-bottom:3px; }
+.pgrid { display:grid; grid-template-columns:repeat(9,1fr); gap:5px 4px; }
+.pgrid .dk-dot { display:grid; place-items:center; color:var(--muted); opacity:.35; font:11px/1 var(--font-n); }
+.pcell { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.pt { display:flex; flex-direction:column; align-items:center; gap:1px; padding:3px 1px 4px; cursor:pointer;
+      border:1px solid var(--line-2); border-top:3px solid var(--tc, var(--line-2)); background:var(--bg);
+      font:inherit; color:inherit; min-width:0; transition:border-color .2s, transform .15s var(--ease); }
+.pt:hover { border-color:var(--fg); transform:translateY(-1px); }
+.pt .sqn { font:800 11px/1 var(--font-d); color:var(--tc); }
+.pt .nm { font-size:10px; line-height:1.15; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pt[data-basic="true"] { border-color:var(--tc); background:color-mix(in srgb, var(--tc) 12%, var(--bg)); }
+.pt[aria-pressed="true"] { background:var(--tc); border-color:var(--tc); }
+.pt[aria-pressed="true"] .nm, .pt[aria-pressed="true"] .sqn { color:#fbf6ea; }
+.pv { width:100%; min-width:0; padding:2px 3px; border:1px dashed var(--line-2); background:none;
+      font:500 8.5px/1.3 var(--font-b); color:var(--fg2); text-align:left; cursor:pointer; }
+.pv:hover { border-style:solid; color:var(--fg); }
+.pv[aria-pressed="true"] { border-style:solid; border-color:var(--tc); font-weight:700; }
+
+/* サイズ比較の帯 */
+.demo-gap { height:14px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>戦法の選択UI — 駒棚・帳簿・表の改修（実寸）</h1>
+  <nav><a href="#problems">課題</a><a href="#a">案A 駒棚</a><a href="#b">案B 帳簿</a><a href="#c">案C 表の改修</a><a href="#multisel">複数選択</a><a href="#memo">実装メモ</a></nav>
+  <span class="sp"></span>
+  <button type="button" id="theme">ライト／ダーク</button>
+</header>
+
+<div class="intro">
+  <p>現行は「行=主役の駒・列=筋」の9列表（周期表）に短縮名のタイルを並べる方式。課題は3点:
+     <b>(1) 系統の嘘</b> — 行は飛・銀・角の3系統しかなく、桂2・歩2・金1・玉1の戦法は「角・桂・歩の筋」に角を代表駒として畳まれている。
+     <b>(2) 複数選択が読めない</b> — 戦法は駒の枠ごとに複数採用できるが、選択表示は囲いと同じ単一選択の朱枠＋✓で、何をいくつ選んでいるか一覧では分からない。
+     <b>(3) 読めないタイル</b> — 9列で幅≈34px・名はcqwで縮み、筋は数字表記だけ。</p>
+</div>
+
+<main>
+
+<!-- ================= 課題 ================= -->
+<section class="plan" id="problems">
+  <h2><span class="no">0</span>現状の棚卸し</h2>
+  <p class="lead">直したい3点と、守りたい2点。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">いまの一覧（居飛車・戦法タブ・抜粋）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2"><button type="button">振り飛車</button><button type="button" aria-pressed="true">居飛車</button></div>
+    <div class="tabs"><button type="button"><svg viewBox="0 0 24 24"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button></div>
+  </header>
+  <div class="body">
+    <div class="pfh"><span>九</span><span>八</span><span>七</span><span>六</span><span>五</span><span>四</span><span>三</span><span>二</span><span>一</span></div>
+    <div class="fam" style="--tc:var(--t-silver)">
+      <button type="button" class="famh"><span class="pt-tile">銀</span><b>居飛車：銀の筋</b><span class="n">12</span></button>
+      <div class="pgrid">
+        <span class="pcell" style="grid-column:1"><span class="dk-dot">–</span></span>
+        <span class="pcell" style="grid-column:2"><button type="button" class="it pt" style="--tc:var(--t-silver)"><span class="nm">角換わり</span><span class="sqn">8筋</span></button><button type="button" class="pv">↳ 一手損</button></span>
+        <span class="pcell" style="grid-column:3"><button type="button" class="it pt" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="nm">矢倉</span><span class="sqn">7筋</span></button></span>
+        <span class="pcell" style="grid-column:5"><button type="button" class="it pt" data-basic="true" style="--tc:var(--t-silver)" aria-pressed="true"><i class="seal"></i><span class="nm">腰掛銀</span><span class="sqn">5筋</span></button></span>
+        <span class="pcell" style="grid-column:6 / span 2"><button type="button" class="it pt" data-basic="true" data-vs="good" style="--tc:var(--t-silver)" aria-pressed="true"><i class="seal"></i><span class="nm">早繰銀</span><span class="sqn">4・3筋</span><i class="vs">◎</i></button><button type="button" class="pv">↳ 超速</button><button type="button" class="pv">↳ 4六銀左</button><button type="button" class="pv">↳ 山田</button></span>
+        <span class="pcell" style="grid-column:7"><button type="button" class="it pt" style="--tc:var(--t-silver)"><span class="nm">矢倉3七銀</span><span class="sqn">3筋</span></button></span>
+        <span class="pcell" style="grid-column:8"><button type="button" class="it pt" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="nm">棒銀</span><span class="sqn">2筋</span></button><button type="button" class="pv">↳ 原始棒銀</button></span>
+      </div>
+    </div>
+    <div class="fam" style="--tc:var(--t-kaku)">
+      <button type="button" class="famh"><span class="pt-tile">角</span><b>居飛車：角・桂・歩の筋</b><span class="n">14</span></button>
+      <div class="pgrid">
+        <span class="pcell" style="grid-column:3"><button type="button" class="it pt" style="--tc:var(--t-kaku)"><span class="nm">嬉野流</span><span class="sqn">7筋</span></button><button type="button" class="pv">↳ 新嬉野</button></span>
+        <span class="pcell" style="grid-column:4"><button type="button" class="it pt" style="--tc:var(--t-kaku)"><span class="nm">鬼殺し</span><span class="sqn">6筋</span></button></span>
+        <span class="pcell" style="grid-column:6"><button type="button" class="it pt" style="--tc:var(--t-kaku)" data-ng="true"><span class="nm">筋違角</span><span class="sqn">4筋</span><span class="ng">✕</span></button></span>
+      </div>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="notes">
+      <div>
+        <h4>直したい</h4>
+        <ul>
+          <li><b>系統の嘘</b>: 「角・桂・歩の筋」は角を代表駒にした寄せ集め。桂・歩・金・玉が主役の戦法は行の帯色も見出し駒も偽っている</li>
+          <li><b>複数選択が読めない</b>: 朱枠＋✓は単一選択の語彙。「腰掛銀と早繰銀の2枚採用」が見て取れない。派生↳チップの選択状態はさらに薄い</li>
+          <li><b>筋が数字だけ</b>: 「4・3筋」の文字を見て盤上の位置を思い浮かべるのは初学者には難しい</li>
+        </ul>
+      </div>
+      <div>
+        <h4>守りたい</h4>
+        <ul>
+          <li>主役の駒ごとの色分け（--t-*）と、「筋で戦法を並べる」世界観</li>
+          <li>◎△✕・基本の印・派生の束・roving tabindex・戦型絞り込みの仕組み</li>
+        </ul>
+      </div>
+      <div class="warn">駒の内訳（実データ68件）: 飛35・銀18・角9・桂2・歩2・金1・玉1。7行に分けると桂以下は2件以下の薄い行になる → 案Aは「薄い行は畳む」規則を持つ。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 案A ================= -->
+<section class="plan" id="a">
+  <h2><span class="no">A</span>駒棚 — 行=駒7種、札が筋の地図を持つ <span class="rec">推奨</span></h2>
+  <p class="lead">行を正直に「主役の駒」に戻す（桂・歩・金・玉も自分の行を持つ。薄い行は畳む）。各タイルは9目盛りの筋地図を内蔵し、主役の駒が立つ筋を駒色で塗るので、共通の筋ヘッダがなくても位置が読める。選択中は枠ではなく札ごと駒色に裏返す——複数選択でも1枚ずつ色と駒で識別でき、選んだ戦法は一覧の上の「盆」に駒付きチップで集まる。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">戦法の一覧（居飛車・2枚選択中）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2"><button type="button">振り飛車</button><button type="button" aria-pressed="true">居飛車</button></div>
+    <div class="tabs"><button type="button"><svg viewBox="0 0 24 24"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button></div>
+  </header>
+  <div class="tray" role="group" aria-label="選んだ戦法">
+    <span class="tray-h">採用 <b>2</b></span>
+    <button type="button" class="chip" style="--tc:var(--t-silver)" title="腰掛け銀を外す"><span class="pt-tile">銀</span><span class="nm">腰掛銀</span><span class="x">×</span></button>
+    <button type="button" class="chip" style="--tc:var(--t-silver)" title="早繰り銀を外す"><span class="pt-tile">銀</span><span class="nm">早繰銀</span><span class="x">×</span></button>
+    <button type="button" class="tray-all">全て外す</button>
+  </div>
+  <div class="tools">
+    <span class="key"><span class="lg-badge lg-good">◎</span>相性がよい　<span class="lg-badge lg-bad">△</span>苦手　<span class="lg-badge lg-ng">✕</span>両立しない</span>
+    <button type="button" class="legend">?</button>
+  </div>
+  <div class="body">
+    <!-- 銀の棚 -->
+    <section class="fam" style="--tc:var(--t-silver)">
+      <button type="button" class="famh" aria-expanded="true"><span class="caret">▾</span><span class="pt-tile">銀</span><b>銀の筋</b><span class="fr">8・7・5・4・3・2筋</span><span class="seldot">2</span><span class="n">18</span></button>
+      <div class="stand">
+        <div><button type="button" class="it tl" data-basic="true" data-vs="good" style="--tc:var(--t-silver)"><i class="seal"></i>
+          <span class="map"><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">8八</span><span class="nm">角換わり</span>
+          <span class="ft"><span class="pace" data-p="both"><svg viewBox="0 0 12 12"><path d="M3 3v6M9 3v6"/></svg>両</span><i class="vs">◎</i></span></button>
+          <div class="vars"><button type="button" class="vf">派生 <b>1</b> <span class="caret">▾</span></button>
+            <div class="vlist"><button type="button" class="vt"><span class="br">↳</span><span class="nm">一手損角換わり</span><span class="pace" data-p="slow">持</span></button></div></div></div>
+        <div><button type="button" class="it tl" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i>
+          <span class="map"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">7七</span><span class="nm">矢倉</span>
+          <span class="ft"><span class="pace" data-p="slow"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>持</span></span></button></div>
+        <div><button type="button" class="it tl" style="--tc:var(--t-silver)">
+          <span class="map"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">7六</span><span class="nm">玉頭位取り</span>
+          <span class="ft"><span class="pace" data-p="slow"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>持</span></span></button></div>
+        <div><button type="button" class="it tl" data-basic="true" style="--tc:var(--t-silver)" aria-pressed="true"><i class="seal"></i>
+          <span class="map"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">5六</span><span class="nm">腰掛銀</span>
+          <span class="ft"><span class="pace" data-p="both"><svg viewBox="0 0 12 12"><path d="M3 3v6M9 3v6"/></svg>両</span></span></button></div>
+        <div><button type="button" class="it tl" style="--tc:var(--t-silver)">
+          <span class="map"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">5六</span><span class="nm">5筋位取り</span>
+          <span class="ft"><span class="pace" data-p="slow"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>持</span></span></button></div>
+        <div><button type="button" class="it tl" data-basic="true" data-vs="good" style="--tc:var(--t-silver)" aria-pressed="true"><i class="seal"></i>
+          <span class="map"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          <span class="sq">4六</span><span class="nm">早繰銀</span>
+          <span class="ft"><span class="pace" data-p="rapid"><svg viewBox="0 0 12 12"><path d="M3 2l3 4-3 4M8 2l3 4-3 4"/></svg>急</span><i class="vs">◎</i></span></button>
+          <div class="vars" data-open="true"><button type="button" class="vf">派生 <b>4</b> <span class="caret">▾</span></button>
+            <div class="vlist"><button type="button" class="vt"><span class="br">↳</span><span class="nm">超速▲3七銀</span><span class="pace" data-p="rapid">急</span></button>
+              <button type="button" class="vt"><span class="br">↳</span><span class="nm">4六銀左</span><span class="pace" data-p="rapid">急</span></button>
+              <button type="button" class="vt"><span class="br">↳</span><span class="nm">山田定跡</span><span class="pace" data-p="rapid">急</span></button>
+              <button type="button" class="vt"><span class="br">↳</span><span class="nm">米長流</span><span class="pace" data-p="rapid">急</span></button></div></div></div>
+        <div><button type="button" class="it tl" style="--tc:var(--t-silver)">
+          <span class="map"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></span>
+          <span class="sq">3七</span><span class="nm">矢倉3七銀</span>
+          <span class="ft"><span class="pace" data-p="slow"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>持</span></span></button></div>
+        <div><button type="button" class="it tl" data-basic="true" data-ng="true" style="--tc:var(--t-silver)"><i class="seal"></i>
+          <span class="map"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i></span>
+          <span class="sq">2六</span><span class="nm">棒銀</span>
+          <span class="ft"><span class="pace" data-p="rapid"><svg viewBox="0 0 12 12"><path d="M3 2l3 4-3 4M8 2l3 4-3 4"/></svg>急</span><span class="ng">✕</span></span></button>
+          <div class="vars"><button type="button" class="vf">派生 <b>1</b> <span class="caret">▾</span></button>
+            <div class="vlist"><button type="button" class="vt"><span class="br">↳</span><span class="nm">原始棒銀</span><span class="pace" data-p="rapid">急</span></button></div></div></div>
+      </div>
+    </section>
+    <!-- 角・桂・歩・金・玉: 正直に別ける。薄い行は畳む -->
+    <section class="fam" style="--tc:var(--t-kaku)">
+      <button type="button" class="famh" aria-expanded="true"><span class="caret">▾</span><span class="pt-tile">角</span><b>角の筋</b><span class="fr">7・6・4筋</span><span class="seldot"></span><span class="n">9</span></button>
+      <div class="stand">
+        <div><button type="button" class="it tl" style="--tc:var(--t-kaku)">
+          <span class="map"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">7九</span><span class="nm">嬉野流</span>
+          <span class="ft"><span class="pace" data-p="rapid"><svg viewBox="0 0 12 12"><path d="M3 2l3 4-3 4M8 2l3 4-3 4"/></svg>急</span></span></button>
+          <div class="vars"><button type="button" class="vf">派生 <b>1</b> <span class="caret">▾</span></button>
+            <div class="vlist"><button type="button" class="vt"><span class="br">↳</span><span class="nm">新嬉野流</span><span class="pace" data-p="rapid">急</span></button></div></div></div>
+        <div><button type="button" class="it tl" style="--tc:var(--t-kaku)">
+          <span class="map"><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="sq">6五</span><span class="nm">鬼殺し</span>
+          <span class="ft"><span class="pace" data-p="rapid"><svg viewBox="0 0 12 12"><path d="M3 2l3 4-3 4M8 2l3 4-3 4"/></svg>急</span></span></button></div>
+        <div><button type="button" class="it tl" data-ng="true" style="--tc:var(--t-kaku)">
+          <span class="map"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></span>
+          <span class="sq">4五</span><span class="nm">筋違角</span>
+          <span class="ft"><span class="pace" data-p="both"><svg viewBox="0 0 12 12"><path d="M3 3v6M9 3v6"/></svg>両</span><span class="ng">✕</span></span></button></div>
+      </div>
+    </section>
+    <section class="fam" data-closed="true" style="--tc:var(--t-kei)">
+      <button type="button" class="famh" aria-expanded="false"><span class="caret">▾</span><span class="pt-tile">桂</span><b>桂の筋</b><span class="fr">3・4筋</span><span class="seldot"></span><span class="n">2</span></button>
+    </section>
+    <section class="fam" data-closed="true" style="--tc:var(--t-fu)">
+      <button type="button" class="famh" aria-expanded="false"><span class="caret">▾</span><span class="pt-tile">歩</span><b>歩の筋</b><span class="fr">4・6筋</span><span class="seldot"></span><span class="n">2</span></button>
+    </section>
+    <section class="fam" data-closed="true" style="--tc:var(--t-kin)">
+      <button type="button" class="famh" aria-expanded="false"><span class="caret">▾</span><span class="pt-tile">金</span><b>金の筋</b><span class="fr">2筋</span><span class="seldot"></span><span class="n">1</span></button>
+    </section>
+    <section class="fam" data-closed="true" style="--tc:var(--t-gyoku)">
+      <button type="button" class="famh" aria-expanded="false"><span class="caret">▾</span><span class="pt-tile">玉</span><b>玉の筋</b><span class="fr">5筋</span><span class="seldot"></span><span class="n">1</span></button>
+    </section>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="notes">
+      <div>
+        <h4>要点</h4>
+        <ul>
+          <li><b>行=駒7種に正直化</b>: 「角・桂・歩の筋」を解体。行見出しは駒形＋その駒が使う筋の列挙（<code>8・7・5・4・3・2筋</code>）で中身を予告</li>
+          <li><b>札=筋の地図</b>: 9目盛りの帯が lead.files を駒色で塗る（早繰銀の4・3筋は帯が2目盛り）。下に最終マス（4六）。数字を覚えなくても位置が視覚的に分かる</li>
+          <li><b>複数選択=裏返し＋盆</b>: 採用中の札は駒色の地に白抜き。一覧最上段の盆に駒付きチップで集約し、×で個別に外せる・全解除も1発</li>
+          <li><b>薄い行は畳む</b>: 2件以下の駒（桂・歩・金・玉）は見出しだけ畳み、選んでいる数は朱の丸（<code>.seldot</code>）で閉じたままでも見える</li>
+        </ul>
+      </div>
+      <div class="try"><b>試してほしい操作</b>: 札の塗りつぶし（採用）→ 盆にチップが増える → 盆の×で外す。盆があれば「相手の面」の採用も同じ語彙で示せる。</div>
+      <div class="warn"><b>代償</b>: 9列の表でなくなるので「行またぎで同じ筋を縦に比べる」眺めは失われる。その分、札の地図が個別に筋を教える。タイル幅は34px→64pxで名が潰れない。</div>
+      <div>
+        <h4>派生の束</h4>
+        <ul>
+          <li>親札の下に「派生 n」の帯がぶら下がる。押すと↳チップが内側へ開く（閉じたままでも n で密度が分かる）</li>
+          <li>派生を採用中は親札も薄く駒色を敷く（現行の data-vsel と同じ規則）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 案B ================= -->
+<section class="plan" id="b">
+  <h2><span class="no">B</span>帳簿 — 1行1戦法、筋・ペース・相性を列で読む</h2>
+  <p class="lead">周期表を捨てて一覧性を取る案。1行=1戦法で、列は駒・名（ふりがな行に文脈）・筋地図・ペース・印。派生は字下げ行。68件すべてが同じ形で並ぶので、絞り込みやキーボード走査との相性が最もよい。反面、面積は最も食い、「表」としての世界観は薄い。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">銀の棚（帳簿形式・2行選択中）</p>
+      <div class="rail">
+<div class="pg">
+  <header class="ph">
+    <div class="strat2"><button type="button">振り飛車</button><button type="button" aria-pressed="true">居飛車</button></div>
+    <div class="tabs"><button type="button"><svg viewBox="0 0 24 24"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>囲い</button>
+      <button type="button" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M12 3.2 L18.6 6.7 L20.2 20.5 H3.8 L5.4 6.7 Z"/><path d="M8.6 14.6 L15.4 8.4 M15.4 8.4 h-4.2 M15.4 8.4 v4.2"/></svg>戦法</button></div>
+  </header>
+  <div class="tray">
+    <span class="tray-h">採用 <b>2</b></span>
+    <button type="button" class="chip" style="--tc:var(--t-silver)"><span class="pt-tile">銀</span><span class="nm">腰掛銀</span><span class="x">×</span></button>
+    <button type="button" class="chip" style="--tc:var(--t-silver)"><span class="pt-tile">銀</span><span class="nm">早繰銀</span><span class="x">×</span></button>
+    <button type="button" class="tray-all">全て外す</button>
+  </div>
+  <div class="body">
+    <section class="fam fam-b" style="--tc:var(--t-silver)">
+      <button type="button" class="famh" aria-expanded="true"><span class="caret">▾</span><span class="pt-tile">銀</span><b>銀の筋</b><span class="seldot">2</span><span class="n">18</span></button>
+      <div class="ledger">
+        <button type="button" class="it ld-r" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="pt-tile">銀</span>
+          <span class="nm">角換わり<small>対振り・持久戦の基本</small></span>
+          <span class="ld-map"><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="pace" data-p="both">両</span><span class="mk"><i class="vs"></i></span></button>
+        <button type="button" class="it ld-r" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="pt-tile">銀</span>
+          <span class="nm">矢倉<small>持久戦の代表格</small></span>
+          <span class="ld-map"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="pace" data-p="slow">持</span><span class="mk"></span></button>
+        <button type="button" class="it ld-r" data-basic="true" aria-pressed="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="pt-tile">銀</span>
+          <span class="nm">腰掛銀<small>対振りの定番</small></span>
+          <span class="ld-map"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
+          <span class="pace" data-p="both">両</span><span class="mk"></span></button>
+        <button type="button" class="it ld-r" data-basic="true" data-vs="good" aria-pressed="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="pt-tile">銀</span>
+          <span class="nm">早繰銀<small>対棒銀・早い仕掛け</small></span>
+          <span class="ld-map"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          <span class="pace" data-p="rapid">急</span><span class="mk"><i class="vs">◎</i></span></button>
+        <button type="button" class="it ld-r" data-v="4六銀左" style="--tc:var(--t-silver)"><span class="pt-tile">銀</span>
+          <span class="nm">↳ 4六銀左</span>
+          <span class="ld-map"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          <span class="pace" data-p="rapid">急</span><span class="mk"></span></button>
+        <button type="button" class="it ld-r" data-ng="true" style="--tc:var(--t-silver)"><span class="pt-tile">銀</span>
+          <span class="nm">棒銀<small>急戦の代名詞</small></span>
+          <span class="ld-map"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i></span>
+          <span class="pace" data-p="rapid">急</span><span class="mk"><span class="ng">✕</span></span></button>
+      </div>
+    </section>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="notes">
+      <div>
+        <h4>要点</h4>
+        <ul>
+          <li>選択中は行ごと駒色の薄敷き＋左の駒色バー。行単位なので複数選択の並びが最も読みやすい</li>
+          <li>副行に context（「対振り・持久戦の基本」）を出せる——一覧だけで戦法の性格が分かる唯一の案</li>
+          <li>将来の並べ替え（ペース順・筋順）やテキスト検索にそのまま乗る</li>
+        </ul>
+      </div>
+      <div class="warn"><b>代償</b>: 1行≈28pxで銀だけで18行。「駒組みの地図」より「一覧表」の性格が強く、盤の隣に置くには事務的すぎる可能性。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 案C ================= -->
+<section class="plan" id="c">
+  <h2><span class="no">C</span>表の改修 — 9列を保つ最小変更</h2>
+  <p class="lead">いまの9列表（絶対筋座標）を残したまま、行の正直化・複数選択・文字サイズだけを直す安全案。列の縦比較は残るが、タイル幅は変わらず34pxのままなので読みやすさの改善は限定的。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">銀の行（表形式・2枚選択中）</p>
+      <div class="rail">
+<div class="pg">
+  <div class="tray">
+    <span class="tray-h">採用 <b>2</b></span>
+    <button type="button" class="chip" style="--tc:var(--t-silver)"><span class="pt-tile">銀</span><span class="nm">腰掛銀</span><span class="x">×</span></button>
+    <button type="button" class="chip" style="--tc:var(--t-silver)"><span class="pt-tile">銀</span><span class="nm">早繰銀</span><span class="x">×</span></button>
+  </div>
+  <div class="body">
+    <div class="pfh"><span>九</span><span>八</span><span>七</span><span>六</span><span>五</span><span>四</span><span>三</span><span>二</span><span>一</span></div>
+    <section class="fam" style="--tc:var(--t-silver)">
+      <button type="button" class="famh" aria-expanded="true"><span class="pt-tile">銀</span><b>銀の筋</b><span class="seldot">2</span><span class="n">18</span></button>
+      <div class="pgrid">
+        <span class="pcell" style="grid-column:2"><button type="button" class="it pt" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="sqn">8</span><span class="nm">角換わり</span></button><button type="button" class="pv">↳ 一手損</button></span>
+        <span class="pcell" style="grid-column:3"><button type="button" class="it pt" data-basic="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="sqn">7</span><span class="nm">矢倉</span></button><button type="button" class="it pv">↳ 位取り</button></span>
+        <span class="pcell" style="grid-column:5"><button type="button" class="it pt" data-basic="true" aria-pressed="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="sqn">5</span><span class="nm">腰掛銀</span></button><button type="button" class="pv">↳ 位取り</button></span>
+        <span class="pcell" style="grid-column:6 / span 2"><button type="button" class="it pt" data-basic="true" data-vs="good" aria-pressed="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="sqn">4・3</span><span class="nm">早繰銀</span><i class="vs">◎</i></button><button type="button" class="pv">↳ 超速</button><button type="button" class="pv">↳ 4六銀左</button><button type="button" class="pv">↳ 山田</button></span>
+        <span class="pcell" style="grid-column:7"><button type="button" class="it pt" style="--tc:var(--t-silver)"><span class="sqn">3</span><span class="nm">3七銀</span></button></span>
+        <span class="pcell" style="grid-column:8"><button type="button" class="it pt" data-basic="true" data-ng="true" style="--tc:var(--t-silver)"><i class="seal"></i><span class="sqn">2</span><span class="nm">棒銀</span><span class="ng">✕</span></button><button type="button" class="pv">↳ 原始</button></span>
+      </div>
+    </section>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="notes">
+      <div>
+        <h4>要点</h4>
+        <ul>
+          <li>変更は3点だけ: (a) 行を駒7種に分ける (b) 選択=朱枠＋✓ → 駒色の裏返し (c) 名の下の筋バッジを駒色の大きな筋数字に上げる</li>
+          <li>筋ヘッダと列の絶対位置が残るので「4筋に銀と飛車の戦法が同居する」ような行またぎの読みが残る</li>
+        </ul>
+      </div>
+      <div class="warn"><b>代償</b>: タイルは依然34pxで名は10px・省略されがち。ペースや文脈は出せない。直しは小さいが「洗練・直感的」への跳躍も小さい。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 複数選択 ================= -->
+<section class="plan" id="multisel">
+  <h2><span class="no">+</span>複数選択の語彙（全案共通）</h2>
+  <p class="lead">戦法は駒の枠ごとに複数採用できるので、選択状態を「単一選択の朱枠」から「採用セット」へ変える。</p>
+  <div class="stage">
+    <div>
+      <p class="cap">状態の語彙</p>
+      <table class="cmp">
+        <tr><th>状態</th><th>見た目</th><th>セマンティクス</th></tr>
+        <tr><td>未選択</td><td>白地＋駒色の上線</td><td><code>aria-pressed="false"</code></td></tr>
+        <tr><td>採用中</td><td>駒色で裏返し（地=駒色・字=白）</td><td><code>aria-pressed="true"</code>（囲いは <code>aria-current</code> のまま）</td></tr>
+        <tr><td>派生を採用中の親</td><td>駒色の薄敷き（data-vsel）</td><td>親自身は未採用</td></tr>
+        <tr><td>両立しない</td><td>破線枠＋✕（現行どおり）</td><td>選べるが理由をチップに出す</td></tr>
+        <tr><td>既定値（implied）</td><td>角の点線印（現行どおり）</td><td>採用セットには数えない</td></tr>
+      </table>
+    </div>
+    <div class="notes">
+      <div>
+        <h4>盆（採用トレイ）の規則</h4>
+        <ul>
+          <li>一覧の最上段に常駐。0件なら畳む（高さを取らない）</li>
+          <li>チップ=駒形＋名＋×。押すとその戦法を外す（=タイルをもう一度押すのと同じ）</li>
+          <li>両立しない組み合わせが混ざったとき、該当チップを破線＋✕に変えて理由を title に出す</li>
+          <li>「全て外す」は戦法だけを空にする（囲い・戦型は触らない）</li>
+        </ul>
+      </div>
+      <div>
+        <h4>キーボード</h4>
+        <ul>
+          <li><code>Space</code>/<code>Enter</code>: 採用の切替（従来の choose と同じ）。Escで盆へフォーカス移動も可</li>
+          <li>盆のチップは <code>Delete</code>/<code>Backspace</code> で外す、←→で移動</li>
+          <li>roving tabindex は現行どおり（タイル→派生チップ→盆 の順）</li>
+        </ul>
+      </div>
+      <div class="try"><b>副次的な効果</b>: 「採用」が盆に集約されるので、制約チップ（constraint-field）が示す戦法ドミノと語彙が揃う。盆のチップを押す→盤上のドミノが外れる、の対応が一直線になる。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 実装メモ ================= -->
+<section class="plan" id="memo">
+  <h2><span class="no">§</span>実装メモ</h2>
+  <p class="lead">案A採用時の当てどころ。</p>
+  <div class="notes" style="max-width:860px; padding-left:0">
+    <ul>
+      <li><code>TACTIC_FAMILIES</code>（js/data/tactic-families.js）を駒7種に拡張: <code>furibisha-rook</code> のまま＋<code>ibisha-rook / ibisha-silver / ibisha-kaku / ibisha-kei / ibisha-fu / ibisha-kin / ibisha-gyoku</code>。現行の <code>ibisha-kakukeifu</code>（mixed）を解体して lead.piece ごとに振り分ける。mixed フラグと「代表駒」の扱いは削除</li>
+      <li><code>tacticNav.tacticRows</code>: family ごとの絞り込みは変わらず機能する。行の順は 飛→銀→角→桂→歩→金→玉（dock-view.js の ibishaRank を拡張）</li>
+      <li><code>dock-grids.js</code>: 9列 <code>.dk-tgrid</code> 構築（placeTactics + dots + cell 束ね）を案Aなら flex の <code>.stand</code> に、案Cなら現行のまま。筋地図は lead.files を9目盛りに塗るだけの純粋描画（placeTactics の dots が不要になる）</li>
+      <li>選択表示: <code>aria-current</code>（単一選択の語彙）は囲い専用にし、戦法は <code>aria-pressed</code> トグルに分ける。dock-view.js の <code>cur</code> 判定（tacticIds.includes）はそのまま属性名だけ変える</li>
+      <li>盆: DockView._updatePane の末尾で <code>st.tacticIds</code> から描き直す小部品。チップ押下は <code>onChoose(who,'tactic',id)</code> をそのまま呼ぶ（外す=採用のトグルなので新しい命令は要らない）</li>
+      <li>派生の束: 現行は親の直下に常時表示。案Aでは <code>.vars</code> の開閉を追加（開閉状態は系統ブロックと同じく一覧ごとの一時状態・永続化しない）。派生採用中は親を data-vsel で薄敷き</li>
+      <li>薄い行の自動折りたたみ: 表示件数 ≤2 の系統は構築時に <code>data-closed="true"</code>。選択中の派生・項目を含む行は強制的に開く（隠れ選択を防ぐ）</li>
+      <li>狭い画面（&lt;980px）: 案Aの .stand は既に flex-wrap なので narrow でも破綻しない。.tray は面の上端に sticky 化してもよい（要検証）</li>
+    </ul>
+    <table class="cmp">
+      <tr><th></th><th>直感的</th><th>複数選択</th><th>系統の正直さ</th><th>変更量</th><th>世界観</th></tr>
+      <tr><th>A 駒棚</th><td>◎（筋を絵で示す）</td><td>◎（裏返し＋盆）</td><td>◎（駒7行）</td><td>中</td><td>◎（札・棚・盆）</td></tr>
+      <tr><th>B 帳簿</th><td>◎（副行つき）</td><td>◎（行ハイライト）</td><td>◎</td><td>中</td><td>△（一覧表的）</td></tr>
+      <tr><th>C 表の改修</th><td>△（数字のまま）</td><td>○（裏返し＋盆）</td><td>◎（駒7行）</td><td>小</td><td>○（現状維持）</td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+<script>
+document.getElementById('theme').addEventListener('click', () => {
+  const el = document.documentElement;
+  const next = el.dataset.theme === 'dark' ? 'light' : 'dark';
+  el.dataset.theme = next;
+  try { localStorage.setItem('shogi-theme', next); } catch (e) {}
+});
+// モックの開閉・選択の振る舞い（見た目の確認用。実装では store 経由）
+document.addEventListener('click', e => {
+  const fh = e.target.closest('.famh');
+  if (fh) {
+    const s = fh.closest('.fam');
+    const open = s.dataset.closed === 'true';
+    s.dataset.closed = String(!open);
+    fh.setAttribute('aria-expanded', String(open));
+    return;
+  }
+  const vf = e.target.closest('.vf');
+  if (vf) {
+    const v = vf.closest('.vars');
+    v.dataset.open = v.dataset.open === 'true' ? 'false' : 'true';
+    return;
+  }
+  const t = e.target.closest('.tl, .vt, .pt, .pv, .ld-r');
+  if (t && t.hasAttribute('aria-pressed')) {
+    t.setAttribute('aria-pressed', t.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+  }
+});
+</script>
+</body>
+</html>

@@ -31,6 +31,7 @@ window.Kakoi = window.Kakoi || {};
      * @param {HTMLElement} el `#pickRail`（内部構造はこのクラスが作る）
      * @param {{ onSelect:(who:'me'|'opp', kind:string)=>void,
      *   onChoose:(who:'me'|'opp', kind:string, id:string)=>void,
+     *   onRemove?:(who:string, kind:string, id:string)=>void,   // 戦法を1つ外す（駒ごとの枠）
      *   onClear:(who:string)=>void,
      *   onToggleOpponent:(on:boolean)=>void,
      *   onPreview?:(who:string, kind:string, id:string)=>void,
@@ -64,6 +65,8 @@ window.Kakoi = window.Kakoi || {};
          K.dockGrids.CASTLE_SORTS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('') +
          `</select></label><span class="dk-key"></span><button type="button" class="dk-legend" aria-expanded="false" ` +
          `aria-label="記号の見方" title="記号の見方">?</button></div>` +
+         // 採用した戦法の盆（複数選択を見せる。戦法の面で選択があるときだけ現れる）
+         `<div class="dk-tray" role="group" aria-label="採用中の戦法" hidden></div>` +
          `<div class="dk-body" tabindex="0" role="region" aria-label="一覧"></div>` +
          `</section></div>` +
         // 駒の見出し（バインダー）: 上=相手・下=自分。相手の駒の角の × で相手の表示を OFF にする
@@ -77,6 +80,7 @@ window.Kakoi = window.Kakoi || {};
         `</div>`;
       this.root = el.firstElementChild;
       this.body = this.root.querySelector('.dk-body');
+      this.tray = this.root.querySelector('.dk-tray');
       this.key = this.root.querySelector('.dk-key');
       this.binder = el.querySelector('.dk-binder');
       this.pcs = { me: this.binder.querySelector('[data-who="me"]'), opp: this.binder.querySelector('[data-who="opp"]') };
@@ -98,8 +102,8 @@ window.Kakoi = window.Kakoi || {};
       // タイル・チップは roving tabindex（U3）。矢印でフォーカスを移し Enter で選ぶ
       this.roving = K.roving.attach(this.body, '.dk-item');
       this.views = {};   // `${who}:${kind}` → 一覧の中身（構築は1回だけ。update では属性だけを書き換える）
-      // ドックの居飛車の系統は 飛車→銀→角（・桂・歩）の順に並べる
-      const ibishaRank = { '飛': 0, '銀': 1, '角': 2 };
+      // ドックの居飛車の系統は 飛車→銀→角→桂→歩→金→玉 の順に並べる
+      const ibishaRank = { '飛': 0, '銀': 1, '角': 2, '桂': 3, '歩': 4, '金': 5, '玉': 6 };
       const rows = K.tacticNav.tacticRows(K.TACTIC_FAMILIES, K.TACTICS);
       this.tacticRows = [
         ...rows.filter(r => r.family.side !== 'ibisha'),
@@ -176,12 +180,13 @@ window.Kakoi = window.Kakoi || {};
         pop.setAttribute('role', 'note');
         pop.innerHTML =
           `<b>記号の見方</b><ul>` +
-          `<li><span class="lg-ex lg-sel">名称</span>選択中（朱の枠と ✓）</li>` +
+          `<li><span class="lg-ex lg-sel">名称</span>選択中（囲い=朱の枠と ✓）</li>` +
+          `<li><span class="lg-ex lg-inv">名称</span>採用中の戦法（駒色に裏返し。盆にも並ぶ）</li>` +
           `<li><span class="lg-badge lg-good">◎</span>相手との相性がよい／<span class="lg-badge lg-bad">△</span>苦手</li>` +
           `<li><span class="lg-badge lg-ng">✕</span>＋点線の枠：いまの組み合わせとは両立しない</li>` +
           `<li><span class="lg-ex lg-fam">名称</span>左の帯・下線の色：系統（戦法は主役の駒）</li>` +
           `<li><span class="lg-ex lg-imp">名称</span>点線の項目：既定値（未選択のため補った値）</li>` +
-          `<li><span class="lg-ex">↳ 名称</span>派生の戦法</li>` +
+          `<li><span class="lg-ex">派生 n ▾</span>派生の戦法（押すと↳チップが開く）</li>` +
           `<li><span class="lg-ex lg-basic">名称</span>朱の印：基本の形</li>` +
           `</ul>`;
         const rootRect = this.root.getBoundingClientRect();
@@ -207,8 +212,34 @@ window.Kakoi = window.Kakoi || {};
           famH.setAttribute('aria-expanded', String(open));
           return;
         }
+        // 派生の束の開閉（親札の下の帯）
+        const vf = e.target.closest('.dk-vf');
+        if (vf) {
+          const vars = vf.closest('.dk-vars');
+          const open = vars.dataset.open !== 'true';
+          vars.dataset.open = String(open);
+          vf.setAttribute('aria-expanded', String(open));
+          return;
+        }
         const it = e.target.closest('.dk-item');
-        if (it) this.h.onChoose(it.dataset.who, it.dataset.kind, it.dataset.id);
+        if (it) {
+          // 戦法の札はトグル: 採用中の札をもう一度押すと外す（implied の既定値は外せない）
+          const off = it.dataset.kind === 'tactic' && it.getAttribute('aria-pressed') === 'true'
+            && !it.dataset.implied && this.h.onRemove;
+          if (off) this.h.onRemove(it.dataset.who, 'tactic', it.dataset.id);
+          else this.h.onChoose(it.dataset.who, it.dataset.kind, it.dataset.id);
+        }
+      });
+      // 盆: チップを押すとその戦法を外す。「全て外す」は戦法だけを空にする（囲い・戦型は触らない）
+      this.tray.addEventListener('click', e => {
+        if (e.target.closest('.dk-tray-all')) {
+          const ids = (K.constraints.sides(this._last.state.slots, this._last.state.showOpp)[this.who]
+            .tacticIds || []).slice();
+          for (const id of ids) this.h.onRemove(this.who, 'tactic', id);
+          return;
+        }
+        const chip = e.target.closest('.dk-chip');
+        if (chip) this.h.onRemove(this.who, 'tactic', chip.dataset.id);
       });
       // ホバー予告（§3-3）: タイル・派生チップに乗ると親へ知らせる。
       // 同じ候補の中を子要素またぎで動いても1回だけにする（S6: 連続発火を抑える）
@@ -301,10 +332,12 @@ window.Kakoi = window.Kakoi || {};
       // 「駒が足りない」といった嘘の ng 理由が出ない）
       for (const it of v.items) {
         const { j } = K.constraints.evaluate(state.slots, showOpp, who, it.kind, it.id);
-        // 戦法は駒ごとの枠が複数ある: 採用中のもの全てを選択中として印す
+        // 戦法は駒ごとの枠が複数ある: 採用中のもの全てを裏返す（トグルなので aria-pressed。
+        // 単一選択の囲い・戦型は aria-current のまま）
         const cur = it.kind === 'tactic' ? (st.tacticIds || []).includes(it.id)
           : st[FIELD[it.kind]] === it.id;
-        it.el.setAttribute('aria-current', cur ? 'true' : 'false');
+        it.el.setAttribute(it.kind === 'tactic' ? 'aria-pressed' : 'aria-current',
+          cur ? 'true' : 'false');
         it.el.hidden = B.offItem(it, strat);
         const implied = cur && st.implied[it.kind];
         B.badge(it.el, j, implied);
@@ -325,7 +358,25 @@ window.Kakoi = window.Kakoi || {};
       }
       // 絞り込んだ戦略に合わない項目だけの行・系統はまるごと隠す。
       // 系統名の件数は、いま表示している項目の数に合わせる
-      if (v.rows) for (const sec of v.rows) sec.hidden = sec.dataset.side !== strat;
+      if (v.rows) for (const sec of v.rows) {
+        sec.hidden = sec.dataset.side !== strat;
+        if (sec.hidden) continue;
+        // 採用中の数を朱の丸で示す。採用中を含む行・派生の束は隠れないよう強制的に開く
+        const sel = sec.querySelectorAll('.dk-item[aria-pressed="true"]:not([data-implied])').length;
+        const dot = sec.querySelector('.dk-seldot');
+        if (dot) dot.textContent = sel || '';
+        if (sel) {
+          sec.dataset.closed = 'false';
+          sec.querySelector('.dk-fam-h').setAttribute('aria-expanded', 'true');
+        }
+      }
+      for (const vars of v.el.querySelectorAll('.dk-vars')) {
+        if (vars.querySelector('.dk-item[aria-pressed="true"]')) {
+          vars.dataset.open = 'true';
+          vars.querySelector('.dk-vf').setAttribute('aria-expanded', 'true');
+        }
+      }
+      this._paintTray(who, st);
       if (v.fams) {
         for (const sec of v.fams) {
           sec.hidden = !sec._sides.has(strat);
@@ -337,6 +388,28 @@ window.Kakoi = window.Kakoi || {};
       }
       this._paintKey(v, showOpp);
       this.roving.refresh();
+    }
+
+    // 採用した戦法の盆（戦法の面のときだけ）。チップ=駒形＋名＋×。押すと外す
+    _paintTray(who, st) {
+      // 既定値で補った戦法（implied）は採用セットに数えない
+      const ids = (this.kind === 'tactic' && !st.implied.tactic && st.tacticIds) || [];
+      if (!ids.length) { this.tray.hidden = true; this.tray.innerHTML = ''; return; }
+      const TC = { '飛': 'rook', '銀': 'silver', '角': 'kaku', '桂': 'kei', '歩': 'fu', '金': 'kin', '玉': 'gyoku' };
+      const html = `<span class="dk-tray-h">採用 <b>${ids.length}</b></span>` +
+        ids.map(id => {
+          const t = findTactic(id);
+          if (!t) return '';
+          const piece = (K.lookup.tacticFamilyOf(t) || {}).piece || '飛';
+          return `<button type="button" class="dk-chip" data-id="${esc(id)}" ` +
+            `style="--tc:var(--t-${TC[piece] || 'rook'})" title="${esc(t.name)}を外す">` +
+            `<span class="pt-tile" aria-hidden="true">${piece}</span>` +
+            `<span class="nm">${esc(t.short || t.name)}</span>` +
+            `<span class="x" aria-hidden="true">×</span></button>`;
+        }).join('') +
+        `<button type="button" class="dk-tray-all">全て外す</button>`;
+      if (this.tray.innerHTML !== html) this.tray.innerHTML = html;
+      this.tray.hidden = false;
     }
 
     // 一覧の上の1行の凡例（6）: いま一覧に出ている記号だけを言葉で添える。
@@ -370,6 +443,19 @@ window.Kakoi = window.Kakoi || {};
           if (p) t = this.body.querySelector(`.dk-item[data-id="${p}"]`);
         }
         if (!t || !t.scrollIntoView) return;
+        // 畳んだ行・派生の束の中の項目は、見せるために開く
+        const sec = t.closest('.dk-trow');
+        if (sec && sec.dataset.closed === 'true') {
+          sec.dataset.closed = 'false';
+          const h = sec.querySelector('.dk-fam-h');
+          if (h) h.setAttribute('aria-expanded', 'true');
+        }
+        const vars = t.closest('.dk-vars');
+        if (vars) {
+          vars.dataset.open = 'true';
+          const vf = vars.querySelector('.dk-vf');
+          if (vf) vf.setAttribute('aria-expanded', 'true');
+        }
         t.scrollIntoView({
           block: 'nearest',
           behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',

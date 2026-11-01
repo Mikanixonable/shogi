@@ -1,12 +1,10 @@
 // 左ドックの一覧の中身（計画書 S6 の tactic-grid / castle-grid）:
 // 戦法タイルと囲いカードの「構築」だけを持つ純粋な描画部品。状態の書き換え
-// （バッジ・戦略に合わない項目の非表示）は dock-badges.js / dock-view.js
-//   - 戦法タイル: 行=主役の駒の系統、列=筋。タイルは正確に lead.files の筋に
-//     プロットし（自分は 9→1・相手は盤の絶対座標。列はどちらも絶対座標なので
-//     筋番号ヘッダは両面とも 9…1）、上に筋の番号を出す。
-//     1マス=主役の駒の最終マス（lead.square）。variantOf の派生は親と同じ筋の
-//     列に分岐チップとして常に表示する。列の配置は
-//     tacticNav.placeTactics（純関数）
+// （バッジ・戦略に合わない項目の非表示・採用の裏返し）は dock-badges.js / dock-view.js
+//   - 戦法（design-refs-tactic-select 案A「駒棚」）: 行=主役の駒（飛銀角桂歩金玉の7系統）。
+//     行の中は筋順（9→1）に並ぶ札。各札は9目盛りの筋地図を内蔵し、主役の駒が立つ
+//     筋を駒色で塗る（lead.files。相手の面は絶対座標に反転）。下に最終マスとペース。
+//     variantOf の派生は親札の下に「派生 n」の帯で畳む。薄い行（2件以下）は畳む
 //   - 基本の項目（データの basic）は「基本」の印を付けて系統の先頭に置く
 //   - 囲いタイル: 並べ方（CASTLE_SORTS）ごとの折りたたみブロック。既定は CASTLE_FAMILIES ごと。サムネイルは core 駒の
 //     外接矩形を最小 5筋×3段に広げた窓で、歩の壁・周辺の駒ごと見せる。タイルの幅は窓の描画幅
@@ -17,11 +15,15 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { esc } = K.html;
   const { ZEN } = K.notation;
-  // 筋の表示名: 相手の面は盤の絶対座標（10−f）に合わせる
-  const fileBadge = (t, flip) => t.lead.files.map(f => ZEN[flip ? 10 - f : f]).join('・') + '筋';
+  // 相手の面は盤の絶対座標（10−f）に合わせる
+  const absF = (f, flip) => (flip ? 10 - f : f);
   // 系統色（theme.css の --f-* / --t-*）: 囲いは系統、戦法は主役の駒で塗り分ける
   const famColor = id => `var(--f-${id}, var(--accent-2))`;
-  const PIECE_COLOR = { '飛': 'var(--t-rook)', '銀': 'var(--t-silver)', '角': 'var(--t-kaku)' };
+  const PIECE_COLOR = { '飛': 'var(--t-rook)', '銀': 'var(--t-silver)', '角': 'var(--t-kaku)',
+    '桂': 'var(--t-kei)', '歩': 'var(--t-fu)', '金': 'var(--t-kin)', '玉': 'var(--t-gyoku)' };
+  // ペースの記号: 急戦・持久戦・両対応
+  const PACE = { rapid: '急', slow: '持', both: '両' };
+  const RANKS = '一二三四五六七八九';
 
   // 基本の項目（データの basic）を先に出す安定ソート
   const basicFirst = list => [...list].sort((a, b) => (b.basic ? 1 : 0) - (a.basic ? 1 : 0));
@@ -34,21 +36,33 @@ window.Kakoi = window.Kakoi || {};
     ng: el.querySelector('.dk-ng'), vs: el.querySelector('.dk-vs'),
   }));
 
+  // 主役の駒が立つ筋の地図: 9目盛り（左=9筋）で lead.files を塗る
+  const fileMap = (t, flip) => {
+    const on = new Set(t.lead.files.map(f => absF(f, flip)));
+    return `<span class="dk-map" aria-hidden="true">` +
+      [9, 8, 7, 6, 5, 4, 3, 2, 1].map(f => `<i${on.has(f) ? ' class="on"' : ''}></i>`).join('') +
+      `</span>`;
+  };
+  // 最終マスの表示（相手は筋だけ絶対座標に反転。段は盤と同じ）
+  const sqText = (t, flip) => `${ZEN[absF(+t.lead.square[0], flip)]}${RANKS[+t.lead.square[1] - 1]}`;
+
   function tile(who, t, flip) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'dk-item dk-tile';
+    b.className = 'dk-item dk-tile dk-tl';
     b.dataset.who = who; b.dataset.kind = 'tactic'; b.dataset.id = t.id;
-    b.style.setProperty('--n', [...(t.short || t.name)].length);   // 名前の文字数（cqw フォント用）
     if (K.tacticNav.isRare(t)) b.dataset.rare = 'true';
     if (t.basic) b.dataset.basic = 'true';
-    b.innerHTML = (t.basic ? SEAL : '') + `<span class="nm">${esc(t.short || t.name)}</span>` +
-      `<span class="fb">${esc(fileBadge(t, flip))}</span>` +
-      `<span class="dk-marks"><i class="dk-vs"></i><span class="dk-ng"></span></span>`;
+    b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = (t.basic ? SEAL : '') + fileMap(t, flip) +
+      `<span class="sq">${esc(sqText(t, flip))}</span>` +
+      `<span class="nm">${esc(t.short || t.name)}</span>` +
+      `<span class="dk-marks"><span class="pace" data-p="${t.pace || 'both'}">${PACE[t.pace] || '両'}</span>` +
+      `<i class="dk-vs"></i><span class="dk-ng"></span></span>`;
     return b;
   }
 
-  // 派生戦法の小さなチップ（§4-3: 親と同じ筋の列に分岐表示）
+  // 派生戦法の小さなチップ（親札の下の束に畳む）
   function varChip(who, v) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -56,9 +70,11 @@ window.Kakoi = window.Kakoi || {};
     b.dataset.who = who; b.dataset.kind = 'tactic'; b.dataset.id = v.id;
     b.dataset.parent = v.variantOf;
     if (K.tacticNav.isRare(v)) b.dataset.rare = 'true';
+    b.setAttribute('aria-pressed', 'false');
     b.innerHTML = '<span class="dk-branch" aria-hidden="true">↳</span>' +
       `<span class="nm">${esc(v.short || v.name)}</span>` +
-      `<i class="dk-vs"></i><span class="dk-ng"></span>`;
+      `<span class="dk-marks"><span class="pace" data-p="${v.pace || 'both'}">${PACE[v.pace] || '両'}</span>` +
+      `<i class="dk-vs"></i><span class="dk-ng"></span></span>`;
     return b;
   }
 
@@ -74,19 +90,13 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 戦法グリッドを組み立てる
+   * 戦法グリッドを組み立てる（駒棚。行=駒・札=筋の地図を持つ）
    * @param {{ tacticRows:Array }} ctx 共有コンテキスト（DockView）
    * @param {'me'|'opp'} who
    */
   function tactics(ctx, who) {
     const flip = who === 'opp';
     const v = viewShell('dk-tactics');
-    // 筋の番号ヘッダ: 列はどちらの面も盤の絶対座標（左=9筋）なので、両面とも 9…1
-    const fh = document.createElement('div');
-    fh.className = 'dk-fh';
-    fh.setAttribute('aria-hidden', 'true');
-    fh.innerHTML = [9, 8, 7, 6, 5, 4, 3, 2, 1].map(f => `<span>${ZEN[f]}</span>`).join('');
-    v.on.appendChild(fh);
     const variantsOf = new Map();
     const tacticById = new Map(K.TACTICS.map(t => [t.id, t]));
     for (const t of K.TACTICS) {
@@ -100,44 +110,48 @@ window.Kakoi = window.Kakoi || {};
     }
     for (const { family, tactics: ts } of ctx.tacticRows) {
       const sec = document.createElement('section');
-      sec.className = 'dk-trow';
+      sec.className = 'dk-fam dk-trow';
       sec.dataset.side = family.side;
-      sec.style.setProperty('--tc', PIECE_COLOR[family.piece] || 'var(--accent-2)');
-      // 行見出しに乗せると系統の note（「○が主役の理由」）を出す（lab 周期表の行タイルの title と同じ）
-      sec.innerHTML = `<h3 title="${esc(family.note ? `${family.name}\n${family.note}` : family.name)}">` +
-        `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>${esc(family.name)}</h3>` +
-        // 系統の注記: 広い画面は行見出しの title、狭い画面（タッチ）は本文に出す（B4）
+      const tc = PIECE_COLOR[family.piece] || 'var(--accent-2)';
+      sec.style.setProperty('--tc', tc);
+      sec.style.setProperty('--fam', tc);
+      const roots = ts.filter(t => !t.variantOf);
+      // 薄い行（2件以下）は見出しだけ畳んでおく。選択中を含む行は dock-view が開く
+      const closed = roots.length <= 2;
+      if (closed) sec.dataset.closed = 'true';
+      // 見出しの筋の列挙: その駒が実際に使う筋（重複なし・筋の大きい順）
+      const files = [...new Set(ts.flatMap(t => t.lead.files))].sort((a, b) => b - a)
+        .map(f => ZEN[absF(f, flip)]).join('・');
+      sec.innerHTML = `<button type="button" class="dk-fam-h" aria-expanded="${!closed}" ` +
+        `title="${esc(family.note ? `${family.name}\n${family.note}` : family.name)}">` +
+        `<span class="caret" aria-hidden="true">▾</span>` +
+        `<span class="pt-tile" aria-hidden="true">${esc(family.piece)}</span>` +
+        `<b>${esc(family.label || family.name)}</b>` +
+        `<span class="dk-fr">${files}筋</span>` +
+        `<span class="dk-seldot" aria-hidden="true"></span>` +
+        `<span class="n">${ts.length}</span></button>` +
         (family.note ? `<small class="dk-tnote">${esc(family.note)}</small>` : '');
-      const grid = document.createElement('div');
-      grid.className = 'dk-tgrid';
-      // 同じ lead.square の非派生戦法は1セルに束ね、列が重なるセルは下へ送る
-      const put = (el, col, span, row) => {
-        el.style.gridColumn = `${col} / span ${span}`;
-        el.style.gridRow = String(row);
-        grid.appendChild(el);
-      };
-      const { cells, dots } = K.tacticNav.placeTactics(
-        ts.filter(t => !t.variantOf), { flip });
-      for (const d of dots) {
-        const el = document.createElement('span');
-        el.className = 'dk-dot';
-        el.textContent = '–';
-        el.setAttribute('aria-hidden', 'true');
-        put(el, d.col, 1, d.row);
-      }
-      // 派生チップは親と同じ lead.square → 親タイルと同じセルに、親の直下へ積む
-      // （§4-3。セルの中に入れるので、狭い画面の縦リストでも親に隣接する）
-      for (const { col, span, row, tactics: cellTs } of cells) {
-        const cell = document.createElement('div');
-        cell.className = 'dk-cell';
-        put(cell, col, span, row);
-        for (const t of cellTs) {
-          cell.appendChild(tile(who, t, flip));
-          for (const x of variantsOf.get(t.id) || [])
-            cell.appendChild(varChip(who, x));
+      const stand = document.createElement('div');
+      stand.className = 'dk-stand';
+      for (const t of roots) {
+        const col = document.createElement('div');
+        col.className = 'dk-tcol';
+        col.appendChild(tile(who, t, flip));
+        const vs = variantsOf.get(t.id);
+        if (vs && vs.length) {
+          const vars = document.createElement('div');
+          vars.className = 'dk-vars';
+          vars.innerHTML = `<button type="button" class="dk-vf" aria-expanded="false">` +
+            `派生 <b>${vs.length}</b> <span class="caret" aria-hidden="true">▾</span></button>`;
+          const list = document.createElement('div');
+          list.className = 'dk-vlist';
+          for (const x of vs) list.appendChild(varChip(who, x));
+          vars.appendChild(list);
+          col.appendChild(vars);
         }
+        stand.appendChild(col);
       }
-      sec.appendChild(grid);
+      sec.appendChild(stand);
       v.on.appendChild(sec);
     }
     return {

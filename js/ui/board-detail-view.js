@@ -23,7 +23,8 @@ window.Kakoi = window.Kakoi || {};
   const SHORT_WHO = { me: '自分', opp: '相手' };
   // 戦法の多角形の色は主役の駒の系統色（左ドックのタイルの --t-* と同じ）
   const TACTIC_COLOR = { 'furibisha-rook': 'var(--t-rook)', 'ibisha-rook': 'var(--t-rook)',
-    'ibisha-silver': 'var(--t-silver)', 'ibisha-kakukeifu': 'var(--t-kaku)' };
+    'ibisha-silver': 'var(--t-silver)', 'ibisha-kaku': 'var(--t-kaku)', 'ibisha-kei': 'var(--t-kei)',
+    'ibisha-fu': 'var(--t-fu)', 'ibisha-kin': 'var(--t-kin)', 'ibisha-gyoku': 'var(--t-gyoku)' };
 
   // ---------- データ参照（Kakoi.* 直読み＋共有 Repository） ----------
   const subtypeOf = c => {

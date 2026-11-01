@@ -42,6 +42,7 @@ window.Kakoi = window.Kakoi || {};
       this.dock = new K.DockView(els.rail /* #pickRail */, {
         onSelect: (w, k) => this._select(w, k, false),
         onChoose: (w, k, id) => this._set(w, k, id),
+        onRemove: (w, k, id) => this._remove(w, k, id),
         onClear: w => this._clearSide(w),
         onToggleOpponent: on => this._setShowOpp(on),
         onPreview: (w, k, id) => this._preview(w, k, id),
