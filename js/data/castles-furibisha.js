@@ -77,7 +77,7 @@ Kakoi.CASTLES.push(
       { t: '4七金が4筋・5筋を見張る', sq: ['47', '46', '56'] },
     ],
     cons: [
-      { t: '5八が空き、横からの攻めは本美濃よりやや弱い[[wj-mino]]', sq: ['58', '48'] },
+      { t: '5八が空き、横からの攻めは本美濃よりやや弱い[[sj-takamino]]', sq: ['58', '48'] },
     ],
     attacks: [
       { id: 'side', name: '横からの飛車打ち', t: '△5九飛のように下段へ打ち込まれると、5八が空いているので4九金を横から狙われる。', gote: '飛59', target: ['49', '58'] },
@@ -85,6 +85,7 @@ Kakoi.CASTLES.push(
     sources: [
       { ref: 'wj-mino', for: '配置・解説' },
       { ref: 'we-mino', for: '配置・解説' },
+      { ref: 'sj-takamino', for: '解説' },
     ],
   },
   {
@@ -170,7 +171,7 @@ Kakoi.CASTLES.push(
     filler: '',
     tags: ['対居飛車', '持久戦', '堅さ最強クラス'],
     desc: '振り飛車穴熊の前面を銀冠型（銀2七・金3八・金4七）にした形[[wj-furibisha-anaguma]]。玉頭に銀がかぶさるため上部からの攻めに強く、穴熊の堅さと銀冠の上部耐性を併せ持つ[[wj-furibisha-anaguma|wj-anaguma]]。',
-    ratings: { hard: 5, wide: 4, top: 5, side: 5, quick: 1 },
+    ratings: { hard: 5, wide: 3, top: 5, side: 5, quick: 1 },
     pros: [
       { t: '上部・横ともに最強クラスの堅さ', sq: ['27', '38', '47', '19'] },
       { t: '王手がかかりにくい穴熊構造', sq: ['19', '18', '29'] },
@@ -221,7 +222,7 @@ Kakoi.CASTLES.push(
     filler: '香19 桂29',
     tags: ['相振り飛車', '持久戦'],
     desc: '相振り飛車の代表的な囲い[[wj-kinmusou|sj-kinmusou]]。金4八・金5八と金2枚を横に並べ（「金無双」）、玉3八・銀2八で固める[[wj-kinmusou|sj-kinmusou]]。美濃囲いより上部（1・2筋）の攻めに強い一方、側面からの攻めには弱い[[wj-kinmusou]]。',
-    ratings: { hard: 4, wide: 3, top: 4, side: 2, quick: 2 },
+    ratings: { hard: 3, wide: 3, top: 4, side: 3, quick: 4 },
     pros: [
       { t: '上部（1・2筋）からの攻めに強い[[wj-kinmusou|sj-kinmusou]]', sq: ['28', '38', '27'] },
       { t: '相振り飛車で互いの玉が近い筋同士でも対応しやすい' },
@@ -247,7 +248,7 @@ Kakoi.CASTLES.push(
     filler: '香19 桂29',
     tags: ['相振り飛車', '持久戦'],
     desc: '金矢倉を左右反転して右辺に組む形で、主に相振り飛車で使われる[[wj-migiyagura|sj-migiyagura]]。玉2八を銀3七・金3八・金4七で囲い、上部への厚みは矢倉譲り[[wj-migiyagura|wj-yagura]]。',
-    ratings: { hard: 4, wide: 2, top: 5, side: 3, quick: 2 },
+    ratings: { hard: 4, wide: 3, top: 5, side: 3, quick: 2 },
     pros: [
       { t: '上部からの攻めに強い（矢倉と同じ構造）[[wj-migiyagura|wj-yagura]]', sq: ['37', '47', '36', '46'] },
       { t: '金銀3枚がまとまりバランスがよい', sq: ['37', '38', '47'] },
@@ -287,7 +288,7 @@ Kakoi.CASTLES.push(
     filler: '香19 桂29',
     tags: ['対居飛車', '美濃系', '陽動振り飛車'],
     desc: '本美濃の基本形から玉頭の歩を2六へ進めた形[[sj-tyonmage-mino|wj-mino]]。陽動振り飛車などで序盤の2六歩が残ったときに現れやすい。',
-    ratings: { hard: 2, wide: 3, top: 1, side: 4, quick: 3 },
+    ratings: { hard: 3, wide: 3, top: 1, side: 4, quick: 3 },
     pros: [{ t: '金銀の配置は本美濃に近く、横からの守りを保ちやすい[[sj-tyonmage-mino]]' }],
     cons: [{ t: '2七が空いて玉頭の歩が前へ出ているため、上部からの攻めに弱点がある[[sj-tyonmage-mino]]' }],
     attacks: [{ id: 'gyokuto', name: '玉頭攻め', t: '△2五歩・△3五銀などで2筋・3筋の玉頭を狙う。', gote: '歩25 銀35', target: ['26', '27', '36'] }],
@@ -331,11 +332,14 @@ Kakoi.CASTLES.push(
     tags: ['中飛車', '低陣', '角交換'],
     desc: '中飛車から左金を5九へ寄せ、金銀を低く横に配置して角交換や大駒の打ち込みに備える形[[sj-hirame|wj-nakabisha]]。戦法名と囲い名の両方で使われる。',
     note: '本来は香落ち上手の戦法として知られる[[wj-nakabisha]]。',
-    ratings: { hard: 4, wide: 4, top: 2, side: 3, quick: 2 },
-    pros: [{ t: '低い金銀配置で自陣の空間を減らし、角打ちの隙を作りにくい[[sj-hirame]]' }],
+    ratings: { hard: 4, wide: 4, top: 2, side: 4, quick: 2 },
+    pros: [
+      { t: '低い金銀配置で自陣の空間を減らし、角打ちの隙を作りにくい[[sj-hirame]]' },
+      { t: '低く構えており、とても堅い。そのため飛車・角の打ち込みに対しても強い[[wj-hirame]]', sq: ['59', '49', '38', '68'] },
+    ],
     cons: [{ t: '玉を深く囲う形ではなく、左銀をさばけないと攻めが細くなる[[sj-hirame]]' }],
     attacks: [{ id: 'center', name: '中央攻め', t: '△5五歩・△4五桂などで低い玉形の中央を狙う。', gote: '歩55 桂45', target: ['58', '48'] }],
-    sources: [{ ref: 'sj-hirame', for: '配置・解説' }, { ref: 'wj-nakabisha', for: '中飛車の構想' }],
+    sources: [{ ref: 'sj-hirame', for: '配置・解説' }, { ref: 'wj-hirame', for: '解説' }, { ref: 'wj-nakabisha', for: '中飛車の構想' }],
   },
   {
     id: 'hidarigyoku', name: '左玉（高田流）', short: '左玉', reading: 'ひだりぎょく',
@@ -408,14 +412,14 @@ Kakoi.CASTLES.push(
   },
   {
     id: 'nakabisha-hidari-anaguma', name: '中飛車左穴熊', short: '左穴熊', reading: 'なかびしゃひだりあなぐま',
-    side: 'furibisha', from: 'furianaguma', family: 'anaguma', subtype: 'sanmai', setup: 'hirame',
+    side: 'furibisha', family: 'anaguma', subtype: 'sanmai', setup: 'hirame',
     core: '玉99 香98 桂89 銀88 金78 金79',
     shell: '歩17 歩27 歩37 歩47 歩57',
     rest: '銀67',
     filler: '桂29 香19 歩66 歩76 歩86 歩96',
     tags: ['中飛車', '持久戦', '左穴熊'],
-    desc: '中飛車から玉を左端に囲う穴熊型[[wj-hidarigyoku|wj-kakoi]]。中飛車の飛車（5八）を攻めに残し、玉を9九へ移して戦場から遠ざける。図は囲いの一例で、相手の攻め筋に応じて金銀の配置が変わる。',
-    ratings: { hard: 4, wide: 3, top: 4, side: 5, quick: 1 },
+    desc: '中飛車から玉を左端に囲う穴熊型[[wj-hidarigyoku|wj-kakoi]]。中飛車の飛車（5八）を攻めに残し、玉を9九へ移して戦場から遠ざける。実戦では飛車を5六に浮かせ、横利きで守り駒の少ない右辺をカバーするのが骨子[[jsf-kakoi115|wj-nakabisha-hidari-anaguma]]。図は囲いの一例で、相手の攻め筋に応じて金銀の配置が変わる。',
+    ratings: { hard: 5, wide: 1, top: 3, side: 5, quick: 1 },
     pros: [
       { t: '玉を戦場から遠ざけ、5筋の飛車を攻めに使いやすい[[wj-kakoi]]', sq: ['99', '98', '58'] },
       { t: '穴熊の金銀連結で終盤の横攻めに耐えやすい[[wj-anaguma]]', sq: ['88', '78', '79'] },
@@ -427,7 +431,13 @@ Kakoi.CASTLES.push(
     attacks: [
       { id: 'hashi', name: '端攻め', t: '△1五歩から端を突き、香・桂を足して1筋を破る。', gote: '歩15 香11 桂33', target: ['17', '18', '19'] },
     ],
-    sources: [{ ref: 'wj-kakoi', for: '配置・解説' }, { ref: 'wj-anaguma', for: '穴熊の特徴' }, { ref: 'wj-hidarigyoku', for: '中飛車左玉の系統' }],
+    sources: [
+      { ref: 'wj-kakoi', for: '配置・解説' },
+      { ref: 'wj-anaguma', for: '穴熊の特徴' },
+      { ref: 'wj-hidarigyoku', for: '中飛車左玉の系統' },
+      { ref: 'jsf-kakoi115', for: '5六飛の使い方' },
+      { ref: 'wj-nakabisha-hidari-anaguma', for: '解説' },
+    ],
   },
   {
     id: 'muteki', name: '無敵囲い', short: '無敵囲い', reading: 'むてきがこい',

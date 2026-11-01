@@ -48,4 +48,38 @@ Kakoi.COMBOS = [
     desc: '対振り飛車の急戦の定番。舟囲いで手早く囲い、棒銀で攻める[[joutatsu-bougin|wj-bougin]]。',
     sources: [{ ref: 'joutatsu-bougin', for: '組み合わせ' }, { ref: 'wj-bougin', for: '組み合わせ' }],
   },
+  {
+    id: 'rekusupe', name: 'レグスペ', reading: 'れぐすぺ', named: true,
+    tactic: 'kakukoukan-shiken', castle: 'furianaguma',
+    desc: '角交換四間飛車[[wj-kakukoukan-shiken]]で、玉を美濃でなく穴熊に囲う組み合わせ。早稲田大学将棋部の大窪俊毅が開発し、1988年春の関東大学将棋名人戦で全9局をこの形で指して優勝したことから「大窪スペシャル」、略して「レグスペ」と呼ばれる[[wj-furibisha-anaguma]]。',
+    sources: [{ ref: 'wj-furibisha-anaguma', for: '組み合わせ' }, { ref: 'wj-kakukoukan-shiken', for: '組み合わせ' }],
+  },
+  {
+    id: 'hidari-anaguma-combo', name: '中飛車左穴熊', reading: 'なかびしゃひだりあなぐま', named: true,
+    tactic: 'hidari-anaguma-nakabisha', castle: 'nakabisha-hidari-anaguma',
+    vs: { tactic: 'sankenbisha', castle: 'mino' },
+    desc: '中飛車を5六に浮かせ、玉を左端の穴熊に囲う組み合わせ。相手の三間飛車（相振り）や居飛車の矢倉に対して指される[[wj-nakabisha-hidari-anaguma|jsf-kakoi115]]。',
+    sources: [{ ref: 'wj-nakabisha-hidari-anaguma', for: '組み合わせ' }, { ref: 'jsf-kakoi115', for: '組み合わせ' }],
+  },
+  {
+    id: 'mukai-kinmusou', name: '向かい飛車＋金無双', reading: 'むかいびしゃ きんむそう', basic: true,
+    tactic: 'mukaibisha', castle: 'kinmusou',
+    vs: { tactic: 'sankenbisha', castle: 'mino' },
+    desc: '相振り飛車の入門向けの組み合わせ。飛車を8筋に振り、玉は上部の攻めに強い金無双に囲う[[sj-aifuribisya|jsf-aifuri-kinmusou]]。',
+    sources: [{ ref: 'sj-aifuribisya', for: '組み合わせ' }, { ref: 'jsf-aifuri-kinmusou', for: '組み合わせ' }],
+  },
+  {
+    id: 'mukai-migiyagura', name: '向かい飛車＋右矢倉', reading: 'むかいびしゃ みぎやぐら',
+    tactic: 'mukaibisha', castle: 'migiyagura',
+    vs: { tactic: 'sankenbisha', castle: 'mino' },
+    desc: '相振り飛車で向かい飛車に振り、右矢倉に囲う組み合わせ。右矢倉は上部に厚く、相振りでは評価の高い囲い[[wj-aifuribisha|jsf-aifuri-yagura]]。',
+    sources: [{ ref: 'wj-aifuribisha', for: '組み合わせ' }, { ref: 'jsf-aifuri-yagura', for: '組み合わせ' }],
+  },
+  {
+    id: 'sanken-mino-ai', name: '三間飛車＋美濃囲い', reading: 'さんげんびしゃ みのがこい', basic: true,
+    tactic: 'sankenbisha', castle: 'mino',
+    vs: { tactic: 'mukaibisha', castle: 'kinmusou' },
+    desc: '相振り飛車の入門向けの組み合わせ。三間飛車に振り、短い手数で組める美濃囲いに囲う。三間飛車と美濃は相性がよい[[sj-aifuribisya|wj-aifuribisha]]。',
+    sources: [{ ref: 'sj-aifuribisya', for: '組み合わせ' }, { ref: 'wj-aifuribisha', for: '組み合わせ' }],
+  },
 ];

@@ -48,6 +48,20 @@ Kakoi.TACTIC_RATING_KEYS = ['attack', 'speed', 'flex', 'safety', 'easy'];
     'torisashi': [4, 4, 1, 2, 2],
     'iijima-hikikaku': [3, 2, 3, 4, 2],
     'morishita-system': [3, 2, 3, 4, 3],
+    'yagura-37kei': [3, 3, 4, 4, 2],     // 矢倉に入城でき分岐が多いが、覚えにくい
+    'gangi-ibisha': [4, 3, 5, 3, 3],     // どの戦型からでも移れる柔軟さ
+    'gangi-hikikaku': [3, 3, 2, 3, 3],   // 対振り専用の古典。手順は単純
+    'murata-system': [3, 3, 5, 3, 2],    // 居角・引き角を選べる総合戦法。型が細分化
+    'tsukada-special': [4, 5, 1, 2, 2],  // 一撃の超急戦。対策確立で柔軟性なし
+    'nakata-xp': [4, 4, 2, 3, 2],        // 対穴熊に特化した端攻めの急戦
+    'yonenaga-kyusen': [5, 4, 2, 2, 3],  // 5枚攻めで破壊力大、玉は薄い
+    'hidari-anaguma-nakabisha': [3, 2, 2, 5, 3],
+    'ai-mukaibisha': [4, 3, 3, 3, 3],
+    'youryu-shiken': [3, 2, 3, 4, 2],
+    'sho-78hi': [3, 3, 2, 3, 2],
+    'tobe-43': [3, 3, 3, 3, 2],
+    'meriken-mukaibisha': [4, 3, 3, 3, 3],
+    'koshikakegin-shingata': [4, 3, 4, 4, 2],
   };
   const keys = Kakoi.TACTIC_RATING_KEYS;
   for (const t of Kakoi.TACTICS || []) {
