@@ -152,6 +152,71 @@ Phase 1 が終わってから、大きい UI ファイルに手を入れる。re
 `'me.castle'` や `{who:'me',kind:'castle'}` の既定選択、`board-model` の `LATE='opp'`、
 `Kakoi.LRU || Map` の繰り返しなど、散在する小さな重複を揃える。
 
+## 命名の整理（責務が読める名前へ）[S〜M]
+
+調査の結果、kebab-case のファイル名・「データ=ALL_CAPS・ロジック=camelCase・DOM クラス=PascalCase」
+の規約は概ね統一されている。残るのは **同名衝突・責務が読めない名・画面領域名の揺れ**。
+Phase 3 でファイル名がそのまま import パスになるので、モジュール化の前に済ませる。
+改名だけのコミットとし（振る舞い不変）、manifest・tools/ の読み込みパス・`Kakoi.*` の
+参照を機械的に置き換える。
+
+### a. 同名・近似名の衝突（最優先）
+
+| 現行 | 案 | 理由 |
+|---|---|---|
+| `js/core/tesuji.js` ↔ `js/data/tesuji.js`（`Kakoi.tesuji` ↔ `Kakoi.TESUJI`） | core を `tesuji-engine.js`（export は `Kakoi.tesuji` のまま） | 同名ファイルが層をまたいでいる。engine=検出・評価（forks/sokofu/detectors）、data=手筋データ、`tesuji-check.js`=検算器で役割が3つある |
+| `core/pieces.js` ↔ `core/piece-moves.js` | `piece-moves.js` を pieces.js へ統合して削除 | 駒の動きの定義が2権威に分裂している途中（pieces.js は「単一権威」を宣言済みだが attack-map/piece-match が旧版を参照中）。統合の完了が先 |
+| `core/pieces.js`（`Kakoi.pieces`） | `piece-rules.js`（`Kakoi.pieceRules`） | `position.pieces`・`t.pieces`（駒配置データ）と同名で、「駒の動きの規則」が読めない |
+| `core/piece-match.js`（`Kakoi.pieceMatch`） | `piece-pairing.js`（`Kakoi.piecePairing`） | 中身はアニメ用の駒対応づけ（pair/plan）。「届くか」の moveCount は piece-rules 側に寄せる |
+
+### b. 責務が読めない関数名・ファイル名
+
+| 現行 | 案 | 理由 |
+|---|---|---|
+| `compose.position()` | `compose.build()` | 名詞メソッドで「組み立てる」動作が見えない（`Position` クラスと紛らわしい） |
+| `matchup.fitness()` ↔ `matchup.tacticFit()` | `castleFit()` / `tacticFit()` に統一 | 対称なペア（囲いスコア/戦法適性）なのに名が非対称 |
+| `constraints.sides()` | `effectiveSides()` または `derive()` | 「実効状態を返す」が読めない。sides() は全画面の導出入口なので特に |
+| `constraints.labels()` | `senkeiLabels()` | `notation.label()`（4六の筋段名）と label が衝突 |
+| `pieceMatch.moveCount()` / `moveCost()` | `reachPly()` / `slideCost()` | 「合成の届く判定（BFS手数）」と「アニメの滑らせやすさ」で目的が違うのに近似名 |
+| `core/board-model.js` | `core/derive-board.js` | 中身は裸の関数 `deriveBoard` 1つ。ファイル名と export を揃える |
+| `core/lookup.js` | `core/catalog.js` | 「lookup」は Repository と同義で経路が読めない。層スキーマ定数（KINDS/WHOS/FIELD）も同居している |
+| `core/html.js` | `core/markup.js` | DOM に触れない文字列ユーティリティ（esc/cite）なのに html と名乗っている |
+| `ui/roving.js` | `ui/roving-tabindex.js` | roving tabindex のこと。短すぎて意味が取れない |
+| `data/fun.js` | `data/trivia.js` または `extras.js` | お楽しみ欄（格言・ミーム・動画）のデータ。「fun」は責務が読めない |
+| `ui/kaya-art.js` | `ui/piece-art.js`（任意・好み） | 榧（kaya）は固有名詞で「盤・駒の絵を焼く」責務が読めない。芸名として残すのもあり |
+
+### c. 画面領域名の統一（rail / detail / field / board）
+
+index.html では左=`.rail`・右=`.detail`・上=`#cfield`・中央=盤。ファイル名は
+左ドックが `dock-*`、右ドックが `detail-*`/`board-detail-view`、下端タブが `dock-tabs` で揺れている。
+画面領域名に揃えると「どこを描くか」が名前から読める。
+
+| 現行 | 案 |
+|---|---|
+| `ui/dock-view.js` / `dock-grids.js` / `dock-badges.js` | `rail-view.js` / `rail-grids.js` / `rail-badges.js` |
+| `ui/board-detail-view.js` | `detail-view.js`（`detail-sections.js` と対になる。「board」は中央の盤を指すので誤解） |
+| `ui/dock-tabs.js` | `mobile-tabs.js`（下端タブ＋スワイプ。ドックの中身ではない） |
+
+### d. modes/ の揺れ
+
+`modes/` は3画面時代の名残で、中身はコントローラ（ConstraintMode）・描画統合（BoardScreen）・
+純関数（keyboardNav）と種類が混在している。
+
+| 現行 | 案 |
+|---|---|
+| `modes/` ディレクトリ | `screen/` または `controllers/`（「mode」は画面が1つしかない今は名を捨てる） |
+| `modes/constraint-mode.js`（`K.ConstraintMode`） | `screen/controller.js`（`K.ScreenController` など。「対局図のコントローラ」が責務） |
+| `modes/board-screen.js`・`keyboard-nav.js` | そのまま（ファイル名は概ね責務どおり） |
+
+### e. 小さな揺れ（任意・優先度低）
+
+- data ファイル: `tactics.js`（複数形）に対し `tactic-families.js`/`tactic-ratings.js`（単数形
+  接頭辞）。`castles-*` は複数形。`tactics-*` に揃えるか現状維持でもよい
+- `Kakoi.deriveBoard` は唯一の「裸の関数」export（他は名前空間かクラス）。b 表の
+  `derive-board.js` への改名と併せて `Kakoi.boardModel.derive` のような名前空間に
+  揃えるかは一貫性で決める
+- `ui/segmented.js` → `ui/segmented-control.js`（クラス `Segmented` に揃える。任意）
+
 ## Phase 3：モジュール化・型（plan-ts-migration の現状版）[L]
 
 `docs/plan-ts-migration.md` の方向（esbuild で IIFE バンドル、`file://` 維持）は依然として有効。
@@ -174,7 +239,8 @@ Phase 1 が終わってから、大きい UI ファイルに手を入れる。re
 
 依存の少ないものから順に進める。Phase 0 → 1-3（小さい整理）→ 1-1/1-2（core 内部）→
 1-4/1-5（大きいファイルの分割）→ Phase 2（UI）→ Phase 3（モジュール化）は
-前のフェーズが安定してから。
+前のフェーズが安定してから。命名の整理は Phase 3 より前ならいつでも挟める
+（ファイル名が import パスになる前に済ませる）。a 表（衝突の解消）は誤読を招くので早めがよい。
 
 各フェーズの完了条件は `npm run test:fast` → `npm test` が通ること。
 表示に影響し得る UI の整理（Phase 2）では `ui-check.js` のスクショ比較も使う。
