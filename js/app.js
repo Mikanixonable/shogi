@@ -109,6 +109,7 @@
     const on = state.view === 'tesuji';
     document.body.classList.toggle('tj', on);
     if (on) tesujiMode.open(state.tesujiId, instant);
+    else window.scrollTo(0, 0);
   };
   store.subscribe((state, changed) => {
     mode.update(state, changed);

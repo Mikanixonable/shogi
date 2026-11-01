@@ -1,5 +1,5 @@
 /* 手筋・定番セット: 王手飛車の筋（盤の重ね表示）・定番セット（左ドック・帯・右ドック）・
-   受けの手筋（右ドック）・「手筋と格言」モーダル */
+   受けの手筋（右ドック）・「手筋と格言」全画面モードの図と格言（レイアウトは css/wiki.css） */
 
 /* ===== 王手飛車の筋: 打つマスから玉・飛車への細線と、打つマスの薄い駒の字 ===== */
 .overlay .fk { vector-effect:non-scaling-stroke; stroke-width:2px; stroke-linecap:round; opacity:.85; }
@@ -50,23 +50,14 @@
            text-decoration:underline dotted var(--line-2); text-underline-offset:3px; }
 @media (hover:hover) { .linkish:hover { color:var(--accent); } }
 
-/* ===== 「手筋と格言」モーダル ===== */
-.tesuji-dlg { width:min(640px, calc(100vw - 32px)); max-height:min(86vh, 900px); }
-.tesuji-dlg[open] { display:flex; flex-direction:column; }
-.tesuji-dlg .tj-body { overflow:auto; overscroll-behavior:contain; }
-.tj-toc { position:sticky; top:-16px; z-index:1; background:var(--bg); padding:6px 0; margin:-6px 0 0; }
-.tj-toc .vchip { text-decoration:none; color:inherit; }
-.tj-card, .tj-proverbs { border-top:1px solid var(--line); padding-top:12px; scroll-margin-top:44px;
-                         transition:background .4s; }
-.tj-card[data-reveal="true"], .tj-proverbs[data-reveal="true"] { background:var(--accent-soft); }
-.tj-card h3, .tj-proverbs h3 { margin:0 0 6px; font:700 15px/1.5 var(--font-d); letter-spacing:.1em; display:flex; align-items:baseline; gap:10px; }
-.tj-card h3 small { font:400 11px/1 var(--font-b); color:var(--muted); letter-spacing:.04em; }
+/* ===== 「手筋と格言」（全画面モード。screen/tesuji-mode.js が組み立てる） ===== */
+/* 節の見出しの役割印（攻め=朱・受け=緑・両方=薄墨） */
 .tj-role { margin-left:auto; font:500 10.5px/1 var(--font-b); letter-spacing:.1em; padding:3px 8px; border-radius:999px;
            border:1px solid var(--bad); color:var(--bad); }
 .tj-role[data-role="defense"] { border-color:var(--good); color:var(--good); }
 .tj-role[data-role="both"] { border-color:var(--muted); color:var(--muted); }
-.tj-card .desc { font-size:13px; line-height:1.9; margin:0 0 8px; }
-.tj-fig { margin:0; display:grid; grid-template-columns:minmax(120px, 200px) 1fr; gap:14px; align-items:start; }
+/* 手順の図: 盤の窓の SVG（左）＋手・一言・コマ送り（右） */
+.tj-fig { margin:10px 0 6px; display:grid; grid-template-columns:minmax(140px, 230px) 1fr; gap:18px; align-items:start; }
 .tj-svg { width:100%; height:auto; display:block; }
 .tj-bg { fill:var(--wood-1); stroke:var(--wood-line); stroke-width:.5; }
 .tj-ln { stroke:var(--wood-line); stroke-width:.25; }
@@ -91,8 +82,6 @@
 @media (max-width:979px) {
   /* ヘッダーの「手筋と格言」も ? と同じ丸印に畳む（印は「筋」） */
   .brand #tesujiOpen::after { content:"筋"; font-family:var(--font-d); }
-  .tj-fig { grid-template-columns:1fr; }
-  .tj-svg { max-width:220px; }
   .tj-step, .dk-combo { min-height:32px; }
 }
 /* とても狭い画面: 丸印が2つになった分、題字の字間を詰めて右端のボタン（44px）を保つ */

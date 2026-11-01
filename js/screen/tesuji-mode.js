@@ -2,7 +2,7 @@
 // 左は章→節→項の目次ツリー（現在地はスクロールに追従して朱で示す）、右は本文。
 // 章の区切りは data/tesuji.js の章コメントと同じ（歩／香・桂・銀・金／角・飛／囲いの崩し方／受け）。
 // 「囲いの崩し方」は対象の囲いごとに項へ分ける。格言は PROVERB_GROUPS の節、末尾に出典。
-// 図・コマ送り・格言の関連付けは旧モーダル（ui/tesuji-modal.js）から引き継ぐ。
+// 既存の手筋図・コマ送り・格言の関連付けを引き継ぎ、読み物の章立てに組み直す。
 // 開いている章・節は URL ハッシュの tj= が持つ（hash-link.js）。Esc・「囲い図鑑へ戻る」で盤へ帰る。
 window.Kakoi = window.Kakoi || {};
 (() => {
@@ -134,7 +134,10 @@ window.Kakoi = window.Kakoi || {};
       // Esc は盤へ戻る（about モーダルが開いている間はモーダル側の Esc に任せる）
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && document.body.classList.contains('tj')
-            && !document.querySelector('dialog[open]') && this.cb.onExit) this.cb.onExit();
+            && !document.querySelector('dialog[open]') && this.cb.onExit) {
+          this._tocClose();
+          this.cb.onExit();
+        }
       });
     }
 
@@ -146,9 +149,12 @@ window.Kakoi = window.Kakoi || {};
     open(id, instant) {
       if (!this.root) return;
       this._build();
-      if (id) this._reveal(id, instant);
+      this._tocClose();
+      const el = id && this.main.querySelector(`[data-id="${CSS.escape(id)}"]`);
+      if (el) this._reveal(id, instant);
       else {
         this.main.scrollTop = 0;
+        window.scrollTo(0, 0);
         this._mark(this.toc.querySelector('[data-go="top"]'));
       }
     }
@@ -160,7 +166,9 @@ window.Kakoi = window.Kakoi || {};
       const citer = makeCiter();
       const proverbs = new Map((K.PROVERBS || []).map(p => [p.id, p]));
       const srcAll = [];
-      let doc = `<header class="wj-doc-h" data-id="top"><h1>手筋と格言</h1>` +
+      let doc = `<header class="wj-doc-h" data-id="top">` +
+        `<p class="wj-back wj-back-doc"><button type="button" data-exit>← 囲い図鑑へ戻る</button></p>` +
+        `<h1>手筋と格言</h1>` +
         `<p class="wj-lede">駒組み（囲い・戦法）とは別に、数手で完結する局所の技を集めた読み物です。` +
         `図は盤の一部だけを切り出し、▲が先手（下側）・△が後手（上側）です。歩の手筋はその筋に自分の歩が無い前提です（二歩の禁止）。</p></header>`;
       let toc = `<p class="wj-back"><button type="button" data-exit>← 囲い図鑑へ戻る</button></p>` +
@@ -312,7 +320,10 @@ window.Kakoi = window.Kakoi || {};
         else this._reveal(go.dataset.go);
         return;
       }
-      if (e.target.closest('[data-exit]') && this.cb.onExit) this.cb.onExit();
+      if (e.target.closest('[data-exit]') && this.cb.onExit) {
+        this._tocClose();
+        this.cb.onExit();
+      }
     }
 
     _reveal(id, instant) {
@@ -327,24 +338,42 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // ---------- 目次の現在地: 本文の章・節・項を IntersectionObserver で追う ----------
+    // 「読んでいる位置（本文ペインの上から約1/4の線）より上にある、いちばん深い見出し」を現在地にする。
+    // 章・項は節を内包するので、上端の小さいものを選ぶと常に章が勝つ（それでは節が光らない）
     _observe() {
       const links = new Map([...this.toc.querySelectorAll('[data-go]')].map(a => [a.dataset.go, a]));
       const secs = [...this.main.querySelectorAll('[data-id]')].filter(el => links.has(el.dataset.id));
+      this._links = links;
       if (!('IntersectionObserver' in window)) return;
       const visible = new Set();
-      this._links = links;
+      this._pick = () => {
+        if (!visible.size) return;
+        // 読書ライン: 本文ペインの可視領域の上から約1/4。モバイルはページスクロールなので
+        // ペイン自体の全高ではなく、画面に見えている部分だけを基準にする。
+        const rect = this.main.getBoundingClientRect();
+        const visibleTop = Math.max(0, rect.top);
+        const visibleBottom = Math.min(window.innerHeight, rect.bottom);
+        const line = visibleTop + Math.max(0, visibleBottom - visibleTop) * .28;
+        let best = null, bt = -Infinity, fb = null, ft = Infinity;
+        for (const el of visible) {
+          const t = el.getBoundingClientRect().top;
+          if (t <= line && t > bt) { best = el; bt = t; }
+          if (t < ft) { fb = el; ft = t; }
+        }
+        this._mark(links.get((best || fb).dataset.id));
+      };
       this._spy = new IntersectionObserver(es => {
         for (const e of es) {
           if (e.isIntersecting) visible.add(e.target);
           else visible.delete(e.target);
         }
-        if (!visible.size) return;
-        let best = null;
-        for (const el of visible) {
-          if (!best || el.getBoundingClientRect().top < best.getBoundingClientRect().top) best = el;
-        }
-        this._mark(links.get(best.dataset.id));
-      }, { rootMargin: '-12% 0px -72% 0px' });
+        this._pick();
+      });   // root=ビューポート（広い画面の本文ペイン内・狭い画面のページスクロールの両方で真の可視範囲になる）
+      // 交差の増減が無いスクロールでも現在地を追い直す（スクローラは画面幅で変わる）
+      let raf = 0;
+      const onScroll = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; this._pick(); }); };
+      this.main.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('scroll', onScroll, { passive: true });
       for (const el of secs) this._spy.observe(el);
     }
 
