@@ -1,5 +1,5 @@
 // 本榧と彫駒の絵（design-refs-board/kaya.html を本番に移したもの）。
-// ・盤: 柾目の SVG フィルタ（Kakoi.kayaArt.grainFilter）
+// ・盤: 柾目の SVG フィルタ（Kakoi.pieceArt.grainFilter）
 // ・駒: 黄楊の一木から切り出した彫駒を canvas に焼く（paint）。光は左上に固定し、
 //   面取り5面の明暗・字の彫りの影と照り・盤に落ちる2段の影（shadow）をすべてこの光から決める。
 // 立体駒レイヤ（piece-layer-3d）は焼いた絵を真上から見た板として貼り、DOM 版（piece-layer-dom）は画像として置く
@@ -209,7 +209,7 @@ window.Kakoi = window.Kakoi || {};
   /** 参照（マス幅 54px）の px を、駒の単位系へ換算する係数（駒の高さ k のとき） */
   const pxToUnits = k => H / (REF_PIECE_H * k / .9);
 
-  Kakoi.kayaArt = {
+  Kakoi.pieceArt = {
     W, H, SCALE, SHADOWS, SHADOW_PAD, LIGHT: { x: LX, y: LY, len: LEN },
     paint, shadow, pxToUnits, grainFilter, BOARD_GRAIN, ready,
     scaleOf: ch => SCALE[ch] || .9,

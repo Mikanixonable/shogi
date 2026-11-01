@@ -1,18 +1,18 @@
-// 統合画面の左ドック: 「自分／相手」で切り替える1枚の面。
-// 側の切り替えはドックの右端（盤との境）に立てた駒の見出し（バインダー）で行う。
+// 統合画面の左レール（.rail）: 「自分／相手」で切り替える1枚の面。
+// 側の切り替えはレールの右端（盤との境）に立てた駒の見出し（バインダー）で行う。
 // 盤と同じく上=相手（先が下の駒）・下=自分（先が上の駒）。相手の見出しで相手の表示を ON にでき、
 // 角の × で OFF にする。面は囲い／戦法・リセット・絞り込み・一覧からなる。
 // 戦略（居飛車／振り飛車）の絞り込みは一覧の表示を絞るだけで制約にはならない
 // （戦略は選んだ戦法から導く）。見ている側・層は state.selected が持つ。
-// 計画書 S6 で分割: 一覧の中身の構築は dock-grids.js、
-// バッジと「戦略に合わない項目」の判定は dock-badges.js。
+// 計画書 S6 で分割: 一覧の中身の構築は rail-grids.js、
+// バッジと「戦略に合わない項目」の判定は rail-badges.js。
 //   - バッジ2軸（§3-1/U1）: 両立=compat.judge の ng → ✕。相手との相性=judge().vs → ◎/△
 //   - ホバー/フォーカスで onPreview（盤のマス表示は呼び出し側が描く）
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
-  const { VS_MARK, findTactic, KINDS, FIELD } = K.lookup;
+  const { VS_MARK, findTactic, KINDS, FIELD } = K.catalog;
   const { esc } = K.html;
   const STRATEGY_IDS = ['furibisha', 'ibisha'];
   const castlePos = c => K.Position.fromCastle(c, K.SETUPS[c.setup]);
@@ -26,7 +26,7 @@ window.Kakoi = window.Kakoi || {};
             '<path d="M8.6 14.6 15.4 8.4M15.4 8.4h-4.2M15.4 8.4v4.2"/></svg>',
   };
 
-  class DockView {
+  class RailView {
     /**
      * @param {HTMLElement} el `#pickRail`（内部構造はこのクラスが作る）
      * @param {{ onSelect:(who:'me'|'opp', kind:string)=>void,
@@ -50,7 +50,7 @@ window.Kakoi = window.Kakoi || {};
       this._last = null;
       this._whoPrev = null;                            // 前回表示していた側（切り替わりの向きの演出用）
       const pref = loadPref();
-      this.sort = K.dockGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
+      this.sort = K.railGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
       // 面の上端は1行: 左に戦型の絞り込み（文字だけの小さなセグメント）、右に層タブ（囲い／戦法）。
       // その下に並べ方・記号の凡例・?。開いている側の名前は右端の駒の見出し（バインダー）が示すので、面には見出しを持たない
       el.innerHTML =
@@ -66,7 +66,7 @@ window.Kakoi = window.Kakoi || {};
          // 戦型（細）のチップ行: 組み合わせから候補を出し、一覧の表示を絞るだけ（制約にはしない）
          `<div class="dk-senkei" role="group" aria-label="戦型（細）の絞り込み"></div>` +
          `<div class="dk-tools"><label class="dk-sort"><span>並べ方</span><select class="dk-sort-sel">` +
-         K.dockGrids.CASTLE_SORTS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('') +
+         K.railGrids.CASTLE_SORTS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('') +
          `</select></label><span class="dk-key"></span><button type="button" class="dk-legend" aria-expanded="false" ` +
          `aria-label="記号の見方" title="記号の見方">?</button></div>` +
          // 採用した戦法の盆（複数選択を見せる。戦法の面で選択があるときだけ現れる）
@@ -115,7 +115,7 @@ window.Kakoi = window.Kakoi || {};
       // タイル・チップは roving tabindex（U3）。矢印でフォーカスを移し Enter で選ぶ
       this.roving = K.roving.attach(this.body, '.dk-item');
       this.views = {};   // `${who}:${kind}` → 一覧の中身（構築は1回だけ。update では属性だけを書き換える）
-      // ドックの居飛車の系統は 飛車→銀→角→桂→歩→金→玉 の順に並べる
+      // レールの居飛車の系統は 飛車→銀→角→桂→歩→金→玉 の順に並べる
       const ibishaRank = { '飛': 0, '銀': 1, '角': 2, '桂': 3, '歩': 4, '金': 5, '玉': 6 };
       const rows = K.tacticNav.tacticRows(K.TACTIC_FAMILIES, K.TACTICS);
       this.tacticRows = [
@@ -147,7 +147,7 @@ window.Kakoi = window.Kakoi || {};
       } else {
         paneH.prepend(strat);              // 元の順序へ戻す
         tools.before(this.root.querySelector('.dk-senkei'));
-        this.el.appendChild(this.binder);  // ドック右端の縦バインダーに戻る
+        this.el.appendChild(this.binder);  // レール右端の縦バインダーに戻る
       }
       this.binder.setAttribute('aria-orientation', narrow ? 'horizontal' : 'vertical');
     }
@@ -248,7 +248,7 @@ window.Kakoi = window.Kakoi || {};
       // 盆: チップを押すとその戦法を外す。「全て外す」は戦法だけを空にする（囲い・戦型は触らない）
       this.tray.addEventListener('click', e => {
         if (e.target.closest('.dk-tray-all')) {
-          const ids = (K.constraints.sides(this._last.state.slots, this._last.state.showOpp)[this.who]
+          const ids = (K.constraints.effectiveSides(this._last.state.slots, this._last.state.showOpp)[this.who]
             .tacticIds || []).slice();
           for (const id of ids) this.h.onRemove(this.who, 'tactic', id);
           return;
@@ -284,7 +284,7 @@ window.Kakoi = window.Kakoi || {};
       const key = kind === 'castle' ? `${who}:${kind}:${this.sort}` : `${who}:${kind}`;
       let v = this.views[key];
       if (!v) {
-        v = kind === 'tactic' ? K.dockGrids.tactics(this, who) : K.dockGrids.castles(this, who, this.sort);
+        v = kind === 'tactic' ? K.railGrids.tactics(this, who) : K.railGrids.castles(this, who, this.sort);
         this.views[key] = v;
       }
       if (this.body.firstElementChild !== v.el) this.body.replaceChildren(v.el);
@@ -294,7 +294,7 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 更新（属性の書き換えだけ。構造は who/kind が変わったときだけ作り直す） ----------
     /**
      * @param {object} state store.state（selected / slots / showOpp を読む）
-     * @param {{ me:object, opp:object }} S constraints.sides() の出力
+     * @param {{ me:object, opp:object }} S constraints.effectiveSides() の出力
      */
     update(state, S) {
       this._last = { state, S };
@@ -333,7 +333,7 @@ window.Kakoi = window.Kakoi || {};
       if (this._strat[who] !== st.strategy) { this._strat[who] = st.strategy; this.filter[who] = st.strategy; }
       this.stratSeg.setValue(this.filter[who]);
       // 戦型（細）のチップ: 組み合わせ（大分類）から候補を出す。変わったときだけ並び直す
-      const cand = K.dockGrids.senkeiCandidates(S.me, S.opp, showOpp);
+      const cand = K.railGrids.senkeiCandidates(S.me, S.opp, showOpp);
       const sig = cand.join(',');
       if (sig !== this._senkeiSig) {
         this._senkeiSig = sig;
@@ -358,7 +358,7 @@ window.Kakoi = window.Kakoi || {};
     _updatePane(state, S, who, showOpp) {
       const st = S[who];
       const strat = this.filter[who];
-      const B = K.dockBadges;
+      const B = K.railBadges;
       const v = this.cur;
 
       // 候補の評価は constraints.evaluate に一本化（S3: 共有 LRU で使い回す。土台は
@@ -373,7 +373,7 @@ window.Kakoi = window.Kakoi || {};
         it.el.setAttribute(it.kind === 'tactic' ? 'aria-pressed' : 'aria-current',
           cur ? 'true' : 'false');
         it.el.hidden = B.offItem(it, strat)
-          || !K.dockGrids.senkeiMatch(this.senkeiFilter[who] || null, it.kind, it.id);
+          || !K.railGrids.senkeiMatch(this.senkeiFilter[who] || null, it.kind, it.id);
         const implied = cur && st.implied[it.kind];
         B.badge(it.el, j, implied);
         if (it.ng) it.ng.textContent = j.level === 'ng' ? '✕' : '';
@@ -435,7 +435,7 @@ window.Kakoi = window.Kakoi || {};
         ids.map(id => {
           const t = findTactic(id);
           if (!t) return '';
-          const piece = (K.lookup.tacticFamilyOf(t) || {}).piece || '飛';
+          const piece = (K.catalog.tacticFamilyOf(t) || {}).piece || '飛';
           return `<button type="button" class="dk-chip" data-id="${esc(id)}" ` +
             `style="--tc:var(--t-${TC[piece] || 'rook'})" title="${esc(t.name)}を外す">` +
             `<span class="pt-tile" aria-hidden="true">${piece}</span>` +
@@ -466,7 +466,7 @@ window.Kakoi = window.Kakoi || {};
     // sel.id があるときはその戦法（無ければ主の戦法）を示す
     reveal(sel, st) {
       // 狭い画面では一覧のスクロールはページ全体のスクロールになるので行わない
-      // （B2: 代わりに constraint-mode が解説を盤の下へ持ってくる）
+      // （B2: 代わりに ScreenController が解説を盤の下へ持ってくる）
       if (matchMedia('(max-width:979px)').matches) return;
       const kind = sel && sel.kind;
       requestAnimationFrame(() => {
@@ -500,5 +500,5 @@ window.Kakoi = window.Kakoi || {};
     }
   }
 
-  K.DockView = DockView;
+  K.RailView = RailView;
 })();

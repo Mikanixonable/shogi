@@ -25,7 +25,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // 盤の地: 縁まで続く榧の柾目（.board-grain）と、漆を盛った太刀盛りの罫線・星（.board-lines）。
-    // 光は左上に固定（Kakoi.kayaArt と css/board.css の --lx/--ly と同じ）
+    // 光は左上に固定（Kakoi.pieceArt と css/board.css の --lx/--ly と同じ）
     _woodLayers() {
       const frag = document.createDocumentFragment();
       const NS = 'http://www.w3.org/2000/svg';
@@ -33,7 +33,7 @@ window.Kakoi = window.Kakoi || {};
       grain.setAttribute('class', 'board-grain');
       grain.setAttribute('aria-hidden', 'true');
       grain.innerHTML = `<filter id="kaya-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">${
-        Kakoi.kayaArt.grainFilter(Kakoi.kayaArt.BOARD_GRAIN)}</filter><rect width="100%" height="100%" fill="#fff" filter="url(#kaya-grain)"/>`;
+        Kakoi.pieceArt.grainFilter(Kakoi.pieceArt.BOARD_GRAIN)}</filter><rect width="100%" height="100%" fill="#fff" filter="url(#kaya-grain)"/>`;
       // 罫は盤の比率（9:9.6）のまま 90×96 の座標で引く（星が楕円にならない）
       const lines = document.createElementNS(NS, 'svg');
       lines.setAttribute('class', 'board-lines');

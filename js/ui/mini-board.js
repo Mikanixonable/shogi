@@ -74,6 +74,6 @@ window.Kakoi = window.Kakoi || {};
 
   Kakoi.miniBoardSVG = miniBoardSVG;
   Kakoi.miniWindow = miniWindow;
-  // 窓の描画アスペクト（幅÷高さ）。タイル幅をサムネの描画幅に合わせる用（dock-grids の --ar）
+  // 窓の描画アスペクト（幅÷高さ）。タイル幅をサムネの描画幅に合わせる用（rail-grids の --ar）
   Kakoi.miniAspect = w => (w.f1 - w.f0 + 1) * W / ((w.r1 - w.r0 + 1) * H);
 })();

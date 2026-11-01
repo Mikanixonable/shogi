@@ -7,7 +7,7 @@ window.Kakoi = window.Kakoi || {};
 
   /**
    * @param {{who:string, kind:string}} sel constraints.parseSel の結果
-   * @param {object} st その側の実効状態（constraints.sides() の1側）
+   * @param {object} st その側の実効状態（constraints.effectiveSides() の1側）
    * @param {{ rows:Array, repo:Kakoi.Repository }} ctx
    *   rows: tacticNav.tacticRows の全家系統行、repo: tacticById/ofSideByFamily を持つもの
    * @param {string} key 'ArrowLeft'|'ArrowRight'|'ArrowUp'|'ArrowDown'

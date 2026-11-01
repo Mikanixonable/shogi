@@ -1,11 +1,11 @@
-// 右ドックの組み立て本体（計画書 §5 / U5）: 選択中の制約 {who, kind} の種類に応じて、
+// 右 detail の組み立て本体（計画書 §5 / U5）: 選択中の制約 {who, kind} の種類に応じて、
 // detail-sections（js/ui/detail-sections.js）の部品を組み立てて描く。
 //   - *.tactic: 戦法の詳細（タグ・説明・長所短所・主役の駒の動き）＋派生の切替
 //     ＋相性のよい囲い（◎/○・いまの囲い）＋相手との相性の相性（judge の vs 軸）
 //   - *.castle: 囲いの詳細（ペンタグラム・#タグ・発展・長所短所・攻め筋）。相手がいれば
-//     ペンタグラムに戦型の重みを重ね、fitness と効いている軸を表示する
+//     ペンタグラムに戦型の重みを重ね、castleFit と効いている軸を表示する
 //   - *.strategy: 戦型の詳細（説明・導出元・その戦型の既定の戦法/囲いと囲い一覧）。
-//     戦型はスロットを持たない導出値だが、制約条件の情報として右ドックで見られる
+//     戦型はスロットを持たない導出値だが、制約条件の情報として右 detail で見られる
 //   - 選んだ層が他の層と両立しないとき: 先頭近くに理由と、直す候補（1クリックで差し替え）
 //   - 共通の末尾: 両軍の接触 → 出典
 // render は self-contained: データは Kakoi.*（CASTLES/TACTICS/…）と呼び出し側の共有
@@ -18,10 +18,10 @@ window.Kakoi = window.Kakoi || {};
   const bindCites = (K.cites && K.cites.bind) || (() => {});   // ui/cites.js（S6 で core から移動）
   const Sec = () => K.detailSections; // 読み込み順に依存しないよう呼び出し時に引く
 
-  const { LAYER_JA, FIELD, findTactic, findCastle, tacticFamilyOf, castleFamilyOf, castleSides, strategyLabel } = K.lookup;
+  const { LAYER_JA, FIELD, findTactic, findCastle, tacticFamilyOf, castleFamilyOf, castleSides, strategyLabel } = K.catalog;
   const WHO_JA = { me: '▲自分', opp: '△相手' };
   const SHORT_WHO = { me: '自分', opp: '相手' };
-  // 戦法の多角形の色は主役の駒の系統色（左ドックのタイルの --t-* と同じ）
+  // 戦法の多角形の色は主役の駒の系統色（左レールのタイルの --t-* と同じ）
   const TACTIC_COLOR = { 'furibisha-rook': 'var(--t-rook)', 'ibisha-rook': 'var(--t-rook)',
     'ibisha-silver': 'var(--t-silver)', 'ibisha-kaku': 'var(--t-kaku)', 'ibisha-kei': 'var(--t-kei)',
     'ibisha-fu': 'var(--t-fu)', 'ibisha-kin': 'var(--t-kin)', 'ibisha-gyoku': 'var(--t-gyoku)' };
@@ -33,7 +33,7 @@ window.Kakoi = window.Kakoi || {};
   };
   const parseSel = K.constraints.parseSel;
 
-  class BoardDetailView {
+  class DetailView {
     /**
      * @param {HTMLElement} el `#detail`（.detail-body）
      * @param {{ onHover:(squares:string[], tone:?string)=>void,
@@ -122,8 +122,8 @@ window.Kakoi = window.Kakoi || {};
      *   threat:?Object, attackId:?string, contacts:Array,
      *   ng:?Array, suggest?:Array<{id:string, name:string}> }} p
      *   sel: 選択中の制約（'who.kind' 文字列も可）
-     *   st: その側の constraints.sides() 出力（implied を持つ）
-     *   S:  sides() の全体。showOpp: 相手を表示しているか。threat: matchup.threat(S.me, S.opp)（表示中のみ）
+     *   st: その側の constraints.effectiveSides() 出力（implied を持つ）
+     *   S:  effectiveSides() の全体。showOpp: 相手を表示しているか。threat: matchup.threat(S.me, S.opp)（表示中のみ）
      *   ng: 選択中の層が他の層と両立しないときの理由 {code,text,squares?}（無ければ null）
      *   suggest: そのとき直す候補（押すとその層を差し替える）
      */
@@ -149,7 +149,7 @@ window.Kakoi = window.Kakoi || {};
       // 戦法・囲いの面: 定番セット（その層を含むもの）と王手飛車の筋を足す
       const extra = [];
       let tail = '';
-      if (K.lookup.KINDS.includes(sel.kind) && st) {
+      if (K.catalog.KINDS.includes(sel.kind) && st) {
         const ids = kind === 'tactic' ? (st.tacticIds || []) : (st.castleId ? [st.castleId] : []);
         const done = K.tesuji ? K.tesuji.comboOf(st) : null;
         const rows = [...new Set(ids.flatMap(id => K.tesuji ? K.tesuji.combosWith(kind, id) : []))]
@@ -251,9 +251,9 @@ window.Kakoi = window.Kakoi || {};
       const subtype = subtypeOf(c);
       const implied = st.implied && st.implied.castle;
       // 相手がいるとき: その側から見た脅威を引き直し（opp の囲いは threat(S.opp,S.me)）、
-      // ペンタグラムに戦型の重みを重ね、fitness と効いている軸を出す（§5）
+      // ペンタグラムに戦型の重みを重ね、castleFit と効いている軸を出す（§5）
       const th = other && K.matchup ? K.matchup.threat(st, other) : null;
-      const fit = th ? K.matchup.fitness(c, th) : null;
+      const fit = th ? K.matchup.castleFit(c, th) : null;
       const j = K.compat ? K.compat.judge(st, 'castle', c.id, other) : null;
       // 出典: 囲い＋想定配置に加え、「組み合わせの理由」で出す相性表（pairing.why）の出典も併記する
       // （[[ref]] を本文に引く文を出す以上、その ref はパネルの出典リストに載っている必要がある）
@@ -350,7 +350,7 @@ window.Kakoi = window.Kakoi || {};
     // 細分類のエントリを出す。戦型は両側共通の情報なので選択は 'me.senkei.<id>' に寄せる
     // いまの組み合わせで導かれた葉のラベルの id（無ければ null）
     _senkeiLabelId(S, showOpp) {
-      const ls = showOpp && K.constraints ? K.constraints.labels(S.me, S.opp) : [];
+      const ls = showOpp && K.constraints ? K.constraints.senkeiLabels(S.me, S.opp) : [];
       return ls.length > 1 ? ls[ls.length - 1].id : null;
     }
     _senkeiChip(id, text) {
@@ -402,7 +402,7 @@ window.Kakoi = window.Kakoi || {};
       const crumbs = [group && group.name, parent && parent.name, e.name]
         .filter((x, i, a) => x && x !== a[i - 1]).join(' › ');
       // いまの組み合わせでの出方（葉のラベルの sub/style への導線つき）
-      const labs = showOpp && K.constraints ? K.constraints.labels(S.me, S.opp) : [];
+      const labs = showOpp && K.constraints ? K.constraints.senkeiLabels(S.me, S.opp) : [];
       const cur = labs.find(l => l.id === id || (l.sub && l.sub.id === id) || (l.style && l.style.id === id));
       const curNote = cur ? Sec().note(
         `いまの組み合わせでは「#${esc(cur.label)}」と出ています。` +
@@ -434,5 +434,5 @@ window.Kakoi = window.Kakoi || {};
     _pairingsOf(t) { return this.h.repo.pairingsOf(t); }
   }
 
-  K.BoardDetailView = BoardDetailView;
+  K.DetailView = DetailView;
 })();

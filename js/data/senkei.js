@@ -1,5 +1,5 @@
 // 戦型（senkei.js）: 将棋の対局が分岐する「形」の実体データ。
-// constraints.labels() が導出する id をキーに、解説・成立形・代表戦法・代表囲いを持つ。
+// constraints.senkeiLabels() が導出する id をキーに、解説・成立形・代表戦法・代表囲いを持つ。
 //   - group: 大分類（'aiibisha' 相居飛車 / 'taikou' 対抗形 / 'aifuri' 相振り飛車 / 'rikisen' 力戦。SENKEI_GROUPS）
 //   - axis: 対抗形の直交軸（'rook' 振り飛車の種類 / 'approach' 居飛車側の方針 / 'style' 振り飛車の型。
 //     同じ軸の項目は排他、違う軸は併記できる。coverage-senkei-and-reading.md §2-2）
@@ -8,7 +8,7 @@
 //   - forms: 成立する駒組み・手順の概形
 //   - tactics/castles: この戦型に属する・誘導する代表の戦法id・囲いid（補助表示用。
 //     側別に分けるときは { ibisha:[…], furibisha:[…] } の形）
-//   - aiyagura（相矢倉）は labels() のラベルidで、本体は yagura エントリ
+//   - aiyagura（相矢倉）は senkeiLabels() のラベルidで、本体は yagura エントリ
 //     （内容が重複するため別エントリにしない。coverage-tactics.md §1-3）
 window.Kakoi = window.Kakoi || {};
 Kakoi.SENKEI = {
@@ -206,5 +206,5 @@ Kakoi.SENKEI_GROUPS = {
     sources: [{ ref: 'wj-shogi-yogo', for: '定義' }, { ref: 'wj-senpou', for: '分類' }],
   },
 };
-// labels() のラベルid → SENKEI エントリid（相矢倉は矢倉に含める）
+// senkeiLabels() のラベルid → SENKEI エントリid（相矢倉は矢倉に含める）
 Kakoi.SENKEI_RESOLVE = { aiyagura: 'yagura' };

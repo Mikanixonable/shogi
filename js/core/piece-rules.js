@@ -1,6 +1,6 @@
 // 駒の動きの単一権威（coverage-tesuji §5-1・§5-6）: 通常駒と成駒（1字の 馬・龍・全・杏・圭・と）を
-// 1か所にまとめる。core/tesuji.js の reach・core/tesuji-check.js の検算器・core/attack-map.js の
-// 利き計算がここから引く。「その駒の動きで何手かかるか」の moveCount（BFS）もここが権威。
+// 1か所にまとめる。core/tesuji-engine.js の reach・core/tesuji-check.js の検算器・core/attack-map.js の
+// 利き計算がここから引く。「その駒の動きで何手かかるか」の reachPly（BFS）もここが権威。
 //   [df, dr] は盤座標の増減（dr<0 が先手の前進）。後手は上下左右を反転して使う
 //   「竜」はデータ読み込み時に「龍」へ正規化する（parseSide / validate 側の約束）
 window.Kakoi = window.Kakoi || {};
@@ -46,10 +46,10 @@ window.Kakoi = window.Kakoi || {};
   for (const p of new Set([...Object.keys(STEPS), ...Object.keys(SLIDES)]))
     MOVES[p] = { steps: STEPS[p] || [], rays: SLIDES[p] || [] };
 
-  // ---------- moveCount: 「その駒の動きで何手かかるか」（合成の届く判定用。計画書 L3） ----------
+  // ---------- reachPly: 「その駒の動きで何手かかるか」（合成の届く判定用。計画書 L3） ----------
   // 盤上の障害物を無視した BFS。先手視点（段が減る向きが前）。上限8手、届かなければ Infinity。
   // 動きの定義はこのファイルが単一権威（未登録の駒は金フォールバック）。
-  // piece-pairing.js の moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、
+  // piece-pairing.js の slideCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、
   // 届くかどうかはこちらで判定する
   const MAX_PLY = 8;
   // メモは compat.js / constraints.js と同じく Kakoi.LRU。キー空間は駒種×81マスと
@@ -90,7 +90,7 @@ window.Kakoi = window.Kakoi || {};
    * @param {string} p 駒の字 @param {string} from 例 '39' @param {string} to 例 '79'
    * @returns {number}
    */
-  function moveCount(p, from, to) {
+  function reachPly(p, from, to) {
     if (from === to) return 0;
     if (!mcMemo) mcMemo = new (Kakoi.LRU || Map)(512);
     const ck = `${p}:${from}`;
@@ -102,5 +102,5 @@ window.Kakoi = window.Kakoi || {};
     return m.has(+to[0] * 10 + +to[1]) ? m.get(+to[0] * 10 + +to[1]) : Infinity;
   }
 
-  Kakoi.pieceRules = { PROMOTED, BASE, PROM_CHARS, HAND_CHARS, STEPS, SLIDES, MOVES, movesOf, moveCount };
+  Kakoi.pieceRules = { PROMOTED, BASE, PROM_CHARS, HAND_CHARS, STEPS, SLIDES, MOVES, movesOf, reachPly };
 })();

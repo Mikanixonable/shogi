@@ -1,11 +1,11 @@
-// 駒レイヤ（DOM版）: Kakoi.kayaArt が焼いた彫駒の絵を .sq の中に画像で置く静止表示（アニメーションなし）。
+// 駒レイヤ（DOM版）: Kakoi.pieceArt が焼いた彫駒の絵を .sq の中に画像で置く静止表示（アニメーションなし）。
 // ?flat が付いているとき・WebGL が使えないときのフォールバックとして BoardView から選ばれる。
 // 盤に落ちる影は CSS の drop-shadow（css/board.css .pc）。
 // 駒の移動リストは BoardView が1回だけ計算する（piecePairing.plan）が、静止表示なので使わない
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const ART = Kakoi.kayaArt;
+  const ART = Kakoi.pieceArt;
   const TILE_S = 2.6;
 
   class PieceLayerDom {

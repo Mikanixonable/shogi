@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="css/constraint.css">
 <link rel="stylesheet" href="css/dock.css">
 <link rel="stylesheet" href="css/tesuji.css">
+<link rel="stylesheet" href="css/wiki.css">
 </head>
 <body>
 <div class="atmo" aria-hidden="true"></div>
@@ -53,16 +54,16 @@
   </button>
 </header>
 
-<!-- 画面は1つ（対局図）: 選ぶ（左ドック）・見る（中央）・読む（右ドック） -->
+<!-- 画面は1つ（対局図）: 選ぶ（左レール）・見る（中央）・読む（右 detail） -->
 <div class="app">
-  <!-- 選ぶ（左ドック。DockView が右端の駒の見出しで「自分／相手」を切り替える1枚の面を組み立てる） -->
+  <!-- 選ぶ（左レール。RailView が右端の駒の見出しで「自分／相手」を切り替える1枚の面を組み立てる） -->
   <nav class="panel glass rail" aria-label="一覧">
     <div class="pane-fill" id="pickRail"></div>
   </nav>
 
   <!-- 見る: 盤の上に1枚の制約フィールド（蜂の巣の多角形モジュール。相手=上・自分=下で同じ
        六角グリッドに並び、自分の戦法の胞と相手の囲いの胞が河を隔てて辺を共有する）。
-       相手の表示 ON/OFF は左ドックの駒の見出しか「＋相手」の胞 -->
+       相手の表示 ON/OFF は左レールの駒の見出しか「＋相手」の胞 -->
   <main class="panel glass stage" id="stageMain">
     <div id="cfield" role="group" aria-label="制約条件"></div>
     <!-- 盤（BoardView / OverlayView は1組だけ） -->
@@ -81,7 +82,7 @@
     </div>
   </main>
 
-  <!-- 読む（右ドック。BoardDetailView が選択中の制約の種類に応じて組み立てる。
+  <!-- 読む（右 detail。DetailView が選択中の制約の種類に応じて組み立てる。
        1180px 以下では右端のドロワーになり、#detailToggle で開閉する） -->
   <aside class="panel glass detail">
     <button class="ib" id="detailToggle" type="button" aria-expanded="false" aria-label="解説パネルを開閉">解説</button>
@@ -89,7 +90,7 @@
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>
 
-  <!-- narrow: 左（選ぶ）と右（読む）のドックを下端のタブか横スワイプで切り替える（js/ui/dock-tabs.js） -->
+  <!-- narrow: 左（選ぶ）と右（読む）の面を下端のタブか横スワイプで切り替える（js/ui/mobile-tabs.js） -->
   <div class="mtabs" role="group" aria-label="ドックの切替">
     <button type="button" data-tab="pick" aria-pressed="true" aria-controls="pickRail">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
@@ -120,16 +121,14 @@
   </div>
 </dialog>
 
-<!-- 手筋と格言: ヘッダーのボタン・右ドックのリンクで開くコラム。中身は TesujiModal が組み立てる -->
-<dialog class="about-dlg tesuji-dlg" id="tesujiDialog" aria-labelledby="tesujiTitle">
-  <div class="about-head">
-    <h2 id="tesujiTitle">手筋と格言</h2>
-    <button class="ib" type="button" data-close aria-label="閉じる" title="閉じる">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-  </div>
-  <div class="about-body tj-body"></div>
-</dialog>
+<!-- 手筋と格言: 盤の画面と排他の全画面モード（対局図とは別モード。TesujiMode が組み立てる）。
+     左は章→節→項の目次、右は本文。開いている章・節は URL ハッシュの tj= が持つ -->
+<div class="wiki" id="tesujiView">
+  <nav class="wj-toc" id="tesujiToc" aria-label="手筋と格言の目次"></nav>
+  <main class="wj-main"></main>
+  <button class="wj-toc-btn" type="button" aria-expanded="false" aria-controls="tesujiToc">目次</button>
+  <div class="wj-scrim" aria-hidden="true"></div>
+</div>
 
 <!-- スクリプト一覧（読み込み順は js/manifest.js が決める。file:// でも動くよう動的に追加） -->
 <script src="js/manifest.js"></script>

@@ -2,7 +2,7 @@
 'use strict';
 /* 画面の検証: ブラウザで唯一の画面（対局図）を巡回し、
    JSエラー・ページのスクロール(幅980px以上では出ない)・スロットの選択/解除・
-   両立しない選択の✕と直す候補・相手の表示ON/OFF・左ドックのタブ・
+   両立しない選択の✕と直す候補・相手の表示ON/OFF・左レールのタブ・
    ハッシュ（pushState）と「戻る」の往復を検査する。
    画面幅 1440/1280/1100/1024/390 ×ライト/ダーク のスクリーンショットを tools/shots/ に保存する。
    使い方: node tools/ui-check.js [--shots-only]  （システムの Chrome/Edge または ms-playwright の headless shell を使用） */
@@ -98,7 +98,7 @@ const snap = page => page.evaluate(() => {
   const KIND_JA = { strategy: '戦型', castle: '囲い', tactic: '戦法' };
   return {
     slots: st.slots, showOpp: st.showOpp, selected: st.selected,
-    sides: Kakoi.constraints.sides(st.slots, st.showOpp),
+    sides: Kakoi.constraints.effectiveSides(st.slots, st.showOpp),
     chips: [...document.querySelectorAll('#cfield .cf-hit[data-kind]')].map(c => {
       const nm = /「([^」]+)」/.exec(c.getAttribute('aria-label') || '');
       const key = `${c.dataset.who}.${c.dataset.kind}.${c.dataset.id}`;
@@ -110,7 +110,7 @@ const snap = page => page.evaluate(() => {
         text: c.title || '',
         name: nm ? nm[1] : '', type: KIND_JA[c.dataset.kind] || '',
         remove: !!document.querySelector(`#cfield .cf-x[data-key="${key}"]`),
-        hasDescription: false };   // 胞に説明文の要素は持たない（解説は右ドック）
+        hasDescription: false };   // 胞に説明文の要素は持たない（解説は右 detail）
     }),
     gote: document.querySelectorAll('#board .pc[data-owner="gote"]').length,
     canvas: !!document.querySelector('#board canvas'),
@@ -121,7 +121,7 @@ const snap = page => page.evaluate(() => {
     relationships: [...document.querySelectorAll('#cfield .cf-seam text')].map(el => el.textContent.trim()),
     rect: { x: b.x, y: b.y, w: b.width, h: b.height,
       fb: document.querySelector('#cfield').getBoundingClientRect().bottom },
-    // 右ドックは BoardDetailView が .bd-h/.bd-who に「自分（先手）の囲い」のように出す
+    // 右 detailは DetailView が .bd-h/.bd-who に「自分（先手）の囲い」のように出す
     detailKind: (document.querySelector('#detail .bd-who') || {}).textContent || '',
     hash: location.hash, hist: history.length,
   };
@@ -185,7 +185,7 @@ async function sweepBoard(page, expect) {
     return [opp && me ? me.getBoundingClientRect().top - opp.getBoundingClientRect().bottom : 0,
       area.top - field.bottom].map(Math.round);
   });
-  // 初期状態: 左ドックは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
+  // 初期状態: 左レールは1枚の面（自分・囲い）。相手タブから相手を表示できる。ハッシュは空。
   r.panes = await page.$$eval(`${DOCK} .dk-pane`, els => els.length);
   r.layerTabs = await page.$$eval(`${DOCK} .dk-tab button`, els => els.map(el => el.textContent.trim()));
   r.layerBinder = await page.evaluate(() => {
@@ -356,7 +356,7 @@ async function sweepBoard(page, expect) {
       && meRow.querySelector('.cf-j') && ghosts.length >= 2   // 空きの駒枠も残す
       && str.getBoundingClientRect().right <= modLeft + 2;
   });
-  // 戦型の胞（左端）: スロットではないが、押すと右ドックにその戦型の情報が出る。
+  // 戦型の胞（左端）: スロットではないが、押すと右 detailにその戦型の情報が出る。
   // 選択だけなので履歴は積まず、sel=ms がハッシュに乗る
   // （胞のクリックは evaluate の .click() で: 狭い画面では右上の × の拡張当たり判定が
   //   胞ボタンの中央を覆い、実ポインタが届かないことがある）
@@ -386,7 +386,7 @@ async function sweepBoard(page, expect) {
   await wait(350);
   r.t3 = await snap(page);
   r.rects.push(r.t3.rect);
-  r.dockPick = !!(r.t3.slots.me.tactic && r.t3.slots.me.tactic.length)
+  r.railPick = !!(r.t3.slots.me.tactic && r.t3.slots.me.tactic.length)
     && r.t3.slots.me.tactic.join(',') !== tA && r.t3.slots.me.castle === cA;
   // 戦略セグは絞り込み専用: 戦法・囲いのスロットも導出した戦略も変えず、合わない行だけ隠れる
   const stratA = r.t3.sides.me.strategy;
@@ -398,7 +398,7 @@ async function sweepBoard(page, expect) {
     const rows = [...document.querySelectorAll('#pickRail .dk-trow')];
     return rows.length > 0 && rows.every(x => x.hidden === (x.dataset.side !== s))
       && JSON.stringify(now.slots) === JSON.stringify(slots)
-      && Kakoi.constraints.sides(now.slots, now.showOpp).me.strategy === strat;
+      && Kakoi.constraints.effectiveSides(now.slots, now.showOpp).me.strategy === strat;
   }, [stratB, r.t3.slots, stratA]);
   // 囲いタブに戻す → 系統・カードも絞り込んだ戦略で絞られる（両側を許す囲いだけは残る）
   await page.click(`${DOCK} .dk-tab button[data-value="castle"]`); await wait(250);
@@ -449,7 +449,7 @@ async function sweepBoard(page, expect) {
     }));
     return fams.length > 0 && fams.every(s => s.style.getPropertyValue('--fam').startsWith('var(--f-')
         && getComputedStyle(s).borderLeftWidth === '4px')
-      && sorts.length === Kakoi.dockGrids.CASTLE_SORTS.length && sorts.every(o => o.textContent.trim().length > 0)
+      && sorts.length === Kakoi.railGrids.CASTLE_SORTS.length && sorts.every(o => o.textContent.trim().length > 0)
       && !sortIds.includes('wide') && !sortIds.includes('quick')
       && tabs.bottom <= sortBar.top
       && getComputedStyle(cards).display === 'flex' && getComputedStyle(cards).flexWrap === 'wrap'
@@ -465,7 +465,7 @@ async function sweepBoard(page, expect) {
   });
 
   // 両立しない選択: いまの戦法と合わない囲い（✕の破線枠）を選んでも他の層は差し替わらず、
-  // チップに ✕ と理由、右ドックに理由と直す候補が出る。候補を押すと両立する選択に直る
+  // チップに ✕ と理由、右 detailに理由と直す候補が出る。候補を押すと両立する選択に直る
   const badBadge = await page.evaluate(() => [...document.querySelectorAll('#pickRail .dk-card')]
     .filter(c => c.dataset.ng === 'true').length);
   r.ngBadges = badBadge;
@@ -527,8 +527,8 @@ async function sweepBoard(page, expect) {
         && g.querySelector('.cf-cell.cf-tac');
     });
     const meRow = document.querySelector('#cfield .cf-row.cf-me');
-    const st = Kakoi.constraints.sides(__kakoi.store.state.slots, __kakoi.store.state.showOpp).me;
-    const castleName = Kakoi.lookup.findCastle(st.castleId);
+    const st = Kakoi.constraints.effectiveSides(__kakoi.store.state.slots, __kakoi.store.state.showOpp).me;
+    const castleName = Kakoi.catalog.findCastle(st.castleId);
     const glyphs = meRow ? [...meRow.querySelectorAll('.cf-mod.cf-castle .cf-t')].map(x => x.textContent).join('') : '';
     const expected = castleName ? Kakoi.notation.parsePieces(castleName.core).map(x => x.p).join('') : '';
     const implied = [...document.querySelectorAll('#cfield .cf-cell')]
@@ -544,7 +544,7 @@ async function sweepBoard(page, expect) {
     // 期待される印の数を compat と同じ規則で出し、描いた .cf-sm がそれを覆うか見る
     // （1モジュールに複数本の辺・短い目地が出るので drawn >= want）
     const st = __kakoi.store.state;
-    const S = Kakoi.constraints.sides(st.slots, st.showOpp);
+    const S = Kakoi.constraints.effectiveSides(st.slots, st.showOpp);
     let want = 0;
     for (const who of ['me', 'opp']) {
       const other = who === 'me' ? (st.showOpp ? S.opp : null) : S.me;
@@ -591,7 +591,7 @@ async function sweepBoard(page, expect) {
     return !!o && !!m && /rotate\(180/.test(o.getAttribute('transform') || '')
       && !/rotate/.test(m.getAttribute('transform') || '');
   });
-  // 相手側の戦型の胞も押せる: 右ドックに相手の戦型の情報が出る（sel=os がハッシュに乗る）
+  // 相手側の戦型の胞も押せる: 右 detailに相手の戦型の情報が出る（sel=os がハッシュに乗る）
   await page.evaluate(() => document.querySelector('#cfield .cf-hit[data-who="opp"][data-kind="strategy"]').click());
   await wait(300);
   r.oppStrategySel = await page.evaluate(() => {
@@ -607,7 +607,7 @@ async function sweepBoard(page, expect) {
       && /合わせた戦型/.test(d.textContent)   // 相手がいるときは組み合わせの戦型も出る
       && /sel=os/.test(location.hash);
   });
-  // 河のピル（関係ラベル）を押すと右ドックにその戦型の情報が出る（§3-4。大分類＋葉の2枚まで）
+  // 河のピル（関係ラベル）を押すと右 detailにその戦型の情報が出る（§3-4。大分類＋葉の2枚まで）
   r.senkeiPills = await page.evaluate(() => {
     const hits = [...document.querySelectorAll('#cfield .cf-hit[data-kind="senkei"]')];
     return { n: hits.length,
@@ -633,14 +633,14 @@ async function sweepBoard(page, expect) {
     !document.querySelector('#cfield .cf-row.cf-opp')
       && !!document.querySelector('#cfield .cf-opp-inv')
       && !!document.querySelector('#cfield button.cf-opp'));
-  r.oppDockOff = await page.evaluate(() => {
+  r.oppRailOff = await page.evaluate(() => {
     const st = __kakoi.store.state;
     return !st.showOpp && !st.selected.startsWith('opp.')
       && document.querySelector('#pickRail .dk-binder').dataset.show === 'false'
       && document.querySelector('.dk-pc-x').hidden;
   });
   await page.click(`${DOCK} .dk-pc[data-who="opp"]`); await wait(350);
-  r.oppDockOn = await page.evaluate(() => __kakoi.store.state.showOpp
+  r.oppRailOn = await page.evaluate(() => __kakoi.store.state.showOpp
     && __kakoi.store.state.selected.startsWith('opp.'));
   // 表示設定のポップオーバー: 脅威の帯を切ると帯が消える（盤の状態には載らない）
   await page.click('#toolsToggle'); await wait(150);
@@ -949,14 +949,14 @@ async function main() {
       }));
 
       const b = await sweepBoard(page, expect);
-      ok(b.panes === 1 && b.oppTabEnabled, '左ドックは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
+      ok(b.panes === 1 && b.oppTabEnabled, '左レールは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
       ok(b.binderStyle, 'バインダーの2枚の駒は中央（河）で向き合い、相手 OFF 時は点線の駒影を残す', '');
-      ok(b.layerTabs.join(',') === '囲い,戦法', '左ドックのタブ順は囲い→戦法', b.layerTabs.join(' → '));
+      ok(b.layerTabs.join(',') === '囲い,戦法', '左レールのタブ順は囲い→戦法', b.layerTabs.join(' → '));
       ok(b.layerBinder, '囲い／戦法はバインダー形状で、選択中のタブが前面に見える', '');
       ok(b.layerSwitchStable, '囲い／戦法を切り替えてもタブ列が上下に揺れない', '');
       ok(b.legendRow && b.legendAnchor && b.legendInTactic, '記号の見方はソート横にあり、戦法表示でも利用できる',
         `row=${b.legendRow} anchor=${b.legendAnchor} tactic=${b.legendInTactic}`);
-      ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左ドックの戦型トグルは振り飛車→居飛車', b.strategyOrder.join(' → '));
+      ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左レールの戦型トグルは振り飛車→居飛車', b.strategyOrder.join(' → '));
       ok(b.controlOrder, '囲い／戦法と戦型の絞り込みは1行、その下に並べ方（面に側の見出しは無い）', '');
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
       ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
@@ -989,16 +989,16 @@ async function main() {
       ok(b.resetInMeBar, '丸いリセット×を自分の制約行の右端（囲いの胞の脇）に表示', b.resetInMeBarDetail);
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
-      ok(b.strategySel, '戦型チップを押すと右ドックに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
-      ok(b.oppStrategySel, '相手側の戦型チップも右ドックに出る（相手の面・組み合わせの戦型つき）', '');
-      ok(b.dockPick, 'ドックの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
+      ok(b.strategySel, '戦型チップを押すと右 detailに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
+      ok(b.oppStrategySel, '相手側の戦型チップも右 detailに出る（相手の面・組み合わせの戦型つき）', '');
+      ok(b.railPick, 'レールの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
       ok(b.variantStyle, '派生戦法は親札の下の「派生 n」の帯に畳む（↳チップ）', `${b.vars}件`);
       ok(b.fileMap, '戦法の札に筋の地図（9目盛りで立つ筋を塗る）', '');
       ok(b.segFilter && b.famFilter, '戦略セグは一覧の絞り込みだけ（スロット・導出した戦略は不変）', `rows=${b.segFilter} fams=${b.famFilter}`);
       ok(b.ngBadges > 0, 'いまの組み合わせと両立しない項目に✕の印（data-ng）が出る', `${b.ngBadges}件`);
       ok(b.ngKept, '両立しない囲いを選んでも戦法は自動で差し替わらない', JSON.stringify(b.t4 && b.t4.slots));
       ok(b.ngChip, '両立しない明示チップに ✕ と理由（title）が出る', JSON.stringify(b.t4 && b.t4.chips));
-      ok(b.ngDetail, '右ドックに理由と直す候補が出る', '');
+      ok(b.ngDetail, '右 detailに理由と直す候補が出る', '');
       ok(b.noToast, '連動トーストは出ない', '');
       ok(b.ngFixed, '直す候補を押すと両立する選択になる（他の層は不変）', JSON.stringify(b.t4b && b.t4b.slots));
       ok(b.oppOffInit && b.oppOn, '相手 △ から相手表示を ON にして相手側を選べる', `${b.t5 && b.t5.hash}`);
@@ -1006,12 +1006,12 @@ async function main() {
       ok(b.labels, '相手と自分の関係ラベルをフィールドの河に表示', JSON.stringify(b.t5 && b.t5.relationships));
       ok(b.senkeiPills && b.senkeiPills.n > 0 && b.senkeiPills.n <= 2 && b.senkeiPills.aria,
         '関係ラベルのピルは大分類＋葉の2枚まで・押せる（aria にラベル名）', JSON.stringify(b.senkeiPills));
-      ok(b.senkeiPillSel, 'ピルを押すと右ドックにその戦型の情報が出る（選択=me.senkei.*）',
+      ok(b.senkeiPillSel, 'ピルを押すと右 detailにその戦型の情報が出る（選択=me.senkei.*）',
         `sel=${b.senkeiPillSel}`);
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
       ok(b.resetInOppBar, '相手を選択中は相手の制約行右端に丸いリセット×を表示', '');
-      ok(b.oppDockOff && b.oppDockOn && b.oppFoldOn && b.oppFoldOff,
-        '左ドックの ON/OFF で相手の段を畳み・再表示できる（＋相手の胞と入れ替わる）',
+      ok(b.oppRailOff && b.oppRailOn && b.oppFoldOn && b.oppFoldOff,
+        '左レールの ON/OFF で相手の段を畳み・再表示できる（＋相手の胞と入れ替わる）',
         `on=${b.oppFoldOn} off=${b.oppFoldOff}`);
       ok(b.popover, '表示設定は1つのポップオーバー（駒の表示2択・利き・脅威の帯・リセット）', '');
       ok(b.toolsEscape && b.toolsOutside, '表示設定は Escape とパネル外クリックで閉じる', '');
@@ -1047,7 +1047,7 @@ async function main() {
         ok(rows3.length > 0 && rows3.every(n => n === 3), `board@w${w} 囲いタイルは3列（足りなければサムネごと縮む）`, JSON.stringify(rows3));
       }
 
-      // ---- w=1100: 右ドックはドロワー（§4-6）。タブ＋制約選択で開き、閉じても横スクロールしない ----
+      // ---- w=1100: 右 detailはドロワー（§4-6）。タブ＋制約選択で開き、閉じても横スクロールしない ----
       await page.setViewportSize({ width: 1100, height: 900 }); await wait(400);
       const dw0 = await page.evaluate(() => ({
         toggleShown: getComputedStyle(document.querySelector('#detailToggle')).display !== 'none',
@@ -1122,7 +1122,7 @@ async function main() {
       ok(chipRead.mtab === 'read' && chipRead.dTop >= chipRead.stageBottom - 8 && chipRead.dTop < chipRead.ih,
         'w=390 制約チップを押すと「読む」へ切り替わり盤の下に来る', JSON.stringify(chipRead));
 
-      // ---- モバイル: 左右のドックは下端タブと横スワイプで「選ぶ⇄読む」を切り替える ----
+      // ---- モバイル: 左右の面は下端タブと横スワイプで「選ぶ⇄読む」を切り替える ----
       const mt = await page.evaluate(() => {
         const vis = el => getComputedStyle(el).display !== 'none' && el.offsetHeight > 0;
         const bar = document.querySelector('.mtabs');
@@ -1133,7 +1133,7 @@ async function main() {
         const onPick = vis(rail) && !vis(det);
         return { barShown: vis(bar), onPick, onRead };
       });
-      ok(mt.barShown && mt.onPick && mt.onRead, 'w=390 ドックは下端タブで選ぶ⇄読むを切替', JSON.stringify(mt));
+      ok(mt.barShown && mt.onPick && mt.onRead, 'w=390 面は下端タブで選ぶ⇄読むを切替', JSON.stringify(mt));
       const sw = await page.evaluate(() => {
         // 盤（常に見えている）の上の横スワイプで切り替わる。
         // 指に追従する実装なので、方向ロック用に途中の touchmove も送る
@@ -1154,9 +1154,9 @@ async function main() {
         fire(stage, 130, 300);   // 右スワイプ → 左側の面（選ぶ）
         return { toRead, toPick: document.body.dataset.mtab };
       });
-      ok(sw.toRead === 'read' && sw.toPick === 'pick', 'w=390 横スワイプでドックが切り替わる', JSON.stringify(sw));
+      ok(sw.toRead === 'read' && sw.toPick === 'pick', 'w=390 横スワイプで面が切り替わる', JSON.stringify(sw));
 
-      // ---- モバイル: ドック側へ下へ流れると盤は自動で畳まれ、上端へ戻れば展開する ----
+      // ---- モバイル: 面のほうへ下へ流れると盤は自動で畳まれ、上端へ戻れば展開する ----
       const autoFold = await page.evaluate(async () => {
         window.scrollTo(0, 0);
         await new Promise(r => setTimeout(r, 500));

@@ -2,13 +2,13 @@
 // 盤上の衝突（SQUARE/PAWN/COUNT/HAND）と将棋の原則（玉飛接近・同翼・戦略の整合・手数）
 // から3段階（best/ok/ng）で判定する。選んだ層は自動で差し替えない（✕と理由の表示は
 // constraints.conflicts が担う）。searchAlternative は未選択の層の既定値が ng のときの
-// 補完（constraints.sides）に使う内部API。計画書 §3-2 / §4-2。
-// 中身は責務ごとのブロック分け: 共通部品 → compose 評価 → 相性表・fitness → judge → searchAlternative。
+// 補完（constraints.effectiveSides）に使う内部API。計画書 §3-2 / §4-2。
+// 中身は責務ごとのブロック分け: 共通部品 → compose 評価 → 相性表・castleFit → judge → searchAlternative。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { parsePieces, parseSquare, label } = Kakoi.notation;
-  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel } = Kakoi.lookup;
+  const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel } = Kakoi.catalog;
 
   // ========== 共通部品: 選択状態の正規化と戦法・囲いの参照（全ブロックが使う） ==========
   // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則の権威は Kakoi.defaults
@@ -67,7 +67,7 @@ window.Kakoi = window.Kakoi || {};
     const castle = castleOf(st, opp);
     // 両立判定は常に「戦法優先」で合成する（崩し形の救済を含む実際の形で両立できるか見るため。
     // castle 優先だと essential が持ち駒に移され、貸し出せる組み合わせまで × になる）
-    const composed = Kakoi.compose.position({
+    const composed = Kakoi.compose.build({
       strategy: st.strategy, tacticIds, castleId: st.castleId,
       side: 'sente', oppStrategy: opp && opp.strategy,
     });
@@ -166,7 +166,7 @@ window.Kakoi = window.Kakoi || {};
     return { ng, notes, moved: composed.moved, tactic, tactics, castle };
   }
 
-  // ========== 相性表・fitness: pairings の ng/notes への適用と囲いの相性スコア上位帯 ==========
+  // ========== 相性表・castleFit: pairings の ng/notes への適用と囲いの相性スコア上位帯 ==========
   // 相性表の overrides では消せない理由（計画書 L2: 戦略の不一致・玉飛接近・同翼は原則なので
   // データの明示的な上書きの対象から外す）
   const NO_OVERRIDE = new Set(['SIDE', 'KING_ROOK', 'SAME_WING']);
@@ -211,7 +211,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- 囲いの対戦相性スコアの上位帯（§3-2: 上位2件 または 最高点−0.5 以内） ----------
-  // 両立する候補だけを対象に、全囲いの fitness を (strategy,tacticId,opp) 単位で1回だけ計算する
+  // 両立する候補だけを対象に、全囲いの castleFit を (strategy,tacticId,opp) 単位で1回だけ計算する
   const bandMemo = new (Kakoi.LRU || Map)(128);
   function fitnessBand(st, opp) {
     const ctx = { strategy: st.strategy || null,
@@ -225,7 +225,7 @@ window.Kakoi = window.Kakoi || {};
       const p = pairingOf(tactic, c.id);
       const ng = ev.ng.some(r => !r.layers || !r.layers.length || r.layers.includes('castle'))
         || !!(p && p.level === 'ng');
-      const fit = Kakoi.matchup.fitness(c, Kakoi.matchup.threat(st2, opp));
+      const fit = Kakoi.matchup.castleFit(c, Kakoi.matchup.threat(st2, opp));
       return { id: c.id, ng, fit };
     });
     const ok = rows.filter(r => !r.ng).sort((a, b) => b.fit - a.fit); // 安定ソート: 同点はデータ順
@@ -285,7 +285,7 @@ window.Kakoi = window.Kakoi || {};
     let fitness = null;
     // fitness: 囲い層かつ相手がいるときだけ。上位帯に入れば ok → best に昇格（§3-2）
     if (layer === 'castle' && opp && ev.castle && Kakoi.matchup) {
-      fitness = Kakoi.matchup.fitness(ev.castle, Kakoi.matchup.threat(st, opp));
+      fitness = Kakoi.matchup.castleFit(ev.castle, Kakoi.matchup.threat(st, opp));
       if (level === 'ok' && !cappedOk) {
         const band = fitnessBand(st, opp);
         if (band && (band.top2.has(candidateId) || fitness >= band.max - 0.5 - 1e-9)) level = 'best';
@@ -425,7 +425,7 @@ window.Kakoi = window.Kakoi || {};
     return best;
   }
 
-  // judgeFull / searchAlternative は constraints.sides の既定値の補完が
+  // judgeFull / searchAlternative は constraints.effectiveSides の既定値の補完が
   // 同じ規則を再利用するための内部API（メモ化を通さない生の評価）
   const api = { judge, judgeFull, searchAlternative, sideEval };
   Kakoi.compat = api;

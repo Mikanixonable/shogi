@@ -554,7 +554,7 @@ window.Kakoi = window.Kakoi || {};
     return r;
   }
 
-  /** お楽しみ（fun.js）: proverbs / memes は t・n・src(登録済みの ref)が必須。videos は t・n と YouTube 検索の u */
+  /** お楽しみ（extras.js）: proverbs / memes は t・n・src(登録済みの ref)が必須。videos は t・n と YouTube 検索の u */
   function fun(F, ctx) {
     const r = result();
     for (const [name, needSrc] of [['proverbs', true], ['memes', true], ['videos', false]]) {
@@ -942,7 +942,7 @@ window.Kakoi = window.Kakoi || {};
         ...Object.values(ctx.SENKEI || {}), ...Object.values(ctx.SENKEI_GROUPS || {})]) {
       for (const s of (t && isArr(t.sources) ? t.sources : [])) if (s && s.ref) used.add(s.ref);
     }
-    // お楽しみ（fun.js）: proverbs / memes の src の ref も参照済みとして数える
+    // お楽しみ（extras.js）: proverbs / memes の src の ref も参照済みとして数える
     if (ctx.FUN) {
       results.push({ kind: 'fun', id: 'FUN', ...fun(ctx.FUN, ctx) });
       for (const x of [...(isArr(ctx.FUN.proverbs) ? ctx.FUN.proverbs : []),

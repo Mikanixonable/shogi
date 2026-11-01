@@ -1,12 +1,12 @@
 // 対局図（唯一の画面）のコントローラ（計画書 S6 の ConstraintController）:
 // コマンド（スロットの選択・解除・相手の表示・リセット）とホバー予告、トーストを持つ。
 // 描画は board-screen.js の BoardScreen、盤上の矢印は keyboard-nav.js、
-//   - 盤: constraints.sides() の両側を compose.position/merge で合成。相手の表示が OFF のときは後手を描かない
+//   - 盤: constraints.effectiveSides() の両側を compose.build/merge で合成。相手の表示が OFF のときは後手を描かない
 //   - 制約バー: 各側の戦法・囲いのチップ（×で解除・クリックで選択）＋既定の層＋導出ラベル（戦型）
-//   - 左ドック: 自分／相手のタブで1枚の面を切り替える DockView。選択はすべてスロットの置き換え
+//   - 左レール: 自分／相手のタブで1枚の面を切り替える RailView。選択はすべてスロットの置き換え
 //     （他の層は自動では変わらない。両立しないものは✕と理由で示す）
-//   - 右ドック（U5）: BoardDetailView が selected の {who,kind} に応じて detail-sections の部品を組み立てる
-//   - 戦法の選択は左ドックの筋タイル（1〜9筋にプロット）。盤の上に別の表は置かない
+//   - 右 detail（U5）: DetailView が selected の {who,kind} に応じて detail-sections の部品を組み立てる
+//   - 戦法の選択は左レールの筋タイル（1〜9筋にプロット）。盤の上に別の表は置かない
 //   - state.selected だけの変更では盤の駒を再描画しない（オーバーレイ・詳細だけ更新）
 // 盤面の状態（slots・showOpp・selected）は URL ハッシュが正で、履歴に積まれる（hash-link.js）。
 // 計画書 §1-3/§3-3/§4-5/§5
@@ -17,14 +17,14 @@ window.Kakoi = window.Kakoi || {};
   const { mirrorSq } = K.notation;
   const parseSel = K.constraints.parseSel;
 
-  class ConstraintMode {
+  class ScreenController {
     /**
      * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
      *   els: stage, field,
      *        legend, handOpp, handMe, boardwrap, rail, detail
      */
-    constructor({ repo, store, board, overlay, els, dockTabs, openTesuji }) {
-      Object.assign(this, { repo, store, board, overlay, els, dockTabs });
+    constructor({ repo, store, board, overlay, els, mobileTabs, openTesuji }) {
+      Object.assign(this, { repo, store, board, overlay, els, mobileTabs });
       this._openTesuji = openTesuji;
       this._done = { me: null, opp: null };
       this.rows = K.tacticNav.tacticRows(repo.tacticFamilies(), repo.tactics());
@@ -38,8 +38,8 @@ window.Kakoi = window.Kakoi || {};
         onOpp: on => this._setShowOpp(on),
         onClear: w => this._clearSide(w),
       });
-      // 左ドック: 自分／相手のタブで切り替える1枚の面。見ている側・層は state.selected が持つ
-      this.dock = new K.DockView(els.rail /* #pickRail */, {
+      // 左レール: 自分／相手のタブで切り替える1枚の面。見ている側・層は state.selected が持つ
+      this.rail = new K.RailView(els.rail /* #pickRail */, {
         onSelect: (w, k) => this._select(w, k, false),
         onChoose: (w, k, id) => this._set(w, k, id),
         onRemove: (w, k, id) => this._remove(w, k, id),
@@ -52,9 +52,9 @@ window.Kakoi = window.Kakoi || {};
           this.board.hover([], null);
         },
       });
-      // 右ドック（U5）: selected の種類に応じて部品を組み立てる自己完結ビュー。
+      // 右 detail（U5）: selected の種類に応じて部品を組み立てる自己完結ビュー。
       // Repository は共有のものを渡す（S5: 内部で作り直さない）
-      this.detail = new K.BoardDetailView(els.detail, {
+      this.detail = new K.DetailView(els.detail, {
         repo: this.repo,
         onHover: (sqs, tone) => this.board.hover(sqs, tone),
         onAttack: attackId => this.store.set({ attackId, defense: null }),
@@ -69,7 +69,7 @@ window.Kakoi = window.Kakoi || {};
         els, board, overlay,
         field: this.field, detail: this.detail,
         repo, rows: this.rows,
-        nameOf: (w, k, id) => K.lookup.nameOf(k, id),
+        nameOf: (w, k, id) => K.catalog.nameOf(k, id),
       });
       document.addEventListener('keydown', e => this._onKey(e));
     }
@@ -116,7 +116,7 @@ window.Kakoi = window.Kakoi || {};
       catch (e) { /* 保存できなければ毎回出す */ }
       if (K.Toast) K.Toast.show('盤に反映しました。解説は下の「読む」タブへ', {
         host: this.els.stage, ms: 3600,
-        action: this.dockTabs ? { label: '読む', fn: () => this.dockTabs.show('read', { dir: 'l', align: 'top' }) } : null,
+        action: this.mobileTabs ? { label: '読む', fn: () => this.mobileTabs.show('read', { dir: 'l', align: 'top' }) } : null,
       });
     }
 
@@ -124,20 +124,20 @@ window.Kakoi = window.Kakoi || {};
       const before = this.store.state;
       this.store.set({
         selected: id ? `${who}.${kind}.${id}` : `${who}.${kind}`,
-        // 戦型は左ドックにタブが無い（情報は右ドック）。dockTab は層タブの記憶なのでそのままにする
+        // 戦型は左レールにタブが無い（情報は右 detail）。dockTab は層タブの記憶なのでそのままにする
         ...(K.constraints.KINDS.includes(kind) ? { dockTab: kind } : {}),
         ...(who === 'opp' && !before.showOpp ? { showOpp: true } : {}),
       });
-      // 中くらいの幅では右ドックはドロワー。制約チップを選んだら開く（§4-6）
+      // 中くらいの幅では右 detail はドロワー。制約チップを選んだら開く（§4-6）
       this._openDrawer();
       // 狭い画面では、制約チップを選んだとき解説を盤の下までスクロールする
       // （B2: 一覧側の reveal は止め、代わりに「読む」を見せる）
       if (fromBar) this._revealDetail();
-      // 左ドックも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る。
+      // 左レールも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る。
       // 戦型はスロットを持たないので reveal は項目を持たず no-op になる。
       // 戦法の駒枠の選択（id）はその系統の項目まで送る）
       const s = this.store.state;
-      this.dock.reveal({ who, kind, id }, K.constraints.sides(s.slots, s.showOpp)[who]);
+      this.rail.reveal({ who, kind, id }, K.constraints.effectiveSides(s.slots, s.showOpp)[who]);
     }
 
     _openDrawer() {
@@ -151,8 +151,8 @@ window.Kakoi = window.Kakoi || {};
     // 横向き2列では盤は左列なので、解説はヘッダーの下へ
     _revealDetail() {
       if (!matchMedia('(max-width:979px)').matches) return;
-      // ドックがタブ化してからは「読む」面へ切り替えて、その先頭を盤の下に合わせる
-      if (this.dockTabs) { this.dockTabs.show('read', { dir: 'l', align: 'top' }); return; }
+      // 面がタブ化してからは「読む」面へ切り替えて、その先頭を盤の下に合わせる
+      if (this.mobileTabs) { this.mobileTabs.show('read', { dir: 'l', align: 'top' }); return; }
       const r = this.els.detail.getBoundingClientRect();
       const stage = this.els.stage.getBoundingClientRect();
       const twoCol = stage.width < innerWidth * 0.6;   // 横向きは盤が左の2列
@@ -229,9 +229,9 @@ window.Kakoi = window.Kakoi || {};
         .map(q => mir ? mirrorSq(q) : q));
       // 動く予定の駒のマス（§3-3）: いまの実効局面と候補の合成局面を比べて、
       // core/lead の駒が増減・移動するマスを拾う（相手側は絶対座標に反転する）
-      const cur = K.constraints.sides(s.slots, s.showOpp)[who];
-      const after = K.constraints.sides(next, s.showOpp)[who];
-      const posOf = x => K.compose.position({
+      const cur = K.constraints.effectiveSides(s.slots, s.showOpp)[who];
+      const after = K.constraints.effectiveSides(next, s.showOpp)[who];
+      const posOf = x => K.compose.build({
         strategy: x.strategy, tacticIds: x.tacticIds, castleId: x.castleId, side: 'sente',
       }).position;
       const a = posOf(cur), b = posOf(after);
@@ -246,12 +246,12 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 画面遷移 ----------
     enter(state) { this.update(state, new Set(['initial', ...Object.keys(state)])); }
 
-    /** 描画は BoardScreen に委譲し、戻りの導出 vm で左ドックを更新する */
+    /** 描画は BoardScreen に委譲し、戻りの導出 vm で左レールを更新する */
     update(state, changed) {
       const d = this.screen.update(state, changed);
       const hard = changed.has('initial');
       if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')) {
-        this.dock.update(state, d.S);
+        this.rail.update(state, d.S);
       }
       this._notifyCombo(d, state, hard);
     }
@@ -270,6 +270,8 @@ window.Kakoi = window.Kakoi || {};
 
     // ---------- キーボード（U3） ----------
     _onKey(e) {
+      // 「手筋と格言」の全画面モードでは盤の操作を閉じる（Esc・矢印キーはモード側へ）
+      if (this.store.state.view === 'tesuji') return;
       // Esc はトーストとホバー予告を閉じる（U2）
       if (e.key === 'Escape') {
         if (K.Toast) K.Toast.hide();
@@ -278,7 +280,7 @@ window.Kakoi = window.Kakoi || {};
       }
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test(e.target.tagName)) return;
       if (!e.key.startsWith('Arrow')) return;
-      // 矢印の役割はフォーカスのある部品の中で閉じる（U3）。制約バー・ドック・
+      // 矢印の役割はフォーカスのある部品の中で閉じる（U3）。制約バー・レール・
       // 詳細は各部品が処理するので、盤（中央）にフォーカスがあるときだけ
       // 「選択中の制約の隣の候補へ」が効く。フォーカスが無いときも中央扱いにする
       const ae = document.activeElement;
@@ -288,7 +290,7 @@ window.Kakoi = window.Kakoi || {};
       const sel = parseSel(this.store.state.selected);
       if (!sel) return;
       const s = this.store.state;
-      const st = K.constraints.sides(s.slots, s.showOpp)[sel.who];
+      const st = K.constraints.effectiveSides(s.slots, s.showOpp)[sel.who];
       // 移動先は keyboard-nav.js の純関数（S6）
       const next = K.keyboardNav.arrowTarget(sel, st, { rows: this.rows, repo: this.repo }, e.key);
       if (next) { e.preventDefault(); this._set(sel.who, next.kind, next.id); }
@@ -297,5 +299,5 @@ window.Kakoi = window.Kakoi || {};
 
   const hasAny = slots => ['me', 'opp'].some(w => K.constraints.KINDS.some(k => slots[w][k] != null));
 
-  K.ConstraintMode = ConstraintMode;
+  K.ScreenController = ScreenController;
 })();

@@ -1,6 +1,6 @@
-// 左ドックの一覧の中身（計画書 S6 の tactic-grid / castle-grid）:
+// 左レールの一覧の中身（計画書 S6 の tactic-grid / castle-grid）:
 // 戦法タイルと囲いカードの「構築」だけを持つ純粋な描画部品。状態の書き換え
-// （バッジ・戦略に合わない項目の非表示・採用の裏返し）は dock-badges.js / dock-view.js
+// （バッジ・戦略に合わない項目の非表示・採用の裏返し）は rail-badges.js / rail-view.js
 //   - 戦法（design-refs-tactic-select 案A「駒棚」）: 行=主役の駒（飛銀角桂歩金玉の7系統）。
 //     行の中は筋順（9→1）に並ぶ札。各札は9目盛りの筋地図を内蔵し、主役の駒が立つ
 //     筋を駒色で塗る（lead.files。相手の面は絶対座標に反転）。下に最終マスとペース。
@@ -79,7 +79,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // view の器。分類は戦略（居飛車／振り飛車）だけ: 絞り込んだ戦略に合わない
-  // 行・系統・項目は dock-view が hidden にする（「もう一方」の領域は持たない）
+  // 行・系統・項目は rail-view が hidden にする（「もう一方」の領域は持たない）
   function viewShell(cls) {
     const view = document.createElement('div');
     view.className = `dk-view ${cls}`;
@@ -91,7 +91,7 @@ window.Kakoi = window.Kakoi || {};
 
   /**
    * 戦法グリッドを組み立てる（駒棚。行=駒・札=筋の地図を持つ）
-   * @param {{ tacticRows:Array }} ctx 共有コンテキスト（DockView）
+   * @param {{ tacticRows:Array }} ctx 共有コンテキスト（RailView）
    * @param {'me'|'opp'} who
    */
   function tactics(ctx, who) {
@@ -116,7 +116,7 @@ window.Kakoi = window.Kakoi || {};
       sec.style.setProperty('--tc', tc);
       sec.style.setProperty('--fam', tc);
       const roots = ts.filter(t => !t.variantOf);
-      // 薄い行（2件以下）は見出しだけ畳んでおく。選択中を含む行は dock-view が開く
+      // 薄い行（2件以下）は見出しだけ畳んでおく。選択中を含む行は rail-view が開く
       const closed = roots.length <= 2;
       if (closed) sec.dataset.closed = 'true';
       // 見出しの筋の列挙: その駒が実際に使う筋（重複なし・筋の大きい順）
@@ -190,7 +190,7 @@ window.Kakoi = window.Kakoi || {};
     sec.className = 'dk-fam';
     sec.dataset.family = id;
     sec.style.setProperty('--fam', color);   // 左の帯・記号・件数の丸の色
-    sec._sides = new Set(members.flatMap(K.lookup.castleSides));   // ブロックの戦略フィルタ判定用
+    sec._sides = new Set(members.flatMap(K.catalog.castleSides));   // ブロックの戦略フィルタ判定用
     sec.innerHTML = `<button type="button" class="dk-fam-h" aria-expanded="true">
           <span class="caret" aria-hidden="true">▾</span>${head}<span class="n">${members.length}</span></button>`;
     return sec;
@@ -210,7 +210,7 @@ window.Kakoi = window.Kakoi || {};
     }
     const rows = [];
     const walk = (c, depth) => {
-      const src = depth === 0 && c.from ? K.lookup.findCastle(c.from) : null;
+      const src = depth === 0 && c.from ? K.catalog.findCastle(c.from) : null;
       rows.push(card(ctx, who, c, flip,
         { row: true, depth, note: src ? `${src.short || src.name}から` : '' }));
       for (const k of basicFirst(kids.get(c.id) || [])) walk(k, depth + 1);
@@ -219,7 +219,7 @@ window.Kakoi = window.Kakoi || {};
     return rows;
   }
 
-  /** 囲いの並べ方（左ドックのメニュー）: 系統別・発展ツリー・特徴の目安の軸ごと */
+  /** 囲いの並べ方（左レールのメニュー）: 系統別・発展ツリー・特徴の目安の軸ごと */
   const CASTLE_SORTS = [
     { id: 'family', label: '系統別' },
     { id: 'tree', label: '発展ツリー' },
@@ -233,7 +233,7 @@ window.Kakoi = window.Kakoi || {};
    *   family: 系統ごとの折りたたみブロック＋固定窓サムネイル
    *   tree:   系統ごとに from をたどった発展ツリー（発展形は字下げした小さな行）
    *   hard 等: 特徴の目安のその軸の段（5→1）ごとのブロック
-   * @param {{ _pos:Map }} ctx 共有コンテキスト（DockView）
+   * @param {{ _pos:Map }} ctx 共有コンテキスト（RailView）
    * @param {'me'|'opp'} who
    * @param {string} [sort] CASTLE_SORTS の id
    */
@@ -305,5 +305,5 @@ window.Kakoi = window.Kakoi || {};
     return !!t && (flatIds(e.tactics).includes(id) || (t.senkei || []).includes(rid));
   }
 
-  K.dockGrids = { tactics, castles, senkeiCandidates, senkeiMatch, CASTLE_SORTS };
+  K.railGrids = { tactics, castles, senkeiCandidates, senkeiMatch, CASTLE_SORTS };
 })();

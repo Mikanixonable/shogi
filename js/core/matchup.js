@@ -21,7 +21,7 @@ window.Kakoi = window.Kakoi || {};
   const EDGE_FILES = new Set([1, 9]);       // 端筋（端攻めが効く筋）
   const EDGE_LEADS = new Set(['香', '桂']);  // 経路の終点が玉の筋に迫りやすい主役（端攻めの前兆）
 
-  const { findTactic, findCastle } = Kakoi.lookup;
+  const { findTactic, findCastle } = Kakoi.catalog;
 
   // その側の戦法を解決する。未選択なら戦略テンプレートの既定戦法
   // （既定値の解決規則は Kakoi.constraints が唯一の権威）
@@ -91,7 +91,7 @@ window.Kakoi = window.Kakoi || {};
    * @param {{strategy:string, tacticId?:string, castleId?:string}} me  自分（先手）の選択状態
    * @param {{strategy:string, tacticId?:string, castleId?:string}} opp 相手（後手）の選択状態
    * @returns {{kind:string, label:string, distance:number|null, weights:Object, threatFiles:number[], edgeThreat:boolean}}
-   *   edgeThreat: 端攻めの前兆（fitness の減点判定に使う）
+   *   edgeThreat: 端攻めの前兆（castleFit の減点判定に使う）
    */
   function threat(me, opp) {
     // 片側でも欠けた状態からは脅威を導けない。既定オブジェクトで合成結果を
@@ -119,7 +119,7 @@ window.Kakoi = window.Kakoi || {};
     // 脅威の筋: 相手の飛車の筋＋各戦法の主役の経路の終点の筋（重複は除く）。盤の脅威の帯に使う
     const threatFiles = [...new Set([rookFile, ...routeEndFiles].filter(f => f != null))];
 
-    // 端攻めの前兆（fitness の減点判定用）: 相手の飛車が端筋、または
+    // 端攻めの前兆（castleFit の減点判定用）: 相手の飛車が端筋、または
     // 香・桂の主役の経路の終点が玉の筋に近い（計画書 §3-3。複数戦法ではどれか1つでも）
     const edgeThreat = EDGE_FILES.has(rookFile)                                   // 相手の飛車が端筋
       || oppTactics.some(t => t.lead && EDGE_LEADS.has(t.lead.piece)              // 香・桂の主役の経路の終点が
@@ -135,7 +135,7 @@ window.Kakoi = window.Kakoi || {};
    * @param {Object} threatInfo threat() の結果
    * @returns {number} 小数2桁に丸めたスコア
    */
-  function fitness(castle, threatInfo) {
+  function castleFit(castle, threatInfo) {
     let score = 0;
     const ratings = (castle && castle.ratings) || {};
     const weights = (threatInfo && threatInfo.weights) || {};
@@ -162,7 +162,7 @@ window.Kakoi = window.Kakoi || {};
     return v === 'good' || v === 'ok' || v === 'ng' ? v : 'ok';
   }
 
-  const api = { threat, fitness, tacticFit };
+  const api = { threat, castleFit, tacticFit };
   Kakoi.matchup = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

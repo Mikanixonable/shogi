@@ -1,7 +1,8 @@
-// アプリの組み立て: 状態・共有の部品・唯一の画面（対局図）を結び、状態の変化を画面へ伝える。
-// 盤面の状態（slots=各側の戦法・囲い、showOpp=相手の表示、selected=選択中の層）は
-// URL ハッシュだけが正（hash-link.js）。表示の好み（駒の表示・利き・脅威の帯・左ドックの層）は
-// localStorage に持つ。起動時は ハッシュ → 好み の順に重ね、不正な値は初期値へ丸める
+// アプリの組み立て: 状態・共有の部品・画面（対局図 ＋ 手筋と格言の全画面モード）を結び、状態の変化を画面へ伝える。
+// 盤面の状態（slots=各側の戦法・囲い、showOpp=相手の表示、selected=選択中の層）と画面モード
+// （view・tesujiId=手筋モードで開いている章・節）は URL ハッシュだけが正（hash-link.js）。
+// 表示の好み（駒の表示・利き・脅威の帯・左レールの層）は localStorage に持つ。
+// 起動時は ハッシュ → 好み の順に重ね、不正な値は初期値へ丸める
 (() => {
   'use strict';
   const K = window.Kakoi;
@@ -33,9 +34,11 @@
       slots: K.constraints.emptySlots(),    // {me:{tactic,castle}, opp:{tactic,castle}} 未選択は null
       showOpp: false,                       // 相手を盤に出すか（OFF でも相手のスロットは持ち続ける）
       selected: null,                       // 'me.castle' 形式（`{who}.{kind}`）。起動時に握り直す
+      view: 'board',                        // 'board'（対局図）| 'tesuji'（手筋と格言の全画面モード）
+      tesujiId: null,                       // 手筋モードで開いている章・節の id（ハッシュの tj=）
       attackId: null,
       mode: 'dim', heat: false, showThreat: true,
-      dockTab: 'castle',                    // 左ドックで最後に見ていた層（ハッシュに選択が無いときの既定）
+      dockTab: 'castle',                    // 左レールで最後に見ていた層（ハッシュに選択が無いときの既定）
     },
     ['mode', 'heat', 'showThreat', 'dockTab'],
     'shogi-castle',
@@ -47,6 +50,7 @@
     if (st.mode !== 'all' && st.mode !== 'dim') st.mode = 'dim';   // 旧「囲いのみ」などは既定に戻す
     st.showThreat = st.showThreat !== false;
     if (st.dockTab !== 'tactic' && st.dockTab !== 'castle') st.dockTab = 'castle';
+    if (st.view !== 'tesuji') st.view = 'board';
     Object.assign(st, K.hashLink.read(st.dockTab));
   }
 
@@ -55,18 +59,23 @@
   const overlay = new K.OverlayView($('board'));
   if (debug) window.__kakoi = { overlay, board, repo, store };
 
-  // 狭い画面: 左（選ぶ）・右（読む）ドックを下端タブ＋横スワイプで切り替える
-  const dockTabs = new K.DockTabs(document.querySelector('.mtabs'), {
+  // 狭い画面: 左（選ぶ）・右（読む）の面を下端タブ＋横スワイプで切り替える
+  const mobileTabs = new K.MobileTabs(document.querySelector('.mtabs'), {
     rail: document.querySelector('.rail'),
     detail: document.querySelector('.detail'),
     stage: $('stageMain'),
   });
 
-  // 手筋と格言のモーダル（ヘッダーのボタン・右ドックの「図と格言を見る」から開く）
-  const tesujiModal = new K.TesujiModal($('tesujiOpen'), $('tesujiDialog'), repo);
-  const mode = new K.ConstraintMode({
-    repo, store, board, overlay, dockTabs,
-    openTesuji: id => tesujiModal.open(id),
+  // 手筋と格言: 対局図と排他の全画面モード（ヘッダーのボタン・右 detail の「図と格言を見る」から開く）。
+  // 目次からの遷移・モードの出入りは store 経由でハッシュに積む（「戻る」で戻れる）
+  const tesujiMode = new K.TesujiMode($('tesujiView'), repo, {
+    onGo: id => store.set({ view: 'tesuji', tesujiId: id }),
+    onExit: () => store.set({ view: 'board', tesujiId: null }),
+  });
+  $('tesujiOpen').addEventListener('click', () => store.set({ view: 'tesuji' }));
+  const mode = new K.ScreenController({
+    repo, store, board, overlay, mobileTabs,
+    openTesuji: id => store.set({ view: 'tesuji', tesujiId: id }),
     els: {
       stage: $('stageMain'), field: $('cfield'),
       handOpp: $('handOpp'), handMe: $('handMe'),
@@ -82,7 +91,7 @@
   new K.ThemeToggle($('themeToggle'));
   new K.ToolsToggle($('toolsToggle'), $('tools'));
   new K.AboutModal($('aboutOpen'), $('aboutDialog'));
-  // 右ドックのドロワー開閉（中くらいの幅では右端から開く。§4-6）
+  // 右 detail のドロワー開閉（中くらいの幅では右端から開く。§4-6）
   {
     const t = $('detailToggle');
     const sync = () => t.setAttribute('aria-expanded', String(document.body.dataset.drawer === 'open'));
@@ -93,14 +102,22 @@
     new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-drawer'] });
     sync();
   }
-  // 盤の収納/展開（モバイル。手動の帯＋ドックへ流れたときの自動畳み）は DockTabs._bindFold が持つ
+  // 盤の収納/展開（モバイル。手動の帯＋面のほうへ流れたときの自動畳み）は MobileTabs._bindFold が持つ
 
+  // 画面モードの反映: body.tj で対局図と手筋モードを切り替える（CSS が面を出し分ける）
+  const syncView = (state, instant) => {
+    const on = state.view === 'tesuji';
+    document.body.classList.toggle('tj', on);
+    if (on) tesujiMode.open(state.tesujiId, instant);
+  };
   store.subscribe((state, changed) => {
     mode.update(state, changed);
     toolbar.render(state);
+    if (changed.has('view') || changed.has('tesujiId')) syncView(state);
   });
   K.hashLink.attach(store); // 盤面の状態の変化を location.hash へ映し、「戻る」・アドレスバーの編集も受け取る
 
   mode.enter(store.state);
   toolbar.render(store.state);
+  syncView(store.state, true);   // #tj= で開いたときはアニメ無しでその章・節へ
 })();

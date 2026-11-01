@@ -1,6 +1,6 @@
-// 右ドックのセクション部品（計画書 §5 / U5）: 囲い・戦法の詳細の描画を
+// 右 detail のセクション部品（計画書 §5 / U5）: 囲い・戦法の詳細の描画を
 // 「HTML文字列を返す関数」に分解したもの。
-// 選択中の制約の種類ごとの組み立ては board-detail-view.js（Kakoi.BoardDetailView）が行う。
+// 選択中の制約の種類ごとの組み立ては detail-view.js（Kakoi.DetailView）が行う。
 // 決め事:
 //   - 出典: 本文中の [[ref]] / [[a|b]] トークンは rich(text, citer) で [n] に変わる。
 //     citer はパネル1枚につき1つ作り、出典リストは sourcesBlock が同じ番号で並べ直す（§7）
@@ -227,7 +227,7 @@ window.Kakoi = window.Kakoi || {};
 
   /**
    * 対戦相性（fitness）: 戦型の重み × 囲いの強みのスコアと、効いている軸のチップ。
-   * @param {number} fit matchup.fitness() の値
+   * @param {number} fit matchup.castleFit() の値
    * @param {Object} threat その側から見た matchup.threat()（label/weights を使う）
    * @param {Object} castle 評価対象の囲い（ratings を使う）
    */
@@ -330,7 +330,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- お楽しみ ----------
-  // 読み物の末尾にそっと添える余白のコーナー（js/data/fun.js）。
+  // 読み物の末尾にそっと添える余白のコーナー（js/data/extras.js）。
   // 格言は選択中の制約から1つ引く（項目を変えると別の格言が出る）＋「もう一つ」で引き直し。
   // ミーム・動画は <details> に畳んで、読みたい人だけ開く
 
@@ -401,7 +401,7 @@ window.Kakoi = window.Kakoi || {};
   }
 
   /**
-   * 王手飛車の筋: 相手が角・桂を1枚打つと玉と飛車に同時に利くマス（core/tesuji.js の forks）
+   * 王手飛車の筋: 相手が角・桂を1枚打つと玉と飛車に同時に利くマス（core/tesuji-engine.js の forks）
    * @param {Array<{piece,sq,king,rook,via:string[]}>} list 盤の絶対座標
    * @param {{ attacker:string, mine:boolean }} opt attacker: 打つ側の印（▲/△）。mine: 自分が狙われる側
    */

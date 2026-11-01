@@ -1,13 +1,13 @@
-// 狭い画面のドック切替（下端のタブ＋面の横スワイプ。計画書 B1 の「選ぶ／読む」の面替え）:
-// 左ドック（選ぶ）と右ドック（読む）は一度に1枚だけ出し、見せる面は body[data-mtab] が持つ。
+// 狭い画面の面の切替（下端のタブ＋面の横スワイプ。計画書 B1 の「選ぶ／読む」の面替え）:
+// 左の rail（選ぶ）と右の detail（読む）は一度に1枚だけ出し、見せる面は body[data-mtab] が持つ。
 //   - 横スワイプは指に追従して面を動かし、離したとき距離・速さで切替える。
 //     横と決まるまでは縦の流れを邪魔せず、決まったら縦スクロールを止める（斜めスワイプ対策）。
 //     端（選ぶで右・読むで左）へ引っ張るとゴム紐のように少しだけ動いて戻る。
 //   - スワイプで切り替えたときはスクロール位置を動かさない（「スワイプ→勝手にスクロール」感を消す）。
-//   - ドック側へ下へ流れると盤を自動で畳み、下半分に縦幅を取る（上端へ戻れば展開。
+//   - rail/detail 側へ下へ流れると盤を自動で畳み、下半分に縦幅を取る（上端へ戻れば展開。
 //     盤の裾の帯で手動で畳んだ/出した場合は、上端へ戻るまでその指定を優先する）。
 // 各タブのスクロール位置を記憶し、戻ったときは同じ位置に復帰する。
-// 制約を選んだとき「読む」へ切り替えるのは constraint-mode.js の _revealDetail から。
+// 制約を選んだとき「読む」へ切り替えるのは screen/controller.js の _revealDetail から。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -18,7 +18,7 @@ window.Kakoi = window.Kakoi || {};
   const FLICK_V = 0.4;    // px/ms: 短い flick でもこの速さなら切替
   const LOCK = 12;        // 方向を決める最小のずれ（これ未満は判断しない）
 
-  class DockTabs {
+  class MobileTabs {
     /**
      * @param {HTMLElement|null} bar 下端のタブバー（.mtabs。button[data-tab] を持つ）
      * @param {{ rail:HTMLElement, detail:HTMLElement, stage:HTMLElement }} panels 切り替える面と盤
@@ -56,7 +56,7 @@ window.Kakoi = window.Kakoi || {};
       const prev = this.cur;
       // 表示中のタブをもう一度押す＝面の先頭へ戻る（モバイルの定石。M3）
       if (name === prev && align !== 'top') {
-        if (this.mq.matches) this._scrollTo(this._dockTop());
+        if (this.mq.matches) this._scrollTo(this._panelTop());
         return;
       }
       if (this.mq.matches) this._y[prev] = window.scrollY;
@@ -67,7 +67,7 @@ window.Kakoi = window.Kakoi || {};
       // 指で面を送った切替では位置はそのまま（パネルが入れ替わるだけ）。
       // タブ・制約チップからの切替は面の先頭を盤の下へ運ぶ
       if (!this.mq.matches || via === 'swipe') return;
-      const y = align === 'top' || this._y[name] == null ? this._dockTop() : this._y[name];
+      const y = align === 'top' || this._y[name] == null ? this._panelTop() : this._y[name];
       this._scrollTo(y);
     }
 
@@ -83,7 +83,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // 面の先頭が追従中の盤（横向き2列ではヘッダー）のすぐ下に来るスクロール位置
-    _dockTop() {
+    _panelTop() {
       const panel = this.cur === 'read' ? this.detail : this.rail;
       const stage = this.stage.getBoundingClientRect();
       const base = stage.width < innerWidth * 0.6
@@ -166,7 +166,7 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // ---------- 盤の収納（狭い画面） ----------
-    // 盤の裾の帯（#boardToggle）で手動開閉＋ドックへ下へ流れたときの自動畳み。
+    // 盤の裾の帯（#boardToggle）で手動開閉＋面のほうへ下へ流れたときの自動畳み。
     // body[data-board-collapsed] が実際の表示状態（layout.css が盤の行を畳む）
     _bindFold() {
       const btn = document.getElementById('boardToggle');
@@ -190,7 +190,7 @@ window.Kakoi = window.Kakoi || {};
           if (is() && manual !== 'closed') set(false);
           manual = null;
         } else if (y > 90 && y - lastY > 3 && !is() && manual !== 'open') {
-          set(true);                                         // ドックへ流れる: 盤を畳んで縦幅を空ける
+          set(true);                                         // 面のほうへ流れる: 盤を畳んで縦幅を空ける
         }
         lastY = y;
       }, { passive: true });
@@ -208,5 +208,5 @@ window.Kakoi = window.Kakoi || {};
     }
   }
 
-  Kakoi.DockTabs = DockTabs;
+  Kakoi.MobileTabs = MobileTabs;
 })();

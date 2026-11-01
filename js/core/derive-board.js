@@ -18,7 +18,7 @@ window.Kakoi = window.Kakoi || {};
   function attachContactReasons(slots, S, merged, ng, showOpp) {
     const bad = (merged.contacts || []).filter(c => c.kind === 'ng');
     if (!bad.length) return;
-    const { findTactic } = K.lookup;
+    const { findTactic } = K.catalog;
     const { mirrorSq } = K.notation;
     const pos = merged.position;
     const layerOf = (who, piece) => {
@@ -61,18 +61,18 @@ window.Kakoi = window.Kakoi || {};
    *   S は両側の実効状態（相手の表示が OFF でも opp を持つ）。ng は両立しない明示選択の理由
    */
   function deriveBoard(slots, showOpp = true) {
-    const S = K.constraints.sides(slots, showOpp);
-    const mePos = K.compose.position({
+    const S = K.constraints.effectiveSides(slots, showOpp);
+    const mePos = K.compose.build({
       strategy: S.me.strategy, tacticIds: S.me.tacticIds, castleId: S.me.castleId, side: 'sente',
     });
-    const oppPos = showOpp ? K.compose.position({
+    const oppPos = showOpp ? K.compose.build({
       strategy: S.opp.strategy, tacticIds: S.opp.tacticIds, castleId: S.opp.castleId, side: 'gote',
     }) : null;
     const merged = oppPos
       ? K.compose.merge(mePos.position, oppPos.position, { late: LATE })
       : { position: mePos.position, contacts: [] };
     const threat = showOpp && K.matchup ? K.matchup.threat(S.me, S.opp) : null;
-    const labels = K.constraints.labels(S.me, showOpp ? S.opp : null);
+    const labels = K.constraints.senkeiLabels(S.me, showOpp ? S.opp : null);
     const ng = K.constraints.conflicts(slots, S, showOpp);
     attachContactReasons(slots, S, merged, ng, showOpp);
     return { S, mePos, oppPos, merged, threat, labels, ng };

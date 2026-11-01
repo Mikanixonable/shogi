@@ -1,5 +1,5 @@
 // 駒レイヤ（立体版）: 盤全面に置いた1枚の canvas に Three.js で駒を描き、局面の切替で滑らせる。
-// 駒の見た目は Kakoi.kayaArt が焼いた彫駒の絵（面取りの陰影・彫りの字・木目）を真上から見た板として貼り、
+// 駒の見た目は Kakoi.pieceArt が焼いた彫駒の絵（面取りの陰影・彫りの字・木目）を真上から見た板として貼り、
 // 盤に落ちる2段の影も同じ光から焼いた板で重ねる（真上の正射影なので立体の側面は見えない）。
 // canvas は盤の縁まで広げ、端の駒の影が縁に落ちても切れないようにする。
 // 盤は表示専用なので canvas は pointer-events:none（レイキャスト不要）。
@@ -10,7 +10,7 @@ window.Kakoi = window.Kakoi || {};
   'use strict';
   const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const ART = Kakoi.kayaArt;
+  const ART = Kakoi.pieceArt;
   const TILE_S = 2.6;                  // 駒の絵を焼く解像度（単位系 88×100 の倍率）
   const MOVE_MS = 560, FADE_MS = 380, MODE_MS = 280;
   const PIECE_CHARS = '玉金銀角飛歩香桂'; // 定形の駒の字。未知の字は必要になった時点でタイルを足す

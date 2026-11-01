@@ -1,7 +1,7 @@
 // 駒の対応づけ（共有ロジック）: 局面の切り替えで「どの駒がどこへ動いたか」を、
 // 駒の動きの自然さをコスト化した貪欲ペアリングで決める。plan が「移動リスト」を1回だけ計算し
 // （BoardView が呼ぶ）、立体版（piece-layer-3d）はそれを描く。DOM 版は静止表示なので使わない。
-// 「届くか」の判定（moveCount）は core/piece-rules.js が権威。純粋関数だけなので DOM を持たない。
+// 「届くか」の判定（reachPly）は core/piece-rules.js が権威。純粋関数だけなので DOM を持たない。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -11,7 +11,7 @@ window.Kakoi = window.Kakoi || {};
 
   // 後手の駒は (f,r)→(10−f,10−r) で回転して置く（compose.mirror と同じ変換）。
   // コスト計算にも同じ回転をかけると、後手の「前」（段が増える向き）が
-  // moveCost の前提する先手の「前」（段が減る向き）と一致する
+  // slideCost の前提する先手の「前」（段が減る向き）と一致する
   const mir = Kakoi.notation.mirrorSq;
 
   /**
@@ -23,7 +23,7 @@ window.Kakoi = window.Kakoi || {};
    * @param {string} to マス 例 '56'
    * @returns {number|null}
    */
-  const moveCost = (p, from, to) => {
+  const slideCost = (p, from, to) => {
     const dF = +to[0] - +from[0], dR = +to[1] - +from[1];
     const dist = Math.hypot(dF, dR);
     const side = dF !== 0, back = dR > 0;
@@ -66,7 +66,7 @@ window.Kakoi = window.Kakoi || {};
     const cand = [];
     after.forEach((n, ni) => before.forEach((o, oi) => {
       if (n.skip || o.owner !== n.owner || o.p !== n.p) return;
-      const cost = o.owner === 'gote' ? moveCost(o.p, mir(o.sq), mir(n.sq)) : moveCost(o.p, o.sq, n.sq);
+      const cost = o.owner === 'gote' ? slideCost(o.p, mir(o.sq), mir(n.sq)) : slideCost(o.p, o.sq, n.sq);
       if (cost != null) cand.push({ ni, oi, cost });
     }));
     cand.sort((a, b) => a.cost - b.cost);
@@ -109,5 +109,5 @@ window.Kakoi = window.Kakoi || {};
     return { ...m, after: next, lead, path: lead >= 0 ? trace.path : null };
   }
 
-  Kakoi.piecePairing = { MAX_COST, moveCost, plan, routeMs };
+  Kakoi.piecePairing = { MAX_COST, slideCost, plan, routeMs };
 })();

@@ -21,7 +21,7 @@
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
-  const { findTactic, findCastle, tacticFamilyOf, castleSides, strategyLabel } = Kakoi.lookup;
+  const { findTactic, findCastle, tacticFamilyOf, castleSides, strategyLabel } = Kakoi.catalog;
   const { parsePieces } = Kakoi.notation;
   const { plain } = Kakoi.html;
   const KIND_LABEL = { strategy: '戦型', castle: '囲い', tactic: '戦法' };
@@ -65,6 +65,31 @@ window.Kakoi = window.Kakoi || {};
   // 頂点・辺のキー（共有辺の検出用。座標は丸めて一致させる）
   const vk = p => p.map(n => n.toFixed(1)).join(',');
   const ek = (a, b) => [vk(a), vk(b)].sort().join('|');
+  // 共有辺: 同じ持ち主の中は細い目地、河をまたぐ（自分の戦法×相手の囲い）は相性の印に
+  function sharedEdges(cells) {
+    const emap = new Map();
+    for (const cl of cells) cl.pts.forEach((a, k) => {
+      const b = cl.pts[(k + 1) % 6];
+      if (vk(a) === vk(b)) return;
+      const u = ek(a, b);
+      if (!emap.has(u)) emap.set(u, []);
+      emap.get(u).push({ key: cl.key, a, b });
+    });
+    const joints = {}, seams = [];
+    for (const L of emap.values()) {
+      if (L.length !== 2) continue;
+      const [e0, e1] = L;
+      if (e0.key === e1.key) { (joints[e0.key] = joints[e0.key] || []).push([e0.a, e0.b]); continue; }
+      const meT = [e0, e1].find(e => /^me\.tactic\./.test(e.key));
+      const oc = [e0, e1].find(e => e.key === 'opp.castle');
+      if (meT && oc) seams.push({ famId: meT.key.slice(10), a: e0.a, b: e0.b });
+      else {
+        (joints[e0.key] = joints[e0.key] || []).push([e0.a, e0.b]);
+        (joints[e1.key] = joints[e1.key] || []).push([e1.a, e1.b]);
+      }
+    }
+    return { joints, seams };
+  }
 
   // ---------- 行の割り当て（河=自分の戦法段と相手の囲い下段の間） ----------
   const Y_TACTIC = { me: 4, opp: 0 };
@@ -114,7 +139,11 @@ window.Kakoi = window.Kakoi || {};
       this.hits = document.createElement('span');
       this.hits.className = 'cf-hits';
       el.append(this.svg, this.hits);
-      el.addEventListener('click', e => {
+      this._bindEvents({ onSelect, onRemove, onOpp, onClear });
+    }
+
+    _bindEvents({ onSelect, onRemove, onOpp, onClear }) {
+      this.el.addEventListener('click', e => {
         const x = e.target.closest('.cf-x');
         if (x) { onRemove(x.dataset.who, x.dataset.kind, x.dataset.id || null); return; }
         const c = e.target.closest('.cf-clear');
@@ -125,7 +154,7 @@ window.Kakoi = window.Kakoi || {};
         if (b) onSelect(b.dataset.who, b.dataset.kind, b.dataset.id || null);
       });
       // Delete/Backspace でその胞の制約を外す（U3）。矢印は roving がフォーカスだけを動かす
-      el.addEventListener('keydown', e => {
+      this.el.addEventListener('keydown', e => {
         if (e.key !== 'Delete' && e.key !== 'Backspace') return;
         const b = e.target.closest('.cf-hit');
         if (!b || b.dataset.kind === 'strategy' || b.dataset.kind === 'senkei'
@@ -140,7 +169,7 @@ window.Kakoi = window.Kakoi || {};
      * @param {{ S:{me:Object, opp:Object}, slots:Object, ng:Object, marks:Object,
      *   labels:Array<{label:string}>, selected:string|null, showOpp:boolean,
      *   nameOf:(who:string, kind:string, id:string)=>string }} d
-     *   S: constraints.sides() の出力（実効値・implied）。
+     *   S: constraints.effectiveSides() の出力（実効値・implied）。
      *   ng: conflicts() の出力 {who:{tactic:{id:[reason]}, castle:[reason]}}
      *   marks: 層ごとの相手との相性 {who:{tactic:{id:'good'|'bad'|null}, castle:level}}
      *   labels: 関係ラベル（河に浮くピル）
@@ -148,6 +177,13 @@ window.Kakoi = window.Kakoi || {};
     render({ S, slots, ng, marks, labels, selected, showOpp, nameOf }) {
       this._slots = slots;
       const sel = Kakoi.constraints.parseSel(selected) || {};
+      const mods = this._collectMods(S, showOpp);
+      this._layout(mods, sel, ng, marks, labels, showOpp, nameOf);
+      this._syncClears(mods, showOpp);
+      this._roving.refresh();
+    }
+
+    _collectMods(S, showOpp) {
       const mods = [];   // 胞モジュールの実体（SVGに描くもの＋当たり判定）
       for (const who of ['opp', 'me']) {
         if (who === 'opp' && !showOpp) continue;
@@ -175,39 +211,7 @@ window.Kakoi = window.Kakoi || {};
           mods.push({ who, kind: 'tactic', id: null, famId: fam.id, fam, st, empty: true });
         }
       }
-      this._layout(mods, sel, ng, marks, labels, showOpp, nameOf);
-      this._syncClears(mods, showOpp);
-      this._roving.refresh();
-    }
-
-    // 側ごとの「リセット」: その側のアンカー（囲いモジュール）の右上に × を立てる。
-    // 明示したスロットが無い側は出さない
-    _syncClears(mods, showOpp) {
-      const sl = this._slots || {};
-      for (const who of ['me', 'opp']) {
-        let b = this.hits.querySelector(`.cf-clear[data-who="${who}"]`);
-        const side = sl[who] || {};
-        const hasTac = Array.isArray(side.tactic) ? side.tactic.length > 0 : side.tactic != null;
-        const has = (who !== 'opp' || showOpp) && (hasTac || side.castle != null);
-        if (!has) { if (b) b.remove(); continue; }
-        if (!b) {
-          b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'cf-clear';
-          b.dataset.who = who;
-          b.tabIndex = -1;
-          b.textContent = '×';
-          this.hits.append(b);
-        }
-        const t = `${WHO_JA[who]}の戦法・囲いをリセット`;
-        b.title = t; b.setAttribute('aria-label', t);
-        const v = this._view || { y0: 0, h: H };
-        const cm = mods.find(m => m.who === who && m.kind === 'castle' && m.x1 != null);
-        const x = cm ? cm.x1 + 6 : (v.w || W) - 26;
-        const y = cm ? cm.y0 + 12 : cy(YCastle(who, 1)) - 11;
-        b.style.left = `${(x / (v.w || W) * 100).toFixed(3)}%`;
-        b.style.top = `${((y - v.y0) / v.h * 100).toFixed(3)}%`;
-      }
+      return mods;
     }
 
     // その戦型で取りうる戦法の系統（駒）を FAMCOL の順に並べる
@@ -218,16 +222,7 @@ window.Kakoi = window.Kakoi || {};
 
     // ---------- 幾何: モジュールへ座標を振り、共有辺（河の継ぎ目）を見つける ----------
     _layout(mods, sel, ng, marks, labels, showOpp, nameOf) {
-      // 深い囲い（段6以下まで降りる）がグリッドをはみ出す分、上下を広げる。
-      // 相手側は戦法の段を上へずらして胞の衝突を避ける
-      const ext = { top: 0, bot: 0 };
-      for (const m of mods) {
-        if (m.kind !== 'castle') continue;
-        m._rows = castleCells(m.castle);
-        const over = Math.max(0, ...m._rows.map(p => p.row - 2));
-        if (m.who === 'opp') ext.top = Math.max(ext.top, over);
-        else ext.bot = Math.max(ext.bot, over);
-      }
+      const ext = this._measureOverflow(mods);
       const cells = [];   // {key, pts, ccx, ccy} 共有辺検出に登録する全部の胞
       const addCell = (key, ccx, ccy, r = s) => cells.push({ key, pts: hexV(ccx, ccy, r), ccx, ccy, r });
       // 戦法ドミノの列の割り当て: 系統の既定列→重なるときは右へずらす
@@ -240,85 +235,13 @@ window.Kakoi = window.Kakoi || {};
         return c0;
       };
       for (const m of mods) {
-        if (m.kind === 'castle') {
-          m.cells = m._rows.map(p => {
-            const Y = YCastle(m.who, p.row);
-            const ccx = cx(p.col, Y), ccy = cy(Y);
-            return { ...p, ccx, ccy };
-          });
-          for (const c of m.cells) addCell(`${m.who}.castle`, c.ccx, c.ccy);
-          const xs = m.cells.map(c => c.ccx), ys = m.cells.map(c => c.ccy);
-          m.x0 = Math.min(...xs) - w / 2; m.x1 = Math.max(...xs) + w / 2;
-          m.y0 = Math.min(...ys) - s; m.y1 = Math.max(...ys) + s;
-          // 戦型の胞→囲いの群れの茎を引くため、戦型側に囲いモジュールを持たせる
-          const str = mods.find(x => x.who === m.who && x.kind === 'strategy');
-          if (str) str._castleMod = m;
-        } else if (m.kind === 'tactic') {
-          const c0 = colOf(m), Y = m.who === 'opp' ? -ext.top : Y_TACTIC.me;
-          m.cells = [0, 1].map(i => ({ ccx: cx(c0 + i, Y), ccy: cy(Y) }));
-          for (const c of m.cells) addCell(`${m.who}.tactic.${m.famId}`, c.ccx, c.ccy);
-          m.c0 = c0; m.Y = Y;
-          m.x0 = m.cells[0].ccx - w / 2; m.x1 = m.cells[1].ccx + w / 2;
-          m.y0 = m.cells[0].ccy - s; m.y1 = m.cells[0].ccy + s;
-        } else {   // strategy
-          addCell(`${m.who}.strategy`, m.cx, m.cy, STR_R);
-          m.x0 = m.cx - STR_R; m.x1 = m.cx + STR_R; m.y0 = m.cy - STR_R; m.y1 = m.cy + STR_R;
-        }
-        // 状態の反映: 選択・既定・両立しない・相性
-        if (m.kind === 'tactic') {
-          m.sel = sel.who === m.who && sel.kind === 'tactic'
-            && (sel.id ? sel.id === (m.id || m.famId) : m.id === Kakoi.defaults.primaryOf(m.st));
-          m.implied = !m.empty && !!m.st.implied.tactic;
-          m.removable = !m.empty && !m.implied;
-          const reasons = !m.empty && !m.implied && ng[m.who] && ng[m.who].tactic
-            ? ng[m.who].tactic[m.id] : null;
-          m.ng = reasons && reasons.length ? reasons.map(r => plain(r.text)).join('／') : '';
-          m.mark = m.empty ? null : (marks[m.who] && marks[m.who].tactic
-            ? marks[m.who].tactic[m.id] : null) || null;
-        } else if (m.kind === 'castle') {
-          m.sel = sel.who === m.who && sel.kind === 'castle';
-          m.implied = !!m.st.implied.castle;
-          m.removable = !m.implied;
-          const reasons = !m.implied && ng[m.who] ? ng[m.who].castle : null;
-          m.ng = reasons && reasons.length ? reasons.map(r => plain(r.text)).join('／') : '';
-          m.mark = (marks[m.who] && marks[m.who].castle) || null;
-        } else {
-          m.sel = sel.who === m.who && sel.kind === 'strategy';
-          m.implied = false; m.removable = false; m.ng = ''; m.mark = null;
-        }
+        if (m.kind === 'castle') this._placeCastle(m, mods, addCell);
+        else if (m.kind === 'tactic') this._placeTactic(m, ext, addCell, colOf);
+        else this._placeStrategy(m, addCell);   // strategy
+        this._applyState(m, sel, ng, marks);
       }
-      // 共有辺: 同じ持ち主の中は細い目地、河をまたぐ（自分の戦法×相手の囲い）は相性の印に
-      const emap = new Map();
-      for (const cl of cells) cl.pts.forEach((a, k) => {
-        const b = cl.pts[(k + 1) % 6];
-        if (vk(a) === vk(b)) return;
-        const u = ek(a, b);
-        if (!emap.has(u)) emap.set(u, []);
-        emap.get(u).push({ key: cl.key, a, b });
-      });
-      const joints = {}, seams = [];
-      for (const L of emap.values()) {
-        if (L.length !== 2) continue;
-        const [e0, e1] = L;
-        if (e0.key === e1.key) { (joints[e0.key] = joints[e0.key] || []).push([e0.a, e0.b]); continue; }
-        const meT = [e0, e1].find(e => /^me\.tactic\./.test(e.key));
-        const oc = [e0, e1].find(e => e.key === 'opp.castle');
-        if (meT && oc) seams.push({ famId: meT.key.slice(10), a: e0.a, b: e0.b });
-        else {
-          (joints[e0.key] = joints[e0.key] || []).push([e0.a, e0.b]);
-          (joints[e1.key] = joints[e1.key] || []).push([e1.a, e1.b]);
-        }
-      }
-      // viewBox ははみ出し分だけ上下に広げる（ヒット層の % 座標も同じ枠で換算する）。
-      // 横方向も同じく: 系統の多い戦型（居飛車=7系統）では戦法のドミノが W を
-      // 越えるので、最右の胞＋余白まで viewBox を広げる。さもないと右端の空き枠が
-      // 切れて押せないままになる
-      const rightEdge = Math.max(W, ...mods.map(m => (m.x1 || 0) + 8));
-      const yCut = showOpp ? 0 : cy(3) + s * .45;
-      const y0 = yCut - ext.top * rowH, hEff = (H - yCut) + (ext.top + ext.bot) * rowH;
-      this._view = { y0, h: hEff, w: rightEdge };
-      this.svg.setAttribute('viewBox', `0 ${f1(y0)} ${f1(rightEdge)} ${f1(hEff)}`);
-      this.el.style.aspectRatio = `${f1(rightEdge)} / ${f1(hEff)}`;
+      const { joints, seams } = sharedEdges(cells);
+      this._fitView(mods, ext, showOpp);
       // ピルの選択状態（描くときの朱縁と当たり判定に共有）
       if (labels) for (const lab of labels)
         lab.sel = sel.who === 'me' && sel.kind === 'senkei' && sel.id === lab.id;
@@ -328,24 +251,85 @@ window.Kakoi = window.Kakoi || {};
       this._syncOppBtn(showOpp);
     }
 
-    // 「＋相手」の胞の当たり判定（SVG の幽霊胞の上に透明ボタンを重ねる）
-    _syncOppBtn(showOpp) {
-      let b = this.hits.querySelector('.cf-opp');
-      if (showOpp) { if (b) b.remove(); return; }
-      if (!b) {
-        b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'cf-hit cf-opp';
-        b.dataset.who = 'opp';
-        const t = '相手を盤に表示する';
-        b.title = t; b.setAttribute('aria-label', t);
-        this.hits.append(b);
+    // 深い囲い（段6以下まで降りる）がグリッドをはみ出す分、上下を広げる。
+    // 相手側は戦法の段を上へずらして胞の衝突を避ける
+    _measureOverflow(mods) {
+      const ext = { top: 0, bot: 0 };
+      for (const m of mods) {
+        if (m.kind !== 'castle') continue;
+        m._rows = castleCells(m.castle);
+        const over = Math.max(0, ...m._rows.map(p => p.row - 2));
+        if (m.who === 'opp') ext.top = Math.max(ext.top, over);
+        else ext.bot = Math.max(ext.bot, over);
       }
-      const v = this._view, r = s * 1.4 + 4, y = cy(3.6);
-      b.style.left = `${((SX - r) / v.w * 100).toFixed(3)}%`;
-      b.style.top = `${((y - r - v.y0) / v.h * 100).toFixed(3)}%`;
-      b.style.width = `${(2 * r / v.w * 100).toFixed(3)}%`;
-      b.style.height = `${(2 * r / v.h * 100).toFixed(3)}%`;
+      return ext;
+    }
+
+    _placeCastle(m, mods, addCell) {
+      m.cells = m._rows.map(p => {
+        const Y = YCastle(m.who, p.row);
+        const ccx = cx(p.col, Y), ccy = cy(Y);
+        return { ...p, ccx, ccy };
+      });
+      for (const c of m.cells) addCell(`${m.who}.castle`, c.ccx, c.ccy);
+      const xs = m.cells.map(c => c.ccx), ys = m.cells.map(c => c.ccy);
+      m.x0 = Math.min(...xs) - w / 2; m.x1 = Math.max(...xs) + w / 2;
+      m.y0 = Math.min(...ys) - s; m.y1 = Math.max(...ys) + s;
+      // 戦型の胞→囲いの群れの茎を引くため、戦型側に囲いモジュールを持たせる
+      const str = mods.find(x => x.who === m.who && x.kind === 'strategy');
+      if (str) str._castleMod = m;
+    }
+
+    _placeTactic(m, ext, addCell, colOf) {
+      const c0 = colOf(m), Y = m.who === 'opp' ? -ext.top : Y_TACTIC.me;
+      m.cells = [0, 1].map(i => ({ ccx: cx(c0 + i, Y), ccy: cy(Y) }));
+      for (const c of m.cells) addCell(`${m.who}.tactic.${m.famId}`, c.ccx, c.ccy);
+      m.c0 = c0; m.Y = Y;
+      m.x0 = m.cells[0].ccx - w / 2; m.x1 = m.cells[1].ccx + w / 2;
+      m.y0 = m.cells[0].ccy - s; m.y1 = m.cells[0].ccy + s;
+    }
+
+    _placeStrategy(m, addCell) {
+      addCell(`${m.who}.strategy`, m.cx, m.cy, STR_R);
+      m.x0 = m.cx - STR_R; m.x1 = m.cx + STR_R; m.y0 = m.cy - STR_R; m.y1 = m.cy + STR_R;
+    }
+
+    // 状態の反映: 選択・既定・両立しない・相性
+    _applyState(m, sel, ng, marks) {
+      if (m.kind === 'tactic') {
+        m.sel = sel.who === m.who && sel.kind === 'tactic'
+          && (sel.id ? sel.id === (m.id || m.famId) : m.id === Kakoi.defaults.primaryOf(m.st));
+        m.implied = !m.empty && !!m.st.implied.tactic;
+        m.removable = !m.empty && !m.implied;
+        const reasons = !m.empty && !m.implied && ng[m.who] && ng[m.who].tactic
+          ? ng[m.who].tactic[m.id] : null;
+        m.ng = reasons && reasons.length ? reasons.map(r => plain(r.text)).join('／') : '';
+        m.mark = m.empty ? null : (marks[m.who] && marks[m.who].tactic
+          ? marks[m.who].tactic[m.id] : null) || null;
+      } else if (m.kind === 'castle') {
+        m.sel = sel.who === m.who && sel.kind === 'castle';
+        m.implied = !!m.st.implied.castle;
+        m.removable = !m.implied;
+        const reasons = !m.implied && ng[m.who] ? ng[m.who].castle : null;
+        m.ng = reasons && reasons.length ? reasons.map(r => plain(r.text)).join('／') : '';
+        m.mark = (marks[m.who] && marks[m.who].castle) || null;
+      } else {
+        m.sel = sel.who === m.who && sel.kind === 'strategy';
+        m.implied = false; m.removable = false; m.ng = ''; m.mark = null;
+      }
+    }
+
+    // viewBox ははみ出し分だけ上下に広げる（ヒット層の % 座標も同じ枠で換算する）。
+    // 横方向も同じく: 系統の多い戦型（居飛車=7系統）では戦法のドミノが W を
+    // 越えるので、最右の胞＋余白まで viewBox を広げる。さもないと右端の空き枠が
+    // 切れて押せないままになる
+    _fitView(mods, ext, showOpp) {
+      const rightEdge = Math.max(W, ...mods.map(m => (m.x1 || 0) + 8));
+      const yCut = showOpp ? 0 : cy(3) + s * .45;
+      const y0 = yCut - ext.top * rowH, hEff = (H - yCut) + (ext.top + ext.bot) * rowH;
+      this._view = { y0, h: hEff, w: rightEdge };
+      this.svg.setAttribute('viewBox', `0 ${f1(y0)} ${f1(rightEdge)} ${f1(hEff)}`);
+      this.el.style.aspectRatio = `${f1(rightEdge)} / ${f1(hEff)}`;
     }
 
     // ---------- 描画 ----------
@@ -374,27 +358,39 @@ window.Kakoi = window.Kakoi || {};
         svg$('text', { x: 10, y: midY + 9, class: 'cf-who cf-who-mark' }, gRow)
           .textContent = WHO_MARK[who];
       }
-      // 「＋相手」の胞（相手 OFF の間だけ。河の左端に浮かべ、押すと相手を表示する）
-      if (!showOpp) {
-        const g = svg$('g', { class: 'cf-opp-inv' }, svg);
-        const y = cy(3.6);
-        svg$('path', { d: roundPath(hexV(SX, y, s * 1.4), 3), class: 'cf-cell cf-ghost' }, g);
-        svg$('text', { x: SX, y: y + 4, class: 'cf-opp-t', 'text-anchor': 'middle' }, g).textContent = '＋相手';
-      }
-      // 関係ラベル（河の左端。戦型どうし・戦型の名前。ピルは最大2枚=大分類＋葉。
-      // 押すと右ドックにその戦型の情報が出る。implied は既定胞と同じ網掛け＋点線）
-      if (showOpp && labels && labels.length) {
-        const yMid = (cy(3) + s + cy(4) - s) / 2;
-        labels.slice(0, 2).forEach((lab, i) => {
-          const sel2 = lab.sel ? ' sel' : '';
-          const g = svg$('g', { class: `cf-seam${lab.implied ? ' imp' : ''}${sel2}` }, svg);
-          const y = yMid + (i - (Math.min(labels.length, 2) - 1) / 2) * 19;
-          const w2 = lab.label.length * 10 + 16;
-          svg$('rect', { x: SX - w2 / 2, y: y - 8.5, width: w2, height: 17, rx: 8.5 }, g);
-          svg$('text', { x: SX, y: y + 0.5, 'text-anchor': 'middle' }, g).textContent = `#${lab.label}`;
-        });
-      }
-      // 共有辺の相性の印（河をまたぐ辺）。辺が取れない戦法は胞の上の目地に短く
+      this._drawOppGhost(svg, showOpp);
+      this._drawSeamPills(labels, showOpp, svg);
+      this._drawTacticMarks(mods, seams, svg);
+      this._drawOppTacticMarks(mods, svg);
+      this._drawCastleMarks(mods, svg);
+    }
+
+    // 「＋相手」の胞（相手 OFF の間だけ。河の左端に浮かべ、押すと相手を表示する）
+    _drawOppGhost(svg, showOpp) {
+      if (showOpp) return;
+      const g = svg$('g', { class: 'cf-opp-inv' }, svg);
+      const y = cy(3.6);
+      svg$('path', { d: roundPath(hexV(SX, y, s * 1.4), 3), class: 'cf-cell cf-ghost' }, g);
+      svg$('text', { x: SX, y: y + 4, class: 'cf-opp-t', 'text-anchor': 'middle' }, g).textContent = '＋相手';
+    }
+
+    // 関係ラベル（河の左端。戦型どうし・戦型の名前。ピルは最大2枚=大分類＋葉。
+    // 押すと右ドックにその戦型の情報が出る。implied は既定胞と同じ網掛け＋点線）
+    _drawSeamPills(labels, showOpp, svg) {
+      if (!showOpp || !labels || !labels.length) return;
+      const yMid = (cy(3) + s + cy(4) - s) / 2;
+      labels.slice(0, 2).forEach((lab, i) => {
+        const sel2 = lab.sel ? ' sel' : '';
+        const g = svg$('g', { class: `cf-seam${lab.implied ? ' imp' : ''}${sel2}` }, svg);
+        const y = yMid + (i - (Math.min(labels.length, 2) - 1) / 2) * 19;
+        const w2 = lab.label.length * 10 + 16;
+        svg$('rect', { x: SX - w2 / 2, y: y - 8.5, width: w2, height: 17, rx: 8.5 }, g);
+        svg$('text', { x: SX, y: y + 0.5, 'text-anchor': 'middle' }, g).textContent = `#${lab.label}`;
+      });
+    }
+
+    // 共有辺の相性の印（河をまたぐ辺）。辺が取れない戦法は胞の上の目地に短く
+    _drawTacticMarks(mods, seams, svg) {
       for (const m of mods.filter(m => m.kind === 'tactic' && m.who === 'me' && m.mark)) {
         const es = seams.filter(se => se.famId === m.famId).map(se => [se.a, se.b]);
         if (es.length) {
@@ -415,14 +411,20 @@ window.Kakoi = window.Kakoi || {};
             class: `cf-sm cf-sm-${m.mark}` }, svg);
         }
       }
-      // 相手の戦法は河をまたぐ辺を持たない: ドミノの下辺（河側）の目地に短い印
+    }
+
+    // 相手の戦法は河をまたぐ辺を持たない: ドミノの下辺（河側）の目地に短い印
+    _drawOppTacticMarks(mods, svg) {
       for (const m of mods.filter(m => m.kind === 'tactic' && m.who === 'opp' && m.mark)) {
         const mid = (m.cells[0].ccx + m.cells[1].ccx) / 2;
         svg$('line', {
           x1: mid, y1: f1(m.y1 - 2), x2: mid, y2: f1(m.y1 + 5),
           class: `cf-sm cf-sm-${m.mark}` }, svg);
       }
-      // 囲いの河側の目地にも相性を出す（前線の胞の河向きの辺）
+    }
+
+    // 囲いの河側の目地にも相性を出す（前線の胞の河向きの辺）
+    _drawCastleMarks(mods, svg) {
       for (const m of mods.filter(m => m.kind === 'castle' && m.mark)) {
         const front = m.cells.filter(c => c.row === 0);   // 段7=河側の最前線
         for (const c of front) {
@@ -564,15 +566,9 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 当たり判定: 胞の上に透明な <button> を重ねる（viewBox 座標→%） ----------
     _syncHits(mods) {
       const want = new Map();
-      // 当たり判定は胞の外接矩形より余白ぶん広く取る（R-2: 狭い画面の実効タップ領域。
-      // 胞同士の隙間は互いの矩形が重なり合い、先に来た胞が勝つ。これ以上広げると
-      // 隣の胞の中心を覆うのでこの程度に留める）
-      const PAD = 9;
       for (const m of mods) {
-        const key = `${m.who}.${m.kind}.${m.id || m.famId || ''}`;
-        // 囲いは外角の名前のあたりまで当たる範囲に含める
-        const x1 = m.kind === 'castle' ? m.x1 + 8 : m.x1;
-        want.set(key, { m, key, x: m.x0 - PAD, y: m.y0 - PAD, w: x1 - m.x0 + PAD * 2, h: m.y1 - m.y0 + PAD * 2 });
+        const box = this._hitBox(m);
+        want.set(box.key, { m, ...box });
       }
       const seen = new Set();
       for (const [key, w2] of want) {
@@ -601,6 +597,17 @@ window.Kakoi = window.Kakoi || {};
           b.remove(); this._nodes.delete(k);
         }
       }
+    }
+
+    // 当たり判定は胞の外接矩形より余白ぶん広く取る（R-2: 狭い画面の実効タップ領域。
+    // 胞同士の隙間は互いの矩形が重なり合い、先に来た胞が勝つ。これ以上広げると
+    // 隣の胞の中心を覆うのでこの程度に留める）
+    _hitBox(m) {
+      const PAD = 9;
+      const key = `${m.who}.${m.kind}.${m.id || m.famId || ''}`;
+      // 囲いは外角の名前のあたりまで当たる範囲に含める
+      const x1 = m.kind === 'castle' ? m.x1 + 8 : m.x1;
+      return { key, x: m.x0 - PAD, y: m.y0 - PAD, w: x1 - m.x0 + PAD * 2, h: m.y1 - m.y0 + PAD * 2 };
     }
 
     // 河のピル（関係ラベル）の当たり判定: SVG のピルの上に透明ボタンを重ねる。
@@ -645,6 +652,56 @@ window.Kakoi = window.Kakoi || {};
       }
       for (const [k, b] of this._nodes) {
         if (k.startsWith('senkei.') && !seen.has(k)) { b.remove(); this._nodes.delete(k); }
+      }
+    }
+
+    // 「＋相手」の胞の当たり判定（SVG の幽霊胞の上に透明ボタンを重ねる）
+    _syncOppBtn(showOpp) {
+      let b = this.hits.querySelector('.cf-opp');
+      if (showOpp) { if (b) b.remove(); return; }
+      if (!b) {
+        b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cf-hit cf-opp';
+        b.dataset.who = 'opp';
+        const t = '相手を盤に表示する';
+        b.title = t; b.setAttribute('aria-label', t);
+        this.hits.append(b);
+      }
+      const v = this._view, r = s * 1.4 + 4, y = cy(3.6);
+      b.style.left = `${((SX - r) / v.w * 100).toFixed(3)}%`;
+      b.style.top = `${((y - r - v.y0) / v.h * 100).toFixed(3)}%`;
+      b.style.width = `${(2 * r / v.w * 100).toFixed(3)}%`;
+      b.style.height = `${(2 * r / v.h * 100).toFixed(3)}%`;
+    }
+
+    // 側ごとの「リセット」: その側のアンカー（囲いモジュール）の右上に × を立てる。
+    // 明示したスロットが無い側は出さない
+    _syncClears(mods, showOpp) {
+      const sl = this._slots || {};
+      for (const who of ['me', 'opp']) {
+        let b = this.hits.querySelector(`.cf-clear[data-who="${who}"]`);
+        const side = sl[who] || {};
+        const hasTac = Array.isArray(side.tactic) ? side.tactic.length > 0 : side.tactic != null;
+        const has = (who !== 'opp' || showOpp) && (hasTac || side.castle != null);
+        if (!has) { if (b) b.remove(); continue; }
+        if (!b) {
+          b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'cf-clear';
+          b.dataset.who = who;
+          b.tabIndex = -1;
+          b.textContent = '×';
+          this.hits.append(b);
+        }
+        const t = `${WHO_JA[who]}の戦法・囲いをリセット`;
+        b.title = t; b.setAttribute('aria-label', t);
+        const v = this._view || { y0: 0, h: H };
+        const cm = mods.find(m => m.who === who && m.kind === 'castle' && m.x1 != null);
+        const x = cm ? cm.x1 + 6 : (v.w || W) - 26;
+        const y = cm ? cm.y0 + 12 : cy(YCastle(who, 1)) - 11;
+        b.style.left = `${(x / (v.w || W) * 100).toFixed(3)}%`;
+        b.style.top = `${((y - v.y0) / v.h * 100).toFixed(3)}%`;
       }
     }
 

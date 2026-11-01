@@ -37,7 +37,7 @@ load('js/ui/tactic-nav.js');
 load('js/ui/mini-board.js');
 
 const K = ctx.Kakoi;
-if (!K.compose || !K.compose.position) {
+if (!K.compose || !K.compose.build) {
   console.error('load error: Kakoi.compose が未定義。js/core/compose.js がまだ無い（M2 の並行実装待ち）');
   process.exit(1);
 }
@@ -108,7 +108,7 @@ for (const t of K.TACTICS) {
     const j = K.compat.judge(meOf(t), 'castle', c.id);
     if (j.level === 'ng') continue;
     c2++;
-    const res = K.compose.position({ strategy: sideOf(t), tacticId: t.id, castleId: c.id });
+    const res = K.compose.build({ strategy: sideOf(t), tacticId: t.id, castleId: c.id });
     const pawn = (res.conflicts || []).find(x => x.code === 'PAWN');
     if (pawn) c2fail.push(`${t.id}×${c.id}: ${pawn.text}`);
     for (const e of K.notation.parsePieces(t.essential)) {
@@ -193,7 +193,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 // ---------- 3.5 rest/hand: 囲い切替で残る駒の正規化（計画書 L1） ----------
 {
   // 本美濃（既定の土台）→片美濃: 5八の金は図の定義上いないので、rest の金69へ移る
-  const r = K.compose.position({ strategy: 'furibisha', castleId: 'katamino' });
+  const r = K.compose.build({ strategy: 'furibisha', castleId: 'katamino' });
   const a58 = r.position.at(5, 8), a69 = r.position.at(6, 9);
   ok(!a58 || a58.p !== '金', 'compose:rest 本美濃→片美濃で5八に金が残らない',
     `5八=${a58 ? a58.p : '空'} ${a58 ? a58.role : ''}`);
@@ -205,7 +205,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 }
 {
   // 戦法の図（金58を含む）を土台にしても同じく去る
-  const r = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'katamino' });
+  const r = K.compose.build({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'katamino' });
   const a58 = r.position.at(5, 8), a69 = r.position.at(6, 9);
   ok(!a58 || a58.p !== '金', 'compose:rest 四間飛車+片美濃でも5八に金が残らない',
     `5八=${a58 ? a58.p : '空'}`);
@@ -213,21 +213,21 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 }
 {
   // 中飛車の飛58は戦法の主役（ロック）なので rest に動かされない
-  const r = K.compose.position({ strategy: 'furibisha', tacticId: 'nakabisha', castleId: 'katamino' });
+  const r = K.compose.build({ strategy: 'furibisha', tacticId: 'nakabisha', castleId: 'katamino' });
   const a58 = r.position.at(5, 8);
   ok(a58 && a58.p === '飛', 'compose:rest 中飛車の飛58（主役）は残る', `5八=${a58 ? a58.p : '空'}`);
 }
 {
   // 高美濃・銀冠・木村美濃も5八に金がいない（同じ美濃系の定義条件）
   for (const cid of ['takamino', 'gincan', 'kimuramino']) {
-    const rr = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: cid });
+    const rr = K.compose.build({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: cid });
     const a = rr.position.at(5, 8);
     ok(!a || a.p !== '金', `compose:rest ${cid} でも5八に金が残らない`, `5八=${a ? a.p : '空'}`);
   }
 }
 {
   // 兜囲い: 盤上の角は持ち駒へ（hand:'角' と整合）。必須の角は動かせず HAND 衝突
-  const r = K.compose.position({ strategy: 'ibisha', castleId: 'kabuto' });
+  const r = K.compose.build({ strategy: 'ibisha', castleId: 'kabuto' });
   const a88 = r.position.at(8, 8);
   ok(!a88 || a88.p !== '角', 'compose:hand 兜の8八に角が残らない', `8八=${a88 ? a88.p : '空'}`);
   ok((r.position.hand || []).includes('角'), 'compose:hand 兜の角は持ち駒へ', jstr(r.position.hand));
@@ -253,7 +253,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
         ? (K.TACTIC_FAMILIES.find(f => f.id === K.TACTICS.find(t => t.id === b.tacticId).family) || {}).side
         : c.side;
       if (!strategy) continue;
-      const res = K.compose.position({ strategy, tacticId: b.tacticId, castleId: c.id });
+      const res = K.compose.build({ strategy, tacticId: b.tacticId, castleId: c.id });
       if (res.conflicts.some(x => x.code === 'SQUARE' || x.code === 'COUNT')) continue; // 合成不能は判定側の領分
       const locked = new Set();
       if (b.tacticId) {
@@ -273,20 +273,20 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   ok(bad.length === 0, `compose:L1 守り駒が core/rest/必須/初期位置以外に残らない（全組合せ）`, bad.slice(0, 8).join(' / '));
 }
 {
-  // L3: 手数判定（moveCount）。届くものは置ける（ミレニアム・ビッグ4・松尾流・四枚美濃）
-  const mc = K.pieceRules.moveCount;
+  // L3: 手数判定（reachPly）。届くものは置ける（ミレニアム・ビッグ4・松尾流・四枚美濃）
+  const mc = K.pieceRules.reachPly;
   ok(mc('銀', '39', '88') === 5 && mc('銀', '39', '79') === 4 && mc('金', '49', '58') === 1,
-    'moveCount:銀39→88=5手・39→79=4手・金49→58=1手', `${mc('銀', '39', '88')},${mc('銀', '39', '79')},${mc('金', '49', '58')}`);
+    'reachPly:銀39→88=5手・39→79=4手・金49→58=1手', `${mc('銀', '39', '88')},${mc('銀', '39', '79')},${mc('金', '49', '58')}`);
   ok(mc('歩', '37', '36') === 1 && !isFinite(mc('歩', '37', '47')) && !isFinite(mc('歩', '37', '38')),
-    'moveCount:歩は前だけ（横・後退は届かない）', `${mc('歩', '37', '36')},${mc('歩', '37', '47')},${mc('歩', '37', '38')}`);
+    'reachPly:歩は前だけ（横・後退は届かない）', `${mc('歩', '37', '36')},${mc('歩', '37', '47')},${mc('歩', '37', '38')}`);
   ok(!isFinite(mc('桂', '29', '28')) && mc('桂', '29', '37') === 1,
-    'moveCount:桂は前だけ（後退は届かない）', `${mc('桂', '29', '28')},${mc('桂', '29', '37')}`);
+    'reachPly:桂は前だけ（後退は届かない）', `${mc('桂', '29', '28')},${mc('桂', '29', '37')}`);
   // 香は同じ筋の前方だけ（横・後退・斜めは届かない）。STEP 未定義で GOLD_STEP に落ちると
   // 別筋の香が donor に選ばれ、初期位置の香が盤面から消える（振り飛車穴熊の香99消失）の回帰
   ok(mc('香', '99', '98') === 1 && mc('香', '19', '18') === 1,
-    'moveCount:香は同じ筋の前方へ届く', `${mc('香', '99', '98')},${mc('香', '19', '18')}`);
+    'reachPly:香は同じ筋の前方へ届く', `${mc('香', '99', '98')},${mc('香', '19', '18')}`);
   ok(!isFinite(mc('香', '99', '18')) && !isFinite(mc('香', '19', '28')) && !isFinite(mc('香', '19', '29')),
-    'moveCount:香は別の筋・後退・斜めへ届かない', `${mc('香', '99', '18')},${mc('香', '19', '28')},${mc('香', '19', '29')}`);
+    'reachPly:香は別の筋・後退・斜めへ届かない', `${mc('香', '99', '18')},${mc('香', '19', '28')},${mc('香', '19', '29')}`);
   for (const cid of ['millennium', 'matsuo-anaguma', 'big4', 'yonmaimino']) {
     const j = K.compat.judge({ strategy: 'ibisha', tacticId: 'ibisha-base' }, 'castle', cid);
     ok(j.level !== 'ng', `compose:L3 ${cid} はibisha-baseから届く`, brief(j));
@@ -303,7 +303,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   for (const [tid, cid, want] of checks) {
     const t = K.TACTICS.find(x => x.id === tid);
     const st = (K.TACTIC_FAMILIES.find(f => f.id === t.family) || {}).side;
-    const r = K.compose.position({ strategy: st, tacticId: tid, castleId: cid });
+    const r = K.compose.build({ strategy: st, tacticId: tid, castleId: cid });
     const got = r.position.pieces.filter(x => x.p === '香').map(x => `${x.f}${x.r}`).sort().join(',');
     const handKyo = r.position.hand.filter(p => p === '香').length;
     ok(got === want.join(',') && handKyo === 0,
@@ -314,32 +314,32 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 {
   // 玉は全8方向へ1手（STEP 未登録で GOLD_STEP に落ちると斜め後退が届かないと誤判定される。
   // 金との対比で玉専用の定義があることも確かめる）
-  const mc = K.pieceRules.moveCount;
+  const mc = K.pieceRules.reachPly;
   const king1 = ['44', '54', '64', '45', '65', '46', '56', '66']
     .every(to => mc('玉', '55', to) === 1);
-  ok(king1, 'moveCount:玉は全8方向へ1手（斜め後退ふくむ）',
+  ok(king1, 'reachPly:玉は全8方向へ1手（斜め後退ふくむ）',
     ['46', '66'].map(to => `${to}=${mc('玉', '55', to)}`).join(','));
   ok(mc('金', '55', '46') === 2 && mc('金', '55', '66') === 2,
-    'moveCount:金の斜め後退は2手（玉と区別できる）',
+    'reachPly:金の斜め後退は2手（玉と区別できる）',
     `46=${mc('金', '55', '46')},66=${mc('金', '55', '66')}`);
   // 銀の滑らせコスト: 斜め前は合法手なので罰則なし。真横・真後ろより安いこと
-  const cst = K.piecePairing.moveCost;
+  const cst = K.piecePairing.slideCost;
   ok(cst('銀', '55', '46') != null && cst('銀', '55', '44') != null
     && cst('銀', '55', '46') < cst('銀', '55', '45'),
-    'moveCost:銀の斜め前は罰則なし（真横より安い）',
+    'slideCost:銀の斜め前は罰則なし（真横より安い）',
     `46=${cst('銀', '55', '46')},44=${cst('銀', '55', '44')},45=${cst('銀', '55', '45')}`);
 }
 {
   // SHELL 注記: 殻の駒が届かないとき、黙って飛ばすのではなく conflicts に記録する
   // （ng にはしない。振り飛車穴熊の歩17 は、歩16 に進んだ四間飛車からは戻れない）
-  const r = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'furianaguma' });
+  const r = K.compose.build({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'furianaguma' });
   const shell = (r.conflicts || []).filter(c => c.code === 'SHELL');
   ok(shell.length === 1 && shell[0].squares[0] === '17',
     'compose:SHELL 歩16から歩17は置けず注記が出る', jstr(r.conflicts));
   const j = K.compat.judge({ strategy: 'furibisha', tacticId: 'shikenbisha' }, 'castle', 'furianaguma');
   ok(j.level !== 'ng' && j.reasons.some(x => x.code === 'SHELL'),
     'compat:SHELL は ng ではなく理由（注記）として残る', brief(j));
-  const rMino = K.compose.position({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino' });
+  const rMino = K.compose.build({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino' });
   ok(!(rMino.conflicts || []).some(c => c.code === 'SHELL'),
     'compose:SHELL 届く殻（本美濃の歩16）には注記が出ない', jstr(rMino.conflicts));
 }
@@ -350,7 +350,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   const pos = K.Position.fromCastle(c, K.SETUPS[c.setup]);
   const kei = pos.pieces.filter(x => x.p === '桂').map(x => `${x.f}${x.r}`).sort().join(',');
   ok(kei === '37,89', 'data:migigyoku の宣言局面は桂89・桂37（桂29は空く）', `盤上=${kei}`);
-  const r = K.compose.position({ strategy: 'ibisha', tacticId: 'ibisha-base', castleId: 'migigyoku' });
+  const r = K.compose.build({ strategy: 'ibisha', tacticId: 'ibisha-base', castleId: 'migigyoku' });
   const kei2 = r.position.pieces.filter(x => x.p === '桂').map(x => `${x.f}${x.r}`).sort().join(',');
   ok(kei2 === '37,89', 'compose:migigyoku 合成後も桂89・桂37', `盤上=${kei2}`);
 }
@@ -392,13 +392,13 @@ for (const sid of Object.keys(K.STRATEGIES)) {
   ok(CS.setTactic(base, 'me', 'no-such') === base && CS.removeTactic(base, 'me', 'bougin') === base,
     'setTactic/removeTactic:存在しない id は入力の参照を返す');
   // 実効状態: 複数戦法は tacticIds に全て（主の戦法=飛車は primaryOf で導く導出値）
-  const S2 = CS.sides(t3, false);
+  const S2 = CS.effectiveSides(t3, false);
   ok(jstr(S2.me.tacticIds) === jstr(['shikenbisha', 'bougin']) && K.defaults.primaryOf(S2.me) === 'shikenbisha'
     && S2.me.tacticId === undefined,
     'sides:複数戦法は tacticIds に全て・主（飛車）は primaryOf で導く', jstr(S2.me));
 
   // 両立しない選択は conflicts が理由つきで返し、suggest が直す候補を返す
-  const S = CS.sides(r, false);
+  const S = CS.effectiveSides(r, false);
   const cf = CS.conflicts(r, S, false);
   ok(cf.me.castle && cf.me.castle.some(x => x.code === 'SIDE') && cf.opp.castle === undefined,
     'conflicts:居飛車穴熊×四間飛車は SIDE の理由つきで ng', jstr(cf));
@@ -415,25 +415,25 @@ for (const sid of Object.keys(K.STRATEGIES)) {
     const t = K.TACTICS.find(x => x.id === id);
     return t && t.lead && t.lead.piece === '銀' && id !== 'bougin';
   }), 'suggest:戦法の候補は同じ駒（銀）の戦法だけ', jstr(sgT));
-  const none = CS.conflicts(base, CS.sides(base, false), false);
+  const none = CS.conflicts(base, CS.effectiveSides(base, false), false);
   ok(!Object.keys(none.me.tactic).length && !none.me.castle, 'conflicts:両立する組み合わせは空', jstr(none));
   // 両立しない戦法だけが id つきで ng に上がる（複数採用で片方だけ悪い場合）
   const bad2 = put(put(CS.emptySlots(), 'me', 'tactic', 'sodebisha'), 'me', 'castle', 'mino');
   const mix = CS.setTactic(bad2, 'me', 'sujichigaikaku');   // 袖飛車が角77を固定→筋違角の角45が置けない
-  const cf2 = CS.conflicts(mix, CS.sides(mix, false), false);
+  const cf2 = CS.conflicts(mix, CS.effectiveSides(mix, false), false);
   ok(cf2.me.tactic.sodebisha && cf2.me.tactic.sodebisha.some(x => x.code === 'KING_ROOK')
     && cf2.me.tactic.sujichigaikaku && cf2.me.tactic.sujichigaikaku.every(x => x.code !== 'KING_ROOK'),
     'conflicts:複数戦法では衝突した戦法の id だけが ng（玉飛接近は袖飛車のみ）', jstr(cf2));
   // 両立する複数戦法は ng が上がらない
   const okMix = CS.setTactic(CS.setTactic(put(CS.emptySlots(), 'me', 'castle', 'yagura'), 'me', 'sujichigaikaku'), 'me', 'bougin');
-  const cf3 = CS.conflicts(okMix, CS.sides(okMix, false), false);
+  const cf3 = CS.conflicts(okMix, CS.effectiveSides(okMix, false), false);
   ok(!Object.keys(cf3.me.tactic).length && !cf3.me.castle,
     'conflicts:両立する複数戦法（筋違角+棒銀×矢倉）は空', jstr(cf3));
   // 表示していない相手は評価しない
-  const hid = CS.conflicts(put(r, 'opp', 'castle', 'anaguma'), CS.sides(put(r, 'opp', 'castle', 'anaguma'), false), false);
+  const hid = CS.conflicts(put(r, 'opp', 'castle', 'anaguma'), CS.effectiveSides(put(r, 'opp', 'castle', 'anaguma'), false), false);
   ok(!Object.keys(hid.opp.tactic).length && hid.opp.castle === undefined, 'conflicts:表示していない相手は対象外', jstr(hid));
   // 複数戦法の合成: 副戦法の必須の駒も盤上に現れる
-  const r2 = K.compose.position({ strategy: 'ibisha', tacticIds: ['sujichigaikaku', 'bougin'], castleId: 'yagura' });
+  const r2 = K.compose.build({ strategy: 'ibisha', tacticIds: ['sujichigaikaku', 'bougin'], castleId: 'yagura' });
   const has45 = r2.position.at(4, 5), has26 = r2.position.at(2, 6), has28 = r2.position.at(2, 8);
   ok(has45 && has45.p === '角' && has26 && has26.p === '銀' && has28 && has28.p === '飛' && !r2.conflicts.length,
     'compose:複数戦法の必須の駒（角45・銀26・飛28）が両方置かれる',
@@ -456,7 +456,7 @@ for (const sid of Object.keys(K.STRATEGIES)) {
 }
 
 // ---------- 6. constraints: sides / conflicts / evaluate / labels（計画書 §1 / §3-2） ----------
-if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.constraints.conflicts) {
+if (!K.constraints || !K.constraints.effectiveSides || !K.constraints.setSlot || !K.constraints.conflicts) {
   ok(false, 'constraints: Kakoi.constraints が未定義', 'js/core/constraints.js を確認');
 } else {
   const CS = K.constraints, FIELD = CS.FIELD, KINDS = CS.KINDS;
@@ -468,7 +468,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
 
   // sides: 戦略の導出と暗黙の補完
   {
-    const s = CS.sides(mk(null, 'funa'));
+    const s = CS.effectiveSides(mk(null, 'funa'));
     ok(s.me.castleId === 'funa' && s.me.strategy === 'ibisha' && K.defaults.primaryOf(s.me) === 'ibisha-base',
       'constraints:sides 囲いだけ→戦略は囲いの側・戦法は既定値で補完', jstr(s.me));
     ok(s.me.implied.tactic === true && !s.me.implied.castle && !s.me.implied.strategy,
@@ -478,33 +478,33 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   }
   {
     // 戦法だけ指定 → 戦略は戦法の系統の side（振り飛車の戦法なら furibisha）
-    const s = CS.sides(mk(null, null, 'shikenbisha'));
+    const s = CS.effectiveSides(mk(null, null, 'shikenbisha'));
     ok(s.opp.strategy === 'furibisha' && !s.opp.implied.tactic && s.opp.implied.castle,
       'constraints:sides 戦略を戦法の系統から導出', jstr(s.opp));
     ok(s.opp.castleId === 'mino', 'constraints:sides 既定囲い（furibisha の既定は mino）', jstr(s.opp));
     // 戦法があれば囲いより戦法が戦略を決める（囲いは明示のまま残る）
-    const t = CS.sides(mk('bougin', 'mino'));
+    const t = CS.effectiveSides(mk('bougin', 'mino'));
     ok(t.me.strategy === 'ibisha' && t.me.castleId === 'mino' && !t.me.implied.castle,
       'constraints:sides 戦略は戦法が決め、明示した囲いは差し替えない', jstr(t.me));
     // 囲いだけなら囲いの側から導く（美濃→振り飛車の既定戦法）
-    const u = CS.sides(mk(null, 'mino'));
+    const u = CS.effectiveSides(mk(null, 'mino'));
     ok(u.me.strategy === 'furibisha' && K.defaults.primaryOf(u.me) === 'shikenbisha',
       'constraints:sides 囲いだけ（美濃）→ 戦略 furibisha・既定戦法で補完', jstr(u.me));
   }
   {
     // 既定囲いの vsIbisha/vsFuribisha 振り分け: 相手が振り飛車なら vsFuribisha。相手を表示しないときは vsIbisha
-    const s = CS.sides(mk('ibisha-base', null, 'shikenbisha'));
+    const s = CS.effectiveSides(mk('ibisha-base', null, 'shikenbisha'));
     ok(s.me.castleId === 'funa', 'constraints:sides ibisha の既定囲いは対振り用 funa', jstr(s.me));
-    const s2 = CS.sides(mk('ibisha-base', null, 'ibisha-base'));
+    const s2 = CS.effectiveSides(mk('ibisha-base', null, 'ibisha-base'));
     ok(s2.me.castleId === 'yagura', 'constraints:sides ibisha の既定囲いは相居飛車用 yagura', jstr(s2.me));
-    const s3 = CS.sides(mk('ibisha-base', null, 'shikenbisha'), false);
+    const s3 = CS.effectiveSides(mk('ibisha-base', null, 'shikenbisha'), false);
     ok(s3.me.castleId === 'yagura', 'constraints:sides 相手を表示しないなら相手の戦略で振り分けない', jstr(s3.me));
   }
   {
     // 戦略の導出は決定的で、入力の slots を書き換えない
     const sl = mk('koshikakegin', null, 'mukaibisha', 'mino');
     const before = jstr(sl);
-    ok(jstr(CS.sides(sl)) === jstr(CS.sides(sl)) && jstr(sl) === before,
+    ok(jstr(CS.effectiveSides(sl)) === jstr(CS.effectiveSides(sl)) && jstr(sl) === before,
       'constraints:sides は決定的で入力を変更しない', before);
   }
 
@@ -526,8 +526,8 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
 
   // labels（§1-4）: 戦型ラベルの代表例
   {
-    const L = (a, b) => { const S = CS.sides(a); return CS.labels(S.me, S.opp); };
-    ok(CS.labels(CS.sides(mk('ibisha-base')).me, null).length === 0, 'constraints:labels 相手を表示しないなら空');
+    const L = (a, b) => { const S = CS.effectiveSides(a); return CS.senkeiLabels(S.me, S.opp); };
+    ok(CS.senkeiLabels(CS.effectiveSides(mk('ibisha-base')).me, null).length === 0, 'constraints:labels 相手を表示しないなら空');
     const taikou = L(mk('ibisha-base', null, 'shikenbisha'));
     ok(taikou.some(x => x.label === '対抗形'), 'constraints:labels 対抗形', jstr(taikou));
     const aifuri = L(mk('shikenbisha', null, 'sankenbisha'));
@@ -564,7 +564,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   // labels の細分類（§3-3 Phase 1）: 対抗形の種類×方針×型・相振りの筋・力戦。
   // 明示層が優先で、決まらなければ既定値（implied）込みの第2パス。葉は大分類と合わせて2枚まで
   {
-    const L = a => { const S = CS.sides(a); return CS.labels(S.me, S.opp); };
+    const L = a => { const S = CS.effectiveSides(a); return CS.senkeiLabels(S.me, S.opp); };
     const leaf = l => l[l.length - 1];
     const isLeaf = (l, id, label, extra = '') => l.length === 2 && leaf(l).id === id && leaf(l).label === label && extra;
     // 対抗形: 振り飛車の筋（rook）× 居飛車側の方針（approach）
@@ -653,7 +653,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     'deriveBoard:相手 OFF は後手の駒・脅威・ラベルなし', jstr(off.labels));
     ok(on.oppPos && on.threat && on.labels.length > 0 && on.merged.position.pieces.some(x => x.owner === 'gote'),
       'deriveBoard:相手 ON は両側を合成', '');
-    ok(jstr(off.S.opp) === jstr(CS.sides(sl, false).opp), 'deriveBoard:S は相手 OFF でも opp を持つ', '');
+    ok(jstr(off.S.opp) === jstr(CS.effectiveSides(sl, false).opp), 'deriveBoard:S は相手 OFF でも opp を持つ', '');
   }
 
   // compat.judge の対敵軸（§3-1）: level は変えず vs に乗せる。層ごとに候補別の尺度
@@ -712,8 +712,8 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
         if (jstr(next[w][k] || null) !== jstr(slots[w][k] || null)) touched++;
       }
       slots = next;
-      const S = CS.sides(slots, showOpp);
-      if (jstr(S) !== jstr(CS.sides(slots, showOpp))) nondet++;
+      const S = CS.effectiveSides(slots, showOpp);
+      if (jstr(S) !== jstr(CS.effectiveSides(slots, showOpp))) nondet++;
       // 明示した層はそのまま、暗黙の層が ng になるのは両立する候補が無い（飽和）ときだけ
       for (const w of ['me', 'opp']) {
         const st = S[w];
@@ -732,7 +732,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
       }
       // 両立しない明示選択には、直す候補（ng でないもの）が返る（候補があるときだけ検証）
       if (i % 20 === 0) {
-        const S2 = CS.sides(slots, showOpp), cf = CS.conflicts(slots, S2, showOpp);
+        const S2 = CS.effectiveSides(slots, showOpp), cf = CS.conflicts(slots, S2, showOpp);
         for (const w of ['me', 'opp']) for (const k of KINDS) {
           const ids = k === 'tactic' ? Object.keys(cf[w].tactic || {}) : (cf[w][k] ? [slots[w][k]] : []);
           for (const tid of ids) {
@@ -766,7 +766,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   }
   {
     // 空・旧形式（k=/opp= が無い、s 層や v= の付いた形）は初期状態で開く
-    const init = { slots: mk(), showOpp: false, selected: null };
+    const init = { slots: mk(), showOpp: false, selected: null, view: 'board', tesujiId: null };
     ok(jstr(HL.parseHash('')) === jstr(init), 'hash-link:空のハッシュは初期状態', jstr(HL.parseHash('')));
     ok(jstr(HL.parseHash('v=castle&c=yagura&t=bougin')) === jstr(init), 'hash-link:旧 castle/tactic 形式は初期状態');
     ok(jstr(HL.parseHash('v=matchup&ms=ibisha&mc=funa&os=furibisha')) === jstr(init), 'hash-link:旧 matchup 形式は初期状態');
@@ -792,6 +792,21 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     const qs = HL.buildQuery({ slots: mk(), showOpp: true, selected: 'me.strategy' });
     ok(qs === 'opp=1&sel=ms' && HL.parseHash(qs).selected === 'me.strategy',
       'hash-link:戦型の選択も往復できる', qs);
+  }
+  {
+    // tj= は「手筋と格言」の全画面モード。盤面のパラメータと併記でき、往復でも戻る
+    const p = HL.parseHash('k=mc:funa&opp=1&tj=otebisha');
+    ok(p.view === 'tesuji' && p.tesujiId === 'otebisha' && p.showOpp === true
+      && jstr(p.slots) === jstr(mk(null, 'funa')),
+      'hash-link:tj= で手筋モード＋盤面を読む', jstr(p));
+    ok(HL.parseHash('tj').view === 'tesuji' && HL.parseHash('tj').tesujiId === null,
+      'hash-link:tj（値なし）も手筋モード（記事は先頭）');
+    const q = HL.buildQuery({ slots: mk(null, 'funa'), showOpp: false, selected: null,
+      view: 'tesuji', tesujiId: 'otebisha' });
+    ok(q === 'k=mc:funa&tj=otebisha' && HL.parseHash(q).view === 'tesuji',
+      'hash-link:tj= の書き出しと往復', q);
+    ok(HL.buildQuery({ slots: mk(), showOpp: false, selected: null, view: 'tesuji', tesujiId: null }) === 'tj=',
+      'hash-link:記事の無い手筋モードは tj= だけ書く');
   }
 }
 
@@ -976,7 +991,7 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   // F-1: どんな両立しない組み合わせでも合成局面に玉が必ず1枚いる（消えない）
   const bad = [];
   for (const t of K.TACTICS) for (const c of K.CASTLES) {
-    const pos = K.compose.position({ tacticIds: [t.id], castleId: c.id }).position;
+    const pos = K.compose.build({ tacticIds: [t.id], castleId: c.id }).position;
     if (pos.pieces.filter(x => x.p === '玉' && x.owner === 'sente').length !== 1)
       bad.push(`${t.id}+${c.id}`);
     if (pos.hand && pos.hand.includes('玉')) bad.push(`${t.id}+${c.id}:hand玉`);

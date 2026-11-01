@@ -1,7 +1,7 @@
 // 統合画面の「見える半分」（計画書 S6 の BoardScreen）: 盤の駒レイヤ・重ね表示・
-// 盤の上の帯・制約バー・右ドックへの描画をまとめる。スロットの読み書き
-// （コマンド・ホバー予告）は constraint-mode.js のコントローラが持つ。
-// 導出は core/board-model.js の deriveBoard に一本化（S5）。
+// 盤の上の帯・制約バー・右 detail への描画をまとめる。スロットの読み書き
+// （コマンド・ホバー予告）は controller.js のコントローラが持つ。
+// 導出は core/derive-board.js の deriveBoard に一本化（S5）。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -15,7 +15,7 @@ window.Kakoi = window.Kakoi || {};
     /**
      * @param {{ els:object, board:Kakoi.BoardView, overlay:Kakoi.OverlayView,
      *   field:Kakoi.ConstraintField,
-     *   detail:Kakoi.BoardDetailView,
+     *   detail:Kakoi.DetailView,
      *   repo:Kakoi.Repository, rows:Array,
      *   nameOf:(who:string,kind:string,id:string)=>string }} deps
      */
@@ -72,7 +72,7 @@ window.Kakoi = window.Kakoi || {};
     _defenses(state, st, attack, mirror) {
       const list = (K.TESUJI || []).filter(t => (t.counters || []).includes(attack.id));
       if (!list.length || !K.tesuji) return [];
-      const pos = K.compose.position({
+      const pos = K.compose.build({
         strategy: st.strategy, tacticIds: st.tacticIds, castleId: st.castleId, side: 'sente',
       }).position;
       return list.map(t => {
@@ -131,7 +131,7 @@ window.Kakoi = window.Kakoi || {};
         this._paintStage(state, d);
         this._renderDetail(state, d);
       }
-      return d;   // 呼び出し側（コントローラ）が dock.update などに使う
+      return d;   // 呼び出し側（コントローラ）が rail.update などに使う
     }
 
     // 盤の駒レイヤ＋重ね表示。selected のみの更新では来ない
@@ -232,7 +232,7 @@ window.Kakoi = window.Kakoi || {};
       e.handOpp.textContent = d.oppPos ? this._handText(d.oppPos.position, '△') : '';
     }
 
-    // ---------- 右ドック（U5）: selected の種類に応じた組み立ては BoardDetailView に委譲 ----------
+    // ---------- 右 detail（U5）: selected の種類に応じた組み立ては DetailView に委譲 ----------
     // 選んだ層が他の層と両立しないときは、理由と直す候補（constraints.suggest）も渡す
     _renderDetail(state, d) {
       const sel = parseSel(state.selected) || K.constraints.DEFAULT_SEL;

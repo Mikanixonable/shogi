@@ -57,7 +57,7 @@
 core は既に純粋層として健全だが、複数戦法対応の過渡期の痕跡と大きい関数が残る。
 **振る舞い不変の機械的な整理**として行い、単体テストで固定する。
 
-### 1-1. データ参照の一本化 [S〜M]
+### 1-1. データ参照の一本化 [S〜M]（完了: lookup を Map 索引化→catalog.js へ改名）
 
 `Kakoi.lookup.findTactic`/`findCastle`（配列の線形走査）と `Repository` の Map が
 **2系統の参照経路**になっている。core は lookup、UI は両方を使い分けている現状を整理する。
@@ -66,7 +66,7 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
   Repository への経路を統一するかは実装時に決める
 - 少なくとも「どちらを使うか」の規則をコメントで明文化し、UI が両方を使う理由を揃える
 
-### 1-2. tacticId / tacticIds の二重表現を tacticIds に一本化 [M]
+### 1-2. tacticId / tacticIds の二重表現を tacticIds に一本化 [M]（完了: sides() から tacticId を削除し defaults.primaryOf に集約）
 
 複数戦法対応で `tacticId`（主の戦法・飛車優先）と `tacticIds`（全リスト）が併存し、
 `compat.tacticIdsOf`・`constraints.sides`・`hash-link`・`board-screen`・`defaults` に
@@ -89,7 +89,7 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
   差は出ないと読み取れるが、unit-test で固定してから削る
 - `compat.judgeFull` の `candPiece` 差し替えロジックを `constraints.setTactic` と重複なく共有する
 
-### 1-3. 選択文字列（selected）のパース/構築の一元化 [S]
+### 1-3. 選択文字列（selected）のパース/構築の一元化 [S]（完了: constraints.DEFAULT_SEL に集約）
 
 `constraints.parseSel`（`'me.tactic.bougin'` 形式）と `hash-link.encodeSel/decodeSel`（`'mt.bougin'` 形式）は
 同じ概念の2つの文法。フォーマット自体は変えず、以下を整理する。
@@ -113,7 +113,7 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
 メモ・定数は使う責務のブロック内に配置。コード行の多重集合は完全一致で
 振る舞い不変を確認。unit-test 187/187 PASS。426行 → 429行。
 
-### 1-6. 依存方向の固定 [S]
+### 1-6. 依存方向の固定 [S]（保留: 改名で実質解消を確認後に判断）
 
 実行時に `constraints → compat → compose → defaults/lookup` の参照がグローバル経由で
 張られている（`constraints.sides` が `Kakoi.compat.judgeFull` を呼ぶ等）。
@@ -125,7 +125,7 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
 Phase 1 が終わってから、大きい UI ファイルに手を入れる。renderKey 等の
 描画抑制の仕組み（board-screen）・委譲リスナ（cites）等の**良い部分は残す**。
 
-### 2-1. constraint-field.js の分割 [M]
+### 2-1. constraint-field.js の分割 [M]（完了: 6ブロックに整理、703→760行）
 
 645行で最大の UI ファイル。六角グリッドのレイアウト計算・SVG/DOM 構築・
 イベント配線・胞の状態更新が同居している。
@@ -146,7 +146,7 @@ Phase 1 が終わってから、大きい UI ファイルに手を入れる。re
 `'me.castle'` や `{who:'me',kind:'castle'}` の既定選択、`board-model` の `LATE='opp'`、
 `Kakoi.LRU || Map` の繰り返しなど、散在する小さな重複を揃える。
 
-## 命名の整理（責務が読める名前へ）[S〜M]
+## 命名の整理（責務が読める名前へ）[S〜M]（b〜e表は実施済み）
 
 調査の結果、kebab-case のファイル名・「データ=ALL_CAPS・ロジック=camelCase・DOM クラス=PascalCase」
 の規約は概ね統一されている。残るのは **同名衝突・責務が読めない名・画面領域名の揺れ**。

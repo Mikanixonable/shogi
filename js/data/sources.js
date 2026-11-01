@@ -215,7 +215,7 @@ Kakoi.SOURCES = {
   'wj-2temme-32hi': { title: '2手目△3二飛', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/2%E6%89%8B%E7%9B%AE%E2%96%B33%E4%BA%8C%E9%A3%9B' },
   'wj-meriken-mukaibisha': { title: 'メリケン向かい飛車', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E3%83%A1%E3%83%AA%E3%82%B1%E3%83%B3%E5%90%91%E3%81%8B%E3%81%84%E9%A3%9B%E8%BB%8A' },
 
-  // ---- お楽しみ（fun.js）----
+  // ---- お楽しみ（extras.js）----
   'bunshun-chouko': { title: '羽生善治も認める「長考に好手なし」――将棋・囲碁で1手に5時間かけた棋士の結末', publisher: '文春オンライン', url: 'https://bunshun.jp/articles/-/12378?page=4' },
   'wj-kato-hifumi': { title: '加藤一二三', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E5%8A%A0%E8%97%A4%E4%B8%80%E4%BA%8C%E4%B8%89' },
   'wj-tanigawa': { title: '谷川浩司', publisher: 'Wikipedia日本語版', url: 'https://ja.wikipedia.org/wiki/%E8%B0%B7%E5%B7%9D%E6%B5%A9%E5%8F%B8' },

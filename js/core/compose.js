@@ -8,23 +8,23 @@
 //     置けなくても衝突にしない（囲いが「守り駒すべて」の行き先を決める。計画書 §2 L1）
 //   - どこにも属さない金・銀は空いている初期位置へ戻す（届かなければ持ち駒）
 //   - castle.hand の駒（兜・ボナンザの角など）は、戦法の持ち駒に無ければ盤上から持ち駒へ移す
-//   - 「届くか」は pieceRules.moveCount（その駒の動きで何手かかるかの BFS）で判定し、
-//     donor の優劣は piecePairing.moveCost（アニメ用コスト）で決める
+//   - 「届くか」は pieceRules.reachPly（その駒の動きで何手かかるかの BFS）で判定し、
+//     donor の優劣は piecePairing.slideCost（アニメ用コスト）で決める
 //   - core の目標マスがロック駒に塞がれているときは castle.flex の to へ逃がす（崩し形）
 //   - core の駒が足りないときは、flex.to にいるロック済みの同種の駒が「貸し出し」で兼ねられる
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { key, parsePieces, parseSquare, label, mirrorPt, mirrorSq } = Kakoi.notation;
-  const { findTactic, findCastle } = Kakoi.lookup;
+  const { findTactic, findCastle } = Kakoi.catalog;
 
   const sq = (f, r) => `${f}${r}`;
   // 金・銀の帰る場所（初期配置のマス。どこにも属さない守り駒はここへ戻す）
   const HOME = { 金: ['49', '69'], 銀: ['39', '79'] };
   // アニメ用の滑らせやすさ（donor の優劣付け用。null なら滑らせない＝多手数の移動）
-  const canSlide = (p, from, to) => Kakoi.piecePairing.moveCost(p, from, to);
+  const canSlide = (p, from, to) => Kakoi.piecePairing.slideCost(p, from, to);
   // その駒の動きで何手かかるか（届く判定用。Infinity なら届かない。計画書 L3）
-  const moveCount = (p, from, to) => Kakoi.pieceRules.moveCount(p, from, to);
+  const reachPly = (p, from, to) => Kakoi.pieceRules.reachPly(p, from, to);
 
   // 戦略テンプレートの既定囲い。既定値の解決規則は Kakoi.constraints が唯一の権威
   // （defaultCastle は文字列または {vsIbisha,vsFuribisha}。相手の戦略で振り分け、不明なら vsIbisha）
@@ -45,7 +45,7 @@ window.Kakoi = window.Kakoi || {};
    *            moved: number, flexed: Array<{piece:string, from:string, to:string}>}}
    *   conflicts.layers: 衝突の帰属（戦法の id / 'castle'）。無ければ共有（全体の問題）
    */
-  function position(opts = {}) {
+  function build(opts = {}) {
     const { strategy = null, tacticId = null, tacticIds = null, castleId = null,
       side = 'sente', oppStrategy = null } = opts;
     const ids = Array.isArray(tacticIds) && tacticIds.length
@@ -121,15 +121,15 @@ window.Kakoi = window.Kakoi || {};
     ctx.pawnOnFile = (f, ex) => ctx.pieces.some(x => x !== ex && x.owner === 'sente' && x.p === '歩' && x.f === f);
 
     // donor を探す: 盤上の先手駒でロック・主役・確定済み以外の同種の駒。
-    // 届くかは moveCount（BFSの手数。歩・香・桂の後退・横滑りを防ぐ。計画書 L3）、
-    // 優劣は moveCost（滑らせられるもの優先、なければ手数の少ない順）。同点は盤上の並び順
+    // 届くかは reachPly（BFSの手数。歩・香・桂の後退・横滑りを防ぐ。計画書 L3）、
+    // 優劣は slideCost（滑らせられるもの優先、なければ手数の少ない順）。同点は盤上の並び順
     ctx.findDonor = (p, f, r) => {
       const to = sq(f, r);
       let best = null, bestCost = Infinity;
       for (const x of ctx.pieces) {
         if (x.p !== p || x.owner !== 'sente') continue;
         if (ctx.locked.has(x) || x.role === 'lead' || ctx.assigned.has(x)) continue;
-        const n = moveCount(x.p, sq(x.f, x.r), to);
+        const n = reachPly(x.p, sq(x.f, x.r), to);
         if (!isFinite(n)) continue;
         let c = canSlide(x.p, sq(x.f, x.r), to);
         if (c == null) c = 9 + n;                    // 滑らせない多手数の移動は後順位
@@ -323,7 +323,7 @@ window.Kakoi = window.Kakoi || {};
       if (HOME[x.p].includes(sq(x.f, x.r))) continue;
       const home = HOME[x.p].map(parseSquare)
         .filter(h => !ctx.at(h.f, h.r))
-        .map(h => ({ ...h, n: moveCount(x.p, sq(x.f, x.r), sq(h.f, h.r)) }))
+        .map(h => ({ ...h, n: reachPly(x.p, sq(x.f, x.r), sq(h.f, h.r)) }))
         .filter(h => isFinite(h.n))
         .sort((a, b) => a.n - b.n)[0];
       if (home) { x.f = home.f; x.r = home.r; x.role = 'support'; }
@@ -380,7 +380,7 @@ window.Kakoi = window.Kakoi || {};
       const dest = (() => {
         const cands = [];
         for (let f = 1; f <= 9; f++) for (let r = 1; r <= 9; r++) {
-          if (!ctx.at(f, r)) cands.push({ f, r, n: moveCount('玉', from, sq(f, r)) });
+          if (!ctx.at(f, r)) cands.push({ f, r, n: reachPly('玉', from, sq(f, r)) });
         }
         return cands.filter(h => isFinite(h.n)).sort((a, b) => a.n - b.n)[0];
       })();
@@ -489,7 +489,7 @@ window.Kakoi = window.Kakoi || {};
     return { position: new Kakoi.Position(pieces), contacts };
   }
 
-  const api = { position, merge };
+  const api = { build, merge };
   Kakoi.compose = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api; // node からの読み込み用
 })();

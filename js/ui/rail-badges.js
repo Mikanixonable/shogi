@@ -1,14 +1,14 @@
-// 左ドックのバッジと「絞り込んだ戦略に合わない項目」の判定（計画書 S6 の badges）:
+// 左レールのバッジと「絞り込んだ戦略に合わない項目」の判定（計画書 S6 の badges）:
 //   - バッジ2軸（§3-1/U1）: 両立=compat.judge の ng → data-ng（灰色の破線枠）＋✕。
 //     相手との相性=compat.judge().vs → ◎/△ の文字だけ（朱の線は引かない）。相手が無いときは非表示
 //   - 戦略に合うかは系統ではなく項目ごとに判定する（片側限定の項目が両側の項目を
-//     含む系統にいても正しく隠れる）。合わない項目は dock-view が hidden にする
+//     含む系統にいても正しく隠れる）。合わない項目は rail-view が hidden にする
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const K = window.Kakoi;
   const { plain } = K.html;
-  const { findTactic, findCastle, tacticFamilyOf, castleSides } = K.lookup;
+  const { findTactic, findCastle, tacticFamilyOf, castleSides } = K.catalog;
 
   /**
    * 2軸バッジ（data-ng / data-vs / data-implied）を要素に書く
@@ -49,5 +49,5 @@ window.Kakoi = window.Kakoi || {};
     return c ? !castleSides(c).includes(strategy) : false;
   }
 
-  K.dockBadges = { badge, tip, offItem };
+  K.railBadges = { badge, tip, offItem };
 })();

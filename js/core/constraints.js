@@ -8,12 +8,12 @@
 // 戦略（居飛車／振り飛車）は制約にしない: 主の戦法（defaults.primaryTacticId。飛車の戦法を優先。
 // 無ければ囲い）から導く。ただし選択（'who.strategy'）としては受ける。
 // 既定値の解決規則の権威は core/defaults.js、層のスキーマ定数（KINDS/FIELD/WHOS）は
-// core/lookup.js が唯一の定義。両立の判定は compat.judge と同じものを使う。
+// core/catalog.js が唯一の定義。両立の判定は compat.judge と同じものを使う。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  const { findTactic, findCastle, tacticFamilyOf, castleSides, KINDS, FIELD, WHOS } = Kakoi.lookup;
+  const { findTactic, findCastle, tacticFamilyOf, castleSides, KINDS, FIELD, WHOS } = Kakoi.catalog;
   const { defaultIdOf, primaryTacticId, primaryOf } = Kakoi.defaults;
 
   // ---------- スロット（tactic: null | [id,…] / castle: null | id） ----------
@@ -133,7 +133,7 @@ window.Kakoi = window.Kakoi || {};
    *     必要な読み側は defaults.primaryOf(st) で取る
    *   - 戦法が1つも無ければ戦略既定値で1つだけ補い implied.tactic を立てる
    */
-  function sides(slots, showOpp = true) {
+  function effectiveSides(slots, showOpp = true) {
     const S = {};
     for (const who of WHOS) {
       const sl = slots[who];
@@ -143,7 +143,7 @@ window.Kakoi = window.Kakoi || {};
         castleId: sl.castle, implied: {},
       };
     }
-    // 相手の明示値（既定で補う前）。他方の既定値の振り分けと fitness の相手に使う
+    // 相手の明示値（既定で補う前）。他方の既定値の振り分けと castleFit の相手に使う
     const explicit = who => ({
       strategy: S[who].strategy,
       tacticIds: S[who].tacticIds.slice(), castleId: slots[who].castle,
@@ -180,7 +180,7 @@ window.Kakoi = window.Kakoi || {};
     return out;
   }
 
-  // ---------- 候補の評価: ドックのバッジ・ホバー予告・直す候補で共有する窓口 ----------
+  // ---------- 候補の評価: レールのバッジ・ホバー予告・直す候補で共有する窓口 ----------
   // 「候補を置いた後」の側を土台に compat.judge するので、その側のスロットが空でも
   // 候補から導いた戦略で評価され、「駒が足りない」といった嘘の ng 理由が出ない
   const evalCache = new (Kakoi.LRU || Map)(512);
@@ -196,7 +196,7 @@ window.Kakoi = window.Kakoi || {};
     const k = `${JSON.stringify(slots)}|${showOpp}|${who}|${kind}|${id}`;
     if (evalCache.has(k)) return evalCache.get(k);
     const next = setSlot(slots, who, kind, id);
-    const S = sides(next, showOpp);
+    const S = effectiveSides(next, showOpp);
     const v = { next, j: Kakoi.compat.judge(S[who], kind, id, otherOf(S, who, showOpp)) };
     evalCache.set(k, v);
     return v;
@@ -233,8 +233,8 @@ window.Kakoi = window.Kakoi || {};
   }
 
   // ---------- 選択状態の文字列表現（'who.kind[.id]'） ----------
-  // dock-view / board-screen / board-detail-view / constraint-mode / hash-link で共有する（S2）
-  // strategy はスロットを持たない（sides() が導く値）が、選択はできる。
+  // rail-view / board-screen / detail-view / controller / hash-link で共有する（S2）
+  // strategy はスロットを持たない（effectiveSides() が導く値）が、選択はできる。
   // tactic は駒ごとの枠が複数あるので、第3要素に戦法の id を持てる（'me.tactic.bougin'）
   // SEL_RE は内部表現（'me.tactic.bougin'。側・層はフル名）の文法。
   // js/ui/hash-link.js の decodeSel が使う /[mo][tcsk]/ は URL ハッシュの短縮形
@@ -350,7 +350,7 @@ window.Kakoi = window.Kakoi || {};
     ? { id: 'rikisen', label: senkeiName('rikisen') || '力戦' } : null;
   /**
    * 両側の実効状態から戦型ラベルを導出する。
-   * @param {Object|null} me  sides() の出力（実効値で渡す）
+   * @param {Object|null} me  effectiveSides() の出力（実効値で渡す）
    * @param {Object|null} opp 同上。null（相手を表示していない）なら戦型ラベルは出ない
    * @returns {Array<{id:string, label:string, implied?:true}>}
    *   #相居飛車/#対抗形/#相振り飛車 は matchup.threat().kind から。
@@ -369,7 +369,7 @@ window.Kakoi = window.Kakoi || {};
    *     5. 両側に矢倉の根拠（矢倉系の囲いか yagura タグ）がある → 相矢倉
    *     6. どれにも当たらない → 力戦（両側明示のとき）/ 出さない
    */
-  function labels(me, opp) {
+  function senkeiLabels(me, opp) {
     const out = [];
     if (!me || !opp || !Kakoi.matchup) return out;
     const th = Kakoi.matchup.threat(me, opp);
@@ -426,7 +426,7 @@ window.Kakoi = window.Kakoi || {};
 
   const api = {
     emptySlots, normalizeSlots, setSlot, setTactic, removeTactic, clearSide,
-    sides, conflicts, evaluate, suggest, labels, parseSel, normalizeSelected,
+    effectiveSides, conflicts, evaluate, suggest, senkeiLabels, parseSel, normalizeSelected,
     tacticList, KINDS, FIELD, DEFAULT_SEL,
   };
   Kakoi.constraints = api;
