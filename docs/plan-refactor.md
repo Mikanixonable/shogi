@@ -137,7 +137,7 @@ b〜e表の方針で改名済み。下表は変更前の名前と採用した名
 
 ### a. 同名・近似名の衝突（最優先）
 
-| 現行 | 案 | 理由 |
+| 変更前（調査時） | 採用後 | 理由 |
 |---|---|---|
 | `js/core/tesuji.js` ↔ `js/data/tesuji.js`（`Kakoi.tesuji` ↔ `Kakoi.TESUJI`） | core を `tesuji-engine.js`（export は `Kakoi.tesuji` のまま） | 同名ファイルが層をまたいでいる。engine=検出・評価（forks/sokofu/detectors）、data=手筋データ、`tesuji-check.js`=検算器で役割が3つある |
 | `core/pieces.js` ↔ `core/piece-moves.js` | `piece-moves.js` を pieces.js へ統合して削除 | 駒の動きの定義が2権威に分裂している途中（pieces.js は「単一権威」を宣言済みだが attack-map/piece-match が旧版を参照中）。統合の完了が先 |
@@ -146,7 +146,7 @@ b〜e表の方針で改名済み。下表は変更前の名前と採用した名
 
 ### b. 責務が読めない関数名・ファイル名
 
-| 現行 | 案 | 理由 |
+| 変更前（調査時） | 採用後 | 理由 |
 |---|---|---|
 | `compose.position()` | `compose.build()` | 名詞メソッドで「組み立てる」動作が見えない（`Position` クラスと紛らわしい） |
 | `matchup.fitness()` ↔ `matchup.tacticFit()` | `castleFit()` / `tacticFit()` に統一 | 対称なペア（囲いスコア/戦法適性）なのに名が非対称 |
@@ -166,7 +166,7 @@ index.html では左=`.rail`・右=`.detail`・上=`#cfield`・中央=盤。フ�
 左ドックが `dock-*`、右ドックが `detail-*`/`board-detail-view`、下端タブが `dock-tabs` で揺れている。
 画面領域名に揃えると「どこを描くか」が名前から読める。
 
-| 現行 | 案 |
+| 変更前（調査時） | 採用後 |
 |---|---|
 | `ui/dock-view.js` / `dock-grids.js` / `dock-badges.js` | `rail-view.js` / `rail-grids.js` / `rail-badges.js` |
 | `ui/board-detail-view.js` | `detail-view.js`（`detail-sections.js` と対になる。「board」は中央の盤を指すので誤解） |
@@ -177,7 +177,7 @@ index.html では左=`.rail`・右=`.detail`・上=`#cfield`・中央=盤。フ�
 `modes/` は3画面時代の名残で、中身はコントローラ（ConstraintMode）・描画統合（BoardScreen）・
 純関数（keyboardNav）と種類が混在している。
 
-| 現行 | 案 |
+| 変更前（調査時） | 採用後 |
 |---|---|
 | `modes/` ディレクトリ | `screen/` または `controllers/`（「mode」は画面が1つしかない今は名を捨てる） |
 | `modes/constraint-mode.js`（`K.ConstraintMode`） | `screen/controller.js`（`K.ScreenController` など。「対局図のコントローラ」が責務） |
