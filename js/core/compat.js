@@ -3,26 +3,21 @@
 // から3段階（best/ok/ng）で判定する。選んだ層は自動で差し替えない（✕と理由の表示は
 // constraints.conflicts が担う）。searchAlternative は未選択の層の既定値が ng のときの
 // 補完（constraints.sides）に使う内部API。計画書 §3-2 / §4-2。
+// 中身は責務ごとのブロック分け: 共通部品 → compose 評価 → 相性表・fitness → judge → searchAlternative。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
   const { parsePieces, parseSquare, label } = Kakoi.notation;
   const { findTactic, findCastle, tacticFamilyOf: familyOf, strategyLabel, FIELD } = Kakoi.lookup;
-  const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'HAND']); // compose の衝突のうち × にするもの
-  // 相性表の overrides では消せない理由（計画書 L2: 戦略の不一致・玉飛接近・同翼は原則なので
-  // データの明示的な上書きの対象から外す）
-  const NO_OVERRIDE = new Set(['SIDE', 'KING_ROOK', 'SAME_WING']);
-  // 端筋（1・9筋）の飛車は玉飛接近・同翼の判定対象外。端に構えた飛車は玉の逃げ道を実質塞がず、
-  // 一間飛車＋美濃・一間飛車穴熊は定番の組み合わせとして成立するため
-  const edgeRook = rf => rf === 1 || rf === 9;
+
+  // ========== 共通部品: 選択状態の正規化と戦法・囲いの参照（全ブロックが使う） ==========
+  // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則の権威は Kakoi.defaults
+  // （js/core/defaults.js。起動時ではなく判定時に参照するので読み込み順は問わない）
   const normSide = st => ({
     strategy: (st && st.strategy) || null,
     tacticIds: tacticIdsOf(st),
     castleId: (st && st.castleId) || null,
   });
-
-  // 未選択の層は戦略テンプレートの既定値で補う。既定値の解決規則の権威は Kakoi.defaults
-  // （js/core/defaults.js。起動時ではなく判定時に参照するので読み込み順は問わない）
   // 複数戦法: tacticIds があればそのリストを、無ければ tacticId 1つを見る
   function tacticIdsOf(st) {
     const l = st && st.tacticIds;
@@ -35,6 +30,11 @@ window.Kakoi = window.Kakoi || {};
   const tacticsOf = st => tacticIdsOf(st).map(findTactic).filter(Boolean);
   const castleOf = (st, opp) => findCastle(castleIdOf(st, opp));
 
+  // ========== compose 評価: 候補を代入した状態 st を compose し、衝突と原則を集める ==========
+  const NG_CONFLICT = new Set(['SQUARE', 'PAWN', 'COUNT', 'HAND']); // compose の衝突のうち × にするもの
+  // 端筋（1・9筋）の飛車は玉飛接近・同翼の判定対象外。端に構えた飛車は玉の逃げ道を実質塞がず、
+  // 一間飛車＋美濃・一間飛車穴熊は定番の組み合わせとして成立するため
+  const edgeRook = rf => rf === 1 || rf === 9;
   // 戦法の飛車（先手視点）。銀が主役の戦法でも盤上の飛車を見る。盤上に無ければ lead.files[0]
   const rookPiece = t => parsePieces(t && t.pieces).find(x => x.p === '飛') || null;
   function rookFile(t) {
@@ -48,11 +48,7 @@ window.Kakoi = window.Kakoi || {};
   const wingName = w => w === 'right' ? '右' : w === 'left' ? '左' : '中央';
   const isFile5 = t => !!(t && t.lead && Array.isArray(t.lead.files) && t.lead.files.includes(5));
   const sqLabel = s => { const { f, r } = parseSquare(s); return label(f, r); };
-  const pairingOf = (tactic, castleId) => (tactic && castleId)
-    ? (tactic.pairings || []).find(p => p && p.castle === castleId) || null
-    : null;
 
-  // ---------- 盤上の評価: 候補を代入した状態 st を compose し、衝突と原則を集める ----------
   // ngReasons（×の理由）と notes（○のまま付ける注記）を分けて返す。結果は選択状態をキーに
   // 共有 LRU でメモ化（S4: 長時間のセッションでメモが際限なく増えないよう上限を設ける）
   const evalMemo = new (Kakoi.LRU || Map)(512);
@@ -170,7 +166,14 @@ window.Kakoi = window.Kakoi || {};
     return { ng, notes, moved: composed.moved, tactic, tactics, castle };
   }
 
-  // ---------- 相性表（戦法×囲い pairings）の適用: ng/notes への反映と ◎/○ の段階 ----------
+  // ========== 相性表・fitness: pairings の ng/notes への適用と囲いの相性スコア上位帯 ==========
+  // 相性表の overrides では消せない理由（計画書 L2: 戦略の不一致・玉飛接近・同翼は原則なので
+  // データの明示的な上書きの対象から外す）
+  const NO_OVERRIDE = new Set(['SIDE', 'KING_ROOK', 'SAME_WING']);
+  const pairingOf = (tactic, castleId) => (tactic && castleId)
+    ? (tactic.pairings || []).find(p => p && p.castle === castleId) || null
+    : null;
+
   // 戦法ごとに囲いとの相性を見る。×は ng に積み、◎/○は注記に積んで、○の overrides で
   // 宣言された理由（その戦法と囲いの間のものだけ）を消す。SIDE・玉飛・同翼は消せない（L2）
   function applyPairings(ev, ng, notes) {
@@ -233,7 +236,7 @@ window.Kakoi = window.Kakoi || {};
     return band;
   }
 
-  // ---------- judge ----------
+  // ========== judge: 候補と「いまの他の層」の両立判定 ==========
   const judgeMemo = new (Kakoi.LRU || Map)(512);
   // 同じ内容を別の言い回しで2度言う理由をまとめる（U6: 穴熊の「手数がかかる」が
   // 自動生成の TEMPO 注記と相性表の why で二重に出ていたのを防ぐ）。
@@ -346,7 +349,7 @@ window.Kakoi = window.Kakoi || {};
     return out;
   }
 
-  // ---------- 未選択の層の既定値が×のときの補完（§4-2） ----------
+  // ========== searchAlternative: 未選択の層の既定値が×のときの補完（§4-2） ==========
   function candidatesOf(L) {
     if (L === 'tactic') return (Kakoi.TACTICS || []).map(t => t.id);
     return (Kakoi.CASTLES || []).map(c => c.id);

@@ -98,24 +98,20 @@ core は既に純粋層として健全だが、複数戦法対応の過渡期の
   `board-screen._renderDetail`（`{who:'me',kind:'castle'}` の直書き）に重複しているのを一元化
 - `SEL_RE` と `hash-link` の `decodeSel` の正規表現の意味差をコメントで明記
 
-### 1-4. compose.js の分割 [M]
+### 1-4. compose.js の分割 [M]（完了）
 
-`position()` が448行の単一関数で、盤上の駒配列・持ち駒・ロック・確定集合を
-クロージャで共有して進行する。動作は正しいが読みにくい。
+**実施済み**: `position()` を約35行のオーケストレータにし、フェーズを `ctx` を
+受け取る名前つき関数（`buildBase`/`makeCtx`/`lockTactic`/`placeSubTactics`/
+`placeCore`/`lendMissingCore`/`placeRest`/`normalizeGuardPieces`/`placeShell`/
+`applyCastleHand`/`rescueKing`/`verifyPawns`/`countMoved`）に分割。
+同一ファイル内に留め、unit-test 187/187 PASS。468行 → 495行（ctx 化の増分）。
 
-- フェーズ（土台構築 → ロック → 副戦法 → core → rest → 金銀正規化 → shell → hand → 検証）
-  を名前つきの関数または小さなモジュールに分ける
-- 分割は純粋な移動（振る舞い不変）。`merge` は既に別関数なので維持
-- 既存の unit-test（matrix スナップショット＋acceptance）が正しさの担保
+### 1-5. compat.js の分割 [M]（完了）
 
-### 1-5. compat.js の分割 [M]
-
-426行に「compose 評価（evaluate）」「相性表適用（applyPairings）」「fitness 帯（fitnessBand）」
-「judge（memo化）」「searchAlternative」「dedupeReasons」が同居。
-
-- 責務ごとにファイル分け（例: `compat-evaluate.js` / `compat-judge.js` / `compat-suggest.js`）か、
-  同一ファイル内でセクションを分離する
-- メモ（evalMemo/judgeMemo/bandMemo）の配置も責務と一緒に整理する
+**実施済み**: 5ブロック＋エクスポートのセクション構成に整理
+（共通部品 / compose 評価 / 相性表・fitness / judge / searchAlternative）。
+メモ・定数は使う責務のブロック内に配置。コード行の多重集合は完全一致で
+振る舞い不変を確認。unit-test 187/187 PASS。426行 → 429行。
 
 ### 1-6. 依存方向の固定 [S]
 
