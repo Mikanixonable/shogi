@@ -152,7 +152,7 @@ window.Kakoi = window.Kakoi || {};
         `<nav class="vchips tj-toc" aria-label="目次">${toc}</nav>` +
         cards +
         `<section class="tj-proverbs" data-id="proverbs"><h3>格言</h3><ul class="tj-pv">${pvAll}</ul></section>` +
-        `<section class="sec"><h3>出典</h3>${sourcesBlock(this.repo._resolveSources(all), citer)}</section>`;
+        `<section class="sec"><h3>出典</h3>${sourcesBlock(this.repo.resolveSources(all), citer)}</section>`;
     }
   }
 

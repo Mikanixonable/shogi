@@ -340,6 +340,26 @@ window.Kakoi = window.Kakoi || {};
       applyCastleHand();
     }
 
+    // 玉の救出: core の目標がロック駒に塞がれた等で玉が持ち駒に残ったままだと
+    // 盤に玉が無い壊れた局面になる。重なりは既に SQUARE 衝突として記録済みなので、
+    // 玉は元の位置（駄目ならそこから届く一番近い空きマス）へ戻す
+    if (!pieces.some(x => x.owner === 'sente' && x.p === '玉')) {
+      const i = hand.indexOf('玉');
+      const orig = [...baseSq].find(([x]) => x.p === '玉');
+      const from = orig ? orig[1] : '59';
+      const dest = (() => {
+        const cands = [];
+        for (let f = 1; f <= 9; f++) for (let r = 1; r <= 9; r++) {
+          if (!at(f, r)) cands.push({ f, r, n: moveCount('玉', from, sq(f, r)) });
+        }
+        return cands.filter(h => isFinite(h.n)).sort((a, b) => a.n - b.n)[0];
+      })();
+      if (i >= 0 && dest) {
+        hand.splice(i, 1);
+        pieces.push({ p: '玉', f: dest.f, r: dest.r, owner: 'sente', role: 'support' });
+      }
+    }
+
     // 9. 検証: 二歩（同じ筋に先手の歩が2枚）
     const pawnFiles = new Map();
     for (const x of pieces) {

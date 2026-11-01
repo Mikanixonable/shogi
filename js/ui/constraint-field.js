@@ -203,9 +203,9 @@ window.Kakoi = window.Kakoi || {};
         b.title = t; b.setAttribute('aria-label', t);
         const v = this._view || { y0: 0, h: H };
         const cm = mods.find(m => m.who === who && m.kind === 'castle' && m.x1 != null);
-        const x = cm ? cm.x1 + 6 : W - 26;
+        const x = cm ? cm.x1 + 6 : (v.w || W) - 26;
         const y = cm ? cm.y0 + 12 : cy(YCastle(who, 1)) - 11;
-        b.style.left = `${(x / W * 100).toFixed(3)}%`;
+        b.style.left = `${(x / (v.w || W) * 100).toFixed(3)}%`;
         b.style.top = `${((y - v.y0) / v.h * 100).toFixed(3)}%`;
       }
     }
@@ -310,12 +310,15 @@ window.Kakoi = window.Kakoi || {};
         }
       }
       // viewBox ははみ出し分だけ上下に広げる（ヒット層の % 座標も同じ枠で換算する）。
-      // 相手 OFF の間は河の少し上から下だけを見せて、フィールドを半分の高さに畳む
+      // 横方向も同じく: 系統の多い戦型（居飛車=7系統）では戦法のドミノが W を
+      // 越えるので、最右の胞＋余白まで viewBox を広げる。さもないと右端の空き枠が
+      // 切れて押せないままになる
+      const rightEdge = Math.max(W, ...mods.map(m => (m.x1 || 0) + 8));
       const yCut = showOpp ? 0 : cy(3) + s * .45;
       const y0 = yCut - ext.top * rowH, hEff = (H - yCut) + (ext.top + ext.bot) * rowH;
-      this._view = { y0, h: hEff };
-      this.svg.setAttribute('viewBox', `0 ${f1(y0)} ${W} ${f1(hEff)}`);
-      this.el.style.aspectRatio = `${W} / ${f1(hEff)}`;
+      this._view = { y0, h: hEff, w: rightEdge };
+      this.svg.setAttribute('viewBox', `0 ${f1(y0)} ${f1(rightEdge)} ${f1(hEff)}`);
+      this.el.style.aspectRatio = `${f1(rightEdge)} / ${f1(hEff)}`;
       this._draw(mods, joints, seams, marks, labels, showOpp, nameOf);
       this._syncHits(mods);
       this._syncOppBtn(showOpp);
@@ -335,9 +338,9 @@ window.Kakoi = window.Kakoi || {};
         this.hits.append(b);
       }
       const v = this._view, r = s * 1.4 + 4, y = cy(3.6);
-      b.style.left = `${((SX - r) / W * 100).toFixed(3)}%`;
+      b.style.left = `${((SX - r) / v.w * 100).toFixed(3)}%`;
       b.style.top = `${((y - r - v.y0) / v.h * 100).toFixed(3)}%`;
-      b.style.width = `${(2 * r / W * 100).toFixed(3)}%`;
+      b.style.width = `${(2 * r / v.w * 100).toFixed(3)}%`;
       b.style.height = `${(2 * r / v.h * 100).toFixed(3)}%`;
     }
 
@@ -478,7 +481,7 @@ window.Kakoi = window.Kakoi || {};
       // 囲いの名前と注記（自分=群れの右下の角に左詰め。相手=河の右端。戦法の段と
       // 横方向が重ならない場所だけを使う）
       const name = m.castle ? nameOf(m.who, 'castle', m.id) : '';
-      const tx = m.who === 'me' ? m.x1 + 2 : W - 8;
+      const tx = m.who === 'me' ? m.x1 + 2 : ((this._view && this._view.w) || W) - 8;
       const ty = m.who === 'me' ? m.y1 + 4 : (cy(3) + cy(4)) / 2;
       // 相手の文字は 180° 回す（回転で向きが変わるので start で置くと右端に揃う）
       const rot = m.who === 'opp' ? { transform: `rotate(180 ${f1(tx)} ${f1(ty)})` } : {};
@@ -573,9 +576,9 @@ window.Kakoi = window.Kakoi || {};
         }
         this._applyHit(b, w2.m);
         const v = this._view;
-        b.style.left = `${(w2.x / W * 100).toFixed(3)}%`;
+        b.style.left = `${(w2.x / v.w * 100).toFixed(3)}%`;
         b.style.top = `${((w2.y - v.y0) / v.h * 100).toFixed(3)}%`;
-        b.style.width = `${(w2.w / W * 100).toFixed(3)}%`;
+        b.style.width = `${(w2.w / v.w * 100).toFixed(3)}%`;
         b.style.height = `${(w2.h / v.h * 100).toFixed(3)}%`;
         this.hits.appendChild(b);
         // 明示した層だけ × を持つ（要素自体を出し分ける）
@@ -636,7 +639,7 @@ window.Kakoi = window.Kakoi || {};
       const xt = `${WHO_JA[m.who]}の${KIND_LABEL[m.kind]}「${t ? t.name : ''}」を外す`;
       x.title = xt; x.setAttribute('aria-label', xt);
       const v = this._view;
-      x.style.left = `${((m.x1 - 7) / W * 100).toFixed(3)}%`;
+      x.style.left = `${((m.x1 - 7) / v.w * 100).toFixed(3)}%`;
       x.style.top = `${(Math.max(0, m.y0 - 13 - v.y0) / v.h * 100).toFixed(3)}%`;
     }
   }
