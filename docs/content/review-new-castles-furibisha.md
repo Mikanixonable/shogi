@@ -1,67 +1,235 @@
 # 品質レビュー: 新規追加の振り飛車・相振り・駒落ちの囲い（19件）と新しい系統・想定配置
 
-作成: 2026-11-01 / 状態: **作業中（骨組み。エントリを1件確認するごとに追記する）**
+作成: 2026-11-01 / 状態: **完了（全19件確認済み。🔴4件・🟡3件を修正適用）**
 
-- 対象データ: `js/data/castles-furibisha.js`（14件+カギ囲い）/ `js/data/castles-ibisha.js`（駒落ち4件）/ `js/data/taxonomy.js`（新 family 5つ）/ `js/data/setups.js`（hirame・empty・kakuochi）
+- 対象データ: `js/data/castles-furibisha.js`（12件+カギ囲い）/ `js/data/castles-ibisha.js`（hayagakoi・gendai-anaguma・駒落ち4件）/ `js/data/taxonomy.js`（新 family 5つ）/ `js/data/setups.js`（hirame・empty・kakuochi）
 - 判定ラベル: 🔴誤り（要修正）/ 🟡不正確・不足（要補足）/ 🟢概ね正確（加筆のみ）
 - 元の振り飛車10件は `docs/content/quality-castles.md` で監査済みのため対象外
 - 座標は先手の絶対座標（筋1〜9=先手から見て右→左、段1〜9=後手側→先手側）。後手・上手の図は (筋,段)→(10−筋,10−段) に変換して照合する
+- 照合方法: `js/data/sources.js` の `[[ref]]` 先について、ja.wikipedia は `?action=raw` の `{{Shogi diagram}}` テンプレート（左上9一→右下1九の81セル）、en.wikipedia 同様、shougi.jp は記事内 `<figure class="wp-block-table koma">` の駒画像 alt をデコードして突合した
 
 ## 1. 要約
 
-（作業中。全エントリ確認後に件数と修正トップ5を書く）
+19件中、**誤り4件・不整合3件をデータファイルへ修正適用済み**。残り12件は引用図と一致または軽微な注記のみ。`node tools/validate-castles.js` は 86 castles すべて OK（修正後もエラーなし）。
 
 | 判定 | 件数 |
 |---|---|
-| 🔴 | - |
-| 🟡 | - |
-| 🟢 | - |
+| 🔴 | 4（修正済） |
+| 🟡 | 3（修正済） |
+| 🟢 | 12 |
 
 ### 重大度順の修正トップ5
 
-（作業中）
+1. **hidarigyoku（左玉・高田流）**: 引用する ja.wiki「囲い」「左玉」の高田流図（▲6八角・銀多伝型: 玉78・角68・金58・金38・銀66・銀67・桂77・飛89）と、従来データ（角77・銀47・桂89・飛68・歩46）が大きく不一致。`setup:'empty'` に切替え、引用図どおりに shell/rest/filler を組み直した（§2-8）。
+2. **kinzogan / ginzogan（金象眼・銀象眼）**: note が「日本語版は5筋寄り型」と主張していたが、引用3ソースすべてがその形を示さない。ja.wiki「囲い」＋en.wiki が一致する玉6七・銀5七・金6八・桂7七型へ core/desc/note/sq/target を修正（§2-17,18）。
+3. **gendai-anaguma（現代穴熊）**: ja.wiki 穴熊囲い記事の現代穴熊図は金39・金47。データは金49・金47で誤り。金39へ修正（§2-2）。
+4. **kagi（カギ囲い）**: ja.wiki カギ囲い図（囲い事典引用）は上手の飛車を5九に置く。データの filler 飛38→飛59（§2-19）。
+5. **hirame（平目）**: shougi.jp の座標付き基本図は歩67・歩96。データは歩66・歩97でずれていたため shell を引用図どおりに修正（§2-7）。gintaden も ja.wiki図2 の金78が抜けていたため rest に追加（§2-15）。
 
 ### 担当外で気づいた重大な誤り
 
-（なし／作業中）
+- ja.wiki「囲い」記事の**大住囲いの扱い**: 「カニ囲い」が相振り分類に無い一方で、oosumi の出典として wj-kakoi を「分類・別名」に引用しているが、同記事に大住囲いの記述自体が見当たらない（en.wiki Cozy castle は確認済）。alias「こじまり囲い」は引用ソース・他の一覧・検索でも確認できず**【要確認】**（後述）。
 
 ## 2. エントリ別
+
+凡例: 各項目の「照合」は core/shell/rest/filler/desc/note/sources を引用図・記事本文と突き合わせた結果。square/segment のみの差異（後述「観察」）は判定に含めない。
 
 ### 振り飛車・相振り（14件）
 
 | # | id | 名前 | family / subtype | setup | 判定 | 状態 |
 |---|---|---|---|---|---|---|
-| 1 | hayagakoi | 早囲い | quick / hayagakoi | furibisha | - | 未確認 |
-| 2 | gendai-anaguma | 現代穴熊 | anaguma / gendai | furibisha | - | 未確認 |
-| 3 | ginmino | 銀美濃 | mino / ginmino | furibisha | - | 未確認 |
-| 4 | chonmagemino | ちょんまげ美濃 | mino / chonmage | furibisha | - | 未確認 |
-| 5 | bouzumino | 坊主美濃 | mino / bouzu | furibisha | - | 未確認 |
-| 6 | santegakoi | 三手囲い | quick / sante | furibisha | - | 未確認 |
-| 7 | hirame | 平目 | low / hirame | hirame | - | 未確認 |
-| 8 | hidarigyoku | 左玉（高田流） | hidarigyoku / takada | furibisha | - | 未確認 |
-| 9 | oosumi | 大住囲い | kinmusou / oosumi | furibisha | - | 未確認 |
-| 10 | furibisha-anaguma-48kin | 相振り穴熊（4八金型） | anaguma / kin48 | furibisha | - | 未確認 |
-| 11 | nakabisha-hidari-anaguma | 中飛車左穴熊 | anaguma / sanmai | hirame | - | 未確認 |
-| 12 | muteki | 無敵囲い | quick / muteki | empty | - | 未確認 |
-| 13 | furibisha-hashigyoku | 端玉銀冠（振り飛車） | mino / hashigyoku | furibisha | - | 未確認 |
-| 14 | airkin | エア金（銀冠エア金） | mino / gincan | furibisha | - | 未確認 |
+| 1 | hayagakoi | 早囲い | quick / hayagakoi | furibisha | 🟢 | 確認済 |
+| 2 | gendai-anaguma | 現代穴熊 | anaguma / gendai | furibisha | 🔴→修正済 | core 金49→金39 |
+| 3 | ginmino | 銀美濃 | mino / ginmino | furibisha | 🟢 | 確認済 |
+| 4 | chonmagemino | ちょんまげ美濃 | mino / chonmage | furibisha | 🟢 | 確認済 |
+| 5 | bouzumino | 坊主美濃 | mino / bouzu | furibisha | 🟢 | 確認済 |
+| 6 | santegakoi | 三手囲い | quick / sante | furibisha | 🟢 | 確認済 |
+| 7 | hirame | 平目 | low / hirame | hirame | 🟡→修正済 | shell 歩66→67, 歩97→96 |
+| 8 | hidarigyoku | 左玉（高田流） | hidarigyoku / takada | furibisha→empty | 🔴→修正済 | 引用図どおりに再構成 |
+| 9 | oosumi | 大住囲い | kinmusou / oosumi | furibisha | 🟢 | alias1件は【要確認】 |
+| 10 | furibisha-anaguma-48kin | 相振り穴熊（4八金型） | anaguma / kin48 | furibisha | 🟢 | 確認済 |
+| 11 | nakabisha-hidari-anaguma | 中飛車左穴熊 | anaguma / sanmai | hirame | 🟢 | 確認済 |
+| 12 | muteki | 無敵囲い | quick / muteki | empty | 🟢 | 確認済 |
+| 13 | furibisha-hashigyoku | 端玉銀冠（振り飛車） | mino / hashigyoku | furibisha | 🟢 | 確認済 |
+| 14 | airkin | エア金（銀冠エア金） | mino / gincan | furibisha | 🟢 | 確認済 |
 
 ### 駒落ち（5件）
 
 | # | id | 名前 | side | family / subtype | setup | 判定 | 状態 |
 |---|---|---|---|---|---|---|---|
-| 15 | gintaden | 銀多伝 | ibisha | komaochi / taden | empty | - | 未確認 |
-| 16 | kintaden | 金多伝 | ibisha | komaochi / taden | empty | - | 未確認 |
-| 17 | kinzogan | 金象眼 | ibisha | komaochi / zougan | kakuochi | - | 未確認 |
-| 18 | ginzogan | 銀象眼 | ibisha | komaochi / zougan | kakuochi | - | 未確認 |
-| 19 | kagi | カギ囲い | furibisha | komaochi / kagi | kakuochi | - | 未確認 |
+| 15 | gintaden | 銀多伝 | ibisha | komaochi / taden | empty | 🟡→修正済 | 金69→rest 金78 |
+| 16 | kintaden | 金多伝 | ibisha | komaochi / taden | empty | 🟢 | sj の別形は観察注記 |
+| 17 | kinzogan | 金象眼 | ibisha | komaochi / zougan | kakuochi | 🔴→修正済 | core を玉6七型へ |
+| 18 | ginzogan | 銀象眼 | ibisha | komaochi / zougan | kakuochi | 🔴→修正済 | core を玉6七型へ |
+| 19 | kagi | カギ囲い | furibisha | komaochi / kagi | kakuochi | 🟡→修正済 | filler 飛38→飛59 |
 
-（以下、エントリごとに「### id 名前 — 判定」「検証表」「修正案（貼れる JS 断片）」「加筆案（history / origin / steps / players / proverbs）」を追記する）
+---
+
+### 1. hayagakoi 早囲い — 🟢
+
+- **照合**: shougi.jp 早囲い図「3八玉・4八銀型」= 玉38・銀48・金49・桂29・香19・歩列7段。core 玉38 銀48 ✓、rest 金49 金69 銀79（図では4九金のみ明示）✓。記事本文も「▲4八玉・▲3八玉・▲4八銀の3手」「4八銀と4九金が並ぶ」と一致。aliases「壁囲い」は同記事・en.wiki Wall castle（早囲いの別名）で裏付け。
+- **観察**: shougi.jp の類型図は歩1七を描くが、同系の三手囲い・坊主美濃・ちょんまげ美濃の図も同様に歩17で、これらは全駒を描く図ではなく歩57まで並ぶ汎用歩列。データの歩16は振り飛車実戦の標準（四間飛車で▲1六歩を突く）で、監査済みの美濃系とも一貫 → 変更せず観察に留める。
+- **加筆案**: sj本文「銀を4八に置いた形が守備と攻撃の両方に働く（中飛車向き）」は pros 追加候補。
+
+### 2. gendai-anaguma 現代穴熊 — 🔴→修正済
+
+- **照合**: ja.wiki 穴熊囲い「振り飛車穴熊・現代穴熊の陣形」図 = 玉19・香18・桂29・銀28・**金39・金47**・銀67（外側）・角77・飛68・歩17 26 36 46 + 歩57 66 76 87 97。rest 銀67・desc「金七段型」も図と整合。**旧 core の金49は誤り**（from=furianaguma＝金38・39からの発展としても金38→47＋金39残留が自然）。
+- **修正**: `core: '玉19 香18 桂29 銀28 金39 金47'` に変更。
+- **観察**: desc「広瀬流には金を4九・4八に並べる型もある」は同記事「広瀬流」図（金48・金49）と正確に一致。
+
+### 3. ginmino 銀美濃 — 🟢
+
+- **照合**: ja.wiki 美濃囲い 銀美濃図 = 玉28・銀38・銀58・金49・歩16 + 歩27 37 47 57、shougi.jp 銀美濃図も同一。core 完全一致。ja.wiki本文「左金の代わりに左銀が参加」= desc「5八金を5八銀に置き換え」と一致。
+
+### 4. chonmagemino ちょんまげ美濃 — 🟢
+
+- **照合**: sj ちょんまげ美濃図 = 玉28・銀38・金49・歩26（2筋歩が前進＝名称由来 ✓）＋歩17 37 47 57。ja.wiki 美濃囲いのちょんまげ図も同型（玉28・銀38・金49・歩26 37 47 17）。sj本文は組み方に「3八銀・4九金・**5八金**」と明記 → core の金58を含む本美濃ベースは本文裏付けあり（図は片美濃型の省略形）。
+- **観察**: 歩16→図は17（hayagakoi 同項の観察参照）。ja.wiki本文「片美濃囲いや本美濃囲いに組んでも2筋歩が残る」→ どちらのベースもあり得る旨 desc と整合。
+
+### 5. bouzumino 坊主美濃 — 🟢
+
+- **照合**: ja.wiki 坊主美濃図 = 玉28・銀38・金49・歩17 37 47（2筋歩なし）＋桂29・香19、shougi.jp 坊主美濃図も同型。core 玉28 銀38 金49・from=katamino・hand:'歩'（2七歩欠損→持ち歩）いずれも一致。ja.wiki本文「玉が3九に居ることも多い」「2七に持ち歩を打ち普通の片美濃囲いにする」は desc/pros/cons と整合。
+- **観察**: 歩16→図は17（同様の観察）。
+
+### 6. santegakoi 三手囲い — 🟢
+
+- **照合**: sj 三手囲い図「4八金型」= 玉38・金48・銀39・桂29・香19 + 歩列7段。core 玉38 金48・rest 銀39 ✓。sj本文「このページでは3八玉・4八金・3九銀の4八金型を三手囲い」/「4八銀型を早囲いとして分けています」= desc の分類説明と一致。
+
+### 7. hirame 平目 — 🟡→修正済
+
+- **照合**: shougi.jp 平目戦法の座標付き全盤図 = 玉28・銀38・銀68・金49・金59・桂29・桂89・香19・香99・飛58・角77 + **歩16 27 37 47 56 67 76 87 96**。core 玉28 金59 金49 銀38 銀68 は完全一致、setup.hirame の 飛58 角77 も図と一致。**shell が歩66（図は67）・歩97（図は96）でずれ**。
+- **修正**: `shell: '歩96 歩87 歩76 歩67 歩56 歩47 歩37 歩27 歩16'`（9枚すべて図どおり）。
+- **加筆案**: ja.wiki 中飛車は「（平目は）本来は『香落ち上手の戦法』として知られる」と記す → history/note 候補。en.wiki Flatfish 図（玉28・銀38・金49・金59・歩16 27 37 47 57）も左金を飛車の下に寄せる点で一致するが、図に銀68・飛58・角77・歩67/96は描かれない。
+
+### 8. hidarigyoku 左玉（高田流） — 🔴→修正済
+
+- **照合**: 引用先の2記事の高田流図は次のとおり。
+  - ja.wiki「囲い」左玉囲い（図は高田流）= 玉78・**角68**・金58・金38・**銀66・銀67**・**桂77**・**飛89**（rsl＝8九一段飛車）・香99・桂29・香19 + 歩96 85 76 65 56 47 37 27 17。
+  - ja.wiki「左玉」図4-2「高田流▲6八角・銀多伝型」= 同一配置（図4-1 は角66・銀57・銀67型、図1 田丸流は玉68・金58・金38・銀67・角66・飛89・桂77・銀39）。
+- **不一致**: 旧データは core 玉78 銀67 金58 金38 のみ一致したが、**角77・銀47・桂89・飛68・歩46/37/27はいずれの高田流図とも合わない**。特に飛車68は「8筋に飛車を回す」高田流の特徴である飛89転回（一段飛車）と矛盾。
+- **修正**: setup:'furibisha'→**'empty'**（引用図は furibisha 想定配置と角・飛車・歩が衝突するため全駒指定へ）。shell を高田流図の歩列（歩17 27 37 47 56 65 76 85 96）へ、rest を**銀66 桂77**（core 外の守り駒）へ、filler を**香99 香19 桂29 角68 飛89** へ変更。desc/note を「▲6八角・銀多伝型」と明記する形に改訂。kingWing:'rook'・玉飛接近タグは飛89・玉78で依然妥当。
+- **観察**: pros/cons/attacks（右辺の薄さ→玉頭攻め）は新構成でもそのまま成立。
+
+### 9. oosumi 大住囲い — 🟢（alias こじまり囲いは【要確認】）
+
+- **照合**: en.wiki Cozy castle 図 = 玉38・金48・銀39（初期位置）・歩列7段。core 玉38 金48 銀39 ✓、desc「玉4八から3八へ動かし、金4八・銀3九を合わせる三手で組める」= en本文「K-48, K-38, G-48（3手）」と一致。alias 大隅囲いは en.wiki・ja.dbpedia で確認済。
+- **問題点**: 【要確認】alias「こじまり囲い」は wj-kakoi・wj-kinmusou・en.wiki・将棋用語一覧・検索結果のいずれにも出ず、裏付け不能。wj-kakoi は oosumi の出典（分類・別名）に挙がるが、記事本文に大住囲いの言及自体が無い点も注記。
+- **観察**: desc「『三手囲い』『早囲い』は別形にも使われるため、ここでは別名に含めない」は en.wiki でも同趣旨の説明があり妥当。
+
+### 10. furibisha-anaguma-48kin 相振り穴熊（4八金型） — 🟢
+
+- **照合**: ja.wiki 穴熊囲い「相振り飛車用穴熊・４八金型」図 = 玉19・香18・桂29・銀28・**金48・金38**・銀67（外側）・角77・飛86・歩97 87 76 66 57 47 37 27 17。core 完全一致、rest 銀67 も図どおり、desc「金を4八・3八に並べ」一致、同記事本文「相振り飛車のときは3八と4八もあり得る（4八金型）」も整合。
+- **観察**: shell は 歩17 26 36 46（図は 17 27 37 47＋57）だが、前面を突いた形は銀冠穴熊（監査済）と同じ前線選択であり許容。図の飛86 は相振り側の類型配置で、setup.furibisha の飛68とは意図が違う（注記のみ）。
+
+### 11. nakabisha-hidari-anaguma 中飛車左穴熊 — 🟢
+
+- **照合**: ja.wiki 中飛車「中飛車左穴熊…居飛車のように玉を左側に穴熊に囲う戦法。主に相振り飛車戦で用いられる」、囲い記事の分類も一致。core 玉99・香98・桂89・銀88・金78・金79 は本穴熊（右辺: 玉19・香18・桂29・銀28・金38・金39）の正確な左右反転で、居飛車穴熊の標準形と同一。setup:'hirame'（飛58・角77）は中飛車の駒を正しく供給。
+- **観察**: shell の歩57（5筋歩未突き）は中飛車の5六歩と異なるが、左穴熊では 5筋歩の突き方は局面依存 → 観察に留める。用語「サンアイ（sanmai）subtype」は監査済穴熊と共有。
+
+### 12. muteki 無敵囲い — 🟢
+
+- **照合**: ja.wiki 無敵囲い図 = 玉59・飛58・銀48・銀68・金49・金69・角88・香99/19・桂89/29・歩全列7段。core・shell・filler が完全に一致。本文「5八飛、6八銀、4八銀のわずか3手」「『最強囲い』とも呼ばれている」も note と整合（アプリの最強囲い＝銀48・68のみの別形とは別扱いで正しい）。
+
+### 13. furibisha-hashigyoku 端玉銀冠（振り飛車） — 🟢
+
+- **照合**: ja.wiki 左美濃の「左銀冠（三枚）」「左銀冠（米長玉）」図 = 玉98・銀87・金78・金67（米長玉型＝玉を9八に置く）。左右反転すると 玉18・銀27・金38・金47 = core と一致。rest 銀79（未使用銀）・filler 香19 桂29（初期位置）・shell 歩16 26 36 46 は、引用図の歩列（96〜56を反転）と一致。desc「左美濃系の銀冠から玉を1八の端へ寄せた形」も WP 本文「玉を9八に置く。この形から銀冠にする」に対応。
+
+### 14. airkin エア金（銀冠エア金） — 🟢
+
+- **照合**: en.wiki Silver Crown Aerokin 図 = 玉17・銀27・桂37・金47・金38・香18 + 歩16 26 36 46（竜の攻撃で後手dragon駒が端に来る文脈）。core・shell が完全一致、desc「飛車・竜で横から攻められたときに玉を1七まで逃げ」も本文と一致。
+
+### 15. gintaden 銀多伝 — 🟡→修正済
+
+- **照合**: ja.wiki 多伝囲い 図1先手・銀多伝 = 玉38・金48・銀46・銀47・桂37・歩45、図2（銀多伝基本図）= 玉38・金48・銀46・銀47・桂37・**金78**・飛58・角88・香99・桂89・香19・歩96 87 76 67 56 45 36 26 16。core・shell は図2と完全一致だが、**第2の金は 金78 に上がるのが基本図で、データは初期位置の金69を置いていた**。
+- **修正**: `rest: '金78'` を追加、filler から 金69 を除去（図2どおりの全駒に）。
+- **観察**: desc「下手は全駒を持つ」は wj-teaiwari と一致（下手＝全駒・上手＝駒欠き）。sj-taden は図が無くても解説のみで参照 OK。
+
+### 16. kintaden 金多伝 — 🟢（sj の別形を観察注記）
+
+- **照合**: ja.wiki 多伝囲い 図1後手・金多伝を (f,r)→(10−f,10−r) で変換 = 玉38・金48・金47・銀46・桂37 + 歩45（図の後手歩は94 84 74 → 先手16 26 36 と 65→45）。core はこの図に完全一致。
+- **観察**: sj-taden の「金多伝」図は 玉38・**銀48**・**金46**・金47・桂37（4筋位に金を出し、銀が48に残る）で、ja.wiki 図とは守備駒の配分が異なる別形。データは ja.wiki 図を採用しており正しいが、別形が存在することは加筆案（note に「将棋研究は銀48・金46型の別図を示す」を追記候補）。shell の歩55 は tags/desc の「5筋位取り持久戦型」に対応（ja.wiki 本文「平手居飛車の金多伝囲いに5筋位取り持久戦型がある」）。
+
+### 17. kinzogan 金象眼 — 🔴→修正済
+
+- **照合**: ja.wiki「囲い」金象眼図（『日本将棋用語事典』p.61引用）= 玉67・銀57・金68・桂77 + 歩96 86 76 66 56 + 香99。en.wiki Gold Elephant Eye 図 = 玉67・銀57・金68・桂77 + 歩86 76 66 56。ja.wiki「象嵌」の 金象眼（右）図 = 玉27・銀17・金38・桂37（端寄りの別形）。実戦例（印達4三玉＝先手座標6七相当）も6七型を裏付け。
+- **不一致**: 旧 core 玉57 銀47 金58 桂67 は**いずれの引用図にも存在しない**。旧 note の「日本語版は5筋寄り型、英語版は1筋右寄り型」は事実と逆（「囲い」記事＝英語版とも6七型）。
+- **修正**: core を **玉67 銀57 金68 桂77** へ、desc を「金6八・銀5七・桂7七を玉6七の周囲に」、note を3ソースの形の違いを正確に述べる形へ、pros sq を [68,57,77]、cons sq を [67,68]、attacks.target を [67,68,57] へ変更。shell（歩96〜56）は元から図と一致していたため据置き。
+
+### 18. ginzogan 銀象眼 — 🔴→修正済
+
+- **照合**: ja.wiki「囲い」銀象眼図（同事典 p.62）= 玉67・銀57・銀68・桂77 + 歩96〜56 + 香99。en.wiki Silver Elephant Eye 図 = 同一。「象嵌」銀象眼（左）図 = 玉77・銀67・銀78・桂87（端寄り）。
+- **不一致**: 旧 core 玉57 銀47 銀58 桂67 は kinzogan 同様に引用図と一致せず。
+- **修正**: core を **玉67 銀57 銀68 桂77** へ、desc/note/pros sq/attacks.target を上記と同様に改訂。
+
+### 19. kagi カギ囲い — 🟡→修正済
+
+- **照合**: ja.wiki「囲い」カギ囲い図（マイナビ将棋囲い事典100+ p.128引用）= 玉78・銀88・金67・金58・銀57・桂77・桂37・**飛59**・香99・香19 + 歩97 87 76 66 56 36 26 17（ファイル4の歩は図に無い）。core は完全一致（金67・金58・銀57・桂77・桂37・玉78・銀88）。desc「金銀がカギ状に連なる」も形と一致。
+- **不一致**: filler の **飛38 は図の飛59と異なる**（上手の飛車の位置）。
+- **修正**: filler を `香99 香19 飛59` に変更。
+- **観察**: shell の歩47 は図に無いが、下手全駒＋上手（角落ち上手は角のみ欠落＝歩9枚必要）の全駒整合に必要なため残置妥当（図は盤の一部省略形）。
+
+---
 
 ## 3. 新しい系統・想定配置のレビュー
 
-（作業中）対象: `chudan`（中段玉）/ `hidarigyoku`（左玉）/ `quick`（簡易囲い）/ `low`（低陣）/ `komaochi`（駒落ち）の name・shape・subtype、`SETUPS.hirame` / `empty` / `kakuochi`
+対象: `chudan` / `hidarigyoku` / `quick` / `low` / `komaochi` の name・shape・subtype、`SETUPS.hirame` / `empty` / `kakuochi`。検証結果は以下のとおり、**いずれも概ね正確（🟢）**。
+
+| 系統 | 判定 | 内容 |
+|---|---|---|
+| chudan（中段玉型） | 🟢 | ja.wiki 中段玉は「四、五、六段目のいずれかに置く」「先手の場合には六段目」と定義。shape「自陣寄りの中段（主に6段目）に上げる珍形。総称で固定形は複数ある」と一致。subtype yondan（四段端玉）は ja.wiki 図・en.wiki Fourth Rank Edge King 図とも玉96・金86・金76・銀66・桂77を示し、castles-ibisha の既存エントリと整合 |
+| hidarigyoku（左玉型） | 🟢 | ja.wiki 左玉の流派は田丸流・高田流・松浦流銀多伝・細川流・中原流。subtype は takada/tamaru/matsuura の代表的3流を採用（細川流・中原流は追加候補＝加筆案）。shape「玉を左翼へ寄せ、飛車との距離を保つ振り飛車側の構え」はWP本文「玉飛接近の格言に反するがバランスが良く…」と整合 |
+| quick（簡易囲い型） | 🟢 | hayagakoi/sante/muteki すべて sj・wj で「3手で組める」「簡易」と説明され、shape「玉の移動や少数の金銀で短手数にまとめる形」と一致。ichigo/saikyou/ahiru は対象外だが sj-kakoi-index の分類とも整合 |
+| low（低陣型） | 🟢 | sj-hirame は「金銀を低く横に並べ、自陣の空いたマスが少なく角打ちの隙を限定」し、shape「玉と金銀を低く広げて大駒の打ち込みを減らす形」と一致 |
+| komaochi（駒落ち型） | 🟢 | wj-teaiwari で 上手＝駒を落とす側、下手＝全駒を受ける側が確認でき、subtype taden（下手用）・zougan/kagi（上手用）の割り当ては wj-kakoi の「角落ちで、下手本定跡に対する上手の囲い」「角落ち上手、△5三銀型右四間飛車で現れる」「おもに二枚落ちで、下手中飛車で用いる」と正確に対応 |
+
+**SETUPS**
+
+| setup | 判定 | 内容 |
+|---|---|---|
+| hirame | 🟢 | sj-hirame 座標付き図の 飛58・角77 を正確に反映 |
+| empty | 🟢 | 「囲い側で全駒を指定」ラベルと用途（muteki・gendai-anaguma・hidarigyoku など引用図が furibisha/ibisha 想定と衝突する場合）に妥当 |
+| kakuochi | 🟢 | missing:'角' は角落ち上手（角のみ欠落）と wj-teaiwari の手合割定義に一致。validate.js が missing を全駒期待枚数から減算する仕様とも整合 |
 
 ## 4. 新規出典の一覧
 
-（作業中）id / title / publisher / url / 確認できた内容
+確認した新規 `[[ref]]`（sj-…=shougi.jp「将棋研究」、wj-…=Wikipedia日本語版、we-…=Wikipedia英語版）。いずれも実在を確認し、ウィキテキストの盤面図または HTML の駒画像 alt をデコードして照合した。
+
+| ref | title | publisher | 確認できた内容 |
+|---|---|---|---|
+| sj-hayagakoi | 早囲い（壁囲い）とは？ | shougi.jp | 図: 玉38・銀48・金49・桂29・香19＋歩列7段。本文は「3手で組める」→hayagakoi・santegakoi の4八駒の区別を裏付け |
+| sj-sante | 三手囲いとは？ | shougi.jp | 図: 玉38・金48・銀39・桂29・香19。「当サイトでは4八金型を三手囲い」と明記（desc と整合） |
+| sj-ginmino | 銀美濃とは？ | shougi.jp | 図: 玉28・銀38・銀58・金49・歩16 ほか → ginmino core と一致 |
+| sj-tyonmage-mino | ちょんまげ美濃とは？ | shougi.jp | 図: 玉28・銀38・金49・歩26 ほか（図は片美濃型省略）。本文は「3八銀・4九金・5八金を配置」→ core の金58を裏付け |
+| sj-bouzu-mino | 坊主美濃とは？ | shougi.jp | 図: 玉28・銀38・金49・歩（2筋無し）→ core・hand 歩と一致 |
+| sj-hirame | 平目戦法とは？ | shougi.jp | 座標付き全盤図: 玉28・銀38/68・金49/59・飛58・角77・歩16 27 37 47 56 67 76 87 96 → hirame 修正の根拠 |
+| sj-taden | 多伝囲いとは？ | shougi.jp | 金多伝図（銀48・金46型）/銀多伝図（金48・銀46型）→ kintaden の別形として観察注記 |
+| sj-hashigyoku-ginkanmuri | 端玉銀冠（米長玉）とは？ | shougi.jp | 図: 玉98・銀87・金78・金67・桂89・香99 → 既存 ibisha エントリと整合（対象外だが左右反転の比較に使用） |
+| sj-kakoi-index | 将棋の囲い一覧 | shougi.jp | 分類（早囲い・三手囲い・最強囲い・いちご囲いなど）→ santegakoi/hayagakoi/muteki の分類を裏付け |
+| sj-kinmusou | 金無双とは？ | shougi.jp | 図: 玉38・銀28・金48・金58・歩16 ほか → 監査済 kinmusou と整合（対象外） |
+| sj-migiyagura | 右矢倉とは？ | shougi.jp | 図: 玉28・銀37・金38・金47 → 監査済と整合（対象外） |
+| sj-kimuramino | 木村美濃とは？ | shougi.jp | 図: 玉28・金38・銀47・桂37・歩16 ほか → 監査済と整合（対象外） |
+| wj-mino | 美濃囲い | Wikipedia日本語版 | 銀美濃・片美濃・金美濃・ダイヤモンド・ちょんまげ・坊主・木村美濃の図。ちょんまげ＝2筋歩を突いた形（本文）・坊主＝玉頭歩なし（本文）を裏付け |
+| wj-furibisha-anaguma | 振り飛車穴熊 | Wikipedia日本語版 | 基本形図・現代穴熊・広瀬流の図組み → gendai-anaguma・furianaguma との対比 |
+| wj-anaguma | 穴熊囲い | Wikipedia日本語版 | 現代穴熊（金39・金47）・広瀬流（金48・金49）・相振り4八金型（金48・金38）・田尻/松尾流/Big4 の図 → gendai-anaguma・48kin 修正の根拠 |
+| wj-hidarigyoku | 左玉 | Wikipedia日本語版 | 図1田丸流・図4-1高田流6六角型・図4-2高田流6八角銀多伝型・図4-3高田流6八飛型・図5中原流・実戦図 → hidarigyoku 修正の根拠 |
+| wj-muteki | 無敵囲い | Wikipedia日本語版 | 図: 玉59・飛58・銀48/68・金49/69 → muteki core と完全一致。「最強囲い」「初心者囲い」呼称も確認 |
+| wj-taden | 多伝囲い | Wikipedia日本語版 | 図1（先手銀多伝/後手金多伝）・図2（銀多伝基本図、金78・飛58）→ gintaden/kintaden 修正の根拠 |
+| wj-gintaden | 銀多伝 | Wikipedia日本語版 | 多伝囲い記事へのリダイレクト（節）→ 銀多伝戦法の解説を裏付け |
+| wj-zougan | 象嵌（将棋） | Wikipedia日本語版 | 銀象眼（左: 玉77・銀67・銀78・桂87）・金象眼（右: 玉27・銀17・金38・桂37）の端寄り型図 → kinzogan/ginzogan の別形情報 |
+| wj-teaiwari | 将棋の手合割 | Wikipedia日本語版 | 上手＝駒を落とす側・下手＝全駒を受ける側、角落ち＝上手の角を除く → setup kakuochi の missing と各エントリ側の整合を裏付け |
+| wj-kakoi | 囲い | Wikipedia日本語版 | 穴熊・カニ・elmo・舟・盾・文鎮・音無し・金美濃・かんぴょう・串カツ・ミレニアム・中住まい・中原・金無双・右矢倉・左玉（高田流）・金象眼・銀象眼・カギ の図 → kagi・hidarigyoku・kinzogan・ginzogan 修正の根拠 |
+| wj-kinmusou | 金無双 | Wikipedia日本語版 | 「金二枚が横に並ぶ」「4筋はうさぎ耳」等 → kinmusou family の shape と監査済エントリに整合（oosumi への言及はなし） |
+| wj-hidarimino | 左美濃 | Wikipedia日本語版 | 四枚美濃・左銀冠・米長玉型図 → furibisha-hashigyoku の左右反転元として一致 |
+| wj-nakabisha | 中飛車 | Wikipedia日本語版 | 中飛車の駒組み図・「中飛車左穴熊」「平目は本来香落ち上手の戦法」→ hirame・nakabisha-hidari-anaguma の根拠 |
+| wj-chudan | 中段玉 | Wikipedia日本語版 | 中段玉の定義・四段端玉・空中楼閣・久夢流図 → chudan family・yondanhashigyoku の根拠 |
+| we-castle | Castle (shogi) | Wikipedia英語版 | Cozy（大住＝玉38・金48・銀39）・Wall（玉38・銀48・金59）・Flatfish（玉28・銀38・金49/59）・Elephant Eye（玉67・銀57・金68/銀68・桂77）・Aerokin（玉17・銀27・桂37・金38/47・香18）・Fourth Rank Edge King（玉96・金86/76・銀66・桂77）等 → oosumi・hirame・kinzogan・ginzogan・airkin・chudan の根拠 |
+| wj-kakoi（参考外） | 大住囲い | Wikipedia日本語版 | （別記事）「大住囲い（大隅囲い、おおすみがこい）…3手で完成」は dbpedia 抜粋で確認。「こじまり囲い」は未確認 → 【要確認】 |
+
+---
+
+## 観察メモ（判定に含めないが参考になる事項）
+
+- **shougi.jp の類型図の歩列**: 早囲い・三手囲い・坊主美濃・ちょんまげ美濃の4件の図は、file1 歩を7段（歩17）で描く。一方で銀美濃図は歩16、平目の全盤図は歩96/16 を明示するなど、サイト内でも一貫していない。データ側は振り飛車実戦の標準である歩16を使う監査済み美濃系と一貫しているため、修正は適用しない（sj 図は汎用歩列であり、歩57（5六歩と矛盾する位置）まで含む）。
+- **komaochi の上手の飛車**: kinzogan の filler 飛28 は引用図に無いが、角落ち上手の飛車の位置として妥当。kagi の飛車は引用図どおり 59 に修正。
+- **nakabisha-hidari-anaguma の歩57**: 中飛車では5六歩が標準だが、左穴熊完成形では5筋歩は未突きの局面も想定されるため残置。
+- **from の整合**: bouzumino（from: katamino）は WP 本文の「片美濃よりもはるかに玉頭が弱い」に対応し妥当。furibisha-hashigyoku（from: gincan）・airkin（from: gincan）・48kin/gendai-anaguma（from: furianaguma）は親→発展の駒移動が成立（gendai-anaguma は金38→47＋金39残留と一致するよう修正済み）。

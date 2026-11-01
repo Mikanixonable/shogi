@@ -325,7 +325,7 @@ Kakoi.CASTLES.push(
   {
     id: 'hirame', name: '平目', short: '平目', reading: 'ひらめ', side: 'furibisha', family: 'low', subtype: 'hirame', setup: 'hirame',
     core: '玉28 金59 金49 銀38 銀68',
-    shell: '歩76 歩66 歩56 歩16 歩97 歩87 歩47 歩37 歩27',
+    shell: '歩96 歩87 歩76 歩67 歩56 歩47 歩37 歩27 歩16',
     rest: '',
     filler: '香99 香19 桂89 桂29',
     tags: ['中飛車', '低陣', '角交換'],
@@ -338,13 +338,13 @@ Kakoi.CASTLES.push(
   },
   {
     id: 'hidarigyoku', name: '左玉（高田流）', short: '左玉', reading: 'ひだりぎょく',
-    aliases: ['高田流左玉'], side: 'furibisha', family: 'hidarigyoku', subtype: 'takada', setup: 'furibisha', kingWing: 'rook',
+    aliases: ['高田流左玉'], side: 'furibisha', family: 'hidarigyoku', subtype: 'takada', setup: 'empty', kingWing: 'rook',
     core: '玉78 銀67 金58 金38',
-    shell: '歩16',
-    rest: '銀47',
-    filler: '香19 桂29 歩46 歩37 歩27',
+    shell: '歩17 歩27 歩37 歩47 歩56 歩65 歩76 歩85 歩96',
+    rest: '銀66 桂77',
+    filler: '香99 香19 桂29 角68 飛89',
     tags: ['相振り飛車', '対振り飛車', '玉飛接近'],
-    desc: '振り飛車側が玉を左翼（7〜8筋）に囲う構え[[wj-hidarigyoku]]。図は高田流の一例で、向かい飛車型では相手飛車から玉を遠ざけ、対振り飛車でも8筋に飛車を回して使う[[wj-hidarigyoku]]。玉飛接近の格言に反するが、陣形のバランスと打ち込みにくさを重視する。',
+    desc: '振り飛車側が玉を左翼（7〜8筋）に囲う構え[[wj-hidarigyoku]]。図は高田流の▲6八角・銀多伝型で、銀を6六・6七に縦に並べ、飛車を8九（一段飛車）に転回した形[[wj-hidarigyoku|wj-kakoi]]。玉飛接近の格言に反するが、陣形のバランスと打ち込みにくさを重視する。',
     ratings: { hard: 3, wide: 4, top: 3, side: 3, quick: 3 },
     pros: [
       { t: '相手飛車から玉が遠く、上部への圧力を受けにくい[[wj-hidarigyoku]]', sq: ['78', '67'] },
@@ -357,7 +357,7 @@ Kakoi.CASTLES.push(
     attacks: [
       { id: 'gyokuto', name: '玉頭攻め', t: '右辺の薄さを突き、△2四歩から銀・角・桂を集めて玉頭へ迫る。', gote: '歩24 銀22 角45', target: ['76', '67', '78'] },
     ],
-    note: '左玉には田丸流・高田流など複数の配置がある。本データは高田流の一例で、飛車と玉が近い意図的な形をkingWingで示す[[wj-hidarigyoku|wj-kakoi]]。',
+    note: '左玉には田丸流・高田流・松浦流など複数の配置がある。本データは日本語版「囲い」記事の高田流図（▲6八角・銀多伝型、飛8九の一段飛車）に従う[[wj-hidarigyoku|wj-kakoi]]。',
     sources: [{ ref: 'wj-hidarigyoku', for: '配置・解説' }, { ref: 'wj-kakoi', for: '分類' }],
   },
   {
@@ -479,7 +479,7 @@ Kakoi.CASTLES.push(
     side: 'furibisha', family: 'komaochi', subtype: 'kagi', setup: 'kakuochi',
     core: '玉78 銀88 金67 金58 銀57 桂77 桂37',
     shell: '歩97 歩87 歩76 歩66 歩56 歩47 歩36 歩26 歩17',
-    filler: '香99 香19 飛38',
+    filler: '香99 香19 飛59',
     tags: ['駒落ち', '角落ち上手', '変形'],
     desc: '角落ちの上手が下手の△5三銀型右四間飛車に対して組む囲い（玉7八・銀8八・金6七/5八・銀5七・桂7七/3七）[[wj-kakoi]]。金銀がカギ状に連なる形。',
     note: '駒落ち（角落ち上手）専用のため角を持たない[[wj-teaiwari]]。日本語版の図に従う[[wj-kakoi]]。',
