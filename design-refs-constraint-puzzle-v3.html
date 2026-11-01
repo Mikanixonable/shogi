@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>制約バー修正案「駒つぎ」v3 — 駒の凹凸と多角形の全対応</title>
+<title>制約バー修正案「駒つぎ」v3.1 — 浅い突起・大きな戦型胞・全駒多角形</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,11 +11,10 @@
 <script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
 <style>
 /* design-refs-constraint-puzzle-v3: 駒つぎの形状検討。
-   - 継ぎ手: 首が絞れて頭が膨らむ、現実のパズルらしい突起に
-   - 囲いの凹凸: 玉=四辺すべて突起、金/銀=上凸・後凹・左凹・右凸（駒の向き基準）
-   - 歩: 駒の五角形シルエット（3案で比較）
-   - 戦法: B案ベースの多角形を全駒に拡張（玉8・飛6・角5・銀7・金4・桂菱・歩菱）
-   - 戦型の大胞・河の印・側ラベル・関係ピルは六角形のまま */
+   - 継ぎ手: 首が絞れて頭が膨らむ形状を維持しつつ浅くし、中央に漢字の余地を確保
+   - 囲い: 歩を取り除きコア駒のみ。玉=四辺突起、金/銀=上凸・後凹・左凹・右凸
+   - 戦型の大きな六角胞: ひと回り大きく。表記は「振飛車」
+   - 戦法: B案ベースの多角形を全駒に拡張（玉8・飛6・角5・銀7・金4・桂菱・歩菱） */
 :root {
   --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
   --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
@@ -74,7 +73,7 @@ button { font:inherit; color:inherit; }
 .pbar svg { display:block; width:100%; height:auto; overflow:visible; }
 .pb-hit { cursor:pointer; }
 .hx-str { fill:var(--fg); }
-.hx-str-t { fill:var(--bg); font:800 12px var(--font-d); text-anchor:middle; }
+.hx-str-t { fill:var(--bg); font:800 13px var(--font-d); text-anchor:middle; }
 .hx-ghost { fill:none; stroke:var(--line-2); stroke-width:1.2; stroke-dasharray:3 3; }
 .hx-t { fill:var(--fg); font-family:var(--font-d); font-weight:700; text-anchor:middle; }
 .hx-tname { fill:var(--fg2); font-family:var(--font-b); font-weight:700; text-anchor:middle; }
@@ -85,11 +84,9 @@ button { font:inherit; color:inherit; }
 .pk-core .pk-skin { fill:color-mix(in srgb,var(--kc,var(--accent)) 22%,var(--bg)); }
 .pk-gyoku .pk-skin { fill:var(--accent); }
 .pk-shell .pk-skin { fill:color-mix(in srgb,var(--fg) 5%,var(--bg)); }
-.pk-pawn .pk-skin { fill:color-mix(in srgb,var(--fg) 7%,var(--bg)); stroke:color-mix(in srgb,var(--fg) 38%,var(--bg)); stroke-width:1; }
 .pk-kanji { font:700 11px var(--font-d); fill:var(--fg); text-anchor:middle; dominant-baseline:central; }
 .pk-gyoku .pk-kanji { fill:var(--bg); }
-.pk-minor .pk-kanji { font-size:8px; fill:var(--fg2); font-weight:500; }
-.pk-pawn .pk-kanji { font-size:8.5px; fill:var(--fg); }
+.pk-minor .pk-kanji { font-size:8.5px; fill:var(--fg2); font-weight:500; }
 .pk-joint { fill:none; stroke:color-mix(in srgb,var(--kc,var(--fg)) 45%,var(--bg)); stroke-width:1; pointer-events:none; }
 .pk-shelljoint { stroke:color-mix(in srgb,var(--fg) 28%,var(--bg)); }
 .tc-skin { fill:color-mix(in srgb,var(--kc,var(--t-silver)) 26%,var(--bg)); stroke:var(--bg); stroke-width:1.4; }
@@ -163,11 +160,11 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
 <body>
 
 <header class="top">
-  <h1>制約バー修正案「駒つぎ」v3</h1>
+  <h1>制約バー修正案「駒つぎ」v3.1</h1>
   <nav>
     <a href="#joint">継ぎ手</a>
     <a href="#shapes">戦法の形</a>
-    <a href="#variants">歩の形・3案</a>
+    <a href="#variants">突起の深さ・3案</a>
     <a href="#mobile">モバイル</a>
     <a href="#compare">比較</a>
   </nav>
@@ -177,67 +174,64 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
 
 <div class="wrap">
   <div class="intro">
-    <h2>駒ごとの凹凸と、全駒対応の多角形</h2>
-    <p>v2（design-refs-constraint-puzzle-v2.html）からの形状検討です。要件は3点――(1) 継ぎ手を「首が絞れて頭が膨らむ」現実のパズルの突起に、(2) 囲いの駒に役割ごとの凹凸を持たせる（玉=四辺すべて突起、金・銀=上に突起・後ろと左に凹み・右に突起）、(3) 歩を駒の形に。あわせて戦法の多角形（B案ベース）を桂・金・歩・玉にも拡張し、<b>歩の扱いを3案</b>で比較します。</p>
+    <h2>浅い突起で漢字を読めるピースに</h2>
+    <p>v3からの修正版です。変更は4点――(1) 戦型の六角胞をひと回り大きくし、表記を「振飛車」に、(2) 囲いから歩を取り除きコアの駒だけに、(3) 突起の形状は概ね維持しながら浅くして、駒名が突起に重ならないよう中央の空間を確保。(4) 突起の深さ・太さを<b>3案</b>で比較します。戦法の多角形（全7系統）と、玉=四辺突起・金銀=方向凹凸の決まりはv3のままです。</p>
   </div>
 
   <!-- ================= 継ぎ手 ================= -->
   <div class="part" id="joint">
-    <h2>Ⅰ　継ぎ手：膨らむ突起と、駒ごとの凹凸</h2>
-    <p>v2の継ぎ手は首が細いだけで頭が小さく、まだ「出っ張り」に見えました。本物のパズルの突起は、根元が細く絞られ（首）、先端が左右に張り出した丸い頭をしています。頭が首より広いため「食い込み」ができ、ピース同士が抜けなくなります。</p>
+    <h2>Ⅰ　継ぎ手：形は保ったまま浅く</h2>
+    <p>v3の突起は深すぎて、凹みのある駒では駒名が輪郭に近づきすぎていました。「首が絞れて頭が膨らむ」形状はそのままに、深さを抑えると中央のスペースが生まれます。</p>
     <div class="cmp">
-      <div class="bad2"><h4>v2：首があるが頭が小さい</h4><div class="zoombox" id="jointOld"></div></div>
-      <div><h4>v3：首が絞れて頭が膨らむ</h4><div class="zoombox" id="jointNew"></div></div>
+      <div class="bad2"><h4>v3：深い突起（漢字に近い）</h4><div class="zoombox" id="jointOld"></div></div>
+      <div><h4>v3.1：浅い突起（中央に余白）</h4><div class="zoombox" id="jointNew"></div></div>
     </div>
-    <p class="try">継ぎ手の形状: 辺の30〜70%を使い、エッジの内側へ一度沈んでから首（幅=辺の約18%）で立ち上がり、頭（首より左右へ約4%張り出す丸）で蓋をする、という描き方です。深さはセル高さの約26%。</p>
-
-    <h3 style="margin:26px 0 4px;font:700 16px/1.4 var(--font-d)">駒ごとの凹凸（将棋の駒の向きで決まる）</h3>
-    <p>突起と凹みの割り当てを駒の種類で固定します。向きはその駒自身の向き（自分=上が敵陣）で、「上」は前（敵側）、「後ろ」は自陣側です。相手側は180°反転します。</p>
+    <h3 style="margin:26px 0 4px;font:700 16px/1.4 var(--font-d)">駒ごとの凹凸（v3と同じ決まり）</h3>
+    <p>突起と凹みの割り当てはv3のままです。玉は四辺すべて突起、金・銀は「上=凸・後ろ=凹・左=凹・右=凸」（駒自身の向き基準・相手は180°反転）。金銀同士はこの向きで自動的に噛み合い、玉に接する辺だけ相手側が凹みになります。</p>
     <div class="figure" id="piecePatterns"></div>
-    <p class="try">共有辺は自動的に噛み合います: 金・銀のパターン（上凸・下凹・左凹・右凸）は自分自身と互い違いに噛み合う向きになっていて、横に並ぶと右凸×左凹、縦に並ぶと下凹×上凸で必ず嵌まります。玉と接する辺だけは<b>玉の突起が優先</b>され、相手側の辺は凹みになります（玉に他の駒が「受ける」形）。歩とその他の駒（桂・香）は残った辺を交互の凸凹で埋めます。</p>
   </div>
 
   <!-- ================= 戦法の形 ================= -->
   <div class="part" id="shapes">
-    <h2>Ⅱ　戦法ピースの形：B案（系統多角形）の全駒対応</h2>
-    <p>主役駒の形で系統を判別する案を、データ上にある全7系統（js/data/tactic-families.js）に拡張します。角数・形は駒の格や見た目に準じます。桂と歩はどちらも菱形ですが、桂は縦に鋭く、歩は扁平で小さくして区別します。</p>
+    <h2>Ⅱ　戦法ピースの形：系統多角形（全駒対応）</h2>
+    <p>v3と同じです。主役駒の形で系統を判別し、角数・形は駒の格や見た目に準じます。桂と歩はどちらも菱形ですが、桂は縦に鋭く、歩は扁平で小さくして区別します。</p>
     <div class="shapebook" id="shapeBook"></div>
-    <p class="try">金と銀は指定外のため提案: 銀=七角形（v2の案を継続・角数の多い側）、金=正方形（軸平行。菱形と混同しないよう回転しない）。正方形は「金=固い・動きが少ない」印象にも合います。空き枠の幽霊も系統の形で描きます。</p>
+    <p class="try">金と銀は指定外のため提案: 銀=七角形、金=正方形（軸平行。菱形と混同しないよう回転しない）。空き枠の幽霊も系統の形で描きます。</p>
   </div>
 
-  <!-- ================= 歩の形・3案 ================= -->
+  <!-- ================= 突起の深さ・3案 ================= -->
   <div class="part" id="variants">
-    <h2>Ⅲ　囲いの歩を駒の形に：3案</h2>
-    <p>共通部分（玉の四辺突起・金銀の凹凸・多角形の戦法・六角形の戦型胞）は同一で、<b>歩のピースの描き方</b>だけを変えます。上の帯=相手、下の帯=自分。歩の先端は河の方向を向きます（自分=上・相手=下、盤と同じ向き）。</p>
+    <h2>Ⅲ　突起の深さ・太さ：3案</h2>
+    <p>共通部分（大きな戦型胞・歩を抜いた囲い・多角形の戦法・駒の凹凸の決まり）は同一で、<b>突起のプロファイル</b>だけを変えます。上の帯=相手、下の帯=自分。</p>
     <div class="ctrl">
       <button type="button" data-sc="full">完成形（両側）</button>
       <button type="button" data-sc="meonly">自分だけ</button>
       <button type="button" data-sc="implied">既定値だけ</button>
       <button type="button" data-sc="ng">嵌まらない囲い</button>
-      <button type="button" data-sc="furibisha">振り飛車にする</button>
+      <button type="button" data-sc="furibisha">振飛車にする</button>
       <span class="sep"></span>
       <button type="button" id="oppBtn" aria-pressed="true">相手を表示</button>
     </div>
 
     <div class="variant" id="vA">
-      <h3><span class="no">A</span>歩＝駒形五角形・継ぎ手あり</h3>
-      <p class="lead">歩を将棋駒の五角形にし、隣と接する辺は平らにして突起・凹みを持たせる案。隣がいる側面は縦の平辺・上に隣がいる先端は截頭の平辺になり、共有辺はすべて正確に噛み合います。最も「パズルのピースとしての歩」に忠実です。</p>
+      <h3><span class="no">A</span>半分の深さ（形状そのまま）</h3>
+      <p class="lead">v3の突起をそのまま深さ約半分（セル高の約13%）に縮めた案。凹凸の表情は保ちつつ、凹みの侵入が浅くなって駒名の回りに余白ができます。要件の素直な読みです。</p>
       <div class="stagebox"><div class="pbar" data-vbar="A"></div><div class="demo-boardtop"></div></div>
-      <div class="pts"><span>✓ 歩の形が将棋そのもの</span><span>✓ 共有辺はすべて噛み合う</span><span>△ 隣接でシルエットが少し変形する</span></div>
+      <div class="pts"><span>✓ パズル感を保ちつつ漢字が読める</span><span>✓ 形状パラメータの変更だけで済む</span><span>△ 継ぎ目の主張はやや弱まる</span></div>
     </div>
 
     <div class="variant" id="vB">
-      <h3><span class="no">B</span>歩＝駒形五角形・継ぎ手なし</h3>
-      <p class="lead">歩をそのままの五角形で描き、歩自身は継ぎ手を持たない案。隣のピースの突起が歩の領域へ差し込むだけで、歩のシルエットは常にきれいな五角形です。「刺さる歩」という表現になり、形状は最も素直です。</p>
+      <h3><span class="no">B</span>ごく浅い突起（漢字最優先）</h3>
+      <p class="lead">深さをさらに半分（セル高の約8%）まで落とした案。凹凸は「節」のような小さな起伏になり、駒名のまわりはほぼ平坦です。読みやすさを最優先するならこの深さです。</p>
       <div class="stagebox"><div class="pbar" data-vbar="B"></div><div class="demo-boardtop"></div></div>
-      <div class="pts"><span>✓ 歩の形がいつも完全な五角形</span><span>✓ 実装が最も簡単</span><span>△ 突起が歩に重なって見えることがある</span><span>△ 歩は「嵌まっている」感が薄い</span></div>
+      <div class="pts"><span>✓ 駒名の余白が最大</span><span>✓ 密集していても輪郭が静か</span><span>△ 遠目には凹凸が読み取りにくい</span></div>
     </div>
 
     <div class="variant" id="vC">
-      <h3><span class="no">C</span>歩＝タイルに駒印（最小変更）</h3>
-      <p class="lead">歩のセルはv2と同じ継ぎ手つきタイルのまま、中に小さな五角形の駒印と漢字を入れる案。外形は変わらないので噛み合いは完全に保たれ、「歩は駒として描く」要件はアイコンで満たします。</p>
+      <h3><span class="no">C</span>細身の浅い突起（中央を広く確保）</h3>
+      <p class="lead">深さは案Aと同じで、突起の横幅を約7割に絞る案。凹凸の食い込みは浅いまま、突起の占める横幅が小さいので、駒の中央部がより広く使えます。小さなセルとのバランスが良い形です。</p>
       <div class="stagebox"><div class="pbar" data-vbar="C"></div><div class="demo-boardtop"></div></div>
-      <div class="pts"><span>✓ 噛み合い・実装ともに安全</span><span>✓ 漢字が読みやすい</span><span>△ 歩の「形」への変更感は最も薄い</span></div>
+      <div class="pts"><span>✓ 浅さ＋細さで中央が最も広い</span><span>✓ 突起どうしの間隔が開いて見通しが良い</span><span>△ 突起が細く、形状の認識はやや難しい</span></div>
     </div>
   </div>
 
@@ -254,17 +248,17 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
 
   <!-- ================= 比較 ================= -->
   <div class="part" id="compare">
-    <h2>Ⅴ　案の比較（歩の扱い）</h2>
+    <h2>Ⅴ　案の比較（突起のプロファイル）</h2>
     <table class="spec">
-      <thead><tr><th></th><th>A　駒形＋継ぎ手</th><th>B　駒形のみ</th><th>C　タイル＋駒印</th></tr></thead>
+      <thead><tr><th></th><th>A　半分の深さ</th><th>B　ごく浅い</th><th>C　細身で浅い</th></tr></thead>
       <tbody>
-        <tr><td>歩の将棋らしさ</td><td>◎（形＋嵌まり）</td><td>◎（形）</td><td>△（印のみ）</td></tr>
-        <tr><td>噛み合いの正確さ</td><td>◎（共有辺はすべて凹凸）</td><td>△（突起が歩に重なる）</td><td>◎</td></tr>
-        <tr><td>見た目の素直さ</td><td>△（隣接で変形）</td><td>◎（常に五角形）</td><td>○</td></tr>
-        <tr><td>実装コスト</td><td>中（隣接で頂点生成）</td><td>小（五角形のみ）</td><td>小</td></tr>
+        <tr><td>パズルらしさ</td><td>○</td><td>△</td><td>○</td></tr>
+        <tr><td>駒名の読みやすさ</td><td>○</td><td>◎</td><td>◎</td></tr>
+        <tr><td>凹凸の分かりやすさ</td><td>○</td><td>△</td><td>△</td></tr>
+        <tr><td>実装コスト</td><td>小（深さの変更のみ）</td><td>小</td><td>小（幅パラメータ追加）</td></tr>
       </tbody>
     </table>
-    <p class="try">推奨は <b>案A</b>: 「歩もパズルのピース」というコンセプトを最も忠実に実現し、玉の全辺突起・金銀の方向凹凸と同じルールで統一できます。斜め接続しか持たない歩（例: 舟囲いの歩）は継ぎ手を持たず完全な五角形になるため、案Bと同じ見た目になります。</p>
+    <p class="try">推奨は <b>案A</b>: 要件の「形状を概ね維持しながら浅く」をそのまま実現し、漢字の余白も確保できます。実装上は継ぎ手の深さパラメータを変えるだけなので移行も最小です。漢字の大きさを優先するなら案B、外観の静かさを優先するなら案Cが向いています。</p>
   </div>
 </div>
 
@@ -304,10 +298,9 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
   const FAMG = { rook: '飛', silver: '銀', kaku: '角', kei: '桂', fu: '歩', kin: '金', gyoku: '玉' };
   const FAMC = { rook: 'var(--t-rook)', silver: 'var(--t-silver)', kaku: 'var(--t-kaku)',
                  kei: 'var(--t-kei)', fu: 'var(--t-fu)', kin: 'var(--t-kin)', gyoku: 'var(--t-gyoku)' };
-  // 多角形の対応: 数=n角形、'sq'=正方形、'dm'=縦長菱形、'dmS'=扁平な小菱形
   const FAMPOLY = { gyoku: 8, rook: 6, kaku: 5, silver: 7, kin: 'sq', kei: 'dm', fu: 'dmS' };
   const FAMS = { ibisha: ['rook', 'silver', 'kaku', 'kei', 'fu'], furibisha: ['rook'] };
-  const SN = { ibisha: '居飛車', furibisha: '振り飛車' };
+  const SN = { ibisha: '居飛車', furibisha: '振飛車' };
   const WN = { me: '自分', opp: '相手' };
   const WM = { me: '▲', opp: '△' };
   const MINOR = '香桂';
@@ -341,7 +334,6 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
       return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
     });
   };
-  // 系統の形（B案ベース）: fam → 頂点列
   const famShapeV = (cx, cy, fam, r, up) => {
     const def = FAMPOLY[fam];
     if (def === 'sq') { const a = r * .82; return [[cx - a, cy - a], [cx + a, cy - a], [cx + a, cy + a], [cx - a, cy + a]]; }
@@ -353,12 +345,15 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
   const segPath = segs => segs.map(([a, b]) => `M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}`).join('');
 
   // ---------- 継ぎ手 ----------
-  // v3: 首が絞れて頭が膨らむ、現実のパズルらしい突起（s=+1 で進行方向左=外側へ突起）
-  function edge(p0, p1, s = 0, d = 7) {
+  // 首が絞れて頭が膨らむ突起。s=+1 で進行方向左=外側へ突起。d=深さ、w=幅の係数（1=辺の30〜70%）
+  function edge(p0, p1, s = 0, d = 7, w = 1) {
     if (!s) return `L${f1(p1[0])} ${f1(p1[1])}`;
     const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy);
     const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
-    const P = (t, o = 0) => [p0[0] + ux * t * L + nx * o * s, p0[1] + uy * t * L + ny * o * s];
+    const P = (t, o = 0) => {
+      const tt = .5 + (t - .5) * w;
+      return [p0[0] + ux * tt * L + nx * o * s, p0[1] + uy * tt * L + ny * o * s];
+    };
     const pt = q => `${f1(q[0])} ${f1(q[1])}`;
     return `L${pt(P(.30))}` +
       `C${pt(P(.315, -.09 * d))} ${pt(P(.355, -.08 * d))} ${pt(P(.395, .18 * d))}` +
@@ -370,59 +365,26 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
       `C${pt(P(.645, -.08 * d))} ${pt(P(.685, -.09 * d))} ${pt(P(.70))}` +
       `L${pt(p1)}`;
   }
-  // v2の継ぎ手（比較用）: 首はあるが頭が小さい
-  function edgeV2(p0, p1, s = 0, d = 7) {
-    if (!s) return `L${f1(p1[0])} ${f1(p1[1])}`;
-    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy);
-    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
-    const P = (t, o = 0) => [p0[0] + ux * t * L + nx * o * s, p0[1] + uy * t * L + ny * o * s];
-    const pt = q => `${f1(q[0])} ${f1(q[1])}`;
-    return `L${pt(P(.33))}` +
-      `C${pt(P(.34, -.05 * d))} ${pt(P(.38, .1 * d))} ${pt(P(.41, .42 * d))}` +
-      `C${pt(P(.42, .98 * d))} ${pt(P(.47, 1.06 * d))} ${pt(P(.5, 1.06 * d))}` +
-      `C${pt(P(.53, 1.06 * d))} ${pt(P(.58, .98 * d))} ${pt(P(.59, .42 * d))}` +
-      `C${pt(P(.62, .1 * d))} ${pt(P(.66, -.05 * d))} ${pt(P(.67))}` +
-      `L${pt(p1)}`;
-  }
-  function cellPath(x, y, w, h, e, d = 7, ed = edge) {
+  // v3（深い突起・比較用）
+  function edgeDeep(p0, p1, s = 0, d = 7) { return edge(p0, p1, s, d * 2); }
+  function cellPath(x, y, w, h, e, d = 7, jw = 1, ed = edge) {
     return `M${f1(x)} ${f1(y)}` +
-      ed([x, y], [x + w, y], e.n, d) +
-      ed([x + w, y], [x + w, y + h], e.e, d) +
-      ed([x + w, y + h], [x, y + h], e.s, d) +
-      ed([x, y + h], [x, y], e.w, d) + 'Z';
-  }
-  // 歩の駒形セル（案A）: apex=河側の先端。隣がいる辺は平らにして継ぎ手を持つ
-  // e: {n,s,e,w}（画面座標の向き。自分: n=上/河側、相手: s=下/河側が先端）
-  function pawnCell(x, y, w, h, e, up, d = 7, ed = edge) {
-    const jA = up ? e.n : e.s;          // 先端（河側）の辺
-    const jB = up ? e.s : e.n;          // 基部（自陣側）の辺
-    const flatA = jA !== 0;             // 先端側に隣がいる→先端を截頭
-    const V = [], J = [];
-    const push = (fx, fy, jAfter) => { V.push([x + w * fx, y + h * fy]); J.push(jAfter); };
-    if (up) {
-      if (flatA) { push(.30, 0, jA); push(.70, 0, 0); } else push(.5, .03, 0);
-      if (e.e) { push(1, .40, e.e); push(1, 1, jB); } else { push(.985, .40, 0); push(.85, 1, jB); }
-      if (e.w) { push(0, 1, e.w); push(0, .40, 0); } else { push(.15, 1, 0); push(.015, .40, 0); }
-    } else {
-      // 相手（先端が下）: 時計回り 左上→右上→右→先端→左
-      if (e.w) push(0, 0, jB); else push(.15, 0, jB);
-      if (e.e) { push(1, 0, e.e); push(1, .60, 0); } else { push(.85, 0, 0); push(.985, .60, 0); }
-      if (flatA) { push(.70, 1, jA); push(.30, 1, 0); } else push(.5, .97, 0);
-      if (e.w) push(0, .60, e.w); else push(.015, .60, 0);
-    }
-    let d0 = `M${f1(V[0][0])} ${f1(V[0][1])}`;
-    for (let i = 0; i < V.length; i++) d0 += ed(V[i], V[(i + 1) % V.length], J[i] || 0, d);
-    return d0 + 'Z';
+      ed([x, y], [x + w, y], e.n, d, jw) +
+      ed([x + w, y], [x + w, y + h], e.e, d, jw) +
+      ed([x + w, y + h], [x, y + h], e.s, d, jw) +
+      ed([x, y + h], [x, y], e.w, d, jw) + 'Z';
   }
 
   // ---------- 帯の描画 ----------
-  // variant: 'A' | 'B' | 'C'（歩の扱いが違うだけ）
+  // variant: 'A' | 'B' | 'C'（突起の深さ・太さが違うだけ）
+  const JDEPTH = { A: .13, B: .08, C: .13 };   // セル高に対する深さ
+  const JWIDTH = { A: 1, B: 1, C: .7 };        // 突起の幅係数
   function renderBar(S, variant = 'A', opt = {}) {
     const s = 15, hw = Math.sqrt(3) * s;
     const uw = opt.cell || 22, uh = uw * 6 / 5;
     const X0 = 104, colX = f => X0 + (9 - f) * uw;
     const XR = X0 + 9 * uw, W = XR + 146;
-    const SX = 56, STR_R = s * 1.35;
+    const SX = 56, STR_R = s * 1.7;
     const sel = S.sel || '';
     const isSel = (who, kind, fam) => sel === `${who}.${kind}` || sel === `${who}.${kind}.${fam}`;
 
@@ -434,8 +396,7 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
           const q = up ? p : { p: p.p, f: 10 - p.f, r: 10 - p.r };
           cells.push({ p: q.p, f: q.f, r: q.r, kind });
         };
-        for (const p of parse(c.core)) put(p, 'core');
-        for (const p of parse(c.shell)) put(p, 'shell');
+        for (const p of parse(c.core)) put(p, 'core');   // 囲いはコア駒のみ（歩は描かない）
       }
       return { st, c, up, cells,
         minR: cells.length ? Math.min(...cells.map(cl => cl.r)) : 0,
@@ -443,7 +404,6 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
     };
     const L = { me: lay('me'), opp: lay('opp') };
 
-    const TAC_H = 2 * s;
     const oTop = 6, oTacCy = oTop + s + 4;
     const oCasTop = oTacCy + s + 9;
     const rivY = oCasTop + L.opp.nRows * uh + 12;
@@ -465,19 +425,19 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
 
       // --- 戦型の大きな六角胞＋茎 ---
       svg += `<g class="mod pb-hit" data-k="strategy" data-who="${who}" role="button" tabindex="0" aria-label="${WN[who]}の戦型 ${SN[st.strategy]}（押すと反転）">` +
-        `<path class="hx-cell hx-str" d="${roundPath(hexV(SX, midY, STR_R), 4)}"/>`;
+        `<path class="hx-cell hx-str" d="${roundPath(hexV(SX, midY, STR_R), 5)}"/>`;
       const snc = [...SN[st.strategy]];
       snc.forEach((ch, i) => {
-        svg += `<text class="hx-str-t" x="${SX}" y="${f1(midY - (snc.length - 1) * 8 / 2 + i * 8 + 3)}">${ch}</text>`;
+        svg += `<text class="hx-str-t" x="${SX}" y="${f1(midY - (snc.length - 1) * 9.5 / 2 + i * 9.5 + 3)}">${ch}</text>`;
       });
       if (cells.length) {
         const x1 = Math.min(...cells.map(cl => colX(cl.f))) - 4;
         const ys = [casTop + uh * .5, midY, casTop + L[who].nRows * uh - uh * .5];
-        svg += `<path class="hx-stem" d="${segPath(ys.map((y, i) => [[SX + STR_R * M2 * (i === 1 ? 1 : .82), midY + (i - 1) * 14], [x1, y]]))}"/>`;
+        svg += `<path class="hx-stem" d="${segPath(ys.map((y, i) => [[SX + STR_R * M2 * (i === 1 ? 1 : .82), midY + (i - 1) * 15], [x1, y]]))}"/>`;
       }
       svg += `</g>`;
 
-      // --- 戦法ピース（系統多角形・B案ベース全対応） ---
+      // --- 戦法ピース（系統多角形・全対応） ---
       const fams = FAMS[st.strategy] || [];
       fams.forEach((fam, i) => {
         const tid = st.tacticsSet && st.tacticsSet[fam], tc = tid && TACTICS[tid];
@@ -508,10 +468,9 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         svg += `</g>`;
       });
 
-      // --- 囲い: 玉=四辺突起 / 金銀=方向凹凸 / 歩=駒形 / 他=交互 ---
+      // --- 囲い: 玉=四辺突起 / 金銀=方向凹凸 / 歩は描かない ---
       if (c) {
         const occ = new Map(cells.map(cl => [cl.f + ',' + cl.r, cl]));
-        // 駒の向き基準の凹凸（自分: 上=nが敵側 / 相手は180°反転）
         const PAT = up ? { n: 1, s: -1, e: 1, w: -1 } : { n: -1, s: 1, e: -1, w: 1 };
         const OPPD = { n: 's', s: 'n', e: 'w', w: 'e' };
         const NB = { n: [0, -1], s: [0, 1], e: [-1, 0], w: [1, 0] };
@@ -528,11 +487,11 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
               continue;
             }
             const rn = roleOf(nb);
-            if (ro === 'gyoku') e[d] = 1;              // 玉は常に突起
-            else if (rn === 'gyoku') e[d] = -1;        // 玉に接する辺は凹
-            else if (ro === 'kg') e[d] = PAT[d];       // 金銀の決まり（互いに自動的に噛み合う）
-            else if (rn === 'kg') e[d] = -PAT[OPPD[d]]; // 金銀に接する辺は相手の逆
-            else {                                   // 残りは交互
+            if (ro === 'gyoku') e[d] = 1;
+            else if (rn === 'gyoku') e[d] = -1;
+            else if (ro === 'kg') e[d] = PAT[d];
+            else if (rn === 'kg') e[d] = -PAT[OPPD[d]];
+            else {
               e[d] = d === 'n' ? -p(cl.f, cl.r - 1) : d === 's' ? p(cl.f, cl.r)
                    : d === 'e' ? p(cl.f - 1, cl.r) : -p(cl.f, cl.r);
             }
@@ -548,26 +507,17 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         const cx0 = Math.min(...cells.map(cl => colX(cl.f)));
         const cx1 = Math.max(...cells.map(cl => colX(cl.f) + uw));
         const tf = st.ng ? ` transform="translate(${up ? 10 : -10} ${up ? -8 : 8}) rotate(${up ? 2.6 : -2.6} ${f1((cx0 + cx1) / 2)} ${f1(cy1)})"` : '';
+        const jd = uh * JDEPTH[variant], jw = JWIDTH[variant];
         svg += `<g class="${cls.join(' ')}" data-k="castle" data-who="${who}" role="button" tabindex="0" aria-label="${WN[who]}の囲い ${c.n}${st.imp ? '（既定値）' : ''}${st.ng ? '（両立しない）' : ''}" style="--kc:var(--f-${c.fam || 'funa'})"${tf}>`;
         const jointD = [];
         for (const cl of cells) {
           const x = colX(cl.f), y = casY(who, cl.r, L[who]);
-          const isPawn = cl.p === '歩';
           const minor = MINOR.includes(cl.p);
-          const e = edgeOf(cl);
-          let skin;
-          if (isPawn && variant === 'A') skin = pawnCell(x, y, uw, uh, e, up, uh * .26);
-          else if (isPawn && variant === 'B') skin = pawnCell(x, y, uw, uh, { n: 0, s: 0, e: 0, w: 0 }, up, uh * .26);
-          else skin = cellPath(x, y, uw, uh, e, uh * .26);
+          const skin = cellPath(x, y, uw, uh, edgeOf(cl), jd, jw);
           jointD.push(skin);
-          const kx = isPawn && variant !== 'C' ? x + uw / 2 : x + uw / 2;
-          const ky = isPawn && variant !== 'C' ? y + uh * (up ? .60 : .40) : y + uh / 2;
-          svg += `<g class="pk-${isPawn ? 'pawn' : (cl.kind === 'shell' || minor ? 'shell' : 'core')}${cl.p === '玉' ? ' pk-gyoku' : ''}${minor ? ' pk-minor' : ''}">` +
+          svg += `<g class="pk-${minor ? 'shell' : 'core'}${cl.p === '玉' ? ' pk-gyoku' : ''}${minor ? ' pk-minor' : ''}">` +
             `<path class="pk-skin" d="${skin}"/>` +
-            (isPawn && variant === 'C'
-              ? `<path class="pk-skin" d="${roundPath(komaPts(x + uw / 2, y + uh * .5, uw * .62, uh * .66, up), 1.4)}" style="fill:color-mix(in srgb,var(--fg) 10%,var(--bg));stroke:color-mix(in srgb,var(--fg) 40%,var(--bg))"/>`
-              : '') +
-            `<text class="pk-kanji" x="${f1(kx)}" y="${f1(ky)}">${cl.p}</text></g>`;
+            `<text class="pk-kanji" x="${f1(x + uw / 2)}" y="${f1(y + uh / 2)}">${cl.p}</text></g>`;
         }
         for (const d0 of jointD) svg += `<path class="pk-joint pk-shelljoint" d="${d0}"/>`;
         const name = c.n;
@@ -618,19 +568,6 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         const x = slotX(i) + 14;
         svg += `<line class="cf-sm ${t}" x1="${f1(x)}" y1="${f1(oTacCy + s + 2)}" x2="${f1(x)}" y2="${f1(rivY - 3)}"/>`;
       }
-      for (const who of ['me', 'opp']) {
-        const mk = S.marks && S.marks[who] && S.marks[who].castle;
-        if (!mk) continue;
-        const lay = L[who];
-        const frontCells = lay.cells.filter(cl =>
-          !lay.cells.some(o => o.f === cl.f && (who === 'me' ? o.r < cl.r : o.r > cl.r)));
-        for (const cl of frontCells) {
-          const x = colX(cl.f), y = casY(who, cl.r, lay);
-          const e = who === 'me' ? [x + (cl.p === '歩' ? uw * .3 : 2), y + 1.5, x + (cl.p === '歩' ? uw * .7 : uw - 2), y + 1.5]
-                                 : [x + (cl.p === '歩' ? uw * .3 : 2), y + uh - 1.5, x + (cl.p === '歩' ? uw * .7 : uw - 2), y + uh - 1.5];
-          svg += `<line class="cf-sm ${mk}" x1="${f1(e[0])}" y1="${f1(e[1])}" x2="${f1(e[2])}" y2="${f1(e[3])}"/>`;
-        }
-      }
       if (S.seam) {
         const w2 = S.seam.length * 9.5 + 16;
         svg += `<g class="cf-seam"><rect x="${f1(SX - w2 / 2)}" y="${f1(rivY - 8.5)}" width="${f1(w2)}" height="17" rx="8.5"/><text x="${f1(SX)}" y="${f1(rivY)}">#${S.seam}</text></g>`;
@@ -639,42 +576,32 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
     svg += `</svg>`;
     return { svg, W, H };
   }
-  // 小さな駒の五角形（案Cの駒印）
-  const komaPts = (cx, cy, w, h, up) => {
-    const t = up ? -1 : 1;
-    return [[cx, cy + t * h / 2], [cx + w / 2, cy + t * h / 5],
-            [cx + w * .4, cy - t * h / 2], [cx - w * .4, cy - t * h / 2], [cx - w / 2, cy + t * h / 5]];
-  };
 
   // ---------- 継ぎ手・駒パターンの図 ----------
   {
     const mkCell = (x, y, w, h, e, ed) =>
-      `<g transform="translate(${x} ${y})"><path d="${cellPath(0, 0, w, h, e, h * .26, ed)}" style="fill:color-mix(in srgb,#b5652b 22%,var(--bg));stroke:var(--fg)"/></g>`;
+      `<g transform="translate(${x} ${y})"><path d="${cellPath(0, 0, w, h, e, h * .14, 1, ed)}" style="fill:color-mix(in srgb,#b5652b 22%,var(--bg));stroke:var(--fg)"/></g>`;
     const joint = (a, b) =>
       `<svg viewBox="0 0 200 90" style="width:190px;height:auto">` +
-      mkCell(20, 12, 30, 36, { n: 0, s: 0, e: 0, w: 0 }, a === 'old' ? edgeV2 : edge) +
-      mkCell(80, 12, 30, 36, { n: 0, s: 0, e: -1, w: 0 }, a === 'old' ? edgeV2 : edge) +
-      mkCell(80 + 30, 12, 30, 36, { n: 0, s: 0, e: 0, w: 1 }, a === 'old' ? edgeV2 : edge) +
+      mkCell(20, 12, 30, 36, { n: 0, s: 0, e: 0, w: 0 }, a === 'old' ? edgeDeep : edge) +
+      mkCell(80, 12, 30, 36, { n: 0, s: 0, e: -1, w: 0 }, a === 'old' ? edgeDeep : edge) +
+      mkCell(80 + 30, 12, 30, 36, { n: 0, s: 0, e: 0, w: 1 }, a === 'old' ? edgeDeep : edge) +
       `<text x="95" y="76" text-anchor="middle" style="font:600 10px var(--font-b);fill:var(--muted)">${b}</text></svg>`;
-    document.getElementById('jointOld').innerHTML = joint('old', '首だけ・頭が小さい');
-    document.getElementById('jointNew').innerHTML = joint('new', '首が絞れて頭が膨らむ');
+    document.getElementById('jointOld').innerHTML = joint('old', '深い突起（v3・セル高の26%）');
+    document.getElementById('jointNew').innerHTML = joint('new', '浅い突起（案A・セル高の13%）');
 
-    // 駒ごとの凹凸の図
     const pat = [
       { t: '玉', e: { n: 1, s: 1, e: 1, w: 1 }, cap: '四辺すべて突起。どの方向からも出る', col: 'var(--accent)' },
       { t: '金・銀（▲向き）', e: { n: 1, s: -1, e: 1, w: -1 }, cap: '上=凸・後ろ=凹・左=凹・右=凸。自分自身と互い違いに噛み合う', col: 'var(--f-funa)' },
       { t: '金・銀（△向き）', e: { n: -1, s: 1, e: -1, w: 1 }, cap: '相手は180°反転（上=後ろなので凹）', col: 'var(--f-yagura)' },
-      { t: '歩・他の駒', e: null, cap: '歩は駒の五角形（§Ⅲ）、桂・香などは残りの辺を交互の凹凸で', col: 'var(--muted)' },
+      { t: '桂・香など', e: { n: 1, s: 0, e: -1, w: 0 }, cap: '決まりを持たない駒は残った辺を交互の凹凸で', col: 'var(--muted)' },
     ];
     document.getElementById('piecePatterns').innerHTML = pat.map(o =>
       `<div class="fig"><div class="zoombox"><svg viewBox="0 0 120 92" style="width:112px;height:auto">` +
-      (o.e ? `<path d="${cellPath(30, 18, 60, 60, o.e, 15)}" style="fill:color-mix(in srgb,${o.col.includes('var') ? 'currentColor' : o.col} 22%,var(--bg));color:${o.col};stroke:var(--fg)"/>` +
-             `<text x="60" y="50" text-anchor="middle" dominant-baseline="central" style="font:800 14px var(--font-d);fill:var(--fg)">${o.t[0]}</text>`
-           : `<rect x="30" y="18" width="60" height="60" rx="3" style="fill:var(--faint);stroke:var(--line-2);stroke-dasharray:4 3"/>` +
-             `<text x="60" y="50" text-anchor="middle" dominant-baseline="central" style="font:800 14px var(--font-d);fill:var(--muted)">歩</text>`) +
+      `<path d="${cellPath(30, 16, 60, 60, o.e, 8)}" style="fill:color-mix(in srgb,currentColor 22%,var(--bg));color:${o.col};stroke:var(--fg)"/>` +
+      `<text x="60" y="50" text-anchor="middle" dominant-baseline="central" style="font:800 14px var(--font-d);fill:var(--fg)">${o.t[0]}</text>` +
       `</svg></div><div class="cap"><b>${o.t}</b>${o.cap}</div></div>`).join('');
 
-    // 戦法の形図鑑
     const book = [['gyoku', '玉の筋'], ['rook', '飛の筋'], ['kaku', '角の筋'], ['silver', '銀の筋'], ['kin', '金の筋'], ['kei', '桂の筋'], ['fu', '歩の筋']];
     document.getElementById('shapeBook').innerHTML = book.map(([fam, lb]) =>
       `<div class="it"><svg viewBox="0 0 52 52" style="width:52px;height:52px">` +
@@ -731,7 +658,7 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
       st.strategy = st.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
       st.castle = DEFCASTLE[st.strategy]; st.ng = false; st.imp = false;
       st.tacticsSet = st.strategy === 'furibisha' ? { rook: 'shiken' } : { rook: null, silver: 'bougin', kaku: null, kei: null, fu: null };
-      demo.seam = demo.me.strategy === demo.opp.strategy ? (demo.me.strategy === 'ibisha' ? '相居飛車' : '相振り飛車') : '対抗形';
+      demo.seam = demo.me.strategy === demo.opp.strategy ? (demo.me.strategy === 'ibisha' ? '相居飛車' : '相振飛車') : '対抗形';
     } else if (k === 'castle' || k === 'tactic') {
       demo.sel = `${who}.${k}${k === 'tactic' ? '.' + g.dataset.fam : ''}`;
     } else if (k === 'x') {
