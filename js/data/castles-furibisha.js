@@ -330,6 +330,7 @@ Kakoi.CASTLES.push(
     filler: '香99 香19 桂89 桂29',
     tags: ['中飛車', '低陣', '角交換'],
     desc: '中飛車から左金を5九へ寄せ、金銀を低く横に配置して角交換や大駒の打ち込みに備える形[[sj-hirame|wj-nakabisha]]。戦法名と囲い名の両方で使われる。',
+    note: '本来は香落ち上手の戦法として知られる[[wj-nakabisha]]。',
     ratings: { hard: 4, wide: 4, top: 2, side: 3, quick: 2 },
     pros: [{ t: '低い金銀配置で自陣の空間を減らし、角打ちの隙を作りにくい[[sj-hirame]]' }],
     cons: [{ t: '玉を深く囲う形ではなく、左銀をさばけないと攻めが細くなる[[sj-hirame]]' }],
