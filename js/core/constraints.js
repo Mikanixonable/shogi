@@ -236,7 +236,7 @@ window.Kakoi = window.Kakoi || {};
   // dock-view / board-screen / board-detail-view / constraint-mode / hash-link で共有する（S2）
   // strategy はスロットを持たない（sides() が導く値）が、選択はできる。
   // tactic は駒ごとの枠が複数あるので、第3要素に戦法の id を持てる（'me.tactic.bougin'）
-  const SEL_RE = /^(me|opp)\.(tactic|castle|strategy)(?:\.([^\s.]+))?$/;
+  const SEL_RE = /^(me|opp)\.(tactic|castle|strategy|senkei)(?:\.([^\s.]+))?$/;
   /** 'me.tactic.bougin' → {who:'me', kind:'tactic', id:'bougin'}。形式が違えば null */
   const parseSel = s => {
     const m = SEL_RE.exec(String(s || ''));
@@ -267,44 +267,153 @@ window.Kakoi = window.Kakoi || {};
     const e = S[id] || S[(Kakoi.SENKEI_RESOLVE || {})[id]];
     return (e && e.name) || SENKEI_FALLBACK[id];
   };
+  // ---------- 戦型の細分類（coverage-senkei-and-reading.md §3-3 Phase 1） ----------
+  // 対抗形は3つの直交軸で表す: 振り飛車の種類（rook）× 居飛車側の方針（approach）×
+  // 振り飛車の型（style=角交換振り飛車）。同じ軸は排他、違う軸は葉のラベルに「・」で併記
+  const ROOK_KIND = { 5: 'naka', 6: 'shiken', 7: 'sanken', 8: 'mukai' };   // 先手視点の飛車の筋 → 振り飛車の種類
+  const ROOK_NAME = { naka: '中飛車', shiken: '四間飛車', sanken: '三間飛車', mukai: '向かい飛車' };
+  const SLOW_CASTLE = new Set(['anaguma', 'mino']);   // 居飛車側で手数がかかる囲いの系統（持久戦の目安）
+  // 主の戦法（飛車優先）の筋。明示層優先: useImplied=false のパスでは暗示の層を根拠にしない
+  const rookFileOf = (st, useImplied) => {
+    if (!useImplied && st.implied && st.implied.tactic) return null;
+    const t = findTactic(st.tacticId);
+    return t && t.lead && t.lead.piece === '飛' ? t.lead.files[0] : null;
+  };
+  // 居飛車側の方針: 明示した戦法の pace（rapid→急戦 / slow→持久戦）、
+  // なければ明示した囲いの系統（穴熊・美濃系→持久戦）。境界は曖昧なので代理指標（§3-3）
+  const paceOf = (st, useImplied) => {
+    const ids = (!useImplied && st.implied && st.implied.tactic) ? [] : (st.tacticIds || []);
+    const p = ids.map(findTactic).filter(Boolean).map(t => t.pace)
+      .find(x => x === 'rapid' || x === 'slow');
+    if (p) return p;
+    const c = (!useImplied && st.implied && st.implied.castle) ? null : findCastle(st.castleId);
+    return c && SLOW_CASTLE.has(c.family) ? 'slow' : null;
+  };
+  // 明示した戦法の senkei タグに id があるか（useImplied なら暗示の層も見る）
+  const hasTag = (st, tag, useImplied) => {
+    const ids = (!useImplied && st.implied && st.implied.tactic) ? [] : (st.tacticIds || []);
+    return ids.map(findTactic).filter(Boolean).some(t => (t.senkei || []).includes(tag));
+  };
+  const explicitTactics = st => !(st.implied && st.implied.tactic) && (st.tacticIds || []).length > 0;
+  // 葉のラベルに別軸の項目を「・」で連結する。sub/style は右ドックでの導線に使う
+  const leafJoin = (leaf, seg, extra) => leaf
+    ? { ...leaf, label: `${leaf.label}・${seg}`, ...extra }
+    : { id: extra.sub ? extra.sub.id : extra.style.id, label: extra.sub ? extra.sub.label : extra.style.label, ...extra };
+  // 対抗形の葉: 振り飛車の種類 → 居飛車側の方針 → 振り飛車の型（角交換）の順に連結
+  const taikouLeaf = (furi, ibi, useImplied) => {
+    let leaf = null;
+    const rk = ROOK_KIND[rookFileOf(furi, useImplied)];
+    if (rk) leaf = { id: `taikou-${rk}`, label: senkeiName(`taikou-${rk}`) };
+    const pace = paceOf(ibi, useImplied);
+    if (pace) {
+      const subId = pace === 'rapid' ? 'kyusen' : 'jikyusen';
+      leaf = leafJoin(leaf, senkeiName(subId), { sub: { id: subId, label: senkeiName(subId) } });
+    }
+    if (hasTag(furi, 'kakukoukan-furi', useImplied)) {
+      const e = Kakoi.SENKEI['kakukoukan-furi'] || {};
+      leaf = leafJoin(leaf, e.short || '角交換', { style: { id: 'kakukoukan-furi', label: senkeiName('kakukoukan-furi') } });
+    }
+    if (leaf && leaf.sub && leaf.sub.id === leaf.id) delete leaf.sub;
+    if (leaf && leaf.style && leaf.style.id === leaf.id) delete leaf.style;
+    return leaf;
+  };
+  // 相振り飛車の葉: 両側の ROOK_KIND が同じなら 相中飛車・相三間飛車のエントリ
+  // （無い種類は「相四間飛車」）、違う筋は「三間飛車×向かい飛車」型の自由文（id は親の aifuri）。
+  // style 軸（角交換振り飛車）は相振りにも現れる
+  const aifuriLeaf = (me, opp, useImplied) => {
+    const ka = ROOK_KIND[rookFileOf(me, useImplied)], kb = ROOK_KIND[rookFileOf(opp, useImplied)];
+    let leaf = null;
+    if (ka && kb) {
+      const eid = `ai-${ka}`;
+      leaf = ka === kb && Kakoi.SENKEI[eid]
+        ? { id: eid, label: senkeiName(eid) }
+        : ka === kb
+          ? { id: 'aifuri', label: `相${ROOK_NAME[ka]}` }
+          : { id: 'aifuri', label: `${ROOK_NAME[ka]}×${ROOK_NAME[kb]}` };
+    }
+    if (hasTag(me, 'kakukoukan-furi', useImplied) || hasTag(opp, 'kakukoukan-furi', useImplied)) {
+      const e = Kakoi.SENKEI['kakukoukan-furi'] || {};
+      leaf = leafJoin(leaf, e.short || '角交換', { style: { id: 'kakukoukan-furi', label: senkeiName('kakukoukan-furi') } });
+    }
+    return leaf;
+  };
+  // 力戦: 両側が戦法を明示していてもどの戦型・細分類にも当たらないときの受け皿。
+  // 既定値だけの状態では出さない（§3-3）。点線のピルにするため implied:true を付ける
+  const rikisenLeaf = (me, opp) => (explicitTactics(me) && explicitTactics(opp))
+    ? { id: 'rikisen', label: senkeiName('rikisen') || '力戦' } : null;
   /**
    * 両側の実効状態から戦型ラベルを導出する。
    * @param {Object|null} me  sides() の出力（実効値で渡す）
    * @param {Object|null} opp 同上。null（相手を表示していない）なら戦型ラベルは出ない
-   * @returns {Array<{id:string, label:string}>}
+   * @returns {Array<{id:string, label:string, implied?:true}>}
    *   #相居飛車/#対抗形/#相振り飛車 は matchup.threat().kind から。
-   *   戦型は排他的な決定木（計画書 §2-1）で1つだけ。複数戦法のときは
-   *   「どれか1つでも条件を満たす戦法がある」で判定する:
-   *     1. 両者のいずれかの戦法が持ち駒に角を持つ → 角換わり
-   *     2. 両者のいずれかの戦法が yokofudori タグを持つ → 横歩取り
-   *     3. 両者の囲いが矢倉系 → 相矢倉。片方だけ → 矢倉
-   *     4. どちらかの囲いが雁木系 → 雁木（カニ・兜は refFamily があるので判定しない）
-   *     5. 両者のいずれかの戦法が aigakari タグを持つ → 相掛かり
-   *     6. どれにも当たらない → 出さない
+   *   葉のラベルは1つだけ（大分類と合わせてピル2枚が上限。§3-4-2）。
+   *   細分類（対抗形の種類×方針×型・相振りの筋）は §3-3 Phase 1。
+   *   まず明示した層だけを根拠に判定し、決まらなければ既定値で補った層（implied）も
+   *   含めて再判定し implied:true を付ける。両側が戦法を明示していてもどの戦型にも
+   *   当たらないときだけ #力戦 を implied で出す（既定値だけの状態では出さない）。
+   *   相居飛車の判定（計画書 §2-3 C 修正案 v2）:
+   *     1. 両者の戦法が持ち駒に角を持つ（盤の事実） → 角換わり
+   *     2. どちらかの戦法が yokofudori タグを持つ → 横歩取り（横歩を取るのは片側だけ）
+   *     3. 両側の戦法の senkei タグの交差が1つに絞れる → その戦型
+   *        （複数残るときだけ矢倉系・雁木系の囲いで絞る。片側だけタグがあればそれを使う）
+   *     4. タグで決まらなければ囲いだけが根拠: 矢倉系 → 矢倉、雁木系 → 雁木
+   *        （カニ・兜は refFamily があるので雁木戦とは呼ばない。計画書 §2-1）
+   *     5. 両側に矢倉の根拠（矢倉系の囲いか yagura タグ）がある → 相矢倉
+   *     6. どれにも当たらない → 力戦（両側明示のとき）/ 出さない
    */
   function labels(me, opp) {
     const out = [];
     if (!me || !opp || !Kakoi.matchup) return out;
     const th = Kakoi.matchup.threat(me, opp);
     out.push({ id: th.kind, label: th.label });
+    // ---------- 対抗形・相振り飛車の葉（§3-3 Phase 1 の細分類） ----------
+    if (th.kind === 'taikou-i' || th.kind === 'taikou-f' || th.kind === 'aifuri') {
+      const furi = th.kind === 'taikou-f' ? me : opp;
+      const ibi = th.kind === 'taikou-i' ? me : opp;
+      let leaf = th.kind === 'aifuri'
+        ? aifuriLeaf(me, opp, false)
+        : taikouLeaf(furi, ibi, false);
+      let implied = false;
+      if (!leaf) {
+        leaf = th.kind === 'aifuri' ? aifuriLeaf(me, opp, true) : taikouLeaf(furi, ibi, true);
+        implied = !!leaf;
+      }
+      if (!leaf && (leaf = rikisenLeaf(me, opp))) implied = true;
+      if (leaf && !out.some(x => x.id === leaf.id && x.label === leaf.label))
+        out.push({ ...leaf, ...(implied ? { implied: true } : {}) });
+      return out;
+    }
     if (me.strategy !== 'ibisha' || opp.strategy !== 'ibisha') return out;
-    const ts = st => (st.tacticIds && st.tacticIds.length ? st.tacticIds : [st.tacticId])
-      .map(findTactic).filter(Boolean);
-    const t1 = ts(me), t2 = ts(opp);
-    const c1 = findCastle(me.castleId), c2 = findCastle(opp.castleId);
-    const has = (list, tag) => list.some(t => (t.senkei || []).includes(tag));
-    const handKaku = list => list.some(t => (t.hand || '').includes('角'));
-    const isYagura = c => !!(c && c.family === 'yagura');
-    // カニ囲い・兜囲いは系統上は雁木だが「雁木」戦とは呼ばない（refFamily で除外。計画書 §2-1）
-    const isGangi = c => !!(c && c.family === 'gangi' && !c.refFamily);
-    let id = null;
-    if (handKaku(t1) && handKaku(t2)) id = 'kakugawari';
-    else if (has(t1, 'yokofudori') && has(t2, 'yokofudori')) id = 'yokofudori';
-    else if (isYagura(c1) && isYagura(c2)) id = 'aiyagura';
-    else if (isYagura(c1) || isYagura(c2)) id = 'yagura';
-    else if (isGangi(c1) || isGangi(c2)) id = 'gangi';
-    else if (has(t1, 'aigakari') && has(t2, 'aigakari')) id = 'aigakari';
-    if (id) out.push({ id, label: senkeiName(id) });
+    const evidence = (st, useImplied) => {                    // その側の根拠。useImplied=false なら明示した層だけ
+      const ids = st.tacticIds && st.tacticIds.length ? st.tacticIds : [st.tacticId];
+      const ts = (useImplied || !(st.implied && st.implied.tactic) ? ids : []).map(findTactic).filter(Boolean);
+      const c = (useImplied || !(st.implied && st.implied.castle)) ? findCastle(st.castleId) : null;
+      return { tags: new Set(ts.flatMap(t => t.senkei || [])),
+               kaku: ts.some(t => (t.hand || '').includes('角')),
+               yagura: !!(c && c.family === 'yagura'),
+               gangi: !!(c && c.family === 'gangi' && !c.refFamily) };   // カニ・兜は雁木戦と呼ばない
+    };
+    const decide = useImplied => {
+      const A = evidence(me, useImplied), B = evidence(opp, useImplied);
+      if (A.kaku && B.kaku) return 'kakugawari';                                      // 盤の事実: 両者の持ち駒に角
+      if (A.tags.has('yokofudori') || B.tags.has('yokofudori')) return 'yokofudori';  // 横歩を取るのは片側だけ
+      let cand = A.tags.size && B.tags.size ? [...A.tags].filter(x => B.tags.has(x))  // 戦法タグは交差
+               : [...(A.tags.size ? A.tags : B.tags)];
+      if (cand.length > 1) {                                                          // 複数残れば囲いで絞る
+        const by = cand.filter(x => (x === 'yagura' && (A.yagura || B.yagura)) || (x === 'gangi' && (A.gangi || B.gangi)));
+        cand = by.length === 1 ? by : [];
+      }
+      let id = cand.length === 1 ? cand[0] : null;
+      if (!id) id = (A.yagura || B.yagura) ? 'yagura' : (A.gangi || B.gangi) ? 'gangi' : null;  // 囲いだけが根拠
+      if (id === 'yagura' && (A.yagura || A.tags.has('yagura')) && (B.yagura || B.tags.has('yagura'))) return 'aiyagura';
+      return id;
+    };
+    let id = decide(false), implied = false;
+    // 両側が戦法を明示していてもどの戦型にも当たらない → 力戦（受け皿。点線で出す）
+    if (!id && rikisenLeaf(me, opp)) { id = 'rikisen'; implied = true; }
+    if (!id) { id = decide(true); implied = !!id; }
+    if (id) out.push({ id, label: id === 'aiyagura' ? '相矢倉' : senkeiName(id), ...(implied ? { implied: true } : {}) });
     return out;
   }
 

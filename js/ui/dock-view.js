@@ -44,6 +44,8 @@ window.Kakoi = window.Kakoi || {};
       this.who = 'me';
       this.kind = 'castle';
       this.filter = { me: 'ibisha', opp: 'ibisha' };   // 戦略の絞り込み（側ごと。表示だけの状態）
+      this.senkeiFilter = { me: null, opp: null };     // 戦型（細）の絞り込み（同じく表示だけの状態）
+      this._senkeiSig = null;                          // 出している戦型チップの並び
       this._strat = { me: null, opp: null };           // 絞り込みを最後に合わせた、導出した戦略
       this._last = null;
       this._whoPrev = null;                            // 前回表示していた側（切り替わりの向きの演出用）
@@ -61,6 +63,8 @@ window.Kakoi = window.Kakoi || {};
          `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
          `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
          `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
+         // 戦型（細）のチップ行: 組み合わせから候補を出し、一覧の表示を絞るだけ（制約にはしない）
+         `<div class="dk-senkei" role="group" aria-label="戦型（細）の絞り込み"></div>` +
          `<div class="dk-tools"><label class="dk-sort"><span>並べ方</span><select class="dk-sort-sel">` +
          K.dockGrids.CASTLE_SORTS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('') +
          `</select></label><span class="dk-key"></span><button type="button" class="dk-legend" aria-expanded="false" ` +
@@ -90,6 +94,15 @@ window.Kakoi = window.Kakoi || {};
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
         this.filter[this.who] = v;
         if (this._last) this.update(this._last.state, this._last.S);
+      });
+      // 戦型（細）のチップ: 一覧の表示を絞るだけで制約にはならない（'すべて' は空値）
+      this.senkeiRow = this.root.querySelector('.dk-senkei');
+      this.senkeiRow.addEventListener('click', e => {
+        const b = e.target.closest('button[data-value]');
+        if (!b) return;
+        this.senkeiFilter[this.who] = b.dataset.value || null;
+        this._syncSenkeiRow();
+        if (this._last) this._updatePane(this._last.state, this._last.S, this.who, this._last.state.showOpp);
       });
       this.sortWrap = this.root.querySelector('.dk-sort');
       this.sortSel = this.root.querySelector('.dk-sort-sel');
@@ -129,9 +142,11 @@ window.Kakoi = window.Kakoi || {};
       const narrow = this._mql.matches;
       if (narrow) {
         paneH.prepend(this.binder);        // [相手/自分][囲い|戦法]
-        tools.prepend(strat);              // [振り/居飛車][並べ方][凡例][?]
+        tools.prepend(this.root.querySelector('.dk-senkei'));
+        tools.prepend(strat);              // [振り/居飛車][戦型（細）][並べ方][凡例][?]
       } else {
         paneH.prepend(strat);              // 元の順序へ戻す
+        tools.before(this.root.querySelector('.dk-senkei'));
         this.el.appendChild(this.binder);  // ドック右端の縦バインダーに戻る
       }
       this.binder.setAttribute('aria-orientation', narrow ? 'horizontal' : 'vertical');
@@ -317,8 +332,27 @@ window.Kakoi = window.Kakoi || {};
       const st = S[who];
       if (this._strat[who] !== st.strategy) { this._strat[who] = st.strategy; this.filter[who] = st.strategy; }
       this.stratSeg.setValue(this.filter[who]);
+      // 戦型（細）のチップ: 組み合わせ（大分類）から候補を出す。変わったときだけ並び直す
+      const cand = K.dockGrids.senkeiCandidates(S.me, S.opp, showOpp);
+      const sig = cand.join(',');
+      if (sig !== this._senkeiSig) {
+        this._senkeiSig = sig;
+        this.senkeiRow.innerHTML =
+          `<button type="button" class="vchip" data-value="">すべて</button>` +
+          cand.map(id => `<button type="button" class="vchip" data-value="${esc(id)}">` +
+            `${esc((K.SENKEI[id] || {}).short || (K.SENKEI[id] || {}).name || id)}</button>`).join('');
+      }
+      if (this.senkeiFilter[who] && !cand.includes(this.senkeiFilter[who])) this.senkeiFilter[who] = null;
+      this._syncSenkeiRow();
       this._mount(who, kind);
       this._updatePane(state, S, who, showOpp);
+    }
+
+    // 戦型（細）チップの押下状態を反映する（'すべて' は空値）
+    _syncSenkeiRow() {
+      const cur = this.senkeiFilter[this.who] || '';
+      for (const b of this.senkeiRow.querySelectorAll('button[data-value]'))
+        b.setAttribute('aria-pressed', b.dataset.value === cur ? 'true' : 'false');
     }
 
     _updatePane(state, S, who, showOpp) {
@@ -338,7 +372,8 @@ window.Kakoi = window.Kakoi || {};
           : st[FIELD[it.kind]] === it.id;
         it.el.setAttribute(it.kind === 'tactic' ? 'aria-pressed' : 'aria-current',
           cur ? 'true' : 'false');
-        it.el.hidden = B.offItem(it, strat);
+        it.el.hidden = B.offItem(it, strat)
+          || !K.dockGrids.senkeiMatch(this.senkeiFilter[who] || null, it.kind, it.id);
         const implied = cur && st.implied[it.kind];
         B.badge(it.el, j, implied);
         if (it.ng) it.ng.textContent = j.level === 'ng' ? '✕' : '';

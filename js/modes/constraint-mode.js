@@ -59,6 +59,7 @@ window.Kakoi = window.Kakoi || {};
         onHover: (sqs, tone) => this.board.hover(sqs, tone),
         onAttack: attackId => this.store.set({ attackId, defense: null }),
         onSetConstraint: (w, k, id) => this._set(w, k, id),
+        onSenkei: id => this._select('me', 'senkei', id),
         onCombo: (w, id, withVs) => this._combo(w, id, withVs),
         onDefense: id => this.store.set({ defense: id }),
         onOpenTesuji: id => { if (this._openTesuji) this._openTesuji(id); },

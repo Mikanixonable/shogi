@@ -8,12 +8,19 @@ window.Kakoi = window.Kakoi || {};
 
   const findTactic = id => (Kakoi.TACTICS || []).find(t => t && t.id === id) || null;
   const findCastle = id => (Kakoi.CASTLES || []).find(c => c && c.id === id) || null;
+  // 戦型（SENKEI）の参照窓口。SENKEI_RESOLVE で別名 id（aiyagura → yagura）を解決する
+  const findSenkei = id => {
+    const S = Kakoi.SENKEI || {}, R = Kakoi.SENKEI_RESOLVE || {};
+    return S[id] || S[R[id]] || null;
+  };
   const tacticFamilyOf = t => t ? (Kakoi.TACTIC_FAMILIES || []).find(f => f && f.id === t.family) || null : null;
   const castleFamilyOf = c => c ? (Kakoi.CASTLE_FAMILIES || []).find(f => f && f.id === c.family) || null : null;
 
   // 層の日本語名（constraint-mode / board-detail-view / constraint-bar / dock-view / detail-sections で共通）
   // strategy はスロットを持たないが選択はできる（右ドックでその戦型の情報を見る層）
-  const LAYER_JA = { tactic: '戦法', castle: '囲い', strategy: '戦型' };
+  // senkei は strategy（居飛車／振り飛車）の「戦型」と区別するため「戦型（細）」とする
+  // （文献の戦型＝矢倉・角換わり…の細分類。coverage-senkei §3-4-4 の次善案）
+  const LAYER_JA = { tactic: '戦法', castle: '囲い', strategy: '戦型', senkei: '戦型（細）' };
   // 制約モデルのスキーマ: 層の既定順・側・層 → 実効値（sides() の戻り値）のフィールド名
   const KINDS = ['tactic', 'castle'];
   const WHOS = ['me', 'opp'];
@@ -27,14 +34,14 @@ window.Kakoi = window.Kakoi || {};
   // id==null のとき empty を返す。opt.short で短縮名 —— トーストなどで長い正式名を避ける）
   const nameOf = (kind, id, { short = false, empty = '（未選択）' } = {}) => {
     if (id == null) return empty;
-    const x = kind === 'tactic' ? findTactic(id) : findCastle(id);
+    const x = kind === 'tactic' ? findTactic(id) : kind === 'senkei' ? findSenkei(id) : findCastle(id);
     return x ? (short && x.short ? x.short : x.name) : id;
   };
 
   // その囲いを許す戦略の集合（strategies があればそれだけ、なければ side）
   const castleSides = c => (Array.isArray(c.strategies) ? c.strategies : [c.side]);
 
-  const api = { findTactic, findCastle, tacticFamilyOf, castleFamilyOf, LAYER_JA, KINDS, WHOS, FIELD, VS_MARK, strategyLabel, nameOf, castleSides };
+  const api = { findTactic, findCastle, findSenkei, tacticFamilyOf, castleFamilyOf, LAYER_JA, KINDS, WHOS, FIELD, VS_MARK, strategyLabel, nameOf, castleSides };
   Kakoi.lookup = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

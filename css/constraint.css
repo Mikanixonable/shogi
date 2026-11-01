@@ -56,6 +56,10 @@
 .cf-crack { fill:none; stroke:var(--bad); stroke-width:1.4; stroke-linejoin:round; }
 .cf-seam rect { fill:var(--bg); stroke:var(--line); }
 .cf-seam text { fill:var(--muted); font-size:10px; font-family:var(--font-b); }
+/* 河のピルのうち既定値で導いたラベル（力戦など）は既定胞と同じ網掛け＋点線 */
+.cf-seam.imp rect { fill:url(#cf-hatch); stroke-dasharray:3 2; }
+.cf-seam.sel rect { stroke:var(--accent); }
+.cf-seam.sel text { fill:var(--fg); }
 /* 既定値（implied）の網掛けパターンの部品 */
 .cf-imp-bg { fill:var(--bg); }
 .cf-imp-ln { stroke:var(--line-2); stroke-width:1.2; }

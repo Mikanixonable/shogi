@@ -5,7 +5,8 @@ window.Kakoi = window.Kakoi || {};
 
   class Repository {
     /** @param {{ CASTLES:object[], SETUPS:object, SOURCES:object, CASTLE_FAMILIES:object[], TACTICS?:object[], TACTIC_FAMILIES?:object[] }} data */
-    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS = [], TACTIC_FAMILIES = [] }) {
+    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS = [], TACTIC_FAMILIES = [],
+      SENKEI = {}, SENKEI_RESOLVE = {} }) {
       this._castles = CASTLES;
       this._setups = SETUPS;
       this._sources = SOURCES;
@@ -15,6 +16,8 @@ window.Kakoi = window.Kakoi || {};
       this._tactics = TACTICS;
       this._tacticFamilies = TACTIC_FAMILIES;
       this._tacticById = new Map(TACTICS.map(t => [t.id, t]));
+      this._senkei = SENKEI;
+      this._senkeiResolve = SENKEI_RESOLVE;
     }
 
     byId(id) { return this._byId.get(id); }
@@ -69,6 +72,14 @@ window.Kakoi = window.Kakoi || {};
     attackOf(castle, attackId) {
       return castle.attacks?.find(a => a.id === attackId) || null;
     }
+
+    // ===== 戦型（SENKEI） =====
+    /** 戦型エントリ（aiyagura → yagura など SENKEI_RESOLVE を通す） */
+    senkeiById(id) { return this._senkei[id] || this._senkei[this._senkeiResolve[id]] || null; }
+    /** その戦型に属する戦法（戦法側の senkei[] タグが唯一の正） */
+    tacticsOfSenkei(id) { return this._tactics.filter(t => (t.senkei || []).includes(id)); }
+    /** その戦法が属する戦型の id 一覧（senkei[] タグから） */
+    senkeiOfTactic(t) { return (t && t.senkei) || []; }
   }
 
   Kakoi.Repository = Repository;

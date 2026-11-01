@@ -12,8 +12,8 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  const KIND_CHAR = { t: 'tactic', c: 'castle', s: 'strategy' };
-  const KIND_LETTER = { tactic: 't', castle: 'c', strategy: 's' };
+  const KIND_CHAR = { t: 'tactic', c: 'castle', s: 'strategy', k: 'senkei' };
+  const KIND_LETTER = { tactic: 't', castle: 'c', strategy: 's', senkei: 'k' };
   const WHO_CHAR = { m: 'me', o: 'opp' };
   const WHO_LETTER = { me: 'm', opp: 'o' };
   // 盤面の状態を持つ store のキー。これらが変わるとハッシュを書き直す
@@ -25,7 +25,7 @@ window.Kakoi = window.Kakoi || {};
     return WHO_LETTER[who] + KIND_LETTER[kind] + (id ? `.${id}` : '');
   };
   const decodeSel = s => {
-    const m = /^([mo])([tcs])(?:\.([^\s.]+))?$/.exec(String(s || ''));
+    const m = /^([mo])([tcsk])(?:\.([^\s.]+))?$/.exec(String(s || ''));
     if (!m) return null;
     return `${WHO_CHAR[m[1]]}.${KIND_CHAR[m[2]]}` + (m[3] ? `.${m[3]}` : '');
   };

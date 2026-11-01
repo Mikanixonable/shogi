@@ -70,6 +70,12 @@
 }
 @media (hover:hover) { .dk-strategy button:hover { color:var(--fg); } }
 .dk-strategy button[aria-pressed="true"] { color:var(--fg); font-weight:800; box-shadow:inset 0 -2.5px 0 var(--accent); }
+/* 戦型（細）の絞り込み: 戦略チップ行の下に置く1行のチップ。1行で収めて横に流す */
+.dk-senkei { flex:none; display:flex; align-items:center; gap:5px; margin:0 0 6px; padding:0;
+             overflow-x:auto; scrollbar-width:none; }
+.dk-senkei::-webkit-scrollbar { display:none; }
+.dk-senkei .vchip { flex:none; padding:3px 10px; font-size:11px; }
+.dk-senkei[hidden] { display:none; }
 /* 一覧の見出し行: 並べ方（文字のドロップダウン）・いま見えている記号の凡例・? */
 .dk-tools { flex:none; display:flex; align-items:center; gap:6px 10px; flex-wrap:wrap; min-height:28px; margin:0 0 8px; }
 .dk-tools[hidden] { display:none; }

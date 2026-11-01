@@ -128,8 +128,8 @@ window.Kakoi = window.Kakoi || {};
       el.addEventListener('keydown', e => {
         if (e.key !== 'Delete' && e.key !== 'Backspace') return;
         const b = e.target.closest('.cf-hit');
-        if (!b || b.dataset.kind === 'strategy' || b.dataset.empty === 'true'
-          || b.dataset.implied === 'true') return;
+        if (!b || b.dataset.kind === 'strategy' || b.dataset.kind === 'senkei'
+          || b.dataset.empty === 'true' || b.dataset.implied === 'true') return;
         e.preventDefault();
         onRemove(b.dataset.who, b.dataset.kind, b.dataset.id || null);
       });
@@ -319,8 +319,12 @@ window.Kakoi = window.Kakoi || {};
       this._view = { y0, h: hEff, w: rightEdge };
       this.svg.setAttribute('viewBox', `0 ${f1(y0)} ${f1(rightEdge)} ${f1(hEff)}`);
       this.el.style.aspectRatio = `${f1(rightEdge)} / ${f1(hEff)}`;
+      // ピルの選択状態（描くときの朱縁と当たり判定に共有）
+      if (labels) for (const lab of labels)
+        lab.sel = sel.who === 'me' && sel.kind === 'senkei' && sel.id === lab.id;
       this._draw(mods, joints, seams, marks, labels, showOpp, nameOf);
       this._syncHits(mods);
+      this._syncPills(labels, sel, showOpp);
       this._syncOppBtn(showOpp);
     }
 
@@ -377,12 +381,14 @@ window.Kakoi = window.Kakoi || {};
         svg$('path', { d: roundPath(hexV(SX, y, s * 1.4), 3), class: 'cf-cell cf-ghost' }, g);
         svg$('text', { x: SX, y: y + 4, class: 'cf-opp-t', 'text-anchor': 'middle' }, g).textContent = '＋相手';
       }
-      // 関係ラベル（河の左端。戦型どうし・戦型の名前）
+      // 関係ラベル（河の左端。戦型どうし・戦型の名前。ピルは最大2枚=大分類＋葉。
+      // 押すと右ドックにその戦型の情報が出る。implied は既定胞と同じ網掛け＋点線）
       if (showOpp && labels && labels.length) {
         const yMid = (cy(3) + s + cy(4) - s) / 2;
-        labels.forEach((lab, i) => {
-          const g = svg$('g', { class: 'cf-seam' }, svg);
-          const y = yMid + (i - (labels.length - 1) / 2) * 19;
+        labels.slice(0, 2).forEach((lab, i) => {
+          const sel2 = lab.sel ? ' sel' : '';
+          const g = svg$('g', { class: `cf-seam${lab.implied ? ' imp' : ''}${sel2}` }, svg);
+          const y = yMid + (i - (Math.min(labels.length, 2) - 1) / 2) * 19;
           const w2 = lab.label.length * 10 + 16;
           svg$('rect', { x: SX - w2 / 2, y: y - 8.5, width: w2, height: 17, rx: 8.5 }, g);
           svg$('text', { x: SX, y: y + 0.5, 'text-anchor': 'middle' }, g).textContent = `#${lab.label}`;
@@ -594,6 +600,51 @@ window.Kakoi = window.Kakoi || {};
           if (x) x.remove();
           b.remove(); this._nodes.delete(k);
         }
+      }
+    }
+
+    // 河のピル（関係ラベル）の当たり判定: SVG のピルの上に透明ボタンを重ねる。
+    // 押すと右ドックにその戦型の情報が出る（onSelect('me','senkei',id)。戦型は
+    // 両側共通の情報なので選択上は me に寄せる）
+    _syncPills(labels, sel, showOpp) {
+      const seen = new Set();
+      if (showOpp && labels && labels.length) {
+        const v = this._view;
+        const yMid = (cy(3) + s + cy(4) - s) / 2;
+        labels.slice(0, 2).forEach((lab, i) => {
+          const y = yMid + (i - (Math.min(labels.length, 2) - 1) / 2) * 19;
+          const w2 = lab.label.length * 10 + 16;
+          const key = `senkei.${i}.${lab.id}`;   // 大分類と葉が同じ id でも別ピル（自由文ラベル）
+          seen.add(key);
+          let b = this._nodes.get(key);
+          if (!b) {
+            b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'cf-hit cf-pill';
+            this._nodes.set(key, b);
+          }
+          const sig = `${lab.id}|${lab.label}|${lab.implied}|${lab.sel}`;
+          if (b._sig !== sig) {
+            b._sig = sig;
+            b.dataset.who = 'me';
+            b.dataset.kind = 'senkei';
+            b.dataset.id = lab.id;
+            b.dataset.empty = 'false';
+            b.dataset.implied = lab.implied ? 'true' : 'false';
+            b.dataset.sel = lab.sel ? 'true' : 'false';
+            const t = `戦型のラベル「#${lab.label}」${lab.implied ? '（既定からの導出）' : ''}（押すと情報を見る）`;
+            b.title = t;
+            b.setAttribute('aria-label', t);
+          }
+          b.style.left = `${((SX - w2 / 2) / v.w * 100).toFixed(3)}%`;
+          b.style.top = `${((y - 8.5 - v.y0) / v.h * 100).toFixed(3)}%`;
+          b.style.width = `${(w2 / v.w * 100).toFixed(3)}%`;
+          b.style.height = `${(17 / v.h * 100).toFixed(3)}%`;
+          this.hits.appendChild(b);
+        });
+      }
+      for (const [k, b] of this._nodes) {
+        if (k.startsWith('senkei.') && !seen.has(k)) { b.remove(); this._nodes.delete(k); }
       }
     }
 

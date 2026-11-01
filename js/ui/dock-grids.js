@@ -275,5 +275,35 @@ window.Kakoi = window.Kakoi || {};
     return { ...v, fams, items: items(v.el) };
   }
 
-  K.dockGrids = { tactics, castles, CASTLE_SORTS };
+  // ---------- 戦型（細）の絞り込み ----------
+  // いまの組み合わせの大分類（両側の戦略から）→ その組に属し絞れる項目を持つ戦型チップ。
+  // 側別リスト（{ibisha,furibisha}）は平坦化して照合する
+  const flatIds = v => Array.isArray(v) ? v : [...(v && v.ibisha || []), ...(v && v.furibisha || [])];
+  const groupIdsOf = (me, opp, showOpp) => !showOpp
+    ? ['aiibisha', 'taikou', 'aifuri']    // 相手を出していなければ全部（大分類）
+    : [(me.strategy === 'ibisha')
+        ? (opp.strategy === 'ibisha' ? 'aiibisha' : 'taikou')
+        : (opp.strategy === 'ibisha' ? 'taikou' : 'aifuri')];
+  function senkeiCandidates(me, opp, showOpp) {
+    const SK = K.SENKEI || {};
+    const gs = groupIdsOf(me, opp, showOpp);
+    return Object.keys(SK).filter(id => {
+      const e = SK[id];
+      return e && gs.includes(e.group) && (flatIds(e.tactics).length || flatIds(e.castles).length);
+    });
+  }
+  // senkeiId のチップで項目を残すか。戦法は senkei[] タグと SENKEI.tactics、
+  // 囲いは SENKEI.castles と照合する（表示だけの状態。制約は変えない）
+  function senkeiMatch(senkeiId, kind, id) {
+    if (!senkeiId) return true;
+    const SK = K.SENKEI || {}, RES = K.SENKEI_RESOLVE || {};
+    const rid = SK[senkeiId] ? senkeiId : RES[senkeiId];
+    const e = rid && SK[rid];
+    if (!e) return true;
+    if (kind === 'castle') return flatIds(e.castles).includes(id);
+    const t = (K.TACTICS || []).find(t => t.id === id);
+    return !!t && (flatIds(e.tactics).includes(id) || (t.senkei || []).includes(rid));
+  }
+
+  K.dockGrids = { tactics, castles, senkeiCandidates, senkeiMatch, CASTLE_SORTS };
 })();
