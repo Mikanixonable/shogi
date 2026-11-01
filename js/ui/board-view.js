@@ -1,5 +1,5 @@
 // 盤の表示: マス・利きヒート・ハイライト（data-tone）の DOM を管理する。
-// 駒の対応づけ（どの駒がどこへ動いたか＝移動リスト）はここで1回だけ計算し（pieceMatch.plan）、
+// 駒の対応づけ（どの駒がどこへ動いたか＝移動リスト）はここで1回だけ計算し（piecePairing.plan）、
 // 駒そのものの生成・表示モードは駒レイヤが描くだけ:
 //   立体版 js/ui/piece-layer-3d.js（既定。移動リストどおり滑らせる） / DOM版 js/ui/piece-layer-dom.js（?flat・WebGL 非対応時。静止）
 window.Kakoi = window.Kakoi || {};
@@ -18,9 +18,36 @@ window.Kakoi = window.Kakoi || {};
       this.squares = document.createElement('div');
       this.squares.className = 'squares';
       els.board.prepend(this.squares);
+      els.board.prepend(this._woodLayers());
       this._lasting = { squares: [], tone: null };
       this._pieces = [];    // いま盤に描いている駒（次の移動リストの before。駒レイヤの並びと同じ）
       this.layer = this._pickLayer();
+    }
+
+    // 盤の地: 縁まで続く榧の柾目（.board-grain）と、漆を盛った太刀盛りの罫線・星（.board-lines）。
+    // 光は左上に固定（Kakoi.pieceArt と css/board.css の --lx/--ly と同じ）
+    _woodLayers() {
+      const frag = document.createDocumentFragment();
+      const NS = 'http://www.w3.org/2000/svg';
+      const grain = document.createElementNS(NS, 'svg');
+      grain.setAttribute('class', 'board-grain');
+      grain.setAttribute('aria-hidden', 'true');
+      grain.innerHTML = `<filter id="kaya-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">${
+        Kakoi.pieceArt.grainFilter(Kakoi.pieceArt.BOARD_GRAIN)}</filter><rect width="100%" height="100%" fill="#fff" filter="url(#kaya-grain)"/>`;
+      // 罫は盤の比率（9:9.6）のまま 90×96 の座標で引く（星が楕円にならない）
+      const lines = document.createElementNS(NS, 'svg');
+      lines.setAttribute('class', 'board-lines');
+      lines.setAttribute('viewBox', '0 0 90 96');
+      lines.setAttribute('aria-hidden', 'true');
+      let d = '';
+      for (let i = 0; i <= 9; i++) d += `M${i * 10} 0V96M0 ${(i * 96 / 9).toFixed(3)}H90`;
+      const hoshi = [[3, 3], [6, 3], [3, 6], [6, 6]]
+        .map(([x, y]) => `<circle cx="${x * 10}" cy="${(y * 96 / 9).toFixed(3)}" r=".75" fill="url(#kaya-hoshi)"/>`).join('');
+      lines.innerHTML = `<radialGradient id="kaya-hoshi" cx="50%" cy="50%" fx="36%" fy="30%" r="50%">
+          <stop offset="0" stop-color="#6b4a2a"/><stop offset=".6" style="stop-color:var(--wood-ink)"/></radialGradient>
+        <path class="board-rule" d="${d}"/>${hoshi}`;
+      frag.append(grain, lines);
+      return frag;
     }
 
     // 既定は立体駒。?flat 指定・three 未読込・WebGL 非対応・初期化失敗は DOM 駒に逃がす
@@ -43,7 +70,7 @@ window.Kakoi = window.Kakoi || {};
     render(position, { mode, heat, animate, trace }) {
       const anim = animate && !reducedMotion();
       const after = position.pieces.map(x => ({ p: x.p, owner: x.owner, role: x.role, sq: `${x.f}${x.r}` }));
-      const plan = Kakoi.pieceMatch.plan(this._pieces, after, anim ? trace : null);
+      const plan = Kakoi.piecePairing.plan(this._pieces, after, anim ? trace : null);
       this._pieces = plan.after;
       let html = '';
       for (let r = 1; r <= 9; r++) for (let f = 9; f >= 1; f--) {

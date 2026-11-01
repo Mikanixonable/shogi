@@ -28,8 +28,16 @@ window.Kakoi = window.Kakoi || {};
         `<marker id="rtHeadBad" ${MARKER_BODY}><path class="rt-head rt-hb" ${HEAD_D}/></marker>` +
         `<marker id="rtHeadInk" ${MARKER_BODY}><path class="rt-head rt-hi" ${HEAD_D}/></marker>` +
         '</defs>' +
-        '<g class="rt-g"></g>';
+        '<g class="rt-g"></g><g class="fk-g"></g>';
       this.routeLayer = this.svg.querySelector('.rt-g');
+      this.forkLayer = this.svg.querySelector('.fk-g');
+      this.throughSvg = document.createElementNS(NS, 'svg');
+      this.throughSvg.setAttribute('class', 'overlay overlay-through');
+      this.throughSvg.setAttribute('viewBox', '0 0 9 9');
+      this.throughSvg.setAttribute('preserveAspectRatio', 'none');
+      this.throughSvg.setAttribute('aria-hidden', 'true');
+      this.throughSvg.innerHTML = '<g class="rt-through-g"></g>';
+      this.throughLayer = this.throughSvg.querySelector('.rt-through-g');
 
       // 脅威の帯はマスの下（盤面の木目の上、駒とグリッド線・ヒートの下）に置く。
       // .sq は container-type で自分の重なり順を持つので、帯をマスの内側と外側で
@@ -43,8 +51,14 @@ window.Kakoi = window.Kakoi || {};
       this.contactLayer = document.createElement('div');
       this.contactLayer.className = 'ov-contacts';
       this.contactLayer.setAttribute('aria-hidden', 'true');
+      // 王手飛車の筋の印（打つマスに薄い駒の字）
+      this.forkMarks = document.createElement('div');
+      this.forkMarks.className = 'ov-forks';
+      this.forkMarks.setAttribute('aria-hidden', 'true');
       boardEl.appendChild(this.svg);
+      boardEl.appendChild(this.throughSvg);
       boardEl.appendChild(this.contactLayer);
+      boardEl.appendChild(this.forkMarks);
     }
 
     /**
@@ -54,26 +68,29 @@ window.Kakoi = window.Kakoi || {};
      */
     routes(list) {
       this.routeLayer.replaceChildren();
+      this.throughLayer.replaceChildren();
       if (!list || !list.length) return;
-      let html = '';
+      let html = '', throughHtml = '';
       for (const rt of list) {
         const squares = rt && rt.squares;
         if (!squares || squares.length < 2) continue;
-        const pts = squares.map(center).map(c => `${c.x},${c.y}`).join(' ');
+        const pts = squares.map(center);
+        const end = pts[pts.length - 1], prev = pts[pts.length - 2];
+        const dx = end.x - prev.x, dy = end.y - prev.y;
+        const length = Math.hypot(dx, dy);
+        if (length) {
+          const inset = Math.min(.42, length * .45);
+          end.x -= dx / length * inset;
+          end.y -= dy / length * inset;
+        }
+        const points = pts.map(c => `${c.x},${c.y}`).join(' ');
         const cls = rt.tone === 'good' ? ' rt-good' : rt.tone === 'bad' ? ' rt-bad' : rt.tone === 'ink' ? ' rt-ink' : '';
         const mk = rt.tone === 'good' ? 'rtHeadGood' : rt.tone === 'bad' ? 'rtHeadBad' : rt.tone === 'ink' ? 'rtHeadInk' : 'rtHead';
-        html += `<polyline class="rt rt-line${cls}" points="${pts}" marker-end="url(#${mk})"/>`;
+        html += `<polyline class="rt rt-line${cls}" points="${points}" marker-end="url(#${mk})"/>`;
+        throughHtml += `<polyline class="rt rt-line${cls}" points="${points}"/>`;
       }
       this.routeLayer.innerHTML = html;
-    }
-
-    /**
-     * マスの列を結ぶ破線の矢印（単一経路。routes への委譲）。null で消す
-     * @param {string[]|null} squares 例: ['39','38','27','26']
-     * @param {{ tone?: 'good'|'bad'|'lead' }} [opts]
-     */
-    route(squares, { tone } = {}) {
-      this.routes(squares ? [{ squares, tone }] : null);
+      this.throughLayer.innerHTML = throughHtml;
     }
 
     /**
@@ -116,7 +133,40 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    clear() { this.routes(null); this.threat(null); this.contacts(null); }
+    /**
+     * 王手飛車の筋: 打つマスから玉・飛車へ細い線を引き、打つマスに駒の字を薄く置く。null/[] で消す
+     * @param {Array<{piece:string, sq:string, king:string, rook:string, via:string[], tone:'good'|'bad'}>|null} list
+     *   via が空でない筋（歩が動くと通る）は破線で控えめに描く
+     */
+    forks(list) {
+      this.forkLayer.replaceChildren();
+      this.forkMarks.replaceChildren();
+      if (!list || !list.length) return;
+      let html = '';
+      const seen = new Set();
+      for (const x of list) {
+        const a = center(x.sq);
+        const cls = `fk fk-${x.tone === 'good' ? 'good' : 'bad'}${x.via && x.via.length ? ' fk-latent' : ''}`;
+        for (const t of [x.king, x.rook]) {
+          const b = center(t);
+          html += `<line class="${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+        }
+        const key = x.piece + x.sq;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const p = pct(x.sq);
+        const el = document.createElement('div');
+        el.className = 'ov-fork';
+        el.dataset.tone = x.tone === 'good' ? 'good' : 'bad';
+        el.dataset.latent = String(!!(x.via && x.via.length));
+        el.dataset.sq = x.sq;
+        el.textContent = x.piece;
+        el.style.left = `${p.x}%`;
+        el.style.top = `${p.y}%`;
+        this.forkMarks.appendChild(el);
+      }
+      this.forkLayer.innerHTML = html;
+    }
   }
 
   Kakoi.OverlayView = OverlayView;

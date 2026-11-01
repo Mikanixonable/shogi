@@ -7,7 +7,7 @@ window.Kakoi = window.Kakoi || {};
 
   /**
    * @param {{who:string, kind:string}} sel constraints.parseSel の結果
-   * @param {object} st その側の実効状態（constraints.sides() の1側）
+   * @param {object} st その側の実効状態（constraints.effectiveSides() の1側）
    * @param {{ rows:Array, repo:Kakoi.Repository }} ctx
    *   rows: tacticNav.tacticRows の全家系統行、repo: tacticById/ofSideByFamily を持つもの
    * @param {string} key 'ArrowLeft'|'ArrowRight'|'ArrowUp'|'ArrowDown'
@@ -17,7 +17,8 @@ window.Kakoi = window.Kakoi || {};
     if (!sel || !st) return null;
     if (sel.kind === 'tactic') {
       const list = rows.filter(r => r.family.side === st.strategy);
-      const cur = repo.tacticById(st.tacticId);
+      // 複数戦法では選択中の駒枠（sel.id、無ければ主の戦法）を動かす
+      const cur = repo.tacticById(sel.id || K.defaults.primaryOf(st));
       const next = cur && K.tacticNav.neighbor(list, cur, key);
       return next ? { kind: 'tactic', id: next.id } : null;
     }

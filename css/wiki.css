@@ -1,0 +1,104 @@
+/* 「手筋と格言」の全画面モード: 章立ての読み物（wiki）。左=章→節→項の目次、右=本文。
+   「墨と余白」: 面を持たず、1pxの罫線と明朝の緩急で本らしい体裁を作る。
+   対局図と排他（body.tj で出し分ける。URL ハッシュの tj= が開いている章・節を持つ） */
+
+/* ===== モードの切替 ===== */
+.wiki { display:none; min-height:0; }
+body.tj .wiki { display:grid; grid-template-columns:minmax(208px,252px) minmax(0,1fr); min-height:0; }
+body.tj .app { display:none; }
+/* モードに入っている間、ヘッダーの入口は隠す（戻る導線は目次の上にある） */
+body.tj #tesujiOpen { display:none; }
+
+/* ===== 目次（左列）: 章→節→項の入れ子。現在地は朱の罫線 ===== */
+.wj-toc { overflow:auto; min-height:0; border-right:1px solid var(--line); padding:14px 16px 40px 20px; }
+.wj-back { margin:0 0 14px; }
+.wj-back button { background:none; border:0; border-bottom:1px solid var(--line-2); padding:2px 0 3px;
+                  font-size:12px; letter-spacing:.1em; color:var(--muted); cursor:pointer;
+                  transition:color .2s, border-color .2s; }
+@media (hover:hover) { .wj-back button:hover { color:var(--fg); border-bottom-color:var(--accent); } }
+.wj-toc-h { margin:0 0 8px; font-size:10.5px; font-weight:600; letter-spacing:.24em; color:var(--muted); }
+.wj-tree, .wj-tree ol { list-style:none; margin:0; padding:0; }
+.wj-tree ol { padding-left:1.15em; }
+.wj-tree > li { margin-top:9px; }
+.wj-tree > li:first-child { margin-top:0; }
+.wj-tree a { display:block; padding:2px 4px 2px 8px; font-size:12.5px; line-height:1.65; color:var(--fg2);
+             text-decoration:none; border-left:2px solid transparent;
+             transition:color .2s, border-color .2s, background .2s; }
+.wj-tree > li > a { font-weight:600; color:var(--fg); }
+.wj-tree a .wn { font:500 10.5px/1 var(--font-n); color:var(--muted); margin-right:6px; letter-spacing:.03em; }
+@media (hover:hover) { .wj-tree a:hover { color:var(--accent); } }
+.wj-tree a[aria-current="true"] { color:var(--accent); border-left-color:var(--accent);
+                                  background:var(--accent-soft); font-weight:600; }
+.wj-tree a[aria-current="true"] .wn { color:var(--accent); }
+
+/* ===== 本文（右列）: 本らしい1段組み。章 h2 は通し罫線（wiki の見出し） ===== */
+.wj-main { overflow:auto; min-height:0; padding:24px clamp(20px,5vw,64px) 20vh; }
+.wj-doc { max-width:780px; margin:0 auto; }
+.wj-doc-h { border-bottom:3px double var(--fg); padding-bottom:14px; }
+.wj-doc-h h1 { margin:0; font:800 25px/1.5 var(--font-d); letter-spacing:.14em; }
+/* 本文頭の戻るは狭い画面だけ（広い画面は目次の上にあるので要らない） */
+.wj-back-doc { display:none; }
+.wj-lede { margin:10px 0 0; font-size:12.5px; line-height:2; color:var(--fg2); }
+.wj-ch > h2 { margin:2.5em 0 .6em; padding-bottom:5px; border-bottom:1px solid var(--fg2);
+              font:700 19px/1.6 var(--font-d); letter-spacing:.08em; }
+.wj-sub > h3 { margin:2em 0 .5em; font:700 15.5px/1.7 var(--font-d); letter-spacing:.07em; }
+.wj-sec > h3, .wj-sec > h4 { margin:1.9em 0 .5em; display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;
+                            font:700 15.5px/1.7 var(--font-d); letter-spacing:.06em; }
+.wj-sec > h4 { font-size:14.5px; }
+/* 節番号は薄墨の欧字（目次と同じ .wn） */
+.wj-doc .wn { font:500 .84em/1 var(--font-n); font-weight:500; color:var(--muted);
+              margin-right:.3em; letter-spacing:.04em; }
+.wj-sec h3 small, .wj-sec h4 small { font:400 11px/1 var(--font-b); color:var(--muted); letter-spacing:.04em; }
+/* メタ行（駒・別名・対象の囲い）と補足（要確認メモ） */
+.wj-meta { margin:0 0 4px; font-size:11.5px; letter-spacing:.05em; color:var(--muted); }
+.wj-note { margin:8px 0 0; padding-left:10px; border-left:2px solid var(--line-2);
+           font-size:11.5px; line-height:1.8; color:var(--muted); }
+.wj-mini-h { margin:12px 0 2px; font-size:10.5px; font-weight:600; letter-spacing:.22em; color:var(--muted); }
+.wj-doc .desc { font-size:13.5px; line-height:2; margin:0 0 10px; }
+/* 章・節へのジャンプで盤やヘッダーに隠れないよう上に余白を持たせる */
+.wj-ch, .wj-sub, .wj-sec, .wj-doc-h, .tj-pv [data-id] { scroll-margin-top:18px; }
+.wj-sec[data-reveal="true"], .wj-sub[data-reveal="true"], .wj-ch[data-reveal="true"],
+.tj-pv [data-id][data-reveal="true"] { background:var(--accent-soft); transition:background .4s; }
+
+/* ===== 格言の節: 一覧は広いところで2段組み ===== */
+@media (min-width:1280px) {
+  .wj-pv-all { display:grid; grid-template-columns:1fr 1fr; gap:6px 30px; }
+}
+
+/* ===== 狭い画面: 目次は左端から開くドロワー（右 detail のドロワーと同じ作法） ===== */
+@media (min-width:980px) {
+  .wj-toc-btn, .wj-scrim { display:none; }
+}
+@media (max-width:979px) {
+  body.tj .wiki { display:block; }
+  .wj-main { overflow:visible; padding:14px 16px calc(96px + env(safe-area-inset-bottom)); }
+  .wj-doc { max-width:none; }
+  .wj-toc { position:fixed; top:0; bottom:0; left:0; width:min(330px,86vw); z-index:30;
+            background:var(--bg); border-right:1px solid var(--line-2);
+            padding:16px 18px calc(30px + env(safe-area-inset-bottom));
+            transform:translateX(-102%); transition:transform .3s var(--ease);
+            box-shadow:10px 0 22px rgba(24,18,8,.10); }
+  .wiki[data-toc="open"] .wj-toc { transform:none; }
+  .wj-back-doc { display:block; margin:0 0 10px; }
+  /* 開くボタンは右下に浮かせる（下端タブの無いモードなので画面隅へ） */
+  /* 開いている間も目次ボタンで閉じられるよう、ボタンは帳幕（.wj-scrim z29）より上に置く */
+  .wj-toc-btn { position:fixed; right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:31;
+                display:flex; align-items:center; gap:6px; padding:11px 16px; cursor:pointer;
+                border:1px solid var(--line-2); background:var(--bg); color:var(--fg2);
+                font:600 12px/1 var(--font-b); letter-spacing:.16em; }
+  .wj-toc-btn::before { content:""; width:14px; height:10px;
+                        background:linear-gradient(var(--fg2),var(--fg2)) left 0px/14px 1.5px no-repeat,
+                                   linear-gradient(var(--fg2),var(--fg2)) left 4.5px/10px 1.5px no-repeat,
+                                   linear-gradient(var(--fg2),var(--fg2)) left 9px/7px 1.5px no-repeat; }
+  .wj-scrim { display:none; }
+  .wiki[data-toc="open"] .wj-scrim { display:block; position:fixed; inset:0; z-index:29;
+                                    background:rgba(27,26,23,.35); }
+  :root[data-theme="dark"] .wiki[data-toc="open"] .wj-scrim { background:rgba(0,0,0,.55); }
+  /* 追従するヘッダーに章・節が隠れないよう余白を広げる */
+  .wj-ch, .wj-sub, .wj-sec, .wj-doc-h, .tj-pv [data-id] { scroll-margin-top:calc(var(--hdr) + 10px); }
+  .tj-fig { grid-template-columns:1fr; }
+  .tj-svg { max-width:230px; }
+}
+@media (max-width:979px) and (orientation:landscape) and (max-height:560px) {
+  .wj-ch, .wj-sub, .wj-sec { scroll-margin-top:calc(var(--hdr) + 4px); }
+}

@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node tools/validate-castles.js && node tools/unit-test.js && node tools/ui-check.js",
     "check": "node tools/ui-check.js",
-    "shots": "node tools/ui-check.js --shots-only"
+    "shots": "node tools/ui-check.js --shots-only",
+    "test:fast": "node tools/validate-castles.js && node tools/unit-test.js",
+    "test:ui": "node tools/ui-check.js"
   },
   "devDependencies": {
     "playwright-core": "1.63.0"

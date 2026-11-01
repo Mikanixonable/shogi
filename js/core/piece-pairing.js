@@ -1,7 +1,7 @@
 // 駒の対応づけ（共有ロジック）: 局面の切り替えで「どの駒がどこへ動いたか」を、
 // 駒の動きの自然さをコスト化した貪欲ペアリングで決める。plan が「移動リスト」を1回だけ計算し
 // （BoardView が呼ぶ）、立体版（piece-layer-3d）はそれを描く。DOM 版は静止表示なので使わない。
-// 純粋関数だけなので DOM を持たない。
+// 「届くか」の判定（reachPly）は core/piece-rules.js が権威。純粋関数だけなので DOM を持たない。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -11,8 +11,8 @@ window.Kakoi = window.Kakoi || {};
 
   // 後手の駒は (f,r)→(10−f,10−r) で回転して置く（compose.mirror と同じ変換）。
   // コスト計算にも同じ回転をかけると、後手の「前」（段が増える向き）が
-  // moveCost の前提する先手の「前」（段が減る向き）と一致する
-  const mir = s => `${10 - +s[0]}${10 - +s[1]}`;
+  // slideCost の前提する先手の「前」（段が減る向き）と一致する
+  const mir = Kakoi.notation.mirrorSq;
 
   /**
    * 駒を from → to へ滑らせる不自然さ（マス単位）。null は滑らせない（消滅＋出現にする）
@@ -23,7 +23,7 @@ window.Kakoi = window.Kakoi || {};
    * @param {string} to マス 例 '56'
    * @returns {number|null}
    */
-  const moveCost = (p, from, to) => {
+  const slideCost = (p, from, to) => {
     const dF = +to[0] - +from[0], dR = +to[1] - +from[1];
     const dist = Math.hypot(dF, dR);
     const side = dF !== 0, back = dR > 0;
@@ -37,8 +37,8 @@ window.Kakoi = window.Kakoi || {};
         if (dR >= 0) return null;
         if (!(Math.abs(dF) === 1 && dR === -2)) c += .8;
         break;
-      case '銀': // 真横・真後ろは一手では行けないので緩く罰則（斜め後退は可）
-        if (back !== side) c += .9;
+      case '銀': // 真横・真後ろは一手では行けないので緩く罰則（斜め前・斜め後ろは可）
+        if ((dR === 0 && side) || (back && dF === 0)) c += .9;
         break;
       case '飛': // 縦横の直線上は自然な滑走（長距離も可）、それ以外は回り道として罰則
         c = (side && dR !== 0) ? dist + 1.6 : dist * .55;
@@ -50,69 +50,6 @@ window.Kakoi = window.Kakoi || {};
     }
     return c <= MAX_COST ? c : null;
   };
-
-  // ---------- moveCount: 「その駒の動きで何手かかるか」（合成の届く判定用。計画書 L3） ----------
-  // 盤上の障害物を無視した BFS。先手視点（段が減る向きが前）。上限8手、届かなければ Infinity。
-  // moveCost（アニメ用の滑らせやすさ）は対応づけの優劣にだけ使い、届くかどうかは自分で判定する
-  const STEP = {
-    歩: [[0, -1]],
-    香: [[0, -1]],   // 前へしか進めない（RAY との組み合わせで同じ筋の前方へ滑走。GOLD_STEP への
-                     // フォールバックを防ぐ＝横・後退・斜めに「届く」と誤判定しない）
-    桂: [[-1, -2], [1, -2]],
-    銀: [[0, -1], [-1, -1], [1, -1], [-1, 1], [1, 1]],
-    角: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
-    飛: [[0, -1], [0, 1], [-1, 0], [1, 0]],
-  };
-  const GOLD_STEP = [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]];
-  const RAY = { 香: 1, 角: 1, 飛: 1 };
-  const stepOf = p => STEP[p] || GOLD_STEP;   // 玉・金（・未登録の駒）は金の動き
-  const MAX_PLY = 8;
-  const mcMemo = new Map();                    // `${p}:${from}` → Map(toKey → 手数)
-  function bfsCount(p, from) {
-    const steps = stepOf(p), ray = !!RAY[p];
-    const out = new Map();
-    let frontier = [[+from[0], +from[1]]];
-    for (let d = 1; d <= MAX_PLY && frontier.length; d++) {
-      const next = [];
-      for (const [f, r] of frontier) {
-        for (const [df, dr] of steps) {
-          let nf = f + df, nr = r + dr;
-          if (ray) {
-            while (nf >= 1 && nf <= 9 && nr >= 1 && nr <= 9) {
-              const k = nf * 10 + nr;
-              if (!out.has(k)) { out.set(k, d); next.push([nf, nr]); }
-              nf += df; nr += dr;
-            }
-          } else {
-            if (nf < 1 || nf > 9 || nr < 1 || nr > 9) continue;
-            const k = nf * 10 + nr;
-            if (out.has(k)) continue;
-            out.set(k, d);
-            next.push([nf, nr]);
-          }
-        }
-      }
-      frontier = next;
-    }
-    return out;
-  }
-  /**
-   * 駒 p が from → to へ自分の動きだけで行く最小手数（障害物無視。上限8手）。
-   * 届かなければ Infinity。歩・香は前進のみ、桂は前方のみになる（二歩・横歩・桂の後退を防ぐ）
-   * @param {string} p 駒の字 @param {string} from 例 '39' @param {string} to 例 '79'
-   * @returns {number}
-   */
-  function moveCount(p, from, to) {
-    if (from === to) return 0;
-    const ck = `${p}:${from}`;
-    let m = mcMemo.get(ck);
-    if (!m) {
-      m = bfsCount(p, from);
-      if (mcMemo.size > 400) mcMemo.delete(mcMemo.keys().next().value); // 簡易上限
-      mcMemo.set(ck, m);
-    }
-    return m.has(+to[0] * 10 + +to[1]) ? m.get(+to[0] * 10 + +to[1]) : Infinity;
-  }
 
   /**
    * before → after の駒の対応づけ。
@@ -129,7 +66,7 @@ window.Kakoi = window.Kakoi || {};
     const cand = [];
     after.forEach((n, ni) => before.forEach((o, oi) => {
       if (n.skip || o.owner !== n.owner || o.p !== n.p) return;
-      const cost = o.owner === 'gote' ? moveCost(o.p, mir(o.sq), mir(n.sq)) : moveCost(o.p, o.sq, n.sq);
+      const cost = o.owner === 'gote' ? slideCost(o.p, mir(o.sq), mir(n.sq)) : slideCost(o.p, o.sq, n.sq);
       if (cost != null) cand.push({ ni, oi, cost });
     }));
     cand.sort((a, b) => a.cost - b.cost);
@@ -172,5 +109,5 @@ window.Kakoi = window.Kakoi || {};
     return { ...m, after: next, lead, path: lead >= 0 ? trace.path : null };
   }
 
-  Kakoi.pieceMatch = { MAX_COST, moveCost, moveCount, pair, plan, routeMs };
+  Kakoi.piecePairing = { MAX_COST, slideCost, plan, routeMs };
 })();

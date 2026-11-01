@@ -2,8 +2,10 @@
 // 形式: `#k=mt:bougin,mc:funa,ot:shikenbisha,oc:mino&opp=1&sel=mc`
 //   - `k=` は 側（m=自分/o=相手）＋層（t=戦法/c=囲い）:id をコンマで並べる（並びに意味は無い）
 //   - `opp=1` は相手を盤に出している
-//   - `sel=` は選択中の層（例: mc = me.castle）
-// 初期状態は空のハッシュ。`k=`/`opp=` の無いハッシュ（旧形式を含む）は読まず、初期状態で開く。
+//   - `sel=` は選択中の層（例: mc = me.castle、os = opp.strategy —— 戦型は情報を見る選択だけ）
+//   - `tj=` は「手筋と格言」の全画面モード。値は開いている章・節の id（`tj=otebisha`）。
+//     盤面のパラメータと併記するので、モードを抜けても盤の状態が残る
+// 初期状態は空のハッシュ。`k=`/`opp=`/`tj` の無いハッシュ（旧形式を含む）は読まず、初期状態で開く。
 // 状態が変わると pushState でハッシュを書く（ブラウザの「戻る」＝元に戻す）。
 // 選択だけの変更は履歴を積まず replaceState。表示の好み（駒の表示・利き・脅威の帯・テーマ）は
 // URL に載せず localStorage に持つ。
@@ -12,20 +14,23 @@ window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
 
-  const KIND_CHAR = { t: 'tactic', c: 'castle' };
-  const KIND_LETTER = { tactic: 't', castle: 'c' };
+  const KIND_CHAR = { t: 'tactic', c: 'castle', s: 'strategy', k: 'senkei' };
+  const KIND_LETTER = { tactic: 't', castle: 'c', strategy: 's', senkei: 'k' };
   const WHO_CHAR = { m: 'me', o: 'opp' };
   const WHO_LETTER = { me: 'm', opp: 'o' };
-  // 盤面の状態を持つ store のキー。これらが変わるとハッシュを書き直す
-  const BOARD_KEYS = ['slots', 'showOpp', 'selected'];
+  // ハッシュが持つ状態を持つ store のキー。これらが変わるとハッシュを書き直す
+  // （slots・showOpp・selected は盤面、view・tesujiId は画面モード）
+  const BOARD_KEYS = ['slots', 'showOpp', 'selected', 'view', 'tesujiId'];
 
   const encodeSel = sel => {
-    const [who, kind] = String(sel || '').split('.');
-    return WHO_LETTER[who] && KIND_LETTER[kind] ? WHO_LETTER[who] + KIND_LETTER[kind] : '';
+    const [who, kind, id] = String(sel || '').split('.');
+    if (!WHO_LETTER[who] || !KIND_LETTER[kind]) return '';
+    return WHO_LETTER[who] + KIND_LETTER[kind] + (id ? `.${id}` : '');
   };
   const decodeSel = s => {
-    const m = /^([mo])([tc])$/.exec(String(s || ''));
-    return m ? `${WHO_CHAR[m[1]]}.${KIND_CHAR[m[2]]}` : null;
+    const m = /^([mo])([tcsk])(?:\.([^\s.]+))?$/.exec(String(s || ''));
+    if (!m) return null;
+    return `${WHO_CHAR[m[1]]}.${KIND_CHAR[m[2]]}` + (m[3] ? `.${m[3]}` : '');
   };
 
   /** state からハッシュのクエリ部分（先頭の # を含まない）を作る。parseHash と対称。初期状態は '' */
@@ -33,49 +38,58 @@ window.Kakoi = window.Kakoi || {};
     const slots = state.slots;
     const toks = [];
     for (const who of ['me', 'opp']) {
-      for (const kind of ['tactic', 'castle']) {
-        const id = slots && slots[who] && slots[who][kind];
-        if (id) toks.push(`${WHO_LETTER[who]}${KIND_LETTER[kind]}:${id}`);
-      }
+      // 戦法は駒ごとの枠が複数ある（k= の中に同じ mt:/ot: が複数並ぶ）
+      const tids = slots && slots[who] ? slots[who].tactic : null;
+      for (const id of (Array.isArray(tids) ? tids : (tids ? [tids] : [])))
+        toks.push(`${WHO_LETTER[who]}t:${id}`);
+      const cid = slots && slots[who] ? slots[who].castle : null;
+      if (cid) toks.push(`${WHO_LETTER[who]}c:${cid}`);
     }
-    if (!toks.length && !state.showOpp) return '';
+    if (!toks.length && !state.showOpp && state.view !== 'tesuji') return '';
     const p = new URLSearchParams();
     if (toks.length) p.set('k', toks.join(','));
     if (state.showOpp) p.set('opp', '1');
     const sel = encodeSel(state.selected);
     if (sel) p.set('sel', sel);
+    if (state.view === 'tesuji') p.set('tj', state.tesujiId || '');
     // id は ASCII なので %2C→, %3A→: に戻して読みやすい形にする
     return p.toString().replace(/%2C/g, ',').replace(/%3A/g, ':');
   }
 
   /**
-   * ハッシュ文字列（先頭の # を含まない）を解析し、盤面の状態を返す純粋関数。
-   * 欠けた項目・不正な値は初期値（空のスロット・相手 OFF・selected=null）になる。
-   * id の正当性は呼び出し側（constraints.normalizeSlots）が確かめる
-   * @returns {{slots:{me:Object, opp:Object}, showOpp:boolean, selected:string|null}}
+   * ハッシュ文字列（先頭の # を含まない）を解析し、盤面とモードの状態を返す純粋関数。
+   * 欠けた項目・不正な値は初期値（空のスロット・相手 OFF・selected=null・view='board'）になる。
+   * 同じ駒の戦法が複数並んだときの絞り込みは呼び出し側（constraints.normalizeSlots）が行う
+   * @returns {{slots:{me:Object, opp:Object}, showOpp:boolean, selected:string|null, view:string, tesujiId:string|null}}
    */
   function parseHash(h) {
     const p = new URLSearchParams(String(h || ''));
     const slots = { me: { tactic: null, castle: null }, opp: { tactic: null, castle: null } };
     let showOpp = false, selected = null;
+    const view = p.has('tj') ? 'tesuji' : 'board';
+    const tesujiId = p.get('tj') || null;
     if (p.has('k') || p.has('opp')) {
       for (const tok of String(p.get('k') || '').split(',')) {
         const m = /^([mo])([tc]):(.+)$/.exec(tok.trim());
-        if (m) slots[WHO_CHAR[m[1]]][KIND_CHAR[m[2]]] = m[3];
+        if (!m) continue;
+        const who = WHO_CHAR[m[1]], kind = KIND_CHAR[m[2]];
+        if (kind === 'tactic') (slots[who].tactic = slots[who].tactic || []).push(m[3]);
+        else slots[who].castle = m[3];
       }
       showOpp = p.get('opp') === '1';
       selected = decodeSel(p.get('sel'));
     }
-    return { slots, showOpp, selected };
+    return { slots, showOpp, selected, view, tesujiId };
   }
 
-  /** location.hash から盤面の状態を読み、store へ入れられる形（正規化済み）で返す */
+  /** location.hash から盤面とモードの状態を読み、store へ入れられる形（正規化済み）で返す */
   function read(fallbackKind = 'castle') {
     const C = Kakoi.constraints;
     const p = parseHash(location.hash.replace(/^#/, ''));
     return {
       slots: C.normalizeSlots(p.slots), showOpp: p.showOpp,
       selected: C.normalizeSelected(p.selected, p.showOpp, fallbackKind),
+      view: p.view, tesujiId: p.tesujiId,
     };
   }
 
@@ -92,7 +106,7 @@ window.Kakoi = window.Kakoi || {};
       if (!BOARD_KEYS.some(k => changed.has(k))) return;
       const q = buildQuery(state);
       if (q === location.hash.replace(/^#/, '')) return;
-      const push = !fromPop && (changed.has('slots') || changed.has('showOpp'));
+      const push = !fromPop && (changed.has('slots') || changed.has('showOpp') || changed.has('view') || changed.has('tesujiId'));
       history[push ? 'pushState' : 'replaceState'](null, '', q ? `#${q}` : location.pathname + location.search);
     });
     // 旧形式・不正な値で開いたときは、正規化した状態のハッシュへ書き直す（履歴は積まない）

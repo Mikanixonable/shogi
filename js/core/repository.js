@@ -5,7 +5,8 @@ window.Kakoi = window.Kakoi || {};
 
   class Repository {
     /** @param {{ CASTLES:object[], SETUPS:object, SOURCES:object, CASTLE_FAMILIES:object[], TACTICS?:object[], TACTIC_FAMILIES?:object[] }} data */
-    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS = [], TACTIC_FAMILIES = [] }) {
+    constructor({ CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS = [], TACTIC_FAMILIES = [],
+      SENKEI = {}, SENKEI_RESOLVE = {} }) {
       this._castles = CASTLES;
       this._setups = SETUPS;
       this._sources = SOURCES;
@@ -15,6 +16,8 @@ window.Kakoi = window.Kakoi || {};
       this._tactics = TACTICS;
       this._tacticFamilies = TACTIC_FAMILIES;
       this._tacticById = new Map(TACTICS.map(t => [t.id, t]));
+      this._senkei = SENKEI;
+      this._senkeiResolve = SENKEI_RESOLVE;
     }
 
     byId(id) { return this._byId.get(id); }
@@ -32,7 +35,7 @@ window.Kakoi = window.Kakoi || {};
     setupOf(castle) { return this._setups[castle.setup]; }
 
     /** 出典の参照を、同じ ref はまとめて（for は「・」で連結）解決して返す */
-    _resolveSources(list) {
+    resolveSources(list) {
       const merged = new Map();
       for (const s of list) {
         const src = this._sources[s.ref];
@@ -54,12 +57,12 @@ window.Kakoi = window.Kakoi || {};
     pairingsOf(tactic) {
       return (tactic.pairings || [])
         .filter(p => p && this._byId.has(p.castle))
-        .map(p => ({ castle: this._byId.get(p.castle), level: p.level, why: p.why, sources: this._resolveSources(p.sources || []) }));
+        .map(p => ({ castle: this._byId.get(p.castle), level: p.level, why: p.why, sources: this.resolveSources(p.sources || []) }));
     }
     /** 戦法と囲い（＋その想定配置）の出典を併記する。castle がなければ戦法だけ */
     tacticComboSourcesOf(tactic, castle) {
       const setup = castle && this.setupOf(castle);
-      return this._resolveSources([
+      return this.resolveSources([
         ...(tactic.sources || []),
         ...(castle ? castle.sources || [] : []),
         ...(setup ? setup.sources || [] : []),
@@ -69,6 +72,14 @@ window.Kakoi = window.Kakoi || {};
     attackOf(castle, attackId) {
       return castle.attacks?.find(a => a.id === attackId) || null;
     }
+
+    // ===== 戦型（SENKEI） =====
+    /** 戦型エントリ（aiyagura → yagura など SENKEI_RESOLVE を通す） */
+    senkeiById(id) { return this._senkei[id] || this._senkei[this._senkeiResolve[id]] || null; }
+    /** その戦型に属する戦法（戦法側の senkei[] タグが唯一の正） */
+    tacticsOfSenkei(id) { return this._tactics.filter(t => (t.senkei || []).includes(id)); }
+    /** その戦法が属する戦型の id 一覧（senkei[] タグから） */
+    senkeiOfTactic(t) { return (t && t.senkei) || []; }
   }
 
   Kakoi.Repository = Repository;

@@ -1,0 +1,303 @@
+// 対局図（唯一の画面）のコントローラ（計画書 S6 の ConstraintController）:
+// コマンド（スロットの選択・解除・相手の表示・リセット）とホバー予告、トーストを持つ。
+// 描画は board-screen.js の BoardScreen、盤上の矢印は keyboard-nav.js、
+//   - 盤: constraints.effectiveSides() の両側を compose.build/merge で合成。相手の表示が OFF のときは後手を描かない
+//   - 制約バー: 各側の戦法・囲いのチップ（×で解除・クリックで選択）＋既定の層＋導出ラベル（戦型）
+//   - 左レール: 自分／相手のタブで1枚の面を切り替える RailView。選択はすべてスロットの置き換え
+//     （他の層は自動では変わらない。両立しないものは✕と理由で示す）
+//   - 右 detail（U5）: DetailView が selected の {who,kind} に応じて detail-sections の部品を組み立てる
+//   - 戦法の選択は左レールの筋タイル（1〜9筋にプロット）。盤の上に別の表は置かない
+//   - state.selected だけの変更では盤の駒を再描画しない（オーバーレイ・詳細だけ更新）
+// 盤面の状態（slots・showOpp・selected）は URL ハッシュが正で、履歴に積まれる（hash-link.js）。
+// 計画書 §1-3/§3-3/§4-5/§5
+window.Kakoi = window.Kakoi || {};
+(() => {
+  'use strict';
+  const K = window.Kakoi;
+  const { mirrorSq } = K.notation;
+  const parseSel = K.constraints.parseSel;
+
+  class ScreenController {
+    /**
+     * @param {{ repo:Kakoi.Repository, store:Kakoi.Store, board:Kakoi.BoardView, overlay:Kakoi.OverlayView, els:object }} deps
+     *   els: stage, field,
+     *        legend, handOpp, handMe, boardwrap, rail, detail
+     */
+    constructor({ repo, store, board, overlay, els, mobileTabs, openTesuji }) {
+      Object.assign(this, { repo, store, board, overlay, els, mobileTabs });
+      this._openTesuji = openTesuji;
+      this._done = { me: null, opp: null };
+      this.rows = K.tacticNav.tacticRows(repo.tacticFamilies(), repo.tactics());
+      this._pvKey = null;
+      this._pvRaf = null;
+
+      // 制約フィールドは盤の上に1枚（上の段=相手・下の段=自分。同じ六角グリッド）
+      this.field = new K.ConstraintField(els.field, {
+        onSelect: (w, k, id) => this._select(w, k, id, true),
+        onRemove: (w, k, id) => this._remove(w, k, id),
+        onOpp: on => this._setShowOpp(on),
+        onClear: w => this._clearSide(w),
+      });
+      // 左レール: 自分／相手のタブで切り替える1枚の面。見ている側・層は state.selected が持つ
+      this.rail = new K.RailView(els.rail /* #pickRail */, {
+        onSelect: (w, k) => this._select(w, k, false),
+        onChoose: (w, k, id) => this._set(w, k, id),
+        onRemove: (w, k, id) => this._remove(w, k, id),
+        onClear: w => this._clearSide(w),
+        onToggleOpponent: on => this._setShowOpp(on),
+        onPreview: (w, k, id) => this._preview(w, k, id),
+        onPreviewEnd: () => {
+          this._pvKey = null;
+          if (this._pvRaf) { cancelAnimationFrame(this._pvRaf); this._pvRaf = null; }
+          this.board.hover([], null);
+        },
+      });
+      // 右 detail（U5）: selected の種類に応じて部品を組み立てる自己完結ビュー。
+      // Repository は共有のものを渡す（S5: 内部で作り直さない）
+      this.detail = new K.DetailView(els.detail, {
+        repo: this.repo,
+        onHover: (sqs, tone) => this.board.hover(sqs, tone),
+        onAttack: attackId => this.store.set({ attackId, defense: null }),
+        onSetConstraint: (w, k, id) => this._set(w, k, id),
+        onSenkei: id => this._select('me', 'senkei', id),
+        onCombo: (w, id, withVs) => this._combo(w, id, withVs),
+        onDefense: id => this.store.set({ defense: id }),
+        onOpenTesuji: id => { if (this._openTesuji) this._openTesuji(id); },
+      });
+      // 「見える半分」は BoardScreen に委譲（S6）
+      this.screen = new K.BoardScreen({
+        els, board, overlay,
+        field: this.field, detail: this.detail,
+        repo, rows: this.rows,
+        nameOf: (w, k, id) => K.catalog.nameOf(k, id),
+      });
+      document.addEventListener('keydown', e => this._onKey(e));
+    }
+
+    // ---------- スロットの操作（他の層は自動では変わらない） ----------
+    // 戦法は駒ごとの枠: setTactic で同じ駒の枠だけ差し替え、違う駒は追加（複数同時採用）
+    _set(who, kind, id) {
+      const s = this.store.state;
+      this.store.set({
+        slots: K.constraints.setSlot(s.slots, who, kind, id),
+        selected: `${who}.${kind}.${id}`, dockTab: kind,
+      });
+      this._openDrawer();
+      // 狭い画面では一覧の選択で「読む」へ飛ばさない: 盤が追従表示のまま見えるので
+      // 候補を次々比較できる。解説は「読む」タブか、盤上の制約チップを押して開く（M2）。
+      // 初回だけ、解説の場所を小さく案内する
+      if (matchMedia('(max-width:979px)').matches) this._hintRead();
+    }
+
+    /** 定番セットを制約に立てる（data/combos.js）。withVs で相手側のセットも並べる */
+    _combo(who, id, withVs) {
+      const c = (K.COMBOS || []).find(x => x.id === id);
+      if (!c) return;
+      const s = this.store.state;
+      let slots = K.constraints.setSlot(s.slots, who, 'tactic', c.tactic);
+      slots = K.constraints.setSlot(slots, who, 'castle', c.castle);
+      if (withVs && c.vs) {
+        const opp = who === 'me' ? 'opp' : 'me';
+        if (c.vs.tactic) slots = K.constraints.setSlot(slots, opp, 'tactic', c.vs.tactic);
+        if (c.vs.castle) slots = K.constraints.setSlot(slots, opp, 'castle', c.vs.castle);
+      }
+      const patch = { slots, ...(withVs && c.vs ? { showOpp: true } : {}) };
+      const sel = parseSel(s.selected);
+      if (!sel || sel.who !== who || !K.constraints.KINDS.includes(sel.kind)) {
+        Object.assign(patch, { selected: `${who}.castle`, dockTab: 'castle' });
+      }
+      this.store.set(patch);
+      this._openDrawer();
+    }
+
+    // 最初の選択のあと一度だけ「読む」タブへの導線を出す（sessionStorage のフラグ）
+    _hintRead() {
+      try { if (sessionStorage.getItem('shogi-read-hint')) return; sessionStorage.setItem('shogi-read-hint', '1'); }
+      catch (e) { /* 保存できなければ毎回出す */ }
+      if (K.Toast) K.Toast.show('盤に反映しました。解説は下の「読む」タブへ', {
+        host: this.els.stage, ms: 3600,
+        action: this.mobileTabs ? { label: '読む', fn: () => this.mobileTabs.show('read', { dir: 'l', align: 'top' }) } : null,
+      });
+    }
+
+    _select(who, kind, id = null, fromBar = false) {
+      const before = this.store.state;
+      this.store.set({
+        selected: id ? `${who}.${kind}.${id}` : `${who}.${kind}`,
+        // 戦型は左レールにタブが無い（情報は右 detail）。dockTab は層タブの記憶なのでそのままにする
+        ...(K.constraints.KINDS.includes(kind) ? { dockTab: kind } : {}),
+        ...(who === 'opp' && !before.showOpp ? { showOpp: true } : {}),
+      });
+      // 中くらいの幅では右 detail はドロワー。制約チップを選んだら開く（§4-6）
+      this._openDrawer();
+      // 狭い画面では、制約チップを選んだとき解説を盤の下までスクロールする
+      // （B2: 一覧側の reveal は止め、代わりに「読む」を見せる）
+      if (fromBar) this._revealDetail();
+      // 左レールも連動する（U5: 選んだ側・層の一覧で項目までスクロールして送る。
+      // 戦型はスロットを持たないので reveal は項目を持たず no-op になる。
+      // 戦法の駒枠の選択（id）はその系統の項目まで送る）
+      const s = this.store.state;
+      this.rail.reveal({ who, kind, id }, K.constraints.effectiveSides(s.slots, s.showOpp)[who]);
+    }
+
+    _openDrawer() {
+      if (matchMedia('(min-width:980px) and (max-width:1180px)').matches) {
+        document.body.dataset.drawer = 'open';
+      }
+    }
+
+    // 狭い画面: 盤は sticky で上に残っているので、解説の先頭が盤のすぐ下に来るよう
+    // ページをスクロールする（「選ぶ」と「読む」の切替＝盤の下の領域を見せる）。
+    // 横向き2列では盤は左列なので、解説はヘッダーの下へ
+    _revealDetail() {
+      if (!matchMedia('(max-width:979px)').matches) return;
+      // 面がタブ化してからは「読む」面へ切り替えて、その先頭を盤の下に合わせる
+      if (this.mobileTabs) { this.mobileTabs.show('read', { dir: 'l', align: 'top' }); return; }
+      const r = this.els.detail.getBoundingClientRect();
+      const stage = this.els.stage.getBoundingClientRect();
+      const twoCol = stage.width < innerWidth * 0.6;   // 横向きは盤が左の2列
+      const base = twoCol
+        ? document.querySelector('header').getBoundingClientRect().bottom
+        : stage.bottom;
+      const top = window.scrollY + r.top - base - 8;
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      });
+    }
+
+    // 選択を保ったまま1つ外す。外したあとは戦略既定値の既定胞に変わる。
+    // 戦法は駒ごとの枠: id 指定はその枠だけ外す（他の駒の戦法は残る）。id なしは全部外す
+    _remove(who, kind, id = null) {
+      const s = this.store.state;
+      this.store.set({
+        slots: kind === 'tactic' && id
+          ? K.constraints.removeTactic(s.slots, who, id)
+          : K.constraints.setSlot(s.slots, who, kind, null),
+      });
+    }
+
+    /** 制約バーの「リセット」: 見ている側の戦法・囲いを両方外す。履歴に積むので「戻る」で元に戻せる */
+    _clearSide(who) {
+      const s = this.store.state;
+      const slots = K.constraints.clearSide(s.slots, who);
+      if (slots === s.slots) return;
+      this.store.set({ slots });
+      this._toastUndo(`${who === 'opp' ? '相手' : '自分'}の戦法・囲いをリセットしました`);
+    }
+
+    /** 相手の表示 ON/OFF（スロットは消さない）。OFF にしたとき選択が相手側なら自分側へ戻す */
+    _setShowOpp(on) {
+      const s = this.store.state;
+      this.store.set({ showOpp: on, selected: K.constraints.normalizeSelected(s.selected, on) });
+    }
+
+    /** 表示設定の「リセット」: 盤面の状態を初期状態へ（ハッシュが空になる。表示の好みは残す） */
+    reset() {
+      const s = this.store.state;
+      if (!s.showOpp && !hasAny(s.slots)) return;
+      this.store.set({
+        slots: K.constraints.emptySlots(), showOpp: false, attackId: null, defense: null,
+        selected: K.constraints.normalizeSelected(null, false, s.dockTab),
+      });
+      this._toastUndo('盤を初期状態に戻しました');
+    }
+
+    // 元に戻す: 盤面の変更は履歴に積まれるので、ブラウザの「戻る」と同じ
+    _toastUndo(text) {
+      if (K.Toast) K.Toast.show(text, { host: this.els.stage, action: { label: '元に戻す', fn: () => history.back() } });
+    }
+
+    /** ホバー予告（§3-3）: 理由のマスと「動く予定の駒」のマスを盤に示す。
+     *  同じ候補の連続発火は捨て、評価は rAF で1フレームにまとめる（S6） */
+    _preview(who, kind, id) {
+      const key = `${who}|${kind}|${id}`;
+      if (this._pvKey === key && this._pvRaf) return;
+      this._pvKey = key;
+      if (this._pvRaf) cancelAnimationFrame(this._pvRaf);
+      this._pvRaf = requestAnimationFrame(() => { this._pvRaf = null; this._previewNow(who, kind, id); });
+    }
+
+    _previewNow(who, kind, id) {
+      const s = this.store.state;
+      // 評価は constraints.evaluate に一本化（S3: judge の土台は「候補を置いた後」の側＝
+      // その側が空でも候補から戦略が導かれる）
+      const { next, j } = K.constraints.evaluate(s.slots, s.showOpp, who, kind, id);
+      const mir = who === 'opp';
+      // 理由マスは sente 座標で返るので、相手側は絶対座標に反転する（駒差分と同じ扱い）
+      const sq = new Set((j.reasons || []).flatMap(x => x.squares || [])
+        .map(q => mir ? mirrorSq(q) : q));
+      // 動く予定の駒のマス（§3-3）: いまの実効局面と候補の合成局面を比べて、
+      // core/lead の駒が増減・移動するマスを拾う（相手側は絶対座標に反転する）
+      const cur = K.constraints.effectiveSides(s.slots, s.showOpp)[who];
+      const after = K.constraints.effectiveSides(next, s.showOpp)[who];
+      const posOf = x => K.compose.build({
+        strategy: x.strategy, tacticIds: x.tacticIds, castleId: x.castleId, side: 'sente',
+      }).position;
+      const a = posOf(cur), b = posOf(after);
+      for (const x of [...a.pieces, ...b.pieces]) {
+        if (x.role !== 'core' && x.role !== 'lead') continue;
+        const ya = a.at(x.f, x.r), yb = b.at(x.f, x.r);
+        if ((ya && ya.p) !== (yb && yb.p)) sq.add(mir ? mirrorSq(`${x.f}${x.r}`) : `${x.f}${x.r}`);
+      }
+      this.board.hover([...sq], j.level === 'ng' ? 'bad' : 'focus');
+    }
+
+    // ---------- 画面遷移 ----------
+    enter(state) { this.update(state, new Set(['initial', ...Object.keys(state)])); }
+
+    /** 描画は BoardScreen に委譲し、戻りの導出 vm で左レールを更新する */
+    update(state, changed) {
+      const d = this.screen.update(state, changed);
+      const hard = changed.has('initial');
+      if (hard || changed.has('slots') || changed.has('selected') || changed.has('showOpp')) {
+        this.rail.update(state, d.S);
+      }
+      this._notifyCombo(d, state, hard);
+    }
+
+    // 定番セットが新しく完成したら知らせる（起動時・ハッシュで開いたときは黙って覚えるだけ）
+    _notifyCombo(d, state, quiet) {
+      for (const who of ['me', 'opp']) {
+        const c = who === 'opp' && !state.showOpp ? null : (K.tesuji ? K.tesuji.comboOf(d.S[who]) : null);
+        const id = c ? c.id : null;
+        if (id && id !== this._done[who] && !quiet && K.Toast) {
+          K.Toast.show(`${who === 'opp' ? '相手' : '自分'}の定番セット「${c.name}」が完成しました`, { host: this.els.stage });
+        }
+        this._done[who] = id;
+      }
+    }
+
+    // ---------- キーボード（U3） ----------
+    _onKey(e) {
+      // 「手筋と格言」の全画面モードでは盤の操作を閉じる（Esc・矢印キーはモード側へ）
+      if (this.store.state.view === 'tesuji') return;
+      // Esc はトーストとホバー予告を閉じる（U2）
+      if (e.key === 'Escape') {
+        if (K.Toast) K.Toast.hide();
+        this.board.hover([], null);
+        return;
+      }
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test(e.target.tagName)) return;
+      if (!e.key.startsWith('Arrow')) return;
+      // 矢印の役割はフォーカスのある部品の中で閉じる（U3）。制約バー・レール・
+      // 詳細は各部品が処理するので、盤（中央）にフォーカスがあるときだけ
+      // 「選択中の制約の隣の候補へ」が効く。フォーカスが無いときも中央扱いにする
+      const ae = document.activeElement;
+      const central = !ae || ae === document.body || ae === document.documentElement
+        || ae.closest('.boardwrap, .boardarea');
+      if (!central) return;
+      const sel = parseSel(this.store.state.selected);
+      if (!sel) return;
+      const s = this.store.state;
+      const st = K.constraints.effectiveSides(s.slots, s.showOpp)[sel.who];
+      // 移動先は keyboard-nav.js の純関数（S6）
+      const next = K.keyboardNav.arrowTarget(sel, st, { rows: this.rows, repo: this.repo }, e.key);
+      if (next) { e.preventDefault(); this._set(sel.who, next.kind, next.id); }
+    }
+  }
+
+  const hasAny = slots => ['me', 'opp'].some(w => K.constraints.KINDS.some(k => slots[w][k] != null));
+
+  K.ScreenController = ScreenController;
+})();

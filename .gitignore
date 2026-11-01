@@ -1,5 +1,7 @@
 node_modules/
 tools/shots/
+.claude/worktrees/
+.scratch-review/
 
 # macOS
 .DS_Store

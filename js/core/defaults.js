@@ -2,8 +2,8 @@
 // defaultTactic / defaultCastle（{vsIbisha,vsFuribisha} 振り分けを含む）と、
 // sideState（{strategy, tacticId?, castleId?}）から実効 id を返す窓口。
 // compat.js / matchup.js / compose.js / constraints.js が共有する。戦略そのものは
-// 制約にせず、戦法（無ければ囲い）から constraints.sides() が導く。
-// ここはデータと lookup にだけ依存し、compat/constraints を参照しない
+// 制約にせず、戦法（無ければ囲い）から constraints.effectiveSides() が導く。
+// ここはデータと catalog にだけ依存し、compat/constraints を参照しない
 // （compat ↔ constraints の相互参照を一方向にするために分離した。計画書 S6）
 window.Kakoi = window.Kakoi || {};
 (() => {
@@ -28,10 +28,24 @@ window.Kakoi = window.Kakoi || {};
     return null;
   }
   // 従来の sideState（{strategy, tacticId?, castleId?}）から実効 id を返す薄い窓口
-  const tacticIdOf = st => (st && st.tacticId) || defaultTacticId(st && st.strategy);
+  // 複数戦法: tacticIds の配列があればその主（primaryTacticId）を優先する
+  const primaryTacticId = ids => {
+    const list = Array.isArray(ids) ? ids : (ids != null ? [ids] : []);
+    for (const id of list) {
+      const t = id && Kakoi.catalog && Kakoi.catalog.findTactic(id);
+      if (t && t.lead && t.lead.piece === '飛') return id;
+    }
+    return list[0] || null;
+  };
+  // 実効状態（effectiveSides() の出力。戦法は tacticIds のみが実効表現）の主の戦法を取る窓口。
+  // 旧形式（tacticId の単独値）の入力も吸収する。tacticIdOf と違い戦略既定値までは降りない
+  const primaryOf = st =>
+    st ? primaryTacticId(st.tacticIds) || st.tacticId || null : null;
+  const tacticIdOf = st =>
+    (st && (st.tacticId || primaryTacticId(st.tacticIds))) || defaultTacticId(st && st.strategy);
   const castleIdOf = (st, opp) => (st && st.castleId) || defaultCastleId(st && st.strategy, opp && opp.strategy);
 
-  const api = { stratOf, defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf };
+  const api = { defaultTacticId, defaultCastleId, defaultIdOf, tacticIdOf, castleIdOf, primaryTacticId, primaryOf };
   Kakoi.defaults = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

@@ -1,6 +1,6 @@
-// 右ドックのセクション部品（計画書 §5 / U5）: 囲い・戦法の詳細の描画を
+// 右 detail のセクション部品（計画書 §5 / U5）: 囲い・戦法の詳細の描画を
 // 「HTML文字列を返す関数」に分解したもの。
-// 選択中の制約の種類ごとの組み立ては board-detail-view.js（Kakoi.BoardDetailView）が行う。
+// 選択中の制約の種類ごとの組み立ては detail-view.js（Kakoi.DetailView）が行う。
 // 決め事:
 //   - 出典: 本文中の [[ref]] / [[a|b]] トークンは rich(text, citer) で [n] に変わる。
 //     citer はパネル1枚につき1つ作り、出典リストは sourcesBlock が同じ番号で並べ直す（§7）
@@ -24,6 +24,14 @@ window.Kakoi = window.Kakoi || {};
     ['side', '横の強さ'],
     ['quick', '組みやすさ'],
   ];
+  // 戦法の5軸（囲いの RATINGS と同じ頂点の配置。ratings は tactic-ratings.js）
+  const TACTIC_RATINGS = [
+    ['attack', '攻撃力'],
+    ['speed', '速さ'],
+    ['flex', '柔軟性'],
+    ['safety', '玉の安全'],
+    ['easy', '覚えやすさ'],
+  ];
   // viewBox に収まるよう左の軸ラベル（組みやすさ）分だけ中心を右へ寄せる
   const RADAR = { cx: 102, cy: 74, r: 42, viewBox: '0 0 200 136' };
   // 頂点ごとの軸ラベル: 頂点からの差し分(dx,dy)と文字の基点
@@ -44,6 +52,40 @@ window.Kakoi = window.Kakoi || {};
   const sec = (title, small, body) =>
     `<div class="sec"><h3>${title}${small ? `<small>${small}</small>` : ''}</h3>${body}</div>`;
 
+  // ===== パネル先頭・チップの定型 =====
+  /**
+   * パネル先頭（.bd-h）: 上段の小見出し（側・層や分類のパンくず）＋項目名。
+   * reading は項目名の脇の小字。implied は「既定」の印と暗黙の補完の注記を添える
+   * @param {string} who 小見出し（「▲自分の戦法」「対戦形式（大分類）」など）
+   * @param {string} name 項目名
+   * @param {{ reading?:string, implied?:boolean }} [opt]
+   */
+  function head(who, name, { reading = '', implied = false } = {}) {
+    return `<div class="bd-h"><p class="bd-who">${esc(who)}</p>` +
+      `<h2 class="bd-t">${esc(name)}${reading ? ` <span class="bd-imp">${esc(reading)}</span>` : ''}` +
+      `${implied ? ' <small class="bd-imp">既定</small>' : ''}</h2>` +
+      (implied
+        ? '<p class="note">未選択のため、戦略の既定値（または他の層との相性から選んだ値）で補っています。左ドックで選ぶと置き換わります。</p>'
+        : '') +
+      `</div>`;
+  }
+
+  // .vchips: チップ（.vchip）を横に並べる器。中身は呼び側で組む
+  const vchips = inner => `<div class="vchips">${inner}</div>`;
+
+  /**
+   * [data-act="set"] の vchip: 押すとその層を制約に立てる。
+   * who を渡すときだけ data-who を出す（戦型の面から側を指定して立てる場合）
+   * @param {{ who?:string, kind:string, id:string, text:string, pressed?:boolean }} o
+   */
+  const setChip = ({ who = '', kind, id, text, pressed = false }) =>
+    `<button class="vchip" data-act="set"${who ? ` data-who="${esc(who)}"` : ''} data-kind="${esc(kind)}"` +
+    ` data-id="${esc(id)}" aria-pressed="${!!pressed}">${esc(text)}</button>`;
+
+  // [data-act="senkei"] の vchip: 制約ではなく戦型の解説への導線
+  const senkeiChip = (id, text) =>
+    `<button class="vchip" data-act="senkei" data-id="${esc(id)}" aria-pressed="false">${esc(text)}</button>`;
+
   /**
    * 特徴の目安: 5軸×5段階のレーダーチャート。
    * @param {Object} ratings 囲いの強み {hard,wide,top,side,quick}
@@ -52,19 +94,22 @@ window.Kakoi = window.Kakoi || {};
    *           朱の破線（.mu-w）で重ねる（計画書 §5: ペンタグラムへの戦型重みの重ね方）
    */
   function penta(ratings = {}, { weights = null, title = '特徴の目安', small = '5段階・主観',
-    hint = '「横の強さ」は横からの飛車攻めへの耐性。端からの攻めは含みません' } = {}) {
+    hint = '「横の強さ」は横からの飛車攻めへの耐性。端からの攻めは含みません',
+    axes = RATINGS, parent = null, color = '' } = {}) {
     const rings = [1, 2, 3, 4, 5].map(l =>
-      `<polygon class="penta-ring${l === 5 ? ' edge' : ''}" points="${RATINGS.map((_, i) => vertex(i, RADAR.r * l / 5).map(num).join(',')).join(' ')}"/>`).join('');
-    const spokes = RATINGS.map((_, i) => {
+      `<polygon class="penta-ring${l === 5 ? ' edge' : ''}" points="${axes.map((_, i) => vertex(i, RADAR.r * l / 5).map(num).join(',')).join(' ')}"/>`).join('');
+    const spokes = axes.map((_, i) => {
       const [x, y] = vertex(i, RADAR.r).map(num);
       return `<line class="penta-spoke" x1="${RADAR.cx}" y1="${RADAR.cy}" x2="${x}" y2="${y}"/>`;
     }).join('');
-    const points = RATINGS.map(([k], i) =>
-      vertex(i, RADAR.r * Math.min(5, Math.max(0, ratings[k] || 0)) / 5).map(num).join(',')).join(' ');
+    const poly = r => axes.map(([k], i) =>
+      vertex(i, RADAR.r * Math.min(5, Math.max(0, r[k] || 0)) / 5).map(num).join(',')).join(' ');
+    // 戦法: 派生なら親の形を破線で重ねて「何が変わったか」を見せる
+    const parentPoly = parent ? `<polygon class="penta-parent" points="${poly(parent)}"/>` : '';
     // 戦型の重み（0〜0.5 程度）を0〜5の目盛りに換算して重ねる
-    const wpts = weights ? RATINGS.map(([k], i) =>
+    const wpts = weights ? axes.map(([k], i) =>
       vertex(i, RADAR.r * Math.min(5, (weights[k] || 0) * 10) / 5).map(num).join(',')).join(' ') : null;
-    const labels = RATINGS.map(([k, name], i) => {
+    const labels = axes.map(([k, name], i) => {
       const [x, y] = vertex(i, RADAR.r).map(num);
       const [dx, dy, anchor] = RADAR_LABEL[i];
       const tip = weights
@@ -73,16 +118,32 @@ window.Kakoi = window.Kakoi || {};
       return `<text class="penta-lbl" x="${num(x + dx)}" y="${num(y + dy)}" text-anchor="${anchor}"><title>${tip}</title>${name}</text>`;
     }).join('');
     return `<div class="sec"><h3${hint ? ` title="${esc(hint)}"` : ''}>${title}${small ? `<small>${small}</small>` : ''}</h3>` +
-      `<svg class="penta" viewBox="${RADAR.viewBox}" role="img" aria-label="${esc(title)}（5軸・5段階）">${rings}${spokes}` +
-      `<polygon class="penta-val" points="${points}"/>${wpts ? `<polygon class="mu-w" points="${wpts}"/>` : ''}${labels}</svg></div>`;
+      `<svg class="penta" viewBox="${RADAR.viewBox}" role="img" aria-label="${esc(title)}（5軸・5段階）"${color ? ` style="--tc:${color}"` : ''}>${rings}${spokes}` +
+      `${parentPoly}<polygon class="penta-val${color ? ' tac' : ''}" points="${poly(ratings)}"/>${wpts ? `<polygon class="mu-w" points="${wpts}"/>` : ''}${labels}</svg></div>`;
+  }
+
+  // 戦法の特徴の目安: 派生は親（variantOf）の形を破線で重ね、差分を一行で添える
+  function tacticPenta(tactic, parent, color) {
+    const r = tactic && tactic.ratings;
+    if (!r) return '';
+    const pr = parent && parent.ratings;
+    const diff = pr ? TACTIC_RATINGS.filter(([k]) => pr[k] !== r[k])
+      .map(([k, n]) => `${n}${r[k] > pr[k] ? '↑' : '↓'}`).join('・') : '';
+    return penta(r, { axes: TACTIC_RATINGS, parent: pr || null, color,
+      hint: '「速さ」は仕掛けまでの手数、「覚えやすさ」は定跡の量と注意点の少なさ' }) +
+      (pr ? `<p class="note ps-diff">破線＝${esc(parent.name)}${diff ? `（${diff}）` : '（形は同じ）'}</p>` : '');
   }
 
   // ===== #タグ =====
+  // 別名は「別名：〜」のタグにする（囲い・戦法で共通）
+  const aliasTags = x => (x.aliases || []).map(a => `別名：${a}`);
+
   // 囲い: 系統（group＝朱）・細分類・その他のタグを個別に並べる（装飾のみ・クリック不可）
   function castleTags(castle, family, subtype) {
     const parts = family ? [`<span class="tag group">#${esc(family.name)}</span>`] : [];
     if (subtype) parts.push(`<span class="tag">#${esc(subtype.name)}</span>`);
-    const rest = (castle.tags || []).filter(t => !family || t !== family.name);
+    const rest = [...aliasTags(castle),
+      ...(castle.tags || []).filter(t => !family || t !== family.name)];
     parts.push(...rest.map(t => `<span class="tag">#${esc(t)}</span>`));
     return `<div class="tags">${parts.join('')}</div>`;
   }
@@ -90,7 +151,7 @@ window.Kakoi = window.Kakoi || {};
   // 戦法: 系統（group）・向き（context）・別名
   function tacticTags(tactic, family) {
     const parts = family ? [`<span class="tag group">#${esc(family.name)}</span>`] : [];
-    const tags = [tactic.context, ...(tactic.aliases || []).map(a => `別名：${a}`)].filter(Boolean);
+    const tags = [tactic.context, ...aliasTags(tactic)].filter(Boolean);
     parts.push(...tags.map(x => `<span class="tag">#${esc(x)}</span>`));
     return `<div class="tags">${parts.join('')}</div>`;
   }
@@ -130,8 +191,9 @@ window.Kakoi = window.Kakoi || {};
    */
   function pcList(title, items, { tone = '', cls = '', small = '点線の項目は盤上に表示' } = {}, citer) {
     if (!items || !items.length) return '';
+    // 本文は span で包む（li はグリッドなので、包まないと出典の <sup> が別のセルとして次の行へ落ちる）
     const li = items.map(it =>
-      `<li${sqAttr(it.sq)}${tone ? ` data-tone="${tone}"` : ''}>${rich(it.t, citer)}</li>`).join('');
+      `<li${sqAttr(it.sq)}${tone ? ` data-tone="${tone}"` : ''}><span>${rich(it.t, citer)}</span></li>`).join('');
     return sec(title, small, `<ul class="pc-list${cls ? ' ' + cls : ''}">${li}</ul>`);
   }
 
@@ -192,14 +254,13 @@ window.Kakoi = window.Kakoi || {};
   function variants(items) {
     if (!items || items.length < 2) return '';
     const chips = items.map(v =>
-      `<button class="vchip" data-act="set" data-kind="tactic" data-id="${esc(v.id)}"` +
-      ` aria-pressed="${!!v.current}">${esc(v.name)}</button>`).join('');
-    return sec('派生の切替', '同じ形の変化。押すとその戦法を制約にする', `<div class="vchips">${chips}</div>`);
+      setChip({ kind: 'tactic', id: v.id, text: v.name, pressed: v.current })).join('');
+    return sec('派生の切替', '同じ形の変化。押すとその戦法を制約にする', vchips(chips));
   }
 
   /**
    * 対戦相性（fitness）: 戦型の重み × 囲いの強みのスコアと、効いている軸のチップ。
-   * @param {number} fit matchup.fitness() の値
+   * @param {number} fit matchup.castleFit() の値
    * @param {Object} threat その側から見た matchup.threat()（label/weights を使う）
    * @param {Object} castle 評価対象の囲い（ratings を使う）
    */
@@ -267,11 +328,12 @@ window.Kakoi = window.Kakoi || {};
     return sec(title, '点線の項目は盤上に表示', `<ul class="mu-reasons">${li}</ul>`);
   }
 
-  // 両軍の接触（compose.merge の contacts: {sq, kind:'pawn'|'ng', text}）
+  // 両軍の接触（compose.merge の contacts: {sq, kind:'pawn'|'ng', text}）。
+  // マスは合成済みの絶対座標なので data-abs を付け、詳細側の側反転（opp 用 mirrorSq）の対象外にする
   function contacts(list, citer) {
     if (!list || !list.length) return '';
     const li = list.map(c =>
-      `<li data-level="${c.kind === 'ng' ? 'ng' : 'ok'}" data-tone="${c.kind === 'ng' ? 'bad' : 'focus'}" data-sq="${esc(c.sq)}">` +
+      `<li data-level="${c.kind === 'ng' ? 'ng' : 'ok'}" data-tone="${c.kind === 'ng' ? 'bad' : 'focus'}" data-sq="${esc(c.sq)}" data-abs="1">` +
       `<span class="mk">${c.kind === 'ng' ? '×' : '＋'}</span><span>${rich(c.text, citer)}</span></li>`).join('');
     return sec('両軍の接触', 'マスに乗せると盤で光る', `<ul class="mu-reasons">${li}</ul>`);
   }
@@ -287,11 +349,11 @@ window.Kakoi = window.Kakoi || {};
     const li = reasons.map(r =>
       `<li data-level="ng" data-tone="bad"${sqAttr(r.squares)}><span class="mk">✕</span><span>${rich(r.text, citer)}</span></li>`).join('');
     const chips = suggestions.map(c =>
-      `<button class="vchip" data-act="set" data-kind="${kind}" data-id="${esc(c.id)}" aria-pressed="false">${esc(c.name)}</button>`).join('');
+      setChip({ kind, id: c.id, text: c.name })).join('');
     return sec('いまの組み合わせでは両立しません', '自動では差し替えません',
       `<ul class="mu-reasons">${li}</ul>` +
       (chips
-        ? `<p class="note">代わりの候補（押すと差し替え）</p><div class="vchips">${chips}</div>`
+        ? `<p class="note">代わりの候補（押すと差し替え）</p>${vchips(chips)}`
         : '<p class="note">差し替えで直せる候補はありません。もう一方の層を外すか選び直してください。</p>'));
   }
 
@@ -300,11 +362,118 @@ window.Kakoi = window.Kakoi || {};
     return sec('出典', small, sourcesBlock(items, citer));
   }
 
+  // ---------- お楽しみ ----------
+  // 読み物の末尾にそっと添える余白のコーナー（js/data/extras.js）。
+  // 格言は選択中の制約から1つ引く（項目を変えると別の格言が出る）＋「もう一つ」で引き直し。
+  // ミーム・動画は <details> に畳んで、読みたい人だけ開く
+
+  // 出典の1行（番号なし）。fun の項目が持つ src: [{ ref, for }] を「出典: タイトル（発行元）」のリンクにする
+  const srcLine = src => {
+    const links = (src || []).map(s => K.SOURCES[s.ref]).filter(Boolean)
+      .map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}（${esc(s.publisher)}）</a>`);
+    return links.length ? `<small class="fun-src">出典: ${links.join(' / ')}</small>` : '';
+  };
+  const proverbHTML = pv => `<b>「${esc(pv.t)}」</b><span>${esc(pv.n)}</span>${srcLine(pv.src)}`;
+
+  function fun(sel) {
+    const F = K.FUN;
+    if (!F || !F.proverbs.length) return '';
+    const key = `${sel.who}.${sel.kind}.${sel.id || ''}`;
+    let h = 0;
+    for (const ch of key) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    const pv = F.proverbs[h % F.proverbs.length];
+    return sec('お楽しみ', '格言・ミーム・動画',
+      `<blockquote class="fun-pv">${proverbHTML(pv)}</blockquote>` +
+      `<div class="fun-row"><button type="button" class="fun-shuf" title="別の格言を引く">もう一つ</button></div>` +
+      `<details class="fun-memes"><summary>将棋の言葉・出来事</summary><ul>` +
+      F.memes.map(m => `<li><b>${esc(m.t)}</b><span>${esc(m.n)}${srcLine(m.src)}</span></li>`).join('') +
+      `</ul></details>` +
+      `<details class="fun-vids"><summary>おもしろ動画を探す（YouTube）</summary>` +
+      `<p class="note">検索結果は YouTube が表示するもので、内容は保証しません</p><ul>` +
+      F.videos.map(v => `<li><a href="${esc(v.u)}" target="_blank" rel="noopener">` +
+        `${esc(v.t)}<i class="ext">↗</i></a><span>${esc(v.n)}</span></li>`).join('') +
+      `</ul></details>`);
+  }
+
+  // ---------- 定番セット・受けの手筋・王手飛車 ----------
+  /**
+   * 定番セット（戦法×囲いの名前のある組み合わせ。data/combos.js）。
+   * 押すとそのセットを制約に立てる（[data-act="combo"]）。vs があるときは相手側も並べられる
+   * @param {Array<{combo:Object, done:boolean}>} rows
+   * @param {{ canVs?:boolean }} opt 相手のセットも並べるボタンを出すか（自分側のみ）
+   */
+  function combos(rows, citer, { canVs = false } = {}) {
+    if (!rows || !rows.length) return '';
+    const items = rows.map(({ combo: c, done }) => {
+      const vs = canVs && c.vs
+        ? `<button class="vchip" data-act="combo" data-id="${esc(c.id)}" data-vs="1" aria-pressed="false">相手も並べる</button>` : '';
+      return `<div class="combo${done ? ' done' : ''}">` +
+        `<h3 class="combo-h">${esc(c.name)}${c.basic ? '<span class="combo-basic">基本</span>' : ''}${done ? '<span class="combo-ok">完成</span>' : ''}</h3>` +
+        `<p class="desc">${rich(c.desc, citer)}</p>` +
+        vchips(`<button class="vchip" data-act="combo" data-id="${esc(c.id)}" aria-pressed="${done}">${done ? 'そろっています' : 'このセットにする'}</button>${vs}`) +
+        `</div>`;
+    }).join('');
+    return sec('定番セット', '戦法と囲いを両方選ぶと完成', items);
+  }
+
+  /**
+   * 受けの手筋（選択中の攻め筋に対する底歩など）。press で盤に駒を置く
+   * @param {Array<{tesuji:Object, sq:string, mark:string, kinzoko:boolean, nifu:boolean, on:boolean}>} rows
+   */
+  function defenses(rows, citer) {
+    if (!rows || !rows.length) return '';
+    const items = rows.map(r => {
+      const where = `${r.mark}${label(+r.sq[0], +r.sq[1])}歩`;
+      const text = (r.kinzoko ? `${where}（金の下に打つ底歩）で横の利きを止める。` : `${where}で横の利きを止める。`) +
+        (r.nifu ? `いまは${r.sq[0]}筋に自分の歩があるので、その歩を交換した後なら打てる（二歩の禁止）。` : '');
+      return `<button class="attack defense" data-act="defense" data-id="${esc(r.tesuji.id)}" data-sq="${r.sq}" data-tone="good" aria-pressed="${r.on}">` +
+        `<b>${esc(r.tesuji.name)}</b>${esc(text)}</button>`;
+    }).join('');
+    return sec('受けの手筋', '押すと盤に歩を置く', `<div class="attacks">${items}</div>`) +
+      `<p class="note"><button class="linkish" data-act="tesuji" data-id="${esc(rows[0].tesuji.id)}">${esc(rows[0].tesuji.name)}の図と格言を見る</button></p>`;
+  }
+
+  /**
+   * 王手飛車の筋: 相手が角・桂を1枚打つと玉と飛車に同時に利くマス（core/tesuji-engine.js の forks）
+   * @param {Array<{piece,sq,king,rook,via:string[]}>} list 盤の絶対座標
+   * @param {{ attacker:string, mine:boolean }} opt attacker: 打つ側の印（▲/△）。mine: 自分が狙われる側
+   */
+  function forks(list, { attacker, mine }) {
+    if (!list || !list.length) return '';
+    const L = s => label(+s[0], +s[1]);
+    const li = list.map(x => {
+      const via = x.via.length ? `（${x.via.map(L).join('・')}の歩が動くと筋が通る）` : '（いま打たれると成立）';
+      return `<li data-sq="${[x.sq, x.king, x.rook, ...x.via].join(' ')}" data-tone="${mine ? 'bad' : 'good'}" data-abs="1">` +
+        `${attacker}${L(x.sq)}${esc(x.piece)}：玉${L(x.king)}と飛${L(x.rook)}に同時に利く${esc(via)}</li>`;
+    }).join('');
+    return sec(mine ? '王手飛車の筋（狙われる）' : '王手飛車の筋（狙える）', '持ち駒の角・桂を打つ場合。マスに乗せると盤で光る',
+      `<ul class="mu-reasons">${li}</ul>`) +
+      `<p class="note"><button class="linkish" data-act="tesuji" data-id="otebisha">王手飛車の図と格言を見る</button></p>`;
+  }
+
+  /**
+   * この囲いの崩され方（coverage-tesuji §5-8）: 囲いに結びつく手筋（K.tesuji.forCastle）。
+   * 急所のマスは data-sq で盤に示す。「手順を見る」は手筋モーダルを開く
+   * @param {Array<{tesuji:Object, weak:string[]}>} rows
+   */
+  function kuzushi(rows, citer) {
+    if (!rows || !rows.length) return '';
+    const items = rows.map(({ tesuji: t, weak }) => {
+      const w = (weak || []).map(s => label(+s[0], +s[1])).join('・');
+      const cap = (t.diagram && t.diagram.frames && t.diagram.frames[0] || {}).caption || '';
+      return `<li data-sq="${esc((weak || []).join(' '))}" data-tone="bad"><span class="mk">急所</span>` +
+        `<span><b>${esc(t.name)}</b>${w ? `（${esc(w)}）` : ''} ${esc(cap)} ` +
+        `<button class="linkish" data-act="tesuji" data-id="${esc(t.id)}">手順を見る</button></span></li>`;
+    }).join('');
+    return sec('この囲いの崩され方', '急所のマスに乗せると盤で光る', `<ul class="mu-reasons">${items}</ul>`);
+  }
+
   K.detailSections = {
-    RATINGS, RADAR, sec,
-    penta, castleTags, tacticTags,
+    RATINGS, TACTIC_RATINGS, RADAR, sec, head, vchips, setChip, senkeiChip,
+    penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,
-    vsSection, vsRows, reasons, conflict, contacts, sources,
+    vsSection, vsRows, reasons, conflict, contacts, sources, fun, proverbHTML,
+    combos, defenses, forks, kuzushi,
   };
 })();

@@ -2,22 +2,18 @@
    design-refs-dock.html の A「系統の色と印」: タイルの面積は増やさず、
    系統色（囲い=系統 --f-*・戦法=主役の駒 --t-*）の帯・下線で塊を読ませ、
    状態（◎△✕・選択中）は色付きの小さなバッジで遠目にも分かるようにする。
-   2軸バッジの意味は暫定ドックのまま（constraint.css の .cr-item と同じ意味） */
+   2軸バッジの意味は暫定ドックのまま */
 
 #pickRail { padding:10px 14px; }    /* タイルを立てるため余白は詰める */
 /* 相手の面は藍をうっすら敷く（自分=墨のまま） */
 #pickRail[data-who="opp"] { background:color-mix(in srgb, var(--gote-ink) 5%, transparent); }
-#pickRail .dk { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; position:relative; }
-/* 上端: 開いている側の名前と凡例 ? ボタン（U6）。側の切り替えは右端の駒の見出し（.dk-binder） */
-.dk-top { flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:6px;
-          border-bottom:1px solid var(--line); margin-bottom:8px; }
-.dk-title { display:flex; align-items:baseline; gap:8px; }
-.dk-title b { font:800 22px/1.2 var(--font-d); letter-spacing:.1em; }
-.dk-title small { font-size:11px; letter-spacing:.08em; color:var(--muted); }
-.dk[data-who="opp"] .dk-title b { color:var(--gote-ink); }
-.dk-legend { width:18px; height:18px; padding:0; border:1px solid var(--line-2); border-radius:50%;
+#pickRail .dk { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; position:relative;
+               container:dk / inline-size; }
+/* 開いている側の名前は面に持たない（右端の駒の見出し .dk-binder が示す。3） */
+.dk-legend { flex:none; margin-left:auto; width:18px; height:18px; padding:0; border:1px solid var(--line-2); border-radius:50%;
              background:none; color:var(--muted); font:600 11px/1 var(--font-n); cursor:pointer; }
-.dk-legend:hover, .dk-legend[aria-expanded="true"] { color:var(--fg); border-color:var(--fg); }
+@media (hover:hover) { .dk-legend:hover { color:var(--fg); border-color:var(--fg); } }
+.dk-legend[aria-expanded="true"] { color:var(--fg); border-color:var(--fg); }
 .dk-legend-pop { position:absolute; top:30px; right:0; z-index:12; min-width:200px; max-width:260px;
                  padding:9px 12px; background:var(--bg); border:1px solid var(--line-2);
                  box-shadow:0 8px 22px rgba(24,18,8,.14); font-size:12px; line-height:1.7; }
@@ -26,51 +22,77 @@
 .dk-legend-pop .lg-ex { display:inline-block; min-width:2.4em; padding:0 4px; border:1px solid var(--line-2);
                         text-align:center; margin-right:5px; }
 .dk-legend-pop .lg-sel { outline:2px solid var(--accent); outline-offset:1px; font-weight:700; }
+.dk-legend-pop .lg-inv { background:var(--t-silver); color:#fbf6ea; font-weight:700; border-color:transparent; }
 .dk-legend-pop .lg-fam { border-left:4px solid var(--f-yagura); border-bottom:3px solid var(--f-yagura); }
-.dk-legend-pop .lg-badge { display:inline-block; min-width:1.9em; margin-right:4px; padding:0 5px; border-radius:999px;
-                           font:700 10px/1.6 var(--font-b); text-align:center; }
-.dk-legend-pop .lg-good { background:var(--good); color:var(--bg); }
-.dk-legend-pop .lg-bad { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
-.dk-legend-pop .lg-ng { background:var(--bad); color:#fbf6ea; }
+.lg-badge { display:inline-block; min-width:1.9em; margin-right:4px; padding:0 5px; border-radius:999px;
+            font:700 10px/1.6 var(--font-b); text-align:center; }
+.lg-good { background:var(--good); color:var(--bg); }
+.lg-bad { box-shadow:inset 0 0 0 1px var(--muted); color:var(--muted); }
+.lg-ng { background:var(--bad); color:#fbf6ea; }
 .dk-legend-pop .lg-imp { border-style:dashed; color:var(--muted); }
 .dk-legend-pop .lg-basic { border-color:var(--fg); font-weight:600; position:relative; }
 .dk-legend-pop .lg-basic::before { content:""; position:absolute; top:-1px; left:-1px;
                                    border-top:7px solid var(--accent); border-right:7px solid transparent; }
 .dk-pane { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; min-height:0; }
 
-.dk-pane-h { flex:none; display:flex; align-items:center; justify-content:space-between; gap:4px 10px; flex-wrap:wrap; padding-bottom:8px; }
-/* 層（囲い／戦法）: 塗りの大きな2択。選んでいる層は墨で塗る（つまみは使わない） */
-.dk-tab { display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; }
-.dk-tab .knob, .dk-strategy .knob, .dk-sort-seg .knob { display:none; }
-.dk-tab button { display:flex; align-items:center; justify-content:center; gap:7px; padding:7px 0;
-                 border:1.5px solid var(--line-2); border-bottom:0;
+/* 上端の1行（5）: 左に戦型の絞り込み（文字セグメント）、右に層タブ（囲い／戦法）。下の罫に選択中のタブが綴じる */
+/* （body 直下の header の flex-wrap・padding・墨の罫が効かないよう、ここで打ち消す） */
+.dk-pane-h { flex:none; display:flex; flex-wrap:nowrap; align-items:flex-end; gap:10px; padding:0; margin-bottom:8px;
+             border-bottom:1px solid var(--line-2); }
+/* 層（囲い／戦法）: 選択中の紙タブを前に出し、下の一覧に綴じる */
+.dk-tab { position:relative; display:flex; align-items:flex-end; gap:4px; flex:1 1 auto; height:42px; min-width:0;
+          padding:0 0 0 4px; margin-bottom:-1px; }
+.dk-tab .knob, .dk-strategy .knob { display:none; }
+.dk-tab button { position:relative; flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:7px;
+                 height:41px; min-width:0; padding:6px 3px; border:1px solid var(--line-2);
+                 border-radius:9px 9px 0 0; background:color-mix(in srgb,var(--fg) 4%,var(--bg));
                  font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted);
-                 transition:background .2s, color .2s, border-color .2s; }
+                 transition:background .18s, color .18s, border-color .18s; }
 .dk-tab button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
-.dk-tab button:hover { color:var(--fg); border-color:var(--fg); }
-.dk-tab button[aria-pressed="true"] { background:var(--fg); border-color:var(--fg); color:var(--bg); font-weight:700; }
-.dk-clear { flex:none; border:1px solid var(--line); background:none; padding:2px 9px; font-size:12px;
-            color:var(--muted); cursor:pointer; letter-spacing:.06em; }
-.dk-clear:hover { color:var(--bad); border-color:var(--bad); }
+@media (hover:hover) { .dk-tab button:hover { color:var(--fg); border-color:var(--fg); } }
+.dk-tab button[aria-pressed="true"] { z-index:1; border-color:var(--accent-2);
+                                      border-bottom:1px solid var(--bg); background:var(--bg); color:var(--fg);
+                                      box-shadow:inset 0 3px 0 var(--accent); font-weight:800; }
+.dk-clear { display:grid; flex:none; place-items:center; width:28px; height:28px; padding:0;
+            border:1px solid var(--line-2); border-radius:50%; background:none; color:var(--muted);
+            cursor:pointer; font:600 18px/1 var(--font-b); }
+@media (hover:hover) { .dk-clear:hover { color:var(--bad); border-color:var(--bad); } }
 .dk-clear[hidden] { display:none; }
-/* 戦略（居飛車／振り飛車）: 「居／振」の丸印を添えた朱のピル */
-.dk-filter-row { flex:none; display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
-.dk-strategy { flex:1 1 150px; min-width:0; display:flex; margin:0; padding:2px; border:1.5px solid var(--line-2); border-radius:999px; }
-.dk-strategy button { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 0; border-radius:999px;
-                      font:700 13px/1 var(--font-b); letter-spacing:.06em; color:var(--muted); transition:background .2s, color .2s; }
-.dk-strategy button b { display:grid; place-items:center; width:19px; height:19px; border:1px solid currentColor; border-radius:50%;
-                        font:800 11px/1 var(--font-d); letter-spacing:0; }
-.dk-strategy button:hover { color:var(--fg); }
-.dk-strategy button[aria-pressed="true"] { background:var(--accent); color:#fbf6ea; font-weight:700; }
-.dk-tools { flex:none; display:flex; align-items:center; }
+/* 戦型（振り飛車／居飛車）の絞り込み: タブ列の左端に並ぶ素朴な文字セグメント。選択中は朱の下線だけ */
+.dk-strategy { flex:none; align-self:flex-end; display:flex; margin:0 0 1px; padding:0; }
+.dk-strategy button { flex:none; display:flex; align-items:center; justify-content:center; padding:7px 9px 6px;
+                      font:700 13px/1 var(--font-b); letter-spacing:.05em; color:var(--muted); white-space:nowrap; transition:color .2s; }
+/* 面が狭いときはタブのアイコンを畳む（文字は残す） */
+@container dk (max-width:330px) {
+  .dk-tab button svg { display:none; }
+  .dk-tab button { letter-spacing:.1em; }
+  .dk-strategy button { padding:7px 6px 6px; letter-spacing:.03em; }
+}
+@media (hover:hover) { .dk-strategy button:hover { color:var(--fg); } }
+.dk-strategy button[aria-pressed="true"] { color:var(--fg); font-weight:800; box-shadow:inset 0 -2.5px 0 var(--accent); }
+/* 戦型（細）の絞り込み: 戦略チップ行の下に置く1行のチップ。1行で収めて横に流す */
+.dk-senkei { flex:none; display:flex; align-items:center; gap:5px; margin:0 0 6px; padding:0;
+             overflow-x:auto; scrollbar-width:none; }
+.dk-senkei::-webkit-scrollbar { display:none; }
+.dk-senkei .vchip { flex:none; padding:3px 10px; font-size:11px; }
+.dk-senkei[hidden] { display:none; }
+/* 一覧の見出し行: 並べ方（文字のドロップダウン）・いま見えている記号の凡例・? */
+.dk-tools { flex:none; display:flex; align-items:center; gap:6px 10px; flex-wrap:wrap; min-height:28px; margin:0 0 8px; }
 .dk-tools[hidden] { display:none; }
-.dk-sort-seg { flex:none; display:flex; border:1px solid var(--line-2); }
-.dk-sort-seg button { flex:none; width:30px; height:28px; padding:0; font-size:13px; color:var(--muted); letter-spacing:0; }
-.dk-sort-seg button + button { border-left:1px solid var(--line); }
-.dk-sort-seg button.ax { font-family:var(--font-d); font-weight:700; }
-.dk-sort-seg button:not(.ax) + button.ax { border-left:1px solid var(--line-2); }
-.dk-sort-seg button:hover { color:var(--fg); }
-.dk-sort-seg button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+.dk-sort { flex:none; display:flex; align-items:center; gap:6px; font-size:11px; letter-spacing:.06em; color:var(--muted); }
+.dk-sort[hidden] { display:none; }
+.dk-sort-sel { appearance:none; height:28px; padding:0 24px 0 9px; border:1px solid var(--line-2); border-radius:0;
+               /* ▾ は2枚の三角のグラデーションで描く（明暗で色が追随する） */
+               background-color:var(--bg); background-repeat:no-repeat;
+               background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+               background-position:right 13px center, right 9px center; background-size:4px 4px;
+               color:var(--fg); font:600 12px/1 var(--font-b); letter-spacing:.04em; cursor:pointer; }
+@media (hover:hover) { .dk-sort-sel:hover { border-color:var(--fg); } }
+/* いま一覧に出ている記号だけの凡例（6）。相手 OFF で両立しない項目も無ければ隠れる */
+.dk-key { display:flex; flex-wrap:wrap; align-items:center; gap:2px 10px; min-width:0; font-size:11px; color:var(--muted); letter-spacing:.02em; }
+.dk-key[hidden] { display:none; }
+.dk-key-i { display:inline-flex; align-items:center; white-space:nowrap; }
+.dk-key .lg-badge { min-width:0; margin-right:3px; padding:0 4px; font-size:9.5px; }
 /* 選択中の枠と ✓ が端で切れないよう、上と右に少し余白を取る */
 .dk-body { flex:1 1 auto; min-height:0; overflow:auto; padding:8px 9px 2px 0; outline-offset:-1px; }
 /* 絞り込んだ戦略に合わない項目・行・系統は hidden で隠す（flex/grid の display を消す） */
@@ -109,46 +131,99 @@
 /* 選択中の派生を持つ親タイル（§4-3） */
 .dk-item[data-vsel="true"] { border-color:var(--accent-2); }
 
-/* ===== 戦法タイル（§4-3: 行=主役の駒、列=筋、1マス=最終マス） ===== */
+/* ===== 戦法の駒棚（design-refs-tactic-select 案A）: 行=駒・札=筋の地図・採用=裏返し ===== */
 /* 行頭の系統アイコン: 駒の形の小さなタイル（tactics.css の周期表と共有だった器をこちらへ） */
 .pt-tile { align-self:center; justify-self:center; display:grid; place-items:center;
            font:700 11px var(--font-d); color:var(--core); cursor:default;
            background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge);
            clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
-/* 筋の番号ヘッダ: タイルの列と同じ9列グリッド。列は絶対座標（左=9筋）なので両面とも 9…1 */
-.dk-fh { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:0 4px; margin-bottom:-6px;
-         font:500 11px/1 var(--font-d); color:var(--muted); text-align:center; }
-.dk-fh span { border-bottom:1px solid var(--line); padding-bottom:3px; }
-/* 系統の行: 左に主役の駒の色の帯（--tc。飛=朱・銀=藍・角桂歩=緑）、見出しの駒もその色で塗る */
-.dk-trow { border-left:4px solid var(--tc, var(--line-2)); padding-left:7px; }
-.dk-trow h3 { display:flex; align-items:center; gap:8px; margin:0 0 6px; font:700 13.5px/1.2 var(--font-d);
-              letter-spacing:.06em; color:var(--fg); }
-.dk-trow h3 .pt-tile { width:24px; height:27px; padding-top:4px; font-size:14px; background:var(--tc); color:var(--bg); box-shadow:none; }
-.dk-tgrid { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:6px 4px; }
-.dk-dot { display:grid; place-items:center; color:var(--muted); opacity:.35; font:11px/1 var(--font-n); }
-.dk-cell { display:flex; flex-direction:column; gap:3px; min-width:0; }
-.dk-tile { display:flex; flex-direction:column; align-items:center; gap:1px; padding:3px 1px 4px; cursor:pointer;
-           border:1px solid var(--line-2); border-top:3px solid var(--tc, var(--line-2)); background:var(--bg);
-           font:inherit; color:inherit; min-width:0;
-           container-type:inline-size; transition:border-color .2s, background .2s, transform .15s var(--ease); }
-.dk-tile:hover { border-color:var(--fg); border-top-color:var(--tc); transform:translateY(-1px); }
+/* 系統の注記: 広い画面は行見出しの title に託す（狭い画面では本文に出す。narrow ブロック参照） */
+.dk-tnote { display:none; }
+/* 行見出しの駒・筋の列挙・採用数の朱丸（.dk-fam-h の中身。色は --tc=--fam=主役の駒） */
+.dk-trow .dk-fam-h .pt-tile { width:24px; height:27px; padding-top:4px; font-size:14px;
+                             background:var(--tc); color:var(--bg); box-shadow:none; }
+.dk-fr { font:500 10px/1 var(--font-n); color:var(--muted); letter-spacing:.05em; }
+.dk-seldot { flex:none; min-width:17px; padding:0 4px; border-radius:999px; background:var(--accent);
+             color:#fbf6ea; font:800 10px/1.6 var(--font-b); text-align:center; }
+.dk-seldot:empty { display:none; }
+/* 採用した戦法の盆: 一覧の最上段。0件なら畳む（hidden） */
+.dk-tray { flex:none; display:flex; flex-wrap:wrap; align-items:center; gap:5px 6px; margin:0 0 8px;
+           padding:7px 9px 7px 7px; border:1px solid var(--line-2); border-left:3px solid var(--accent);
+           background:var(--accent-soft); }
+.dk-tray[hidden] { display:none; }
+.dk-tray-h { flex:none; font:700 10px/1 var(--font-b); letter-spacing:.12em; color:var(--accent); }
+.dk-tray-h b { font:800 13px/1 var(--font-n); }
+.dk-chip { display:inline-flex; align-items:center; gap:5px; min-width:0; padding:2px 3px 2px 2px;
+           border:1px solid var(--tc, var(--line-2)); background:var(--bg); color:var(--fg);
+           font:600 11.5px/1 var(--font-b); cursor:pointer; }
+.dk-chip .pt-tile { width:15px; height:17px; padding-top:2px; font-size:9px; }
+.dk-chip .nm { max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dk-chip .x { display:grid; place-items:center; width:15px; height:15px; border-radius:50%;
+              font:600 11px/1 var(--font-b); color:var(--muted); }
+@media (hover:hover) { .dk-chip:hover { border-color:var(--bad); } .dk-chip:hover .x { color:var(--bad); } }
+.dk-tray-all { flex:none; margin-left:auto; border:0; background:none; padding:2px 4px;
+               color:var(--muted); font:600 10.5px/1 var(--font-b); cursor:pointer; }
+@media (hover:hover) { .dk-tray-all:hover { color:var(--bad); } }
+/* 駒棚: 筋順（9→1）に並ぶ札。各札が筋の地図を持つので共通の筋ヘッダは要らない */
+.dk-stand { display:flex; flex-wrap:wrap; gap:7px 6px; align-items:flex-start; }
+.dk-fam[data-closed="true"] .dk-stand, .dk-fam[data-closed="true"] .dk-tnote { display:none; }
+.dk-tcol { display:flex; flex-direction:column; min-width:0; }
+.dk-tl { display:flex; flex-direction:column; align-items:stretch; width:64px; padding:0 0 4px;
+         border:1px solid var(--line-2); border-top:3px solid var(--tc, var(--line-2));
+         background:var(--bg); font:inherit; color:inherit; text-align:center; min-width:0;
+         transition:border-color .2s, background .2s, transform .15s var(--ease), box-shadow .15s; }
+@media (hover:hover) { .dk-tl:hover { border-color:var(--fg); transform:translateY(-1px);
+                                      box-shadow:0 3px 8px rgba(24,18,8,.10); } }
+/* 筋の地図: 9つの目盛り。主役の駒が立つ筋を駒色で塗る（帯は lead.files） */
+.dk-map { display:grid; grid-template-columns:repeat(9,1fr); gap:1px; height:9px; padding:0 3px; align-items:end; }
+.dk-map i { display:block; height:3px; background:var(--line-2); }
+.dk-map i.on { height:8px; background:var(--tc); }
+.dk-tl .sq { margin-top:2px; font:700 10px/1 var(--font-n); color:var(--muted); letter-spacing:.05em; }
+.dk-tl .nm { display:block; padding:3px 2px 0; font:600 12.5px/1.2 var(--font-b); letter-spacing:.01em;
+             overflow-wrap:anywhere; }
+.dk-tl .dk-marks { display:flex; align-items:center; justify-content:center; gap:4px; min-height:12px; margin-top:2px; }
+/* ペースの記号: 急戦=朱・持久戦/両対応=墨 */
+.pace { display:inline-flex; align-items:center; font:600 9.5px/1 var(--font-b); color:var(--muted); letter-spacing:.04em; }
+.pace[data-p="rapid"] { color:var(--accent); }
+.dk-tl .dk-vs, .dk-tl .dk-ng { min-width:0; padding:0 3px; font-size:8.5px; }
 /* 基本の戦法は系統色をうっすら敷いて枠も系統色で締める */
-.dk-tile[data-basic="true"] { border-color:var(--tc); background:color-mix(in srgb, var(--tc) 12%, var(--bg)); }
-.dk-tile .dk-vs, .dk-tile .dk-ng { min-width:0; padding:0 3px; font-size:8.5px; }
-/* 短縮名はタイル幅に追随する（cqw 方式。--n は文字数） */
-.dk-tile .nm { font-size:max(8px, min(13px, calc(96cqw / var(--n, 3)))); line-height:1.15; letter-spacing:.01em;
-               max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dk-tile .fb { font:500 10px/1 var(--font-n); color:var(--muted); letter-spacing:.03em; }
-.dk-marks { display:flex; align-items:center; gap:3px; min-height:10px; }
-.dk-var { position:relative; display:flex; align-items:center; justify-content:flex-start; gap:3px;
-          width:100%; min-width:0; min-height:32px; padding:8px 4px; cursor:pointer;
-          border:1px dashed var(--tc, var(--line)); border-radius:0 0 8px 8px; background:none; font:inherit; line-height:1.2;
-          color:var(--fg2); transition:border-color .2s, color .2s; }
+.dk-tl[data-basic="true"] { border-color:var(--tc); background:color-mix(in srgb, var(--tc) 10%, var(--bg)); }
+/* 採用中は札ごと駒色に裏返す（複数採用でも1枚ずつ色と駒で識別できる。トグルなので aria-pressed） */
+.dk-tl[aria-pressed="true"] { border-color:var(--tc); background:var(--tc); color:#fbf6ea;
+                             transform:translateY(-1px); box-shadow:0 3px 8px rgba(24,18,8,.18); }
+.dk-tl[aria-pressed="true"] .nm { color:#fbf6ea; font-weight:700; }
+.dk-tl[aria-pressed="true"] .sq { color:rgba(251,246,234,.8); }
+.dk-tl[aria-pressed="true"] .dk-map i { background:rgba(251,246,234,.35); }
+.dk-tl[aria-pressed="true"] .dk-map i.on { background:#fbf6ea; }
+.dk-tl[aria-pressed="true"] .pace { color:rgba(251,246,234,.85); }
+.dk-tl[aria-pressed="true"] .dk-vs { background:#fbf6ea; color:var(--tc); }
+.dk-tl[aria-pressed="true"] .dk-ng { background:#fbf6ea; color:var(--bad); }
+/* 採用中の派生を持つ親札: 薄く駒色を敷く（§4-3 と同じ規則） */
+.dk-tl[data-vsel="true"] { border-color:var(--tc); background:color-mix(in srgb, var(--tc) 18%, var(--bg)); }
+/* 派生の束: 親札の下に畳まれた帯。押すと↳チップが内側へ開く */
+.dk-vars { display:flex; flex-direction:column; width:64px; margin-top:-6px; }
+.dk-vf { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; height:14px; padding:0;
+         border:1px solid var(--tc); border-top:0; border-radius:0 0 7px 7px; background:none;
+         color:var(--muted); font:700 9px/1 var(--font-b); letter-spacing:.06em; cursor:pointer; }
+@media (hover:hover) { .dk-vf:hover { color:var(--fg); } }
+.dk-vf b { color:var(--tc); }
+.dk-vf .caret { font-size:8px; transition:transform .2s var(--ease); }
+.dk-vars[data-open="true"] .dk-vf .caret { transform:rotate(180deg); }
+.dk-vlist { display:none; flex-direction:column; gap:2px; padding-top:3px; }
+.dk-vars[data-open="true"] .dk-vlist { display:flex; }
+.dk-var { position:relative; display:flex; align-items:center; gap:3px; width:100%; min-width:0;
+          padding:3px 4px; cursor:pointer; border:1px dashed var(--tc, var(--line)); background:none;
+          color:var(--fg2); font:500 10px/1.25 var(--font-b); text-align:left;
+          transition:border-color .2s, color .2s; }
 .dk-var .dk-branch { flex:none; font-size:10px; color:var(--muted); }
-.dk-var .nm { font-size:9.5px; text-align:left; overflow-wrap:anywhere; }
-.dk-var .dk-vs { position:absolute; top:1px; right:1px; min-width:0; padding:0 2px; font-size:7.5px; line-height:1.3; }
-.dk-var .dk-ng { position:absolute; bottom:1px; left:1px; min-width:0; padding:0 2px; font-size:7.5px; line-height:1.3; }
-.dk-var:hover { color:var(--fg); border-style:solid; }
+.dk-var .nm { flex:1 1 auto; text-align:left; overflow-wrap:anywhere; }
+.dk-var .dk-marks { flex:none; display:flex; align-items:center; gap:2px; }
+.dk-var .pace { flex:none; font-size:8.5px; }
+.dk-var .dk-vs, .dk-var .dk-ng { min-width:0; padding:0 2px; font-size:7.5px; line-height:1.3; }
+@media (hover:hover) { .dk-var:hover { border-style:solid; color:var(--fg); } }
+.dk-var[aria-pressed="true"] { border-style:solid; border-color:var(--tc); color:var(--fg); font-weight:700;
+                              box-shadow:inset 0 0 0 1px var(--tc); }
+.dk-marks { display:flex; align-items:center; gap:3px; min-height:10px; }
 
 /* 絞り込んだ戦略に合わない項目は表示しない（分類は戦略だけ。「もう一方」は持たない） */
 .dk-on { display:flex; flex-direction:column; gap:12px; }
@@ -161,7 +236,7 @@
 .dk-fam-h { display:flex; align-items:center; gap:7px; width:100%; padding:2px 0; border:0; background:none;
             font:700 14px/1.2 var(--font-d); letter-spacing:.08em; color:var(--fg);
             cursor:pointer; text-align:left; }
-.dk-fam-h:hover { color:var(--fam); }
+@media (hover:hover) { .dk-fam-h:hover { color:var(--fam); } }
 .dk-fam-h .caret { font-size:10px; color:var(--muted); transition:transform .2s var(--ease); }
 .dk-fam[data-closed="true"] .dk-fam-h .caret { transform:rotate(-90deg); }
 .dk-fam-h .g { display:inline-flex; color:var(--fam); }
@@ -170,29 +245,32 @@
                font:700 11px/1.4 var(--font-b); text-align:center; letter-spacing:0; }
 .dk-fam[data-closed="true"] .dk-cards { display:none; }
 
-/* F3: カードの最小幅は100px。列が減る分はドックの縦スクロールで吸収する */
-.dk-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:7px 5px; }
-.dk-card { display:flex; flex-direction:column; align-items:stretch; gap:2px; padding:0 0 4px; cursor:pointer;
-           border:1px solid var(--line-2); background:var(--bg); font:inherit; color:inherit; min-width:0;
+/* F3: カードはサムネイルの描画幅（サムネ帯62px × 窓のアスペクト --ar。全囲い 5筋×3段 ≈94px＋枠）に限る。
+   3列を維持するため、ドック幅が足りないときは (面幅-余白)/3 に収まるようサムネごと縮む */
+.dk-cards { display:flex; flex-wrap:wrap; gap:8px 7px; }
+.dk-card { display:flex; flex-direction:column; align-items:stretch; gap:3px;
+           width:min(calc(62px * var(--ar, 1.52) + 2px), calc((100% - 14px) / 3));
+           padding:0 0 5px; cursor:pointer;
+           border:1px solid var(--line-2); background:var(--bg); font:inherit; color:inherit;
            transition:border-color .2s, transform .15s var(--ease), box-shadow .15s; }
-.dk-card:hover { border-color:var(--fg); transform:translateY(-2px); box-shadow:0 4px 10px rgba(24,18,8,.12); }
+@media (hover:hover) { .dk-card:hover { border-color:var(--fg); transform:translateY(-2px); box-shadow:0 4px 10px rgba(24,18,8,.12); } }
 /* 基本の囲いは系統色の枠で締める */
 .dk-card[data-basic="true"] { border:1.5px solid var(--fam); }
-/* F3: サムネイルは囲いごとに最大化する（高さを揃え、幅は aspect 比とカード幅の小さい方）。下辺に系統色の線 */
-.dk-card .thumb { display:flex; justify-content:center; align-items:center; width:100%; height:50px; padding:0;
+/* F3: サムネ帯は65px（下線3pxを引いた62pxで描画）。窓は全囲い 5筋×3段に揃えてある（mini-board.js）。下辺に系統色の線 */
+.dk-card .thumb { display:flex; justify-content:center; align-items:center; width:100%; height:65px; padding:0;
                   border-bottom:3px solid var(--fam, var(--line)); }
-.dk-card .thumb .sc { display:block; height:100%; max-width:100%; }
-.dk-card .thumb svg { width:auto; max-width:100%; height:100%; display:block; margin:auto; }
-.dk-card .nm { font-size:11.5px; line-height:1.2; text-align:center; letter-spacing:.02em; padding:2px 2px 0; }
+.dk-card .thumb .sc { display:block; height:100%; }
+.dk-card .thumb svg { width:auto; height:100%; max-width:100%; display:block; margin:auto; }
+.dk-card .nm { font-size:12px; line-height:1.2; text-align:center; letter-spacing:.02em; padding:2px 2px 0; overflow-wrap:anywhere; }
 
 /* 性質の段の見出し: 星で段を示す */
 .dk-fam-h .st { font-size:10px; letter-spacing:0; color:var(--fg); }
 
-/* 発展ツリー: 共通サイズの横長行を字下げし、└ で親からの派生を示す */
-.dk-tree { display:flex; flex-direction:column; gap:4px; }
-.dk-row { flex-direction:row; align-items:center; justify-content:flex-start; gap:8px; padding:3px 6px 3px 3px;
+/* 発展ツリー: 共通サイズの横長行を字下げし、└ で親からの派生を示す（行はサムネ幅に限らず面いっぱい） */
+.dk-tree { flex-wrap:nowrap; flex-direction:column; gap:4px; }
+.dk-row { flex-direction:row; align-items:center; justify-content:flex-start; gap:8px; width:auto; padding:3px 6px 3px 3px;
           margin-left:calc(var(--d, 0) * 14px); text-align:left; }
-.dk-row:hover { transform:none; }
+@media (hover:hover) { .dk-row:hover { transform:none; } }
 .dk-row .br { flex:none; color:var(--muted); font-size:12px; margin-right:-4px; }
 .dk-row .thumb { flex:none; width:54px; height:36px; padding:0; border-bottom-width:2px; }
 .dk-row .tx { display:flex; flex-direction:column; gap:1px; min-width:0; flex:1; }
@@ -201,18 +279,21 @@
 .dk-row .dk-marks { flex:none; }
 .dk-row .dk-seal { left:auto; right:-1px; }
 /* 戦法タイルは小さいので、落款は字を消して朱の角印にする（名に重ねない） */
-.dk-tile .dk-seal { width:0; height:0; padding:0; background:none; font-size:0;
-                    border-top:9px solid var(--accent); border-right:9px solid transparent; }
+.dk-tl .dk-seal { width:0; height:0; padding:0; background:none; font-size:0;
+                  border-top:9px solid var(--accent); border-right:9px solid transparent; }
 
 /* ===== 駒の見出し（バインダー）: 左ドックと盤の境の罫をまたいで2枚の駒を立てる =====
    盤と同じく上=相手（先が下）・下=自分（先が上）。2枚の先は河の高さ（ドックの縦中央）で向き合う。
-   開いている側は駒の地（生成り）で塗り、もう一方は罫だけ。相手が OFF のときは駒の影＋「＋相手」 */
+   開いている側は生成りの地に塗って盤側へ張り出す。もう一方は罫だけの駒。
+   相手が OFF のときは駒の影＋「＋相手」（design-refs-binder.html E 案） */
 .rail { position:relative; }
 .dk-binder { position:absolute; z-index:6; top:0; bottom:0; right:-18px; width:40px; pointer-events:none; }
 .dk-pc { position:absolute; right:0; width:40px; height:min(150px,28vh); padding:0; border:0; background:none;
-         cursor:pointer; pointer-events:auto; color:var(--muted); transition:color .2s, right .2s var(--ease), width .2s var(--ease); }
-.dk-pc[data-who="opp"] { top:30px; }
-.dk-pc[data-who="me"] { bottom:30px; }
+         cursor:pointer; pointer-events:auto; color:var(--muted);
+         transition:color .2s, right .28s cubic-bezier(.2,.9,.3,1.3), width .28s cubic-bezier(.2,.9,.3,1.3); }
+/* 2枚の先がドックの縦中央（河）で向き合う: 相手の駒は中央より上、自分の駒は中央より下 */
+.dk-pc[data-who="opp"] { top:calc(50% - min(150px,28vh)); }
+.dk-pc[data-who="me"] { top:50%; }
 .dk-pc .body { position:absolute; inset:0; background:var(--line-2); transition:background .2s;
                clip-path:polygon(50% 0, 100% 12%, 100% 100%, 0 100%, 0 12%); }
 .dk-pc .body::after { content:""; position:absolute; inset:1px; background:var(--bg); transition:background .2s;
@@ -222,41 +303,76 @@
             writing-mode:vertical-rl; font:700 15px/1 var(--font-d); letter-spacing:.3em; }
 .dk-pc[data-who="opp"] .v { inset:0 0 14px; }
 .dk-pc .v small { font:500 10px/1 var(--font-b); letter-spacing:.08em; }
-.dk-pc:hover { color:var(--fg); }
-.dk-pc[aria-selected="true"] { color:var(--ink); }
-.dk-pc[aria-selected="true"][data-who="opp"] { color:#33507a; }
-.dk-pc[aria-selected="true"] { right:-3px; width:46px; z-index:2; }
+@media (hover:hover) { .dk-pc:hover { color:var(--fg); } }
+/* 開いている側: 盤側へふっと出る（緩いバネ）＋生成りの地＋側色の縁 */
+.dk-pc[aria-selected="true"] { right:-3px; width:46px; z-index:2; color:var(--ink); }
 .dk-pc[aria-selected="true"] .body { background:var(--piece-edge); }
 .dk-pc[aria-selected="true"] .body::after { background:var(--piece-1); }
+.dk-pc[aria-selected="true"][data-who="opp"] { color:var(--gote-ink); }
 /* OFF の相手駒の裏に残す点線の影 */
-.dk-pc-ghost { display:none; position:absolute; top:30px; right:0; width:40px; height:min(150px,28vh);
+.dk-pc-ghost { display:none; position:absolute; top:calc(50% - min(150px,28vh)); right:0; width:40px; height:min(150px,28vh);
                border:1px dashed var(--line-2); border-right:0; pointer-events:none; }
 .dk-binder[data-show="false"] .dk-pc-ghost { display:block; }
 /* 相手の駒の角の ×（相手を盤から下げる＝表示 OFF） */
-.dk-pc-x { position:absolute; top:20px; right:-10px; width:20px; height:20px; padding:0; border-radius:50%;
-           z-index:3; pointer-events:auto;
+.dk-pc-x { position:absolute; top:calc(50% - min(150px,28vh) - 11px); right:-11px; width:22px; height:22px; padding:0; border-radius:50%;
+           z-index:3; pointer-events:auto; box-shadow:0 0 0 2px var(--bg);
            border:1px solid var(--line-2); background:var(--bg); color:var(--muted); cursor:pointer; font:500 12px/1 var(--font-b); }
-.dk-pc-x:hover { color:var(--bad); border-color:var(--bad); }
+@media (hover:hover) { .dk-pc-x:hover { color:var(--bad); border-color:var(--bad); } }
 .dk-pc-x[hidden] { display:none; }
 /* 相手 OFF: 駒台に下げた影（薄い面＋「＋相手」） */
-.dk-binder[data-show="false"] .dk-pc[data-who="opp"] { opacity:.7; }
+.dk-binder[data-show="false"] .dk-pc[data-who="opp"] { opacity:.75; color:var(--muted); }
 .dk-binder[data-show="false"] .dk-pc[data-who="opp"] .body { background:none; }
 .dk-binder[data-show="false"] .dk-pc[data-who="opp"] .body::after { background:var(--faint); }
-.dk-binder[data-show="false"] .dk-pc[data-who="opp"] .v small { display:none; }
 
 /* ===== narrow: ページ全体でスクロールするので、一覧は内容の高さを取る ===== */
+/* M1: 面の上端は「選ぶ操作（相手/自分の側＋囲い/戦法の層）」の1行、
+   その下は「見せ方（戦型の絞り込み・並べ方・凡例）」の1行の2段構成。
+   バインダーの駒はタブと同じ行に並ぶ小さな駒タブ（dock-view.js がDOMを移す） */
 @media (max-width:979px) {
   #pickRail .dk { flex:none; display:block; }
-  /* 駒の見出しはドックの上に横並び（左=相手・右=自分）。駒は横長にして字も横書き */
-  .dk-binder { position:static; order:-1; display:flex; flex-direction:row; justify-content:flex-start; align-items:center;
-               width:auto; gap:10px; margin-bottom:10px; }
-  .dk-pc { position:relative; top:auto; right:auto; bottom:auto; width:112px; height:40px; }
-  .dk-pc[aria-selected="true"][data-who] { right:auto; width:112px; }
-  .dk-pc .v, .dk-pc[data-who="opp"] .v { inset:4px 0 0; writing-mode:horizontal-tb; letter-spacing:.2em; }
-  .dk-pc[data-who="opp"] .v { inset:0 0 4px; }
+  .dk-binder { position:static; display:flex; flex-direction:row; align-items:flex-end;
+               width:auto; gap:2px; margin:0 4px 0 0; padding:0; flex:none; }
+  .dk-pc { position:relative; top:auto; right:auto; bottom:auto; width:60px; height:44px; }
+  .dk-pc[data-who] { top:auto; }            /* 広い画面の縦積み top を打ち消す（詳細度対策・A1） */
+  .dk-pc[aria-selected="true"][data-who] { right:auto; width:60px; }
+  .dk-pc .v, .dk-pc[data-who="opp"] .v { inset:0; display:flex; align-items:center; justify-content:center;
+                gap:3px; writing-mode:horizontal-tb; font-size:12px; letter-spacing:.02em; }
+  .dk-pc .v small { font-size:9px; }
   .dk-pc-ghost { display:none !important; }
-  .dk-pc-x { position:static; right:auto; top:auto; margin-left:-6px; }
+  .dk-pc-x { position:relative; right:auto; top:auto; margin:0 0 10px -8px; }
+  /* 戦型の絞り込みは並べ方の行の先頭へ（見せ方の行）。セグメントであることが分かるよう下線は残す */
+  .dk-tools .dk-strategy { flex:none; align-self:center; margin:0 4px 0 0; }
   .dk-pane { display:block; min-height:0; }
   .dk-body { overflow:visible; }
-  .dk-cards { grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); }
+  /* タップ領域（C1）: 小さなボタンは見た目を変えず ::after で当たり判定だけ広げる */
+  .dk-clear, .dk-legend, .dk-pc-x { position:relative; }
+  .dk-clear::after { content:""; position:absolute; inset:-8px; }
+  .dk-legend::after { content:""; position:absolute; inset:-13px; }
+  .dk-pc-x::after { content:""; position:absolute; inset:-11px; }
+  .dk-tab button { height:44px; }
+  .dk-strategy button { min-height:44px; padding-left:8px; padding-right:8px; }
+  .dk-sort-sel { height:44px; font-size:13px; }
+
+  .dk-fam-h { min-height:44px; padding:6px 0; }
+  /* 戦法の一覧（C2）: 札は縦リストにして「筋の地図＋名前＋記号」の行にする。
+     筋の地図は左に置き、系統色は行ブロック左の帯と地図の塗りが示す */
+  .dk-stand { flex-direction:column; gap:5px; }
+  .dk-tcol { width:100%; }
+  .dk-tl { flex-direction:row; align-items:center; gap:10px; width:100%; min-height:48px;
+           padding:5px 12px 5px 8px; border-top-width:1px; }
+  .dk-tl .dk-map { flex:none; width:44px; height:12px; align-self:center; padding:0; }
+  .dk-tl .sq { display:none; }
+  .dk-tl .nm { flex:1 1 auto; font-size:14px; font-weight:600; text-align:left; min-width:0; }
+  .dk-tl .dk-marks { flex:none; margin:0 0 0 auto; min-height:0; }
+  .dk-tl .dk-vs, .dk-tl .dk-ng { min-width:22px; padding:2px 5px; font-size:10px; }
+  /* 派生の束は面いっぱい。帯もチップもタップしやすい高さに */
+  .dk-vars { width:100%; margin-top:2px; }
+  .dk-vf { min-height:44px; height:auto; font-size:11px; }
+  .dk-var { min-height:44px; padding:8px 12px 8px 30px; align-items:center; }
+  .dk-var .nm { font-size:12.5px; }
+  .dk-var .dk-vs, .dk-var .dk-ng { font-size:10px; min-width:20px; padding:2px 4px; }
+  .dk-chip { min-height:32px; }
+  /* 10px 未満の字を底上げする（C3） */
+  .dk-seal { font-size:10px; }
+  .dk-tnote { display:block; margin:0 0 6px; font:400 11px/1.5 var(--font-b); color:var(--muted); }
 }

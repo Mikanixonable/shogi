@@ -1,0 +1,92 @@
+/* 手筋・定番セット: 王手飛車の筋（盤の重ね表示）・定番セット（左ドック・帯・右ドック）・
+   受けの手筋（右ドック）・「手筋と格言」全画面モードの図と格言（レイアウトは css/wiki.css） */
+
+/* ===== 王手飛車の筋: 打つマスから玉・飛車への細線と、打つマスの薄い駒の字 ===== */
+.overlay .fk { vector-effect:non-scaling-stroke; stroke-width:2px; stroke-linecap:round; opacity:.85; }
+.overlay .fk-bad { stroke:var(--bad); }
+.overlay .fk-good { stroke:var(--good); }
+.overlay .fk-latent { stroke-dasharray:4 4; opacity:.7; }
+.overlay .fk-g { animation:skIn .3s var(--ease) backwards; }
+.ov-forks { position:absolute; inset:0; z-index:4; pointer-events:none; }
+.ov-fork { position:absolute; width:7.4%; aspect-ratio:1; transform:translate(-50%,-50%);
+           display:grid; place-items:center; border-radius:50%;
+           font:700 clamp(10px, 2.4cqw, 16px)/1 var(--font-d);
+           color:var(--bad); background:color-mix(in srgb, var(--piece-1) 70%, transparent);
+           border:1.5px solid var(--bad); animation:skIn .3s var(--ease) backwards; }
+.ov-fork[data-tone="good"] { color:var(--good); border-color:var(--good); }
+.ov-fork[data-latent="true"] { border-style:dashed; opacity:.7; }
+
+/* ===== 定番セット: 左ドックの列 ===== */
+.dk-combos { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; padding:2px 0 6px; }
+.dk-combos-h { font-size:10.5px; letter-spacing:.18em; color:var(--muted); margin-right:2px; }
+.dk-combo { border:1px solid var(--line-2); background:none; padding:2px 10px; font-size:11.5px; line-height:1.7;
+            border-radius:999px; cursor:pointer; color:var(--fg2); transition:border-color .2s, background .2s, color .2s; }
+.dk-combo.basic { border-style:dashed; }
+@media (hover:hover) { .dk-combo:hover { border-color:var(--accent); color:var(--accent); } }
+.dk-combo[aria-pressed="true"] { border-color:var(--accent); border-style:solid; background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.dk-combo[aria-pressed="true"]::before { content:"✦ "; }
+
+/* 帯の見出し: 完成した定番セット */
+.combo-done { flex:none; font:600 11px/1 var(--font-b); letter-spacing:.06em; color:var(--accent);
+              padding:4px 9px; border:1px solid var(--accent); border-radius:999px; background:var(--accent-soft);
+              animation:comboIn .5s var(--ease) backwards; white-space:nowrap; }
+.combo-done::before { content:"✦ "; }
+@keyframes comboIn { from { opacity:0; transform:scale(.8); } 60% { transform:scale(1.06); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .combo-done { animation:none; } }
+
+/* ===== 右ドック: 定番セット・受けの手筋 ===== */
+.combo { border:1px solid var(--line); padding:8px 12px; display:flex; flex-direction:column; gap:6px; }
+.combo + .combo { margin-top:6px; }
+.combo.done { border-color:var(--accent); background:var(--accent-soft); }
+.combo .desc { font-size:12.5px; margin:0; }
+.combo-h { margin:0; display:flex; align-items:center; gap:8px; font-size:13px; }
+.combo-ok, .combo-basic { font-size:10.5px; padding:1px 7px; border-radius:999px; border:1px solid currentColor; }
+.combo-ok { color:var(--accent); }
+.combo-basic { color:var(--muted); }
+.attack.defense { margin-top:0; }
+@media (hover:hover) { .attack.defense:hover { border-color:var(--good); } }
+.attack.defense[aria-pressed="true"] { border-color:var(--good); background:color-mix(in srgb, var(--good) 10%, transparent); }
+.linkish { background:none; border:0; padding:0; font:inherit; color:var(--muted); cursor:pointer;
+           text-decoration:underline dotted var(--line-2); text-underline-offset:3px; }
+@media (hover:hover) { .linkish:hover { color:var(--accent); } }
+
+/* ===== 「手筋と格言」（全画面モード。screen/tesuji-mode.js が組み立てる） ===== */
+/* 節の見出しの役割印（攻め=朱・受け=緑・両方=薄墨） */
+.tj-role { margin-left:auto; font:500 10.5px/1 var(--font-b); letter-spacing:.1em; padding:3px 8px; border-radius:999px;
+           border:1px solid var(--bad); color:var(--bad); }
+.tj-role[data-role="defense"] { border-color:var(--good); color:var(--good); }
+.tj-role[data-role="both"] { border-color:var(--muted); color:var(--muted); }
+/* 手順の図: 盤の窓の SVG（左）＋手・一言・コマ送り（右） */
+.tj-fig { margin:10px 0 6px; display:grid; grid-template-columns:minmax(140px, 230px) 1fr; gap:18px; align-items:start; }
+.tj-svg { width:100%; height:auto; display:block; }
+.tj-bg { fill:var(--wood-1); stroke:var(--wood-line); stroke-width:.5; }
+.tj-ln { stroke:var(--wood-line); stroke-width:.25; }
+.tj-chg { fill:color-mix(in srgb, var(--accent) 22%, transparent); }
+.tj-co { font:500 4px/1 var(--font-b); fill:var(--muted); text-anchor:middle; dominant-baseline:middle; }
+.tj-pc { font:700 7px/1 var(--font-d); text-anchor:middle; dominant-baseline:middle; fill:var(--ink); }
+.tj-pc.gote { fill:var(--gote-ink); }
+.tj-pc.prom { fill:var(--core); }
+.tj-fig figcaption { display:flex; flex-direction:column; gap:4px; font-size:12.5px; }
+.tj-fig figcaption p { margin:0; line-height:1.7; }
+.tj-move { font:700 14px/1.5 var(--font-d); letter-spacing:.06em; }
+.tj-hand { font-size:11px; color:var(--muted); }
+.tj-nav { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:6px; margin-top:4px; }
+.tj-steps { display:flex; flex-wrap:wrap; gap:4px; }
+.tj-step { border:1px solid var(--line); background:none; padding:2px 8px; font-size:11px; cursor:pointer; color:var(--fg2); }
+.tj-step[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.tj-pv { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:12.5px; line-height:1.8; }
+.tj-pv li { border-left:2px solid var(--accent); padding:2px 0 2px 10px; }
+.tj-pv b { display:block; font:700 13.5px/1.6 var(--font-d); letter-spacing:.06em; }
+.tj-pv small { display:block; font-size:10.5px; color:var(--muted); }
+
+@media (max-width:979px) {
+  /* ヘッダーの「手筋と格言」も ? と同じ丸印に畳む（印は「筋」） */
+  .brand #tesujiOpen::after { content:"筋"; font-family:var(--font-d); }
+  .tj-step, .dk-combo { min-height:32px; }
+}
+/* とても狭い画面: 丸印が2つになった分、題字の字間を詰めて右端のボタン（44px）を保つ */
+@media (max-width:400px) {
+  .brand { gap:5px; }
+  .brand h1 { letter-spacing:.05em; }
+  body > header .ib { flex:none; }
+}

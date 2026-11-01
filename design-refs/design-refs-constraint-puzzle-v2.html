@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>制約バー修正案「駒つぎ」v2 — 形状の精緻化＋戦法ピースの多角形案</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* design-refs-constraint-puzzle-v2: 駒つぎの形状検討。
+   - 囲いの駒ピース: 5:6の縦長＋首が絞れた正確な継ぎ手（楕円の出っ張りは廃止）
+   - 戦法ピース: 多角形のバリエーション（五角形・七角形など）を3案で比較
+   - 戦型の大胞・幽霊枠・河の印・側ラベルは六角形のまま */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f;
+  --wood-1:#f2e4c0; --wood-2:#e8d3a3; --wood-line:rgba(70,45,10,.55);
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55); --gote-ink:#33507a;
+  --f-funa:#b5652b; --f-yagura:#33507a; --f-anaguma:#55504a; --f-mino:#c8371f;
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
+  color-scheme:light;
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b;
+  --wood-1:#cdb07a; --wood-2:#b8955c; --wood-line:rgba(60,40,10,.6);
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5); --gote-ink:#43506e;
+  --f-funa:#d98a50; --f-yagura:#8ea6cf; --f-anaguma:#b4ada2; --f-mino:#e2563b;
+  --t-rook:#e2563b; --t-silver:#8ea6cf; --t-kaku:#9cbf8a;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); scroll-behavior:smooth; }
+body { margin:0; font:14px/1.7 var(--font-b); color:var(--fg); background:var(--bg); }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation:none !important; transition:none !important; }
+}
+.top { position:sticky; top:0; z-index:40; display:flex; gap:6px 14px; align-items:center; flex-wrap:wrap;
+       padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+.top h1 { margin:0 12px 0 0; font:700 17px/1.3 var(--font-d); letter-spacing:.08em; }
+.top nav { display:flex; gap:2px; flex-wrap:wrap; }
+.top nav a { padding:3px 10px; color:var(--muted); text-decoration:none; font-size:13px; border-bottom:1px solid transparent; }
+.top nav a:hover { color:var(--fg); border-color:var(--fg); }
+.top .sp { flex:1; }
+.top button { border:1px solid var(--line-2); background:none; padding:3px 12px; cursor:pointer; font-size:12px; border-radius:999px; }
+.wrap { max-width:1120px; margin:0 auto; padding:0 16px 80px; }
+.intro { margin:28px auto 0; color:var(--fg2); font-size:13.5px; }
+.intro h2 { margin:0 0 6px; font:800 26px/1.35 var(--font-d); letter-spacing:.05em; color:var(--fg); }
+.intro ul { margin:8px 0 0; padding-left:1.3em; }
+.intro li + li { margin-top:3px; }
+.part { margin-top:52px; padding-top:20px; border-top:2px solid var(--fg); scroll-margin-top:60px; }
+.part > h2 { margin:0; font:800 22px/1.3 var(--font-d); letter-spacing:.06em; }
+.part > p { margin:4px 0 0; color:var(--fg2); font-size:13.5px; max-width:880px; }
+.try { margin:10px 0 0; font-size:12px; color:var(--muted); }
+
+/* ===== 制約バー ===== */
+.pbar { position:relative; }
+.pbar svg { display:block; width:100%; height:auto; overflow:visible; }
+.pb-hit { cursor:pointer; }
+.hx-str { fill:var(--fg); }
+.hx-str-t { fill:var(--bg); font:800 12px var(--font-d); text-anchor:middle; }
+.hx-ghost { fill:none; stroke:var(--line-2); stroke-width:1.2; stroke-dasharray:3 3; }
+.hx-t { fill:var(--fg); font-family:var(--font-d); font-weight:700; text-anchor:middle; }
+.hx-tname { fill:var(--fg2); font-family:var(--font-b); font-weight:700; text-anchor:middle; }
+.hx-add { fill:var(--muted); font:600 9px/1 var(--font-b); text-anchor:middle; }
+.hx-j { fill:none; stroke:color-mix(in srgb,var(--kc,var(--muted)) 55%,var(--bg)); stroke-width:1; }
+.hx-stem { fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:1 3; }
+.hx-cell { stroke:var(--bg); stroke-width:1.6; stroke-linejoin:round; transition:fill .2s,stroke .2s; }
+.pk-skin { stroke-linejoin:round; transition:fill .2s, stroke .2s; }
+.pk-core .pk-skin { fill:color-mix(in srgb,var(--kc,var(--accent)) 22%,var(--bg)); }
+.pk-gyoku .pk-skin { fill:var(--accent); }
+.pk-shell .pk-skin { fill:color-mix(in srgb,var(--fg) 5%,var(--bg)); }
+.pk-kanji { font:700 11px var(--font-d); fill:var(--fg); text-anchor:middle; dominant-baseline:central; }
+.pk-gyoku .pk-kanji { fill:var(--bg); }
+.pk-minor .pk-kanji { font-size:8px; fill:var(--fg2); font-weight:500; }
+.pk-joint { fill:none; stroke:color-mix(in srgb,var(--kc,var(--fg)) 45%,var(--bg)); stroke-width:1; pointer-events:none; }
+.pk-shelljoint { stroke:color-mix(in srgb,var(--fg) 28%,var(--bg)); }
+.tc-skin { fill:color-mix(in srgb,var(--kc,var(--t-silver)) 26%,var(--bg)); stroke:var(--bg); stroke-width:1.4; }
+.tc-skin.glyph { fill:color-mix(in srgb,var(--kc,var(--t-silver)) 44%,var(--bg)); }
+.cf-castlen { fill:var(--fg); font:800 10.5px/1 var(--font-d); letter-spacing:.04em; }
+.cf-csub { fill:var(--muted); font:500 8px/1 var(--font-b); }
+.cf-cng { fill:var(--bad); font:700 8px/1 var(--font-b); }
+.cf-who { fill:var(--muted); font:700 10px/1 var(--font-d); letter-spacing:.1em; }
+.cf-who.sel { fill:var(--accent); }
+.cf-opp-t { fill:var(--muted); font:600 10px/1 var(--font-b); }
+.cf-seam rect { fill:var(--bg); stroke:var(--line-2); }
+.cf-seam text { fill:var(--fg2); font-size:9.5px; font-weight:700; font-family:var(--font-b); letter-spacing:.08em; text-anchor:middle; dominant-baseline:central; }
+.mod.sel .hx-cell, .mod.sel .pk-skin, .mod.sel .tc-skin { stroke:var(--accent); stroke-width:2; }
+.mod.sel { filter:drop-shadow(0 4px 4px rgba(24,18,8,.2)); }
+.mod.imp .hx-cell, .mod.imp .tc-skin { fill:url(#cf-hatch); stroke-dasharray:2.5 2; }
+.mod.imp .pk-skin { fill:url(#cf-hatch); stroke-dasharray:3 2.5; }
+.mod.ng .pk-skin { fill:color-mix(in srgb,var(--bad) 20%,var(--bg)); stroke:var(--bad); }
+.cf-imp-bg { fill:var(--bg); }
+.cf-imp-ln { stroke:var(--line-2); stroke-width:1.2; }
+.cf-x, .cf-clear { cursor:pointer; }
+.cf-x circle { fill:var(--bg); stroke:var(--line-2); stroke-width:1; }
+.cf-x text { fill:var(--muted); font:600 10px/1 var(--font-b); text-anchor:middle; dominant-baseline:central; }
+.cf-x:hover circle, .cf-clear:hover circle { stroke:var(--bad); }
+.cf-x:hover text, .cf-clear:hover text { fill:var(--bad); }
+.cf-clear circle { fill:none; stroke:var(--line-2); stroke-width:1; }
+.cf-clear text { fill:var(--muted); font:700 10px/1 var(--font-b); text-anchor:middle; dominant-baseline:central; }
+.cf-sm { fill:none; stroke-width:2.4; stroke-linecap:round; }
+.cf-sm.good { stroke:var(--good); }
+.cf-sm.bad { stroke:var(--bad); stroke-dasharray:3 3.2; }
+.cf-glint { fill:var(--good); opacity:.85; }
+.cf-crack { fill:none; stroke:var(--bad); stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; }
+
+.ctrl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:12px; font-size:12px; color:var(--muted); }
+.ctrl button { border:1px solid var(--line-2); background:none; padding:3px 11px; cursor:pointer; font-size:12px; border-radius:999px; color:var(--fg2); }
+.ctrl button:hover { border-color:var(--fg); color:var(--fg); }
+.ctrl button[aria-pressed="true"] { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+.ctrl .sep { width:1px; height:18px; background:var(--line); margin:0 4px; }
+.stagebox { border:1px solid var(--line); border-radius:12px; padding:14px 18px 10px; background:color-mix(in srgb,var(--bg) 60%,transparent); }
+.demo-boardtop { height:22px; margin:6px 2% 0; background:linear-gradient(135deg,var(--wood-1),var(--wood-2));
+  background-image:linear-gradient(90deg,var(--wood-line) 1px,transparent 1px),linear-gradient(135deg,var(--wood-1),var(--wood-2));
+  background-size:calc(100% / 9) 100%,100% 100%; box-shadow:inset 0 0 0 1px var(--wood-line); }
+.phone { width:390px; max-width:100%; border:1px solid var(--line-2); border-radius:22px; padding:34px 10px 12px;
+         position:relative; margin:14px 0; background:var(--bg); }
+.phone::before { content:""; position:absolute; top:12px; left:50%; transform:translateX(-50%);
+                 width:90px; height:8px; border-radius:4px; background:var(--line-2); }
+.variant { margin-top:34px; }
+.variant h3 { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; font:700 18px/1.3 var(--font-d); letter-spacing:.06em; }
+.variant h3 .no { font:600 26px/1 var(--font-n); color:var(--accent); }
+.variant .lead { margin:0 0 10px; color:var(--fg2); font-size:13px; max-width:840px; }
+.variant .pts { display:flex; flex-wrap:wrap; gap:4px 18px; margin-top:8px; font-size:12px; color:var(--muted); }
+table.spec { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+table.spec th, table.spec td { text-align:left; padding:8px 12px 8px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font-weight:600; }
+.figure { display:flex; flex-wrap:wrap; gap:18px 28px; margin-top:14px; }
+.fig .cap { margin-top:6px; font-size:12px; color:var(--fg2); line-height:1.5; max-width:230px; }
+.fig .cap b { display:block; font-size:12.5px; color:var(--fg); }
+.legend { display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:10px; font-size:12.5px; color:var(--fg2); }
+.legend span { display:inline-flex; align-items:center; gap:7px; }
+.legend i { display:inline-block; width:16px; height:16px; }
+.zoombox { display:inline-block; border:1px solid var(--line); border-radius:10px; padding:10px 14px; background:var(--bg); }
+.cmp { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px; }
+.cmp h4 { margin:0 0 6px; font-size:12.5px; color:var(--fg); }
+.cmp .bad2 h4 { color:var(--bad); }
+@media (max-width:760px) { .cmp { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>制約バー修正案「駒つぎ」v2</h1>
+  <nav>
+    <a href="#joint">継ぎ目</a>
+    <a href="#variants">戦法の形</a>
+    <a href="#mobile">モバイル</a>
+    <a href="#compare">比較</a>
+  </nav>
+  <span class="sp"></span>
+  <button type="button" id="themeBtn">明／暗</button>
+</header>
+
+<div class="wrap">
+  <div class="intro">
+    <h2>形をさらに詰める：5:6の駒ピースと多角形の戦法</h2>
+    <p>v1（design-refs-constraint-puzzle.html）からの形状検討です。共通の改訂は2点――<b>囲いの駒ピースを5:6のわずかな縦長</b>にし、<b>継ぎ目を「首が絞れて頭が膨らむ」正確な継ぎ手</b>に直します（v1は楕円の出っ張りに見える箇所がありました）。そのうえで、戦法ピースの形を<b>3案</b>で比較します。どれも動くデモです。</p>
+  </div>
+
+  <!-- ================= 継ぎ目 ================= -->
+  <div class="part" id="joint">
+    <h2>Ⅰ　継ぎ目の精緻化：楕円の出っ張りをやめる</h2>
+    <p>v1の継ぎ目は単一のベジェで描いたため、膨らみが楕円のように見えていました。本物のパズルの継ぎ手は「首が細く、頭が丸く、肩で掛かる」形をしています。駒ピースも正方形から5:6の縦長に変え、駒の立ち姿に近づけます。</p>
+    <div class="cmp">
+      <div class="bad2"><h4>v1：楕円の出っ張り</h4><div class="zoombox" id="jointOld"></div></div>
+      <div><h4>v2：首のある継ぎ手＋5:6縦長</h4><div class="zoombox" id="jointNew"></div></div>
+    </div>
+    <p class="try">継ぎ手の形状: 辺の33〜67%を使い、首（内側へ5%絞る）→頭（辺の約18%幅の丸）→首、の順に描きます。深さはセル高さの約22%。凸凹は駒位置の偶奇で交互にし、どの駒も必ず凸と凹を持ちます。</p>
+  </div>
+
+  <!-- ================= 戦法の形 ================= -->
+  <div class="part" id="variants">
+    <h2>Ⅱ　戦法ピースの形：3案</h2>
+    <p>共通部分（戦型の大きな六角胞・囲いの駒ピース・河の印・側ラベル）は同一で、戦法ピースだけを変えます。上の帯=相手、下の帯=自分。</p>
+    <div class="ctrl">
+      <button type="button" data-sc="full">完成形（両側）</button>
+      <button type="button" data-sc="meonly">自分だけ</button>
+      <button type="button" data-sc="implied">既定値だけ</button>
+      <button type="button" data-sc="ng">嵌まらない囲い</button>
+      <button type="button" data-sc="furibisha">振り飛車にする</button>
+      <span class="sep"></span>
+      <button type="button" id="oppBtn" aria-pressed="true">相手を表示</button>
+    </div>
+
+    <div class="variant" id="vA">
+      <h3><span class="no">A</span>駒形（五角形）</h3>
+      <p class="lead">戦法ピースを本物の将棋駒の五角形に。先端は自分=上・相手=下（盤と同じ向き）。中に主役駒の漢字、名前は駒の脇に置きます。一番将棋らしく、系統の色と駒の漢字だけで判別できます。</p>
+      <div class="stagebox"><div class="pbar" data-vbar="A"></div><div class="demo-boardtop"></div></div>
+      <div class="pts"><span>✓ 駒の向き=側。最も直感的</span><span>✓ 漢字が大きく読める</span><span>△ 名前は駒の外側になる</span><span>△ 系統の区別は色と漢字頼り</span></div>
+    </div>
+
+    <div class="variant" id="vB">
+      <h3><span class="no">B</span>系統多角形（飛=七角・銀=五角・角=六角）</h3>
+      <p class="lead">主役駒の格に応じて角数を変える案: 飛車系=七角形（最も多い角）、角系=五角形（駒形と同じ）、銀系=六角形。形で系統が分かり、色が分からなくても判別できます。名前はピースの脇に。</p>
+      <div class="stagebox"><div class="pbar" data-vbar="B"></div><div class="demo-boardtop"></div></div>
+      <div class="pts"><span>✓ 形で系統が分かる（色弱でも可）</span><span>✓ 角数=格という理屈がある</span><span>△ 角数の意味は学習が要る</span></div>
+    </div>
+
+    <div class="variant" id="vC">
+      <h3><span class="no">C</span>駒胞だけ五角形のドミノ（最小変更）</h3>
+      <p class="lead">現行の2胞ドミノを残し、左の駒胞だけを五角形にする軽い変更案。右の名前胞は六角形のままなので帯の表情がほぼ変わりません。系統の区別は角数でもできます（飛=七角でも可）。</p>
+      <div class="stagebox"><div class="pbar" data-vbar="C"></div><div class="demo-boardtop"></div></div>
+      <div class="pts"><span>✓ 現行からの差分が最小</span><span>✓ 名前は胞内に収まる</span><span>△ 形状差が小さく「変わった」感が薄い</span></div>
+    </div>
+  </div>
+
+  <!-- ================= モバイル ================= -->
+  <div class="part" id="mobile">
+    <h2>Ⅲ　モバイル（案Aで確認）</h2>
+    <div class="ctrl" id="phoneCtrl">
+      <button type="button" data-pv="A" aria-pressed="true">案A</button>
+      <button type="button" data-pv="B">案B</button>
+      <button type="button" data-pv="C">案C</button>
+    </div>
+    <div class="phone" id="phoneDemo"></div>
+  </div>
+
+  <!-- ================= 比較 ================= -->
+  <div class="part" id="compare">
+    <h2>Ⅳ　案の比較</h2>
+    <table class="spec">
+      <thead><tr><th></th><th>A　駒形</th><th>B　系統多角形</th><th>C　駒胞五角形</th></tr></thead>
+      <tbody>
+        <tr><td>将棋らしさ</td><td>◎（本物の駒）</td><td>○（象徴的）</td><td>△</td></tr>
+        <tr><td>系統の判別</td><td>色＋漢字のみ</td><td>形＋色＋漢字</td><td>色＋漢字＋角数（駒胞のみ）</td></tr>
+        <tr><td>文字の読みやすさ</td><td>名前は脇出し（9px〜）</td><td>名前は脇出し</td><td>胞内（現行サイズ）</td></tr>
+        <tr><td>変更量</td><td>大（ドミノ廃止）</td><td>中</td><td>小</td></tr>
+        <tr><td>実装コスト</td><td>中（五角形パス＋脇テキスト）</td><td>中（角数で頂点生成）</td><td>小</td></tr>
+      </tbody>
+    </table>
+    <p class="try">個人的な推奨は <b>案A</b>: 盤上で実際に見る駒の形なので、戦法=攻め駒という役割が形のまま伝わり、相手側は駒を伏せた形（先端を下へ）で「表・裏」も表せます。系統の判別は漢字の駒名と色で十分で、形のバリエーションは案Bに譲っても良い設計です。</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const d = document.documentElement;
+    d.dataset.theme = d.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('shogi-theme', d.dataset.theme); } catch (e) {}
+  });
+
+  const f1 = n => +n.toFixed(2);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const M2 = Math.sqrt(3) / 2;
+
+  // ---------- データ ----------
+  const CASTLES = {
+    funa:    { n: '舟囲い', side: 'ibisha',    fam: 'funa',    core: '玉78 銀79 金69 金58',       shell: '歩87 歩76 歩67 歩56' },
+    yagura:  { n: '矢倉囲い', side: 'ibisha',  fam: 'yagura',  core: '玉88 銀77 金78 金67',       shell: '歩97 歩87 歩76 歩66' },
+    anaguma: { n: '居飛車穴熊', side: 'ibisha', fam: 'anaguma', core: '玉99 香98 桂89 銀88 金79 金78', shell: '歩97 歩87 歩76' },
+    mino:    { n: '美濃囲い', side: 'furibisha', fam: 'mino',   core: '玉28 銀38 金49 金58',      shell: '歩16 歩27 歩37 歩47' },
+    takamino:{ n: '高美濃', side: 'furibisha',  fam: 'mino',    core: '玉28 銀38 金47 金49',       shell: '歩16 歩27 歩37 歩46' },
+  };
+  const TACTICS = {
+    bougin:  { n: '棒銀', fam: 'silver' },
+    yokofu:  { n: '横歩取り', fam: 'rook' },
+    kakugaw: { n: '角換わり', fam: 'kaku' },
+    shiken:  { n: '四間飛車', fam: 'rook' },
+    kyuken:  { n: '九間飛車', fam: 'rook' },
+    gokigen: { n: 'ゴキゲン中飛車', fam: 'rook' },
+  };
+  const FAMG = { rook: '飛', silver: '銀', kaku: '角' };
+  const FAMC = { rook: 'var(--t-rook)', silver: 'var(--t-silver)', kaku: 'var(--t-kaku)' };
+  const FAMS = { ibisha: ['rook', 'silver', 'kaku'], furibisha: ['rook'] };
+  const FAMPOLY = { rook: 7, silver: 5, kaku: 6 };          // 案Bの角数
+  const SN = { ibisha: '居飛車', furibisha: '振り飛車' };
+  const WN = { me: '自分', opp: '相手' };
+  const WM = { me: '▲', opp: '△' };
+  const MINOR = '香桂歩';
+  const DEFCASTLE = { ibisha: 'funa', furibisha: 'mino' };
+  const DEFTAC = { silver: 'bougin', rook: 'yokofu', kaku: 'kakugaw' };
+  const DEFTAC_F = { rook: 'shiken' };
+
+  const parse = str => (str || '').trim().split(/\s+/).filter(Boolean)
+    .map(t => ({ p: t[0], f: +t[1], r: +t[2] }));
+
+  // ---------- 形の部品 ----------
+  const roundPath = (pts, r = 2) => {
+    const n = pts.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n];
+      const toward = q => {
+        const dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy) || 1;
+        return [p[0] + dx / d * r, p[1] + dy / d * r];
+      };
+      const e1 = toward(a), e2 = toward(b);
+      out.push(`${i ? 'L' : 'M'}${e1.map(x => x.toFixed(2)).join(' ')}Q${p.map(x => x.toFixed(2)).join(' ')} ${e2.map(x => x.toFixed(2)).join(' ')}`);
+    }
+    return out.join('') + 'Z';
+  };
+  const hexV = (cx, cy, r = 15) => [90, 150, 210, 270, 330, 30]
+    .map(a => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)]);
+  const polyV = (cx, cy, n, r, up) => {                    // 正n角形（頂点が上向き or 下向き）
+    const a0 = up ? -90 : 90;
+    return Array.from({ length: n }, (_, i) => {
+      const a = (a0 + i * 360 / n) * Math.PI / 180;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    });
+  };
+  const komaV = (cx, cy, w, h, up) => {                     // 将棋駒の五角形
+    const t = up ? -1 : 1;
+    return [[cx, cy + t * h / 2], [cx + w / 2, cy + t * h / 5],
+            [cx + w * .4, cy - t * h / 2], [cx - w * .4, cy - t * h / 2], [cx - w / 2, cy + t * h / 5]];
+  };
+  const segPath = segs => segs.map(([a, b]) => `M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}`).join('');
+
+  // ---------- 正確な継ぎ手（首が絞れて頭が膨らむ） ----------
+  function edge(p0, p1, s = 0, d = 7) {
+    if (!s) return `L${f1(p1[0])} ${f1(p1[1])}`;
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy);
+    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+    const P = (t, o = 0) => [p0[0] + ux * t * L + nx * o * s, p0[1] + uy * t * L + ny * o * s];
+    const pt = q => `${f1(q[0])} ${f1(q[1])}`;
+    return `L${pt(P(.33))}` +
+      `C${pt(P(.34, -.05 * d))} ${pt(P(.38, .1 * d))} ${pt(P(.41, .42 * d))}` +
+      `C${pt(P(.42, .98 * d))} ${pt(P(.47, 1.06 * d))} ${pt(P(.5, 1.06 * d))}` +
+      `C${pt(P(.53, 1.06 * d))} ${pt(P(.58, .98 * d))} ${pt(P(.59, .42 * d))}` +
+      `C${pt(P(.62, .1 * d))} ${pt(P(.66, -.05 * d))} ${pt(P(.67))}` +
+      `L${pt(p1)}`;
+  }
+  // v1の楕円型（比較用）
+  function edgeOld(p0, p1, s = 0, d = 7) {
+    if (!s) return `L${f1(p1[0])} ${f1(p1[1])}`;
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy);
+    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+    const P = (t, o = 0) => [p0[0] + ux * t * L + nx * o * s, p0[1] + uy * t * L + ny * o * s];
+    const pt = q => `${f1(q[0])} ${f1(q[1])}`;
+    return `L${pt(P(.35))}C${pt(P(.37, d * .55))} ${pt(P(.43, d))} ${pt(P(.5, d))}` +
+           `C${pt(P(.57, d))} ${pt(P(.63, d * .55))} ${pt(P(.65))}L${pt(p1)}`;
+  }
+  function cellPath(x, y, w, h, e, d = 7, ed = edge) {
+    return `M${f1(x)} ${f1(y)}` +
+      ed([x, y], [x + w, y], e.n, d) +
+      ed([x + w, y], [x + w, y + h], e.e, d) +
+      ed([x + w, y + h], [x, y + h], e.s, d) +
+      ed([x, y + h], [x, y], e.w, d) + 'Z';
+  }
+
+  // ---------- 帯の描画 ----------
+  // variant: 'A' | 'B' | 'C'
+  function renderBar(S, variant = 'A', opt = {}) {
+    const s = 15, hw = Math.sqrt(3) * s;
+    const uw = opt.cell || 22, uh = uw * 6 / 5;            // 5:6 の縦長セル
+    const X0 = 104, colX = f => X0 + (9 - f) * uw;
+    const XR = X0 + 9 * uw, W = XR + 72;
+    const SX = 56, STR_R = s * 1.35;
+    const sel = S.sel || '';
+    const isSel = (who, kind, fam) => sel === `${who}.${kind}` || sel === `${who}.${kind}.${fam}`;
+
+    const lay = who => {
+      const st = S[who], c = CASTLES[st.castle], up = who === 'me';
+      const cells = [];
+      if (c) {
+        const put = (p, kind) => {
+          const q = up ? p : { p: p.p, f: 10 - p.f, r: 10 - p.r };
+          cells.push({ p: q.p, f: q.f, r: q.r, kind });
+        };
+        for (const p of parse(c.core)) put(p, 'core');
+        for (const p of parse(c.shell)) put(p, 'shell');
+      }
+      return { st, c, up, cells,
+        minR: cells.length ? Math.min(...cells.map(cl => cl.r)) : 0,
+        nRows: cells.length ? Math.max(...cells.map(cl => cl.r)) - Math.min(...cells.map(cl => cl.r)) + 1 : 0 };
+    };
+    const L = { me: lay('me'), opp: lay('opp') };
+
+    const TAC_H = 2 * s;
+    const oTop = 6, oTacCy = oTop + s + 4;
+    const oCasTop = oTacCy + s + 9;
+    const rivY = oCasTop + L.opp.nRows * uh + 12;
+    const mTacCy = S.showOpp ? rivY + 12 + s : oTop + s + 34;
+    const mCasTop = mTacCy + s + 9;
+    const H = mCasTop + L.me.nRows * uh + 10;
+    const casY = (who, r, lay) => (who === 'opp' ? oCasTop : mCasTop) + (r - lay.minR) * uh;
+
+    let svg = `<svg viewBox="0 0 ${f1(W)} ${f1(H)}" role="group" aria-label="制約条件">` +
+      `<defs><pattern id="cf-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" class="cf-imp-bg"/><line x1="0" y1="0" x2="0" y2="5" class="cf-imp-ln"/></pattern></defs>`;
+
+    const slotX = i => X0 + 30 + i * 62;                  // 戦法の位置
+    for (const who of ['opp', 'me']) {
+      if (who === 'opp' && !S.showOpp) continue;
+      const { st, c, up, cells, minR } = L[who];
+      const tacCy = up ? mTacCy : oTacCy, casTop = who === 'opp' ? oCasTop : mCasTop;
+      const midY = cells.length ? casTop + (Math.max(...cells.map(cl => cl.r)) - minR + 1) * uh / 2 : casTop + uh;
+      svg += `<g class="pk-row ${who}">`;
+
+      // --- 戦型の大きな六角胞（現行）＋茎 ---
+      svg += `<g class="mod pb-hit" data-k="strategy" data-who="${who}" role="button" tabindex="0" aria-label="${WN[who]}の戦型 ${SN[st.strategy]}（押すと反転）">` +
+        `<path class="hx-cell hx-str" d="${roundPath(hexV(SX, midY, STR_R), 4)}"/>`;
+      const snc = [...SN[st.strategy]];
+      snc.forEach((ch, i) => {
+        svg += `<text class="hx-str-t" x="${SX}" y="${f1(midY - (snc.length - 1) * 8 / 2 + i * 8 + 3)}">${ch}</text>`;
+      });
+      if (cells.length) {
+        const x1 = Math.min(...cells.map(cl => colX(cl.f))) - 4;
+        const ys = [casTop + uh * .5, midY, casTop + L[who].nRows * uh - uh * .5];
+        svg += `<path class="hx-stem" d="${segPath(ys.map((y, i) => [[SX + STR_R * M2 * (i === 1 ? 1 : .82), midY + (i - 1) * 14], [x1, y]]))}"/>`;
+      }
+      svg += `</g>`;
+
+      // --- 戦法ピース（案ごとに形が変わる） ---
+      const fams = FAMS[st.strategy] || [];
+      fams.forEach((fam, i) => {
+        const tid = st.tacticsSet && st.tacticsSet[fam], tc = tid && TACTICS[tid];
+        const cx = slotX(i) + 14, kf = FAMC[fam];
+        const namePos = (x, anchor = 'start') => {
+          const nm = tc ? [...tc.n] : [], l1 = nm.length > 4 ? nm.slice(0, 4).join('') : nm.join(''), l2 = nm.length > 4 ? nm.slice(4).join('') : '';
+          const rot = who === 'opp' ? ` transform="rotate(180 ${f1(x)} ${f1(tacCy)})"` : '';
+          if (!l2) return `<text class="hx-tname" x="${f1(x)}" y="${f1(tacCy + 3)}" font-size="9" text-anchor="${anchor}"${rot}>${l1}</text>`;
+          return `<text class="hx-tname" x="${f1(x)}" y="${f1(tacCy - 4)}" font-size="8.5" text-anchor="${anchor}"${rot}>${l1}</text>` +
+                 `<text class="hx-tname" x="${f1(x)}" y="${f1(tacCy + 7)}" font-size="8.5" text-anchor="${anchor}"${rot}>${l2}</text>`;
+        };
+        const cls = ['mod', 'pb-hit'];
+        if (tc && tc.imp) cls.push('imp');
+        if (isSel(who, 'tactic', fam)) cls.push('sel');
+        const hit = tc ? `data-k="tactic" data-who="${who}" data-fam="${fam}" role="button" tabindex="0" aria-label="${WN[who]}の戦法 ${tc.n}"`
+                       : `data-k="slot" data-who="${who}" data-fam="${fam}" role="button" tabindex="0" aria-label="${WN[who]}の${FAMG[fam]}の系統を追加"`;
+        const gRot = who === 'opp' ? 'false' : 'true';
+
+        if (variant === 'A') {           // 駒形（五角形）
+          const pw = 30, ph = 36;
+          const skinD = roundPath(komaV(cx, tacCy, pw, ph, up), 3);
+          const gS = roundPath(komaV(cx, tacCy, pw, ph, up), 3);
+          if (!tc) {
+            svg += `<g class="mod pb-hit" ${hit}><path class="hx-ghost" d="${gS}" stroke-dashoffset="0"/>` +
+              `<text class="hx-add" x="${f1(cx)}" y="${f1(tacCy + (up ? 8 : -8) + 3)}"${who === 'opp' ? ` transform="rotate(180 ${f1(cx)} ${f1(tacCy)})"` : ''}>＋${FAMG[fam]}</text></g>`;
+            return;
+          }
+          svg += `<g class="${cls.join(' ')}" ${hit} style="--kc:${kf}">` +
+            `<path class="tc-skin" d="${skinD}"/>` +
+            `<text class="hx-t" x="${f1(cx)}" y="${f1(tacCy + (up ? 4 : -4) + 1)}" font-size="13"${who === 'opp' ? ` transform="rotate(180 ${f1(cx)} ${f1(tacCy)})"` : ''}>${FAMG[fam]}</text>` +
+            namePos(up ? cx + pw / 2 + 8 : cx - pw / 2 - 8);
+          if (!tc.imp) svg += `<g class="cf-x pb-hit" data-k="x" data-who="${who}" data-kind="tactic" data-fam="${fam}" role="button" tabindex="0" aria-label="${tc.n}を外す" transform="translate(${f1(up ? cx + pw / 2 + 30 : cx - pw / 2 - 30)} ${f1(tacCy - 16)})"><circle r="7"/><text>×</text></g>`;
+          svg += `</g>`;
+        } else if (variant === 'B') {    // 系統多角形
+          const n = FAMPOLY[fam], pr = 19;
+          const skinD = roundPath(polyV(cx, tacCy, n, pr, up), 3);
+          if (!tc) {
+            svg += `<g class="mod pb-hit" ${hit}><path class="hx-ghost" d="${skinD}"/>` +
+              `<text class="hx-add" x="${f1(cx)}" y="${f1(tacCy + 3)}"${who === 'opp' ? ` transform="rotate(180 ${f1(cx)} ${f1(tacCy)})"` : ''}>＋${FAMG[fam]}</text></g>`;
+            return;
+          }
+          svg += `<g class="${cls.join(' ')}" ${hit} style="--kc:${kf}">` +
+            `<path class="tc-skin glyph" d="${skinD}"/>` +
+            `<text class="hx-t" x="${f1(cx)}" y="${f1(tacCy + 4)}" font-size="12"${who === 'opp' ? ` transform="rotate(180 ${f1(cx)} ${f1(tacCy)})"` : ''}>${FAMG[fam]}</text>` +
+            namePos(up ? cx + pr + 6 : cx - pr - 6);
+          if (!tc.imp) svg += `<g class="cf-x pb-hit" data-k="x" data-who="${who}" data-kind="tactic" data-fam="${fam}" role="button" tabindex="0" aria-label="${tc.n}を外す" transform="translate(${f1(up ? cx + pr + 28 : cx - pr - 28)} ${f1(tacCy - 16)})"><circle r="7"/><text>×</text></g>`;
+          svg += `</g>`;
+        } else {                          // C: 駒胞=五角形＋名前胞=六角
+          const x0 = cx - 13;
+          const komaD = roundPath(komaV(x0, tacCy, 26, 32, up), 3);
+          if (!tc) {
+            svg += `<g class="mod pb-hit" ${hit}>` +
+              `<path class="hx-ghost" d="${komaD}"/>` +
+              `<path class="hx-ghost" d="${roundPath(hexV(x0 + 24, tacCy), 2)}"/>` +
+              `<text class="hx-add" x="${f1(x0 + 12)}" y="${f1(tacCy + 3)}"${who === 'opp' ? ` transform="rotate(180 ${f1(x0 + 12)} ${f1(tacCy)})"` : ''}>＋${FAMG[fam]}</text></g>`;
+            return;
+          }
+          svg += `<g class="${cls.join(' ')}" ${hit} style="--kc:${kf}">` +
+            `<path class="tc-skin glyph" d="${komaD}"/>` +
+            `<path class="tc-skin" d="${roundPath(hexV(x0 + 24, tacCy), 2)}"/>` +
+            `<text class="hx-t" x="${f1(x0)}" y="${f1(tacCy + (up ? 3 : -3) + 1)}" font-size="12"${who === 'opp' ? ` transform="rotate(180 ${f1(x0)} ${f1(tacCy)})"` : ''}>${FAMG[fam]}</text>` +
+            namePos(x0 + 24, 'middle');
+          if (!tc.imp) svg += `<g class="cf-x pb-hit" data-k="x" data-who="${who}" data-kind="tactic" data-fam="${fam}" role="button" tabindex="0" aria-label="${tc.n}を外す" transform="translate(${f1(x0 + 24 + s * .8)} ${f1(tacCy - s)})"><circle r="7"/><text>×</text></g>`;
+          svg += `</g>`;
+        }
+      });
+
+      // --- 囲い: 5:6 縦長の駒ピース＋正確な継ぎ手 ---
+      if (c) {
+        const occ = new Map(cells.map(cl => [cl.f + ',' + cl.r, cl]));
+        // 共有辺の凸凹は「辺」に対して一意に決める。筋が大きい=画面左なので、
+        // e辺（画面右）は筋-1の隣、w辺（画面左）は筋+1の隣を見る
+        const edgeOf = cl => {
+          const e = { n: 0, s: 0, e: 0, w: 0 };
+          const p = (f, r) => (f + r) % 2 ? 1 : -1;
+          const nb = (f, r) => occ.get(f + ',' + r);
+          if (nb(cl.f, cl.r - 1)) e.n = -p(cl.f, cl.r - 1);   // 上の隣（その下辺と反対）
+          if (nb(cl.f, cl.r + 1)) e.s =  p(cl.f, cl.r);       // 下の隣
+          if (nb(cl.f - 1, cl.r)) e.e =  p(cl.f - 1, cl.r);   // 画面右の隣（筋-1）
+          if (nb(cl.f + 1, cl.r)) e.w = -p(cl.f, cl.r);       // 画面左の隣（筋+1・その右辺と反対）
+          return e;
+        };
+        const cls = ['mod', 'pb-hit'];
+        if (st.imp) cls.push('imp');
+        if (st.ng) cls.push('ng');
+        if (isSel(who, 'castle')) cls.push('sel');
+        const cy0 = Math.min(...cells.map(cl => casY(who, cl.r, L[who])));
+        const cy1 = Math.max(...cells.map(cl => casY(who, cl.r, L[who]) + uh));
+        const cx0 = Math.min(...cells.map(cl => colX(cl.f)));
+        const cx1 = Math.max(...cells.map(cl => colX(cl.f) + uw));
+        const tf = st.ng ? ` transform="translate(${up ? 10 : -10} ${up ? -8 : 8}) rotate(${up ? 2.6 : -2.6} ${f1((cx0 + cx1) / 2)} ${f1(cy1)})"` : '';
+        svg += `<g class="${cls.join(' ')}" data-k="castle" data-who="${who}" role="button" tabindex="0" aria-label="${WN[who]}の囲い ${c.n}${st.imp ? '（既定値）' : ''}${st.ng ? '（両立しない）' : ''}" style="--kc:var(--f-${c.fam || 'funa'})"${tf}>`;
+        for (const cl of cells) {
+          const x = colX(cl.f), y = casY(who, cl.r, L[who]);
+          const minor = MINOR.includes(cl.p) || cl.kind === 'shell';
+          svg += `<g class="pk-${cl.kind === 'shell' || minor ? 'shell' : 'core'}${cl.p === '玉' ? ' pk-gyoku' : ''}${minor ? ' pk-minor' : ''}">` +
+            `<path class="pk-skin" d="${cellPath(x, y, uw, uh, edgeOf(cl), uh * .22)}"/>` +
+            `<text class="pk-kanji" x="${f1(x + uw / 2)}" y="${f1(y + uh / 2)}">${cl.p}</text></g>`;
+        }
+        for (const cl of cells) {
+          svg += `<path class="pk-joint${cl.kind === 'shell' ? ' pk-shelljoint' : ''}" d="${cellPath(colX(cl.f), casY(who, cl.r, L[who]), uw, uh, edgeOf(cl), uh * .22)}"/>`;
+        }
+        const name = c.n;
+        if (up) {
+          svg += `<text class="cf-castlen" x="${f1(cx1 + 4)}" y="${f1(cy1 + 8)}">${name}${st.imp ? '（既定）' : ''}</text>`;
+        } else {
+          svg += `<text class="cf-castlen" x="${f1(W - 8)}" y="${f1(rivY)}" text-anchor="end">${name}${st.imp ? '（既定）' : ''}</text>`;
+        }
+        if (!st.imp) {
+          svg += `<g class="cf-x pb-hit" data-k="x" data-who="${who}" data-kind="castle" role="button" tabindex="0" aria-label="${WN[who]}の囲いを外す" transform="translate(${f1(cx1 + 8)} ${f1(up ? cy0 + 6 : cy1 - 6)})"><circle r="7"/><text>×</text></g>`;
+        }
+        if (st.imp) {
+          svg += `<text class="cf-csub" x="${f1(up ? cx1 + 4 : W - 8)}" y="${f1(up ? cy1 + 18 : rivY + 10)}"${up ? '' : ' text-anchor="end"'}>既定・押して確定</text>`;
+        } else if (st.ng) {
+          svg += `<text class="cf-cng" x="${f1((cx0 + cx1) / 2)}" y="${f1(up ? cy0 - 6 : cy1 + 12)}" text-anchor="middle">✕ ${SN[c.side]}の囲い</text>` +
+            `<path class="cf-crack" d="M${f1(cx0 - 12)} ${f1((cy0 + cy1) / 2 - 8)}l4 5l-2 5l5 4l-3 5"/>`;
+        }
+        svg += `</g>`;
+      }
+      // 側リセット
+      if (Object.values(st.tacticsSet || {}).some(Boolean) || (c && !st.imp)) {
+        svg += `<g class="cf-clear pb-hit" data-k="clear" data-who="${who}" role="button" tabindex="0" aria-label="${WN[who]}の戦法・囲いをリセット" transform="translate(${f1(W - 14)} ${f1(midY)})"><circle r="9"/><text>×</text></g>`;
+      }
+      const selSide = isSel(who, 'castle') || isSel(who, 'tactic') || isSel(who, 'strategy');
+      svg += `<text class="cf-who${selSide ? ' sel' : ''}" x="10" y="${f1(midY - 6)}">${WN[who]}</text>` +
+        `<text class="cf-who" x="10" y="${f1(midY + 8)}">${WM[who]}</text>`;
+      svg += `</g>`;
+    }
+    if (!S.showOpp && !opt.noGhost) {
+      const y = oTop + s + 10;
+      svg += `<g class="mod pb-hit" data-k="opp-add" role="button" tabindex="0" aria-label="相手を盤に表示する">` +
+        `<path class="hx-cell hx-ghost" d="${roundPath(hexV(SX, y, s * 1.4), 3)}"/>` +
+        `<text class="cf-opp-t" x="${f1(SX)}" y="${f1(y + 3)}" text-anchor="middle">＋相手</text></g>`;
+    }
+    if (S.showOpp) {
+      const famIdx = (who, fam) => (FAMS[S[who].strategy] || []).indexOf(fam);
+      for (const [fam, t] of Object.entries((S.marks && S.marks.me) || {})) {
+        if (fam === 'castle') continue;
+        const i = famIdx('me', fam); if (i < 0) continue;
+        const x = slotX(i) + 14;
+        svg += `<line class="cf-sm ${t}" x1="${f1(x)}" y1="${f1(rivY + 3)}" x2="${f1(x)}" y2="${f1(mTacCy - s - 2)}"/>`;
+        if (t === 'good') svg += `<circle class="cf-glint" cx="${f1(x)}" cy="${f1((rivY + mTacCy - s) / 2)}" r="4.2"/>`;
+        else svg += `<path class="cf-crack" d="M${f1(x - 5)} ${f1((rivY + mTacCy) / 2 - 6)}l3 3l3 -3.5l3.5 4l3.5 -2.5"/>`;
+      }
+      for (const [fam, t] of Object.entries((S.marks && S.marks.opp) || {})) {
+        if (fam === 'castle') continue;
+        const i = famIdx('opp', fam); if (i < 0) continue;
+        const x = slotX(i) + 14;
+        svg += `<line class="cf-sm ${t}" x1="${f1(x)}" y1="${f1(oTacCy + s + 2)}" x2="${f1(x)}" y2="${f1(rivY - 3)}"/>`;
+      }
+      for (const who of ['me', 'opp']) {
+        const mk = S.marks && S.marks[who] && S.marks[who].castle;
+        if (!mk) continue;
+        const lay = L[who];
+        const frontCells = lay.cells.filter(cl =>
+          !lay.cells.some(o => o.f === cl.f && (who === 'me' ? o.r < cl.r : o.r > cl.r)));
+        for (const cl of frontCells) {
+          const x = colX(cl.f), y = casY(who, cl.r, lay);
+          const e = who === 'me' ? [x + 2, y + 1.5, x + uw - 2, y + 1.5] : [x + 2, y + uh - 1.5, x + uw - 2, y + uh - 1.5];
+          svg += `<line class="cf-sm ${mk}" x1="${f1(e[0])}" y1="${f1(e[1])}" x2="${f1(e[2])}" y2="${f1(e[3])}"/>`;
+        }
+      }
+      if (S.seam) {
+        const w2 = S.seam.length * 9.5 + 16;
+        svg += `<g class="cf-seam"><rect x="${f1(SX - w2 / 2)}" y="${f1(rivY - 8.5)}" width="${f1(w2)}" height="17" rx="8.5"/><text x="${f1(SX)}" y="${f1(rivY)}">#${S.seam}</text></g>`;
+      }
+    }
+    svg += `</svg>`;
+    return { svg, W, H };
+  }
+
+  // ---------- 継ぎ目の比較図 ----------
+  {
+    const mkCell = (x, y, w, h, e, ed) =>
+      `<g transform="translate(${x} ${y})"><path d="${cellPath(0, 0, w, h, e, h * .24, ed)}" style="fill:color-mix(in srgb,#b5652b 22%,var(--bg));stroke:var(--fg)"/></g>`;
+    const joint = (a, b) =>
+      `<svg viewBox="0 0 200 90" style="width:190px;height:auto">` +
+      mkCell(20, 12, 30, 36, { n: 0, s: 0, e: 0, w: 0 }, a === 'old' ? edgeOld : edge) +
+      mkCell(80, 12, 30, 36, { n: 0, s: 0, e: -1, w: 0 }, a === 'old' ? edgeOld : edge) +
+      mkCell(80 + 30, 12, 30, 36, { n: 0, s: 0, e: 0, w: 1 }, a === 'old' ? edgeOld : edge) +
+      `<text x="95" y="76" text-anchor="middle" style="font:600 10px var(--font-b);fill:var(--muted)">${b}</text></svg>`;
+    document.getElementById('jointOld').innerHTML = joint('old', '正方形・楕円の出っ張り');
+    document.getElementById('jointNew').innerHTML = joint('new', '5:6縦長・首のある継ぎ手');
+  }
+
+  // ---------- デモの状態 ----------
+  const demo = {
+    showOpp: true, sel: '',
+    me:  { strategy: 'ibisha', castle: 'funa', imp: false, ng: false,
+           tacticsSet: { silver: 'bougin', rook: 'yokofu', kaku: null } },
+    opp: { strategy: 'ibisha', castle: 'yagura', imp: false, ng: false,
+           tacticsSet: { silver: 'bougin', rook: null, kaku: null } },
+    marks: { me: { silver: 'good', rook: 'bad', castle: 'good' }, opp: { silver: 'good' } },
+    seam: '相居飛車',
+  };
+  const baseDemo = JSON.parse(JSON.stringify(demo));
+  const scenarios = {
+    full() { Object.assign(demo, JSON.parse(JSON.stringify(baseDemo))); },
+    meonly() { scenarios.full(); demo.showOpp = false; },
+    implied() { scenarios.full(); for (const w of ['me', 'opp']) { demo[w].imp = true; demo[w].tacticsSet = { silver: null, rook: null, kaku: null }; } demo.sel = ''; },
+    ng() { scenarios.full(); demo.me.castle = 'mino'; demo.me.ng = true; demo.sel = ''; },
+    furibisha() { scenarios.full(); demo.me.strategy = 'furibisha'; demo.me.castle = 'mino'; demo.me.ng = false; demo.me.tacticsSet = { rook: 'shiken' }; demo.seam = '対抗形'; demo.marks.me = { rook: 'good' }; },
+  };
+  let phoneV = 'A';
+  function drawAll() {
+    document.querySelectorAll('[data-vbar]').forEach(el => {
+      el.innerHTML = renderBar(demo, el.dataset.vbar, { cell: 22 }).svg;
+    });
+    document.getElementById('phoneDemo').innerHTML =
+      `<div class="pbar">${renderBar(demo, phoneV, { cell: 22, noGhost: false }).svg}</div><div class="demo-boardtop"></div>`;
+    document.getElementById('oppBtn').setAttribute('aria-pressed', String(demo.showOpp));
+  }
+  drawAll();
+  document.querySelector('.part#variants .ctrl').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.id === 'oppBtn') { demo.showOpp = !demo.showOpp; drawAll(); return; }
+    if (b.dataset.sc && scenarios[b.dataset.sc]) { scenarios[b.dataset.sc](); drawAll(); }
+  });
+  document.getElementById('phoneCtrl').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !b.dataset.pv) return;
+    phoneV = b.dataset.pv;
+    document.querySelectorAll('#phoneCtrl button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    drawAll();
+  });
+  document.getElementById('variants').addEventListener('click', e => {
+    const g = e.target.closest('.pb-hit'); if (!g) return;
+    const who = g.dataset.who, k = g.dataset.k;
+    if (k === 'strategy') {
+      const st = demo[who];
+      st.strategy = st.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
+      st.castle = DEFCASTLE[st.strategy]; st.ng = false; st.imp = false;
+      st.tacticsSet = st.strategy === 'furibisha' ? { rook: 'shiken' } : { silver: 'bougin', rook: null, kaku: null };
+      demo.seam = demo.me.strategy === demo.opp.strategy ? (demo.me.strategy === 'ibisha' ? '相居飛車' : '相振り飛車') : '対抗形';
+    } else if (k === 'castle' || k === 'tactic') {
+      demo.sel = `${who}.${k}${k === 'tactic' ? '.' + g.dataset.fam : ''}`;
+    } else if (k === 'x') {
+      const st = demo[who];
+      if (g.dataset.kind === 'castle') { st.castle = DEFCASTLE[st.strategy]; st.imp = true; st.ng = false; }
+      else st.tacticsSet[g.dataset.fam] = null;
+    } else if (k === 'slot') {
+      const st = demo[who];
+      st.tacticsSet[g.dataset.fam] = (st.strategy === 'furibisha' ? DEFTAC_F : DEFTAC)[g.dataset.fam];
+    } else if (k === 'clear') {
+      const st = demo[who]; st.imp = true; st.tacticsSet = { silver: null, rook: null, kaku: null };
+    } else if (k === 'opp-add') demo.showOpp = true;
+    drawAll();
+  });
+})();
+</script>
+</body>
+</html>

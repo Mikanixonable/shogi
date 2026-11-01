@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>将棋の囲い図鑑</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='7' fill='%23c8371f'/%3E%3Crect x='9.5' y='9.5' width='45' height='45' rx='3' fill='none' stroke='%23fbf6ea' stroke-width='2.4'/%3E%3Cg stroke='%23fbf6ea' stroke-width='5' stroke-linecap='square'%3E%3Cpath d='M20 20h24M22 32h20M17 45h30M32 20v25'/%3E%3C/g%3E%3Ccircle cx='41' cy='39' r='2.8' fill='%23fbf6ea'/%3E%3C/svg%3E">
 <script>
@@ -11,7 +11,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;600&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;600&family=Cormorant+Garamond:wght@500&family=Yuji+Syuku&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/board.css">
@@ -19,6 +19,8 @@
 <link rel="stylesheet" href="css/matchup.css">
 <link rel="stylesheet" href="css/constraint.css">
 <link rel="stylesheet" href="css/dock.css">
+<link rel="stylesheet" href="css/tesuji.css">
+<link rel="stylesheet" href="css/wiki.css">
 </head>
 <body>
 <div class="atmo" aria-hidden="true"></div>
@@ -28,7 +30,7 @@
 
 <!-- 全体の設定（右: 歯車で開く表示設定のポップオーバー） -->
 <header class="glass">
-  <div class="brand"><a class="mark" href="index.html" title="トップへ" aria-label="将棋の囲い図鑑 トップへ">玉</a><h1>将棋の囲い図鑑</h1><button class="about" id="aboutOpen" type="button">このサイトについて</button></div>
+  <div class="brand"><a class="mark" href="index.html" title="トップへ" aria-label="将棋の囲い図鑑 トップへ">玉</a><h1>将棋の囲い図鑑</h1><button class="about" id="aboutOpen" type="button">このサイトについて</button><button class="about" id="tesujiOpen" type="button">手筋と格言</button></div>
   <div class="tools" id="tools" role="group" aria-label="表示設定">
     <div class="setting">
       <span class="lbl">駒の表示</span>
@@ -52,27 +54,18 @@
   </button>
 </header>
 
-<!-- 画面は1つ（対局図）: 選ぶ（左ドック）・見る（中央）・読む（右ドック） -->
+<!-- 画面は1つ（対局図）: 選ぶ（左レール）・見る（中央）・読む（右 detail） -->
 <div class="app">
-  <!-- 選ぶ（左ドック。DockView が右端の駒の見出しで「自分／相手」を切り替える1枚の面を組み立てる） -->
+  <!-- 選ぶ（左レール。RailView が右端の駒の見出しで「自分／相手」を切り替える1枚の面を組み立てる） -->
   <nav class="panel glass rail" aria-label="一覧">
     <div class="pane-fill" id="pickRail"></div>
   </nav>
 
-  <!-- 見る: 盤を挟んで相手（上）・自分（下）の帯。相手の表示 ON/OFF は左ドックの駒の見出し（OFF のときも帯の行は残す） -->
+  <!-- 見る: 盤の上に1枚の制約フィールド（蜂の巣の多角形モジュール。相手=上・自分=下で同じ
+       六角グリッドに並び、自分の戦法の胞と相手の囲いの胞が河を隔てて辺を共有する）。
+       相手の表示 ON/OFF は左レールの駒の見出しか「＋相手」の胞 -->
   <main class="panel glass stage" id="stageMain">
-    <div class="sideband" id="bandOpp" data-side="opp" data-empty="true">
-      <div class="sband-h">
-        <span class="who">相手<small>後手</small></span>
-      </div>
-      <div class="cbar" id="cbarOpp" role="group" aria-label="相手の制約条件"></div>
-    </div>
-    <div class="sideband" id="bandMe" data-side="me">
-      <div class="sband-h">
-        <span class="who">自分<small>先手</small></span>
-      </div>
-      <div class="cbar" id="cbarMe" role="group" aria-label="自分の制約条件"></div>
-    </div>
+    <div id="cfield" role="group" aria-label="制約条件"></div>
     <!-- 盤（BoardView / OverlayView は1組だけ） -->
     <div class="boardarea">
       <div class="boardwrap" id="boardwrap">
@@ -84,17 +77,34 @@
         <div class="handcol" id="handOpp" role="note" aria-label="相手の持ち駒"></div>
         <div class="handcol" id="handMe" role="note" aria-label="自分の持ち駒"></div>
       </div>
+      <!-- 盤の収納: 盤の裾の帯。狭い画面だけ出る。引くと盤が上へ巻き上がって畳まれる -->
+      <button class="blind" id="boardToggle" type="button" aria-expanded="true" aria-controls="boardwrap" aria-label="盤を収納する"></button>
     </div>
   </main>
 
-  <!-- 読む（右ドック。BoardDetailView が選択中の制約の種類に応じて組み立てる。
+  <!-- 読む（右 detail。DetailView が選択中の制約の種類に応じて組み立てる。
        1180px 以下では右端のドロワーになり、#detailToggle で開閉する） -->
   <aside class="panel glass detail">
     <button class="ib" id="detailToggle" type="button" aria-expanded="false" aria-label="解説パネルを開閉">解説</button>
     <div class="detail-body" id="detail"></div>
     <div class="vert" aria-hidden="true">先手の囲いを盤で見比べる</div>
   </aside>
+
+  <!-- narrow: 左（選ぶ）と右（読む）の面を下端のタブか横スワイプで切り替える（js/ui/mobile-tabs.js） -->
+  <div class="mtabs" role="group" aria-label="ドックの切替">
+    <button type="button" data-tab="pick" aria-pressed="true" aria-controls="pickRail">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>選ぶ</span>
+    </button>
+    <button type="button" data-tab="read" aria-pressed="false" aria-controls="detail">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5C10 4 7.5 3.6 5 4v14c2.5-.4 5 0 7 1.5 2-1.5 4.5-1.9 7-1.5V4c-2.5-.4-5 0-7 1.5zM12 5.5v14"/></svg>
+      <span>読む</span>
+    </button>
+  </div>
 </div>
+
+<!-- 表示設定のボトムシートが開いたとき背面を伏せるスクリム（narrow のみ表示。押すとシートが閉じる） -->
+<div class="sheet-scrim" aria-hidden="true"></div>
 
 <!-- このサイトについて: ロゴ横のボタンで開く説明モーダル。Esc・背景クリック・×ボタンで閉じる -->
 <dialog class="about-dlg" id="aboutDialog" aria-labelledby="aboutTitle">
@@ -110,6 +120,15 @@
     <p>より詳細な理解として、相手が取ってくる戦術が居飛車、振り飛車かによって、想定される攻撃が上からか、横からかが変化し、詳細な囲いの選択の参考になることも期待しています。</p>
   </div>
 </dialog>
+
+<!-- 手筋と格言: 盤の画面と排他の全画面モード（対局図とは別モード。TesujiMode が組み立てる）。
+     左は章→節→項の目次、右は本文。開いている章・節は URL ハッシュの tj= が持つ -->
+<div class="wiki" id="tesujiView">
+  <nav class="wj-toc" id="tesujiToc" aria-label="手筋と格言の目次"></nav>
+  <main class="wj-main"></main>
+  <button class="wj-toc-btn" type="button" aria-expanded="false" aria-controls="tesujiToc">目次</button>
+  <div class="wj-scrim" aria-hidden="true"></div>
+</div>
 
 <!-- スクリプト一覧（読み込み順は js/manifest.js が決める。file:// でも動くよう動的に追加） -->
 <script src="js/manifest.js"></script>

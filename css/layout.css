@@ -8,15 +8,16 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
 .brand .mark { width:26px; height:26px; display:grid; place-items:center; font:700 14px/1 var(--font-d); color:#fbf6ea;
                background:var(--accent); transform:rotate(-3deg); animation:stamp .55s cubic-bezier(.2,.9,.3,1.3) .3s backwards;
                text-decoration:none; cursor:pointer; transition:transform .18s var(--ease); }
-.brand .mark:hover { transform:rotate(0deg) scale(1.08); }
+@media (hover:hover) { .brand .mark:hover { transform:rotate(0deg) scale(1.08); } }
 .brand .mark:active { transform:rotate(-7deg) scale(.82); transition-duration:.06s; }
 @keyframes stamp { from { opacity:0; transform:scale(1.7) rotate(-10deg); }
                    60% { opacity:1; transform:scale(.94) rotate(-3deg); } to { opacity:.95; transform:scale(1) rotate(-3deg); } }
 /* about: ロゴ横の小さな導線。文字だけのボタン、下に細い罫線 */
 .brand .about { font-size:11px; letter-spacing:.12em; color:var(--muted); background:none; border:0;
                 border-bottom:1px solid var(--line-2); padding:1px 0 2px; margin-left:4px; cursor:pointer;
+                overflow:hidden; white-space:nowrap;
                 transition:color .2s, border-color .2s; }
-.brand .about:hover { color:var(--fg); border-bottom-color:var(--accent); }
+@media (hover:hover) { .brand .about:hover { color:var(--fg); border-bottom-color:var(--accent); } }
 .brand h1 { margin:0; font:800 20px/1 var(--font-d); letter-spacing:.22em; }
 .setting { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
 .setting > .lbl { letter-spacing:.14em; font-size:11px; }
@@ -35,7 +36,7 @@ header { position:relative; }
              transition:transform .35s var(--ease), width .35s var(--ease); }
 .seg button { position:relative; z-index:1; border:0; background:none; padding:6px 14px; cursor:pointer; font-size:13px;
               color:var(--muted); letter-spacing:.08em; transition:color .2s; }
-.seg button:hover { color:var(--fg); }
+@media (hover:hover) { .seg button:hover { color:var(--fg); } }
 .seg button[aria-pressed="true"] { color:var(--fg); font-weight:600; }
 .seg.small button { padding:4px 11px; font-size:12px; }
 .seg.wide { display:flex; }
@@ -54,7 +55,7 @@ header { position:relative; }
 /* ===== icon button: 罫線だけの小さな角ボタン（明暗の切替など） ===== */
 .ib { width:28px; height:28px; display:grid; place-items:center; padding:0; cursor:pointer;
       background:none; border:1px solid var(--line); color:var(--muted); transition:color .2s, border-color .2s; }
-.ib:hover { color:var(--fg); border-color:var(--line-2); }
+@media (hover:hover) { .ib:hover { color:var(--fg); border-color:var(--line-2); } }
 .ib svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 /* 文字入りの .ib（表示設定のリセットなど） */
 .ib.txt { width:auto; padding:0 10px; font-size:12px; letter-spacing:.06em; }
@@ -66,45 +67,26 @@ header { position:relative; }
 /* 列幅は CSS 変数で（計画書 §4-1）。中央は minmax(440px,…) で盤の最小幅を守り、
    左右のドックの下限を 240/280 に下げる（F1）。1180px 以下は右ドックがドロワー、
    979px 以下は narrow ブロックの1列表示 */
-.app { display:grid; grid-template-columns:var(--col-l, minmax(240px,1.45fr)) minmax(440px,1.75fr) var(--col-r, minmax(280px,1.55fr)); gap:0; padding:0; min-height:0; }
+.app { display:grid; grid-template-columns:var(--col-l, minmax(240px,1.35fr)) minmax(440px,2fr) var(--col-r, minmax(280px,1.4fr)); gap:0; padding:0; min-height:0; }
 .panel { border-radius:0; min-height:0; }
 .rail { border-right:1px solid var(--line); }
 .detail { border-left:1px solid var(--line); position:relative; }
 
-/* 中央: 相手 ON は相手の帯 → 盤 → 自分の帯、OFF は自分の帯 → 盤。
-   3行のトラックは常に確保し、盤の矩形を状態に依存させない（F1） */
-.stage .sideband[data-side="opp"] { order:0; }
+/* 中央: 制約フィールド（1枚の蜂の巣。相手=上・自分=下）→ 盤。2行のトラック（F1） */
+.stage #cfield { order:0; }
 .stage .boardarea { order:1; }
-.stage .sideband[data-side="me"] { order:2; }
-.stage #bandOpp { transition:opacity .36s var(--ease), visibility 0s linear .36s; }
-.stage #bandOpp[data-empty="true"] { order:2; visibility:hidden; opacity:0; pointer-events:none; }
-.stage #bandOpp[data-empty="false"] { visibility:visible; opacity:1; transition:opacity .36s var(--ease), visibility 0s; }
-.stage #bandOpp[data-empty="true"] ~ #bandMe { order:0; }
 
 /* ===== rail: 左ドック（自分／相手のタブで切り替える1枚の面。DockView が構造を組み立てる。css/dock.css 参照） ===== */
 .rail { display:flex; flex-direction:column; padding:16px 18px; }
 .pane-fill { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:auto; }
 
 /* ===== stage: 盤を見る ===== */
-/* 行の高さは定数（F1/F2: 盤の矩形を状態に依存させない）。相手 OFF 時もトラックを確保する */
-.stage { --band-h:188px; display:grid; position:relative;
+/* 行: 制約フィールド（内容の高さ=aspect-ratio）＋盤（残り全部）。盤の大きさは
+   boardarea の残り高さから決める（board.css の .boardwrap が 100cqh を見る） */
+.stage { --stage-gap:8px; display:grid; position:relative; container-type:size;
          grid-template-columns:minmax(0,1fr);
-         grid-template-rows:var(--band-h) minmax(0,1fr) var(--band-h);
-         padding:40px 26px; gap:10px; }
-/* 状態の帯（sideband）: 盤の上=相手・下=自分。側の印と説明つきの制約カプセルを並べる */
-.sideband { display:flex; flex-direction:column; gap:4px; min-width:0; min-height:0; overflow:hidden; }
-.sideband[hidden] { display:none; }
-.sband-h { display:flex; align-items:center; gap:12px; height:26px; flex:none; flex-wrap:nowrap; }
-.sband-h .who { flex:none; font:600 10.5px/1 var(--font-d); letter-spacing:.18em; color:var(--muted);
-                display:flex; align-items:baseline; gap:5px; border:0; padding:0; font-size:13px; letter-spacing:.04em; }
-.sband-h .who::before { content:"▲"; display:grid; place-items:center; width:26px; height:26px;
-                        border-radius:50%; background:var(--accent-soft); color:var(--accent); font:800 12px/1 var(--font-b); }
-.sband-h .who small { font:500 11px/1 var(--font-b); letter-spacing:.04em; color:var(--muted); }
-.sideband[data-side="opp"] .who::before { content:"△"; background:color-mix(in srgb,var(--gote-ink) 12%,var(--bg)); color:var(--gote-ink); }
-.sideband[data-sel="true"] .who { color:var(--accent); }
-/* 相手の表示が OFF のときの帯: 全体を薄く */
-.sideband[data-empty="true"] { opacity:.62; }
-@media (prefers-reduced-motion:reduce) { .stage #bandOpp { transition:none; } }
+         grid-template-rows:auto minmax(0,1fr); align-content:center;
+         padding:20px 18px; gap:var(--stage-gap); }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
 .handcol { position:absolute; top:calc(var(--coord-h) + var(--coord-gap)); bottom:0; width:22px; margin:0 2px;
@@ -138,7 +120,7 @@ header { position:relative; }
 .chips { display:flex; flex-wrap:wrap; gap:6px; }
 .chip { display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 5px; background:none; border:1px solid var(--line); font-size:12px;
         font-family:var(--font-n); letter-spacing:.04em; cursor:default; transition:border-color .2s; }
-.chip:hover { border-color:var(--accent); }
+@media (hover:hover) { .chip:hover { border-color:var(--accent); } }
 .chip b { width:20px; height:22px; display:grid; place-items:center; padding-top:3px; font:700 12px var(--font-d); color:var(--core);
           background:var(--piece-1); box-shadow:inset 0 0 0 1px var(--piece-edge); clip-path:polygon(50% 0, 86% 14%, 100% 100%, 0 100%, 14% 14%); }
 
@@ -148,12 +130,15 @@ header { position:relative; }
 .penta-ring.edge { stroke:var(--line-2); }
 .penta-spoke { stroke:var(--line); stroke-width:1; }
 .penta-val { fill:var(--fg); fill-opacity:.07; stroke:var(--fg); stroke-width:1.3; stroke-linejoin:round; }
+.penta-val.tac { fill:var(--tc); fill-opacity:.13; stroke:var(--tc); stroke-width:1.5; }
+.penta-parent { fill:none; stroke:var(--tc); stroke-opacity:.55; stroke-width:1; stroke-dasharray:3 2.5; stroke-linejoin:round; }
+.ps-diff { text-align:center; }
 .penta-lbl { font-size:10px; fill:var(--muted); letter-spacing:.02em; }
 
 .pc-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.7; }
 .pc-list li { display:grid; grid-template-columns:18px 1fr; gap:6px; padding:3px 6px; transition:background .2s; }
 .pc-list li[data-sq] { cursor:default; }
-.pc-list li[data-sq]:hover { background:var(--faint); }
+@media (hover:hover) { .pc-list li[data-sq]:hover { background:var(--faint); } }
 .pc-list li::before { content:"＋"; font-weight:700; color:var(--good); }
 .pc-list.cons li::before { content:"－"; color:var(--bad); }
 .pc-list li[data-sq] { text-decoration:underline dotted var(--line-2); text-underline-offset:4px; }
@@ -161,13 +146,13 @@ header { position:relative; }
 .attacks { display:flex; flex-direction:column; gap:6px; }
 .attack { text-align:left; border:1px solid var(--line); background:none; padding:8px 12px; cursor:pointer; font-size:12.5px; line-height:1.6; transition:border-color .2s, background .2s; }
 .attack b { display:block; font-size:13px; margin-bottom:1px; }
-.attack:hover { border-color:var(--bad); }
+@media (hover:hover) { .attack:hover { border-color:var(--bad); } }
 .attack[aria-pressed="true"] { border-color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, transparent); }
 
 .sources { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; font-size:11.5px; }
 .sources li { display:flex; gap:6px; align-items:baseline; }
 .sources a { color:var(--fg2); text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line-2); }
-.sources a:hover { color:var(--accent); text-decoration-color:var(--accent); }
+@media (hover:hover) { .sources a:hover { color:var(--accent); text-decoration-color:var(--accent); } }
 .sources .cv { flex-shrink:0; font:500 10px/1.4 var(--font-n); padding:0 6px; border:1px solid var(--line); color:var(--muted); letter-spacing:.04em; }
 /* 本文の [n] リンクにホバーしたとき、対応する出典行を強調する（js/core/html.js の bindCites） */
 .sources li.cite-on { background:var(--accent-soft); }
@@ -175,7 +160,35 @@ header { position:relative; }
 /* 本文中の出典番号 [n]。行の高さを変えないよう sup の line-height を殺す */
 sup.cite { font-size:.75em; line-height:0; letter-spacing:.02em; }
 sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
-sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+@media (hover:hover) { sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underline-offset:2px; } }
+
+/* ===== お楽しみ（出典のあとの余白コーナー）: 格言は筆の引用、一覧は <details> に畳む ===== */
+.fun-pv { margin:0; padding:10px 14px;
+          border-left:3px double var(--accent-2); background:color-mix(in srgb, var(--accent) 5%, transparent); }
+.fun-pv b { display:block; font:700 15px/1.7 var(--font-d); letter-spacing:.05em; }
+.fun-pv span { display:block; margin-top:3px; font-size:11.5px; line-height:1.7; color:var(--muted); }
+.fun-row { display:flex; justify-content:flex-end; margin:5px 0 4px; }
+.fun-shuf { padding:3px 10px; border:1px solid var(--line-2);
+            background:none; color:var(--muted); font:600 10.5px/1.5 var(--font-b); letter-spacing:.06em; cursor:pointer; }
+@media (hover:hover) { .fun-shuf:hover { color:var(--fg); border-color:var(--fg); } }
+.fun-memes, .fun-vids { border-top:1px solid var(--line); }
+.fun-memes summary, .fun-vids summary { display:flex; align-items:center; gap:8px; min-height:44px;
+                                      padding:6px 0; cursor:pointer; list-style:none;
+                                      font:600 12px/1.4 var(--font-b); letter-spacing:.05em; color:var(--fg2); }
+.fun-memes summary::-webkit-details-marker, .fun-vids summary::-webkit-details-marker { display:none; }
+.fun-memes summary::before, .fun-vids summary::before { content:"＋"; color:var(--muted); font-weight:400; }
+.fun-memes[open] summary::before, .fun-vids[open] summary::before { content:"－"; }
+@media (hover:hover) { .fun-memes summary:hover, .fun-vids summary:hover { color:var(--fg); } }
+.fun-memes ul, .fun-vids ul { margin:0 0 10px; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
+.fun-memes li, .fun-vids li { display:flex; gap:10px; align-items:baseline; font-size:12px; line-height:1.65; }
+.fun-memes li b { flex:none; min-width:7.5em; font-weight:700; }
+.fun-memes li span, .fun-vids li span { color:var(--muted); font-size:11.5px; }
+.fun-vids li a { flex:none; min-width:7.5em; color:var(--fg); text-decoration:underline;
+                 text-underline-offset:3px; text-decoration-color:var(--line-2); }
+.fun-vids li a .ext { font-style:normal; font-size:.85em; color:var(--muted); margin-left:2px; }
+@media (hover:hover) { .fun-vids li a:hover { color:var(--accent); text-decoration-color:var(--accent); } }
+.fun-src { display:block; margin-top:3px; font-size:10.5px; line-height:1.6; color:var(--muted); }
+.fun-src a { color:inherit; text-decoration:underline; }
 
 /* ===== about モーダル: 和紙の地に罫線だけ。開くときは他の要素と同じく下から静かに立ち上がる ===== */
 .about-dlg { width:min(560px, calc(100vw - 48px)); padding:0; border:1px solid var(--fg);
@@ -188,6 +201,9 @@ sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underlin
 .about-dlg h2 { margin:0; font:700 15px/1.5 var(--font-d); letter-spacing:.16em; }
 .about-dlg .about-body { padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px; }
 .about-dlg p { margin:0; font-size:13px; line-height:2; }
+
+/* ===== 狭い画面専用の部品（下端のドック切替タブ・盤を畳むシートの端）は広い画面では出さない ===== */
+.mtabs, #boardToggle { display:none; }
 
 /* ===== 1180px 以下: 右ドックは右端から開くドロワー（計画書 §4-6。制約チップを選ぶと開く） ===== */
 #detailToggle { display:none; }   /* ドロワー幅以外は常駐しない */
@@ -206,32 +222,141 @@ sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underlin
                   writing-mode:vertical-rl; font-size:11px; letter-spacing:.14em; color:var(--muted);
                   background:var(--bg); border:1px solid var(--line-2); border-right:0;
                   transition:color .2s, border-color .2s; }
-  #detailToggle:hover { color:var(--fg); border-color:var(--fg); }
+  @media (hover:hover) { #detailToggle:hover { color:var(--fg); border-color:var(--fg); } }
 }
 
-/* ===== narrow: 縦1列で「見る→選ぶ→読む」 ===== */
+/* ===== narrow: 盤を上に固定し、下半分で「選ぶ／読む」（B1） ===== */
 @media (max-width:979px) {
+  :root { --hdr:52px;   /* 追従するヘッダーの高さ（sticky の基準に使う） */
+          --mtab-h:56px; }   /* 下端のドック切替タブの高さ（セーフエリアは .mtabs の padding で足す） */
   body { height:auto; overflow:auto; display:block; }
+  /* 盤の収納: 盤の裾の帯を引くと盤が上へ巻き上がって畳まれる（grid の行を 1fr→0fr に動かす。
+     board.css を後から読むので、.stage > .boardarea で詳細度を上げて display:flex を上書く） */
+  .stage > .boardarea { --blind-h:28px; display:grid; grid-template-rows:1fr auto;
+               justify-items:center; min-height:0; overflow:hidden;
+               transition:grid-template-rows .38s var(--ease); }
+  .stage > .boardarea > .boardwrap { min-height:0; align-self:center; }
+  body[data-board-collapsed="true"] .stage > .boardarea { grid-template-rows:0fr auto; }
+  /* 取っ手はボトムシートの定石であるグラバーピル（横長の丸棒）1本。押して畳む・出す（M4） */
+  #boardToggle { display:block; position:relative; justify-self:stretch; height:var(--blind-h); padding:0;
+                 border:0; border-top:1px solid var(--line-2); border-radius:0; background:var(--bg); cursor:pointer; }
+  #boardToggle::after { content:""; position:absolute; left:50%; top:50%; width:44px; height:5px;
+                        transform:translate(-50%,-50%); border:0; border-radius:3px; background:var(--line-2);
+                        transition:background .2s; }
+  @media (hover:hover) { #boardToggle:hover::after { background:var(--muted); } }
+  /* 下端のドック切替タブ: 左（選ぶ）・右（読む）の面を1枚ずつ出す。横スワイプでも切替わる（js/ui/dock-tabs.js）。
+     アイコン＋ラベルの一般的なボトムナビの形（M3）。アクティブなタブの再タップは面の先頭へ戻る */
+  .mtabs { display:flex; position:fixed; left:0; right:0; bottom:0; z-index:24;
+           padding-bottom:env(safe-area-inset-bottom);
+           background:var(--bg); border-top:1px solid var(--line-2); }
+  .mtabs button { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+                  height:var(--mtab-h); padding:8px 0 0; border:0; border-radius:0;
+                  background:none; cursor:pointer; font:700 11px/1 var(--font-b); letter-spacing:.18em; color:var(--muted); }
+  .mtabs button svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7;
+                      stroke-linecap:round; stroke-linejoin:round; }
+  .mtabs button span { transform:translateX(.09em); }  /* 字間の見かけの偏りを戻す */
+  .mtabs button[aria-pressed="true"] { color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); }
+  @media (hover:hover) { .mtabs button:hover { color:var(--fg); } }
+  /* タブの分だけ下の内容が隠れないよう、ページの末尾に余白を足す */
+  .app { padding-bottom:calc(var(--mtab-h) + env(safe-area-inset-bottom) + 14px); }
+  /* 見せる面は body[data-mtab] が選ぶ（data-mtab が無い＝JS 不通時は従来どおり両方が並ぶ） */
+  body[data-mtab="pick"] .detail { display:none; }
+  body[data-mtab="read"] .rail { display:none; }
+  /* 切替は面が横から滑り込む。向きは body[data-mdir]（l=選ぶ→読む / r=読む→選ぶ） */
+  @keyframes mtab-in-r { from { opacity:0; transform:translateX(26px); } }
+  @keyframes mtab-in-l { from { opacity:0; transform:translateX(-26px); } }
+  body[data-mtab="read"][data-mdir="l"] .detail { animation:mtab-in-r .26s var(--ease); }
+  body[data-mtab="pick"][data-mdir="r"] .rail { animation:mtab-in-l .26s var(--ease); }
+  @media (prefers-reduced-motion:reduce) {
+    .boardarea, #boardToggle::after { transition:none; }
+    .rail, .detail { animation:none; }
+  }
   /* ヘッダーは画面上端に追従（ブランド＋歯車＋明暗）。表示設定のポップオーバーは歯車の下に開く */
-  header { position:sticky; top:0; z-index:20; padding:10px 14px; gap:8px; border-bottom-color:var(--line-2); }
-  header.glass { background:var(--bg); } /* .glass の background:none を打ち消して追従中は不透明に */
+  /* body 直下のヘッダーだけに限定（ドック内の <header class="dk-pane-h"> に効かせない） */
+  body > header { position:sticky; top:0; z-index:20; height:var(--hdr); flex-wrap:nowrap;
+           padding:0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+           gap:8px; border-bottom-color:var(--line-2); }
+  body > header.glass { background:var(--bg); } /* .glass の background:none を打ち消して追従中は不透明に */
+  .brand { gap:8px; min-width:0; }
+  .brand h1 { font-size:16px; letter-spacing:.14em; white-space:nowrap; }
+  .brand .mark { flex:none; width:30px; height:30px; }
+  /* 「このサイトについて」は文字を畳んで ? の丸印にする（D1: ヘッダーを1行に収める） */
+  .brand .about { flex:none; font-size:0; width:26px; height:26px; padding:0; margin-left:2px;
+                  border:1px solid var(--line-2); border-bottom:1px solid var(--line-2);
+                  border-radius:50%; position:relative; }
+  .brand .about::after { content:"?"; position:absolute; inset:0; display:grid; place-items:center;
+                         font-size:12px; font-family:var(--font-b); }
+  .brand .about::before { content:""; position:absolute; inset:-9px; }   /* C1: 当たり判定を広げる */
+  .ib { width:44px; height:44px; }      /* C1: タップ領域を広げる */
+  .ib.txt { width:auto; }
+  /* 表示設定: ポップオーバーではなく、下端から開くボトムシートにする（M5）。
+     グラバーピル・背面のスクリム・下スワイプで閉じる（js/ui/tools-toggle.js） */
+  .tools.open { position:fixed; left:0; right:0; top:auto; bottom:0; z-index:40;
+                flex-direction:column; align-items:stretch; gap:16px; max-height:72svh; overflow:auto;
+                padding:10px 22px calc(20px + env(safe-area-inset-bottom));
+                background:var(--bg); border:0; border-top:1px solid var(--line-2);
+                border-radius:16px 16px 0 0; box-shadow:0 -8px 30px rgba(24,18,8,.22);
+                animation:sheet-up .3s var(--ease); }
+  .tools.open::before { content:""; display:block; flex:none; width:44px; height:5px; margin:0 auto;
+                        border-radius:3px; background:var(--line-2); }
+  .tools.open .setting { font-size:14px; }
+  .tools.open .seg button { padding:10px 18px; font-size:14px; }
+  .tools.open .switch { padding:6px 0; font-size:14px; min-height:44px; }
+  .tools.open .ib.txt { height:44px; font-size:14px; }
+  @keyframes sheet-up { from { transform:translateY(24%); opacity:.4; } }
+  .sheet-scrim { display:none; }
+  body[data-tools="open"] .sheet-scrim { display:block; position:fixed; inset:0; z-index:35;
+                                         background:rgba(27,26,23,.4); }
+  :root[data-theme="dark"] .sheet-scrim { background:rgba(0,0,0,.55); }
 
-  /* minmax(0,…) 必須: 1fr だと一覧項目の長い名前の最大幅に列が引っ張られて横にはみ出す。
-     パネル内の暗黙列も同様にキャップする */
-  .app { grid-template-columns:minmax(0,1fr); }
+  /* 縦1列は flex（order が効く＋sticky のコンテナが .app 全体になる。grid だと
+     sticky 要素は自分の grid area に閉じて動かない）。minmax(0,…) に相当する
+     最小幅のキャップは各パネルの min-width:0 で取る。スワイプ中に面が指に
+     追従して横へはみ出しても、ページの横スクロールにはしない */
+  .app { display:flex; flex-direction:column; overflow-x:clip; }
   .stage, .rail, .detail { min-width:0; grid-template-columns:minmax(0,1fr); }
-  /* 見る → 選ぶ → 読む の順。パネル境界は罫線のみ */
-  .stage { order:-1; height:auto; border-bottom:1px solid var(--line); padding:14px 12px 10px; }
+  /* 面の上の縦スワイプはブラウザのスクロールに任せ、横のずれは JS の面送りが
+     拾う（dock-tabs.js）。ここを pan-y にすると斜めスワイプでも縦が混ざらない */
+  .rail, .detail { touch-action:pan-y; }
+  /* 見る（盤）を上端に固定し、下を流れる「選ぶ／読む」と同じ画面に収める（B1）。
+     帯の行の高さは内容のまま（grid-template-rows:none）、盤の幅は board.css で高さに上限を付ける */
+  .stage { order:-1; position:sticky; top:var(--hdr); z-index:15; height:auto; background:var(--bg);
+           border-bottom:1px solid var(--line);
+           padding:8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+           gap:6px; }
   .rail { border:0; border-bottom:1px solid var(--line); padding:12px 14px; }
   .detail { border:0; padding:14px 16px 18px; }
+  /* 出典の [n] などアンカーで飛んだ先が追従中の盤に隠れないよう、飛び先に余白を持たせる */
+  .detail [id], .detail-body { scroll-margin-top:calc(var(--hdr) + 56svh); }
   /* ページ全体でスクロールするので、内側の枠はスクロールさせない */
   .pane-fill { overflow:visible; }
   .detail-body { overflow:visible; }
   .detail .vert { display:none; }
-  /* 狭い画面では行の高さを緩める（ページ全体がスクロールするので盤の固定は不要） */
-  .stage { grid-template-rows:none; }
-  .sideband { overflow:visible; }
-  .sband-h { height:auto; min-height:26px; }
+  /* 狭い画面では行の高さを緩める（盤の固定は sticky と svh の上限で行う） */
+  .stage { grid-template-rows:none; align-content:normal; container-type:normal; }
   /* 持ち駒は boardwrap に対する絶対配置のまま。22px の margin は持ち駒列の予約（22+2の張り出しと同じ） */
   .boardwrap { margin:0 22px; }
+  /* 10px 未満の字を底上げする（C3） */
+  sup.cite { font-size:10px; }
+  /* 出典番号は見た目のまま当たり判定を広げる（C1） */
+  sup.cite a { position:relative; }
+  sup.cite a::after { content:""; position:absolute; inset:-14px -10px; }
+  .attack { min-height:44px; }
+}
+
+/* ===== narrow の横向き: 盤を左・一覧を右の2列にする（A2） ===== */
+@media (max-width:979px) and (orientation:landscape) and (max-height:560px) {
+  .app { flex-direction:row; flex-wrap:wrap; align-items:flex-start; }
+  /* 盤は左列に高さいっぱいで固定（sticky は .app 全体がコンテナ）。一覧・読むは右列を流れる */
+  .stage { flex:0 0 53%; height:calc(100svh - var(--hdr));
+           grid-template-rows:auto minmax(0,1fr); }
+  /* 制約フィールドを盤の上に積み、盤を最後の行に置く */
+  .stage #cfield { grid-row:1; }
+  .stage .boardarea { grid-row:2; }
+  /* 盤に高さを回す: 帯の上下を詰める */
+  .stage { gap:4px; padding-top:4px; padding-bottom:4px; }
+  /* 右列は「選ぶ／読む」の切替タブ（data-mtab が見せる1枚を選ぶ）。下端タブは画面幅いっぱいのまま */
+  .rail, .detail { flex:1 1 0; min-width:0; border-left:1px solid var(--line); }
+  .rail { padding-right:max(14px, env(safe-area-inset-right)); }
+  .detail [id], .detail-body { scroll-margin-top:calc(var(--hdr) + 8px); }
 }

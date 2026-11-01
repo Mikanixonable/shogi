@@ -103,5 +103,5 @@ window.Kakoi = window.Kakoi || {};
     return { cells, dots };
   }
 
-  Kakoi.tacticNav = { tacticRows, lanesOf, laneRows, isRare, neighbor, placeTactics };
+  Kakoi.tacticNav = { tacticRows, isRare, neighbor, placeTactics };
 })();
