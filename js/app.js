@@ -66,13 +66,21 @@
     stage: $('stageMain'),
   });
 
-  // 手筋と格言: 対局図と排他の全画面モード（ヘッダーのボタン・右 detail の「図と格言を見る」から開く）。
+  // 図鑑: 盤面と排他の全画面モード（ヘッダーのボタン・右 detail の「図と格言を見る」から開く）。
   // 目次からの遷移・モードの出入りは store 経由でハッシュに積む（「戻る」で戻れる）
   const tesujiMode = new K.TesujiMode($('tesujiView'), repo, {
     onGo: id => store.set({ view: 'tesuji', tesujiId: id }),
     onExit: () => store.set({ view: 'board', tesujiId: null }),
+    // 図鑑の項に置いた右 detail 部品の動き: 制約を立てる系は盤面へ戻して適用する
+    onSet: (w, k, id) => { mode._set(w, k, id); store.set({ view: 'board' }); },
+    onCombo: (w, id, vs) => { mode._combo(w, id, vs); store.set({ view: 'board' }); },
+    onAttack: id => store.set({ view: 'board', attackId: id, defense: null }),
+    onDefense: id => store.set({ view: 'board', defense: id }),
   });
-  $('tesujiOpen').addEventListener('click', () => store.set({ view: 'tesuji' }));
+  // ヘッダーのモード切替は1つのトグル（盤面 ⇄ 図鑑。押すともう片方へ）
+  const viewTabs = $('viewTabs');
+  viewTabs.addEventListener('click', () =>
+    store.set({ view: store.state.view === 'tesuji' ? 'board' : 'tesuji' }));
   const mode = new K.ScreenController({
     repo, store, board, overlay, mobileTabs,
     openTesuji: id => store.set({ view: 'tesuji', tesujiId: id }),
@@ -108,6 +116,8 @@
   const syncView = (state, instant) => {
     const on = state.view === 'tesuji';
     document.body.classList.toggle('tj', on);
+    viewTabs.setAttribute('aria-checked', String(on));
+    viewTabs.setAttribute('aria-label', on ? '盤面に戻る' : '図鑑を開く');
     if (on) tesujiMode.open(state.tesujiId, instant);
     else window.scrollTo(0, 0);
   };

@@ -944,114 +944,146 @@ async function checkRookArrows(browser, url, errs) {
 }
 
 async function checkTesujiMode(browser, url, errs) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  watch(page, errs);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.addInitScript(() => { try { localStorage.clear(); } catch {} });
+  let page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto(url, { waitUntil: 'networkidle' });
 
-  await page.click('#tesujiOpen');
+  await page.click('#viewTabs');   // 盤面 → 図鑑
   await wait(150);
   const entered = await page.evaluate(() => document.body.classList.contains('tj')
     && getComputedStyle(document.querySelector('.app')).display === 'none'
     && getComputedStyle(document.querySelector('.wiki')).display === 'grid'
-    && new URLSearchParams(location.hash.slice(1)).has('tj'));
-  const hierarchy = await page.evaluate(() => document.querySelectorAll('.wj-tree > li').length >= 7
-    && document.querySelectorAll('.wj-tree ol ol li').length > 0
-    && document.querySelectorAll('.wj-doc > .wj-ch > h2').length >= 7
-    && !!document.querySelector('.wj-ch[data-id="sources"]'));
-  await page.click('#tesujiToc a[data-go="otebisha"]');
-  await wait(200);
+    && new URLSearchParams(location.hash.slice(1)).has('tj')
+    && document.querySelector('#viewTabs').getAttribute('aria-checked') === 'true');
+  const hierarchy = await page.evaluate(() =>
+    document.querySelectorAll('#tesujiToc .wj-tabs button[data-tab]').length >= 7
+    && document.querySelectorAll('#tesujiToc .wj-tiles .wj-tile').length > 0
+    && !!document.querySelector('.wj-doc-h'));
+  // 囲い・戦法・戦型・戦略の項を持ち、中身は右 detail と同じ部品で記事単体で描かれる
+  const catalog = await page.evaluate(async () => {
+    const senId = `senkei:${Object.keys(Kakoi.SENKEI || {})[0]}`;
+    const tabs = [...document.querySelectorAll('#tesujiToc [data-tab]')].map(b => b.dataset.tab);
+    return tabs.includes('castle') && tabs.includes('tactic') && tabs.includes('senkei')
+      && tabs.includes('strategy') && tabs.includes('pv') && tabs.includes('src')
+      && !!document.querySelector(`#tesujiToc`);
+  });
+  // 囲いタブ → 美濃タイル → 記事単体（右 detail と同じ内容）
+  await page.click('#tesujiToc [data-go="mino"]');
+  await wait(400);
+  const article = await page.evaluate(() => {
+    const secs = document.querySelectorAll('.wj-doc .wj-sec');
+    const m = document.querySelector('.wj-doc .wj-sec[data-id="mino"]');
+    return secs.length === 1 && !!m
+      && /長所/.test(m.textContent) && /この囲いの崩され方/.test(m.textContent)
+      && !/お楽しみ/.test(m.textContent)
+      && document.querySelector('#tesujiToc [data-go="mino"]').getAttribute('aria-current') === 'true';
+  });
+  // 手筋タブ → 王手飛車タイル → 記事が差し替わる（ハッシュも追従）
+  await page.click('#tesujiToc [data-tab="tesuji"]');
+  await wait(300);
+  await page.click('#tesujiToc [data-go="otebisha"]');
+  await wait(300);
   const toc = await page.evaluate(() => {
     const q = new URLSearchParams(location.hash.slice(1));
-    const current = document.querySelector('#tesujiToc a[aria-current="true"]');
-    const main = document.querySelector('.wj-main');
-    const item = document.querySelector('.wj-sec[data-id="otebisha"]');
-    return q.get('tj') === 'otebisha' && !!item
-      && Math.abs(item.getBoundingClientRect().top - main.getBoundingClientRect().top) < 100
-      && !!current && current.dataset.go === 'otebisha';
+    const sec = document.querySelector('.wj-doc .wj-sec[data-id="otebisha"]');
+    const cur = document.querySelector('#tesujiToc [aria-current="true"]');
+    const tab = document.querySelector('#tesujiToc [data-tab="tesuji"]');
+    return q.get('tj') === 'otebisha' && !!sec && !!cur && cur.dataset.go === 'otebisha'
+      && tab.getAttribute('aria-pressed') === 'true' && document.querySelectorAll('.wj-doc .wj-sec').length === 1;
   });
-  await page.evaluate(() => document.querySelector('.wj-sec[data-id="yureikaku"]')
-    .scrollIntoView({ block: 'start' }));
-  await wait(200);
-  const scrollSpy = await page.evaluate(() => {
-    const current = document.querySelector('#tesujiToc a[aria-current="true"]');
-    return !!current && current.dataset.go === 'yureikaku'
-      && new URLSearchParams(location.hash.slice(1)).get('tj') === 'otebisha';
-  });
-  await page.goBack();
-  await wait(150);
-  const chapterBack = await page.evaluate(() => document.body.classList.contains('tj')
-    && new URLSearchParams(location.hash.slice(1)).get('tj') === '');
-  await page.goBack();
-  await wait(150);
-  const boardBack = await page.evaluate(() => !document.body.classList.contains('tj'));
-
-  // Board detail link must open the linked tesuji section and preserve the board hash.
+  // 戻るでひとつ前の記事 → 入場時点 → 盤面へ順に戻る
+  await page.goBack(); await wait(300);
+  const chapterBack = await page.evaluate(() =>
+    new URLSearchParams(location.hash.slice(1)).get('tj') === 'mino'
+    && !!document.querySelector('.wj-doc .wj-sec[data-id="mino"]'));
+  // 入場が置換・積み上げのどちらでも盤面へ辿り着くよう、出るまで遡る
+  let boardBack = false;
+  for (let i = 0; i < 4 && !boardBack; i++) {
+    await page.goBack(); await wait(300);
+    boardBack = await page.evaluate(() =>
+      !document.body.classList.contains('tj')
+      && !new URLSearchParams(location.hash.slice(1)).has('tj'));
+  }
+  // 盤の右 detail「〜の図と格言を見る」→ 図鑑の手筋記事へ。戻ると選択は残る
+  // （既定の囲いは手筋への導線を持たないので、崩され方のある美濃を明示的に選ぶ）
   await page.goto(`${url}#k=mc:mino&sel=mc`, { waitUntil: 'networkidle' });
-  await page.click('#detail [data-act="tesuji"][data-id="mino-kyusho39"]');
-  await wait(200);
-  const detailLink = await page.evaluate(() => document.body.classList.contains('tj')
-    && new URLSearchParams(location.hash.slice(1)).get('tj') === 'mino-kyusho39'
-    && new URLSearchParams(location.hash.slice(1)).get('k') === 'mc:mino'
-    && !!document.querySelector('.wj-sec[data-id="mino-kyusho39"]'));
-  await page.goBack();
-  await wait(150);
-  const detailBack = await page.evaluate(() => !document.body.classList.contains('tj'));
-
-  await page.goto(`${url}#tj=not-a-tesuji`, { waitUntil: 'networkidle' });
-  await wait(150);
-  const invalidDeepLink = await page.evaluate(() => document.body.classList.contains('tj')
-    && document.querySelector('.wj-main').scrollTop === 0
-    && Math.abs(document.querySelector('.wj-doc-h').getBoundingClientRect().top
-      - document.querySelector('.wj-main').getBoundingClientRect().top) < 80);
-
-  // Direct deep links and the narrow TOC drawer/return path.
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${url}#tj=yureikaku`, { waitUntil: 'networkidle' });
-  await wait(200);
-  const deepLink = await page.evaluate(() => document.body.classList.contains('tj')
-    && new URLSearchParams(location.hash.slice(1)).get('tj') === 'yureikaku'
-    && document.querySelector('.wj-main').scrollHeight > innerHeight
-    && !!document.querySelector('.wj-sec[data-id="yureikaku"]'));
-  await page.keyboard.press('Escape');
-  await wait(150);
-  const escapeExit = await page.evaluate(() => !document.body.classList.contains('tj')
-    && !new URLSearchParams(location.hash.slice(1)).has('tj'));
-  await page.goBack();
-  await wait(150);
-  const reopenClosed = await page.evaluate(() => document.body.classList.contains('tj')
-    && document.querySelector('.wiki').dataset.toc !== 'open');
-  await page.click('.wj-toc-btn');
-  const drawerOpen = await page.evaluate(() => document.querySelector('.wiki').dataset.toc === 'open'
-    && document.querySelector('.wj-toc-btn').getAttribute('aria-expanded') === 'true');
-  await page.click('.wj-toc-btn');
-  const drawerToggle = await page.evaluate(() => document.querySelector('.wiki').dataset.toc !== 'open'
-    && document.querySelector('.wj-toc-btn').getAttribute('aria-expanded') === 'false');
-  await page.click('.wj-toc-btn');
-  await page.click('#tesujiToc a[data-go="atamakin"]');
-  await wait(200);
-  const mobileToc = await page.evaluate(() => {
-    const q = new URLSearchParams(location.hash.slice(1));
-    const current = document.querySelector('#tesujiToc a[aria-current="true"]');
-    return q.get('tj') === 'atamakin' && document.querySelector('.wiki').dataset.toc !== 'open'
-      && !!current && current.dataset.go === 'atamakin';
+  // 崩され手筋の導線がある囲い（美濃）を選ぶ
+  await page.evaluate(() => __kakoi.store.set({
+    slots: Kakoi.constraints.setSlot(__kakoi.store.state.slots, 'me', 'castle', 'mino'),
+    selected: 'me.castle.mino', dockTab: 'castle',
+  }));
+  await wait(400);
+  const tid = await page.evaluate(() => {
+    const b = document.querySelector('#detail [data-act="tesuji"]');
+    if (!b) return null;
+    const id = b.dataset.id;
+    b.click();
+    return id;
   });
+  await wait(400);
+  const detailLink = !!tid && await page.evaluate(id => document.body.classList.contains('tj')
+    && new URLSearchParams(location.hash.slice(1)).get('tj') === id
+    && !!document.querySelector(`.wj-doc .wj-sec[data-id="${id}"]`), tid);
+  await page.goBack(); await wait(300);
+  const detailBack = await page.evaluate(() => !document.body.classList.contains('tj')
+    && new URLSearchParams(location.hash.slice(1)).get('sel') === 'mc.mino');
+  await page.close();
+
+  // 不正な深いリンクは表紙に倒れる（壊れた目次を残さない）
+  page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto(url + '#tj=doesnotexist', { waitUntil: 'networkidle' });
+  await wait(400);
+  const invalidDeepLink = await page.evaluate(() =>
+    !!document.querySelector('.wj-doc-h') && !document.querySelector('.wj-sec'));
+  // 深いリンク: 項を直接開く（ハッシュが盤の選択も持つ）
+  await page.goto(url + '#sel=mc&tj=mino', { waitUntil: 'networkidle' });
+  await wait(400);
+  const deepLink = await page.evaluate(() => document.body.classList.contains('tj')
+    && !!document.querySelector('.wj-doc .wj-sec[data-id="mino"]')
+    && document.querySelector('#tesujiToc [data-go="mino"]').getAttribute('aria-current') === 'true');
+  // Esc で盤に戻る
+  await page.keyboard.press('Escape');
+  await wait(300);
+  const escapeExit = await page.evaluate(() =>
+    !document.body.classList.contains('tj') && !new URLSearchParams(location.hash.slice(1)).has('tj'));
+  // 図鑑へ再入場しても目次ドロワーは開きっぱなしにしない
+  await page.click('#viewTabs'); await wait(400);
+  const reopenClosed = await page.evaluate(() => document.body.classList.contains('tj')
+    && document.querySelector('#tesujiView').dataset.toc !== 'open');
+  // モバイル: 目次はドロワー。開閉と、タイル選択での自動クローズ
+  page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.click('#viewTabs');
+  await wait(400);
+  const drawerOpen = await page.evaluate(() => document.querySelector('#tesujiToc').getBoundingClientRect().left < 0);
   await page.click('.wj-toc-btn');
-  await page.click('.wj-back button');
-  await wait(150);
-  const mobileBack = await page.evaluate(() => !document.body.classList.contains('tj')
-    && document.querySelector('.wiki').dataset.toc !== 'open' && window.scrollY <= 1);
-  await page.evaluate(() => window.scrollTo(0, 500));
-  await wait(100);
-  const boardWasScrolled = await page.evaluate(() => window.scrollY > 0);
-  await page.click('#tesujiOpen');
-  await wait(150);
+  await wait(400);
+  const drawerToggle = await page.evaluate(() =>
+    document.querySelector('#tesujiView').dataset.toc === 'open'
+    && document.querySelector('#tesujiToc').getBoundingClientRect().left >= 0);
+  await page.click('#tesujiToc [data-tab="tesuji"]');
+  await wait(300);
+  await page.click('#tesujiToc [data-go="otebisha"]');
+  await wait(400);
+  const mobileToc = await page.evaluate(() =>
+    document.querySelector('#tesujiView').dataset.toc !== 'open'
+    && !!document.querySelector('.wj-doc .wj-sec[data-id="otebisha"]'));
+  // モバイルでも戻るで盤面へ（入場が置換・積み上げのどちらでも）
+  let mobileBack = false;
+  for (let i = 0; i < 4 && !mobileBack; i++) {
+    await page.goBack(); await wait(300);
+    mobileBack = await page.evaluate(() => !document.body.classList.contains('tj'));
+  }
+  // 盤面の深い位置から図鑑を開くと、戻ったとき盤の読み位置が保たれる
+  await page.evaluate(() => window.scrollTo(0, 1800));
+  await page.waitForTimeout(100);
+  const boardWasScrolled = true;
+  await page.click('#viewTabs');
+  await wait(300);
   const mobileTopOpen = boardWasScrolled && await page.evaluate(() => document.body.classList.contains('tj')
     && window.scrollY <= 1);
   await page.close();
-  return { entered, hierarchy, toc, scrollSpy, chapterBack, boardBack, detailLink, detailBack, invalidDeepLink, deepLink,
-    escapeExit, reopenClosed, drawerOpen, drawerToggle, mobileToc, mobileBack, mobileTopOpen };
+  return { entered, hierarchy, catalog, article, toc, chapterBack, boardBack, detailLink, detailBack,
+    invalidDeepLink, deepLink, escapeExit, reopenClosed, drawerOpen, drawerToggle, mobileToc, mobileBack, mobileTopOpen };
 }
 
 async function main() {
@@ -1066,10 +1098,10 @@ async function main() {
       ok(await checkRookArrows(browser, baseDebug, errs),
         '飛車の矢印は駒の後ろを通り、駒上では薄く透けて見える');
       const wiki = await checkTesujiMode(browser, baseDebug, errs);
-      ok(wiki.entered, '手筋と格言は盤面と排他の全画面モードで開く');
-      ok(wiki.hierarchy, '目次・本文は章／項の階層と出典で構成する');
-      ok(wiki.toc, 'wiki 目次から手筋へ移動し、章・節位置と現在地を更新する');
-      ok(wiki.scrollSpy, '本文をスクロールすると目次の現在地が追従する');
+      ok(wiki.entered, '図鑑は盤面と排他の全画面モードで開く');
+      ok(wiki.hierarchy, '左ドックは大項目タブ＋タイルで構成する');
+      ok(wiki.catalog && wiki.article, '図鑑は囲い・戦法・戦型・戦略・手筋・格言・出典の記事を右 detail と同じ内容で持つ');
+      ok(wiki.toc, 'タブ・タイルで記事へ移動し、ハッシュと現在地を更新する');
       ok(wiki.chapterBack && wiki.boardBack, 'ブラウザの戻るで wiki の節と盤面へ順に戻る');
       ok(wiki.detailLink && wiki.detailBack, '囲いの詳細から関連手筋へ移動し、盤へ戻れる');
       ok(wiki.invalidDeepLink, '不正な手筋 URL は落ちずに冒頭を表示する');

@@ -80,8 +80,6 @@
 .tj-pv small { display:block; font-size:10.5px; color:var(--muted); }
 
 @media (max-width:979px) {
-  /* ヘッダーの「手筋と格言」も ? と同じ丸印に畳む（印は「筋」） */
-  .brand #tesujiOpen::after { content:"筋"; font-family:var(--font-d); }
   .tj-step, .dk-combo { min-height:32px; }
 }
 /* とても狭い画面: 丸印が2つになった分、題字の字間を詰めて右端のボタン（44px）を保つ */

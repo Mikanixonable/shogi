@@ -1,9 +1,9 @@
-// 「手筋と格言」の全画面モード: data/tesuji.js の手筋を、章立てした読み物として全画面に展開する。
+// 「図鑑」の全画面モード: 囲い・戦法・戦型・戦略・手筋・格言を、章立てした読み物として全画面に展開する。
 // 左は章→節→項の目次ツリー（現在地はスクロールに追従して朱で示す）、右は本文。
-// 章の区切りは data/tesuji.js の章コメントと同じ（歩／香・桂・銀・金／角・飛／囲いの崩し方／受け）。
+// 囲い・戦法・戦型・戦略の項は右 detail（ui/detail-view.js）と同じ内容を持つ。
+// 手筋の章の区切りは data/tesuji.js の章コメントと同じ（歩／香・桂・銀・金／角・飛／囲いの崩し方／受け）。
 // 「囲いの崩し方」は対象の囲いごとに項へ分ける。格言は PROVERB_GROUPS の節、末尾に出典。
-// 既存の手筋図・コマ送り・格言の関連付けを引き継ぎ、読み物の章立てに組み直す。
-// 開いている章・節は URL ハッシュの tj= が持つ（hash-link.js）。Esc・「囲い図鑑へ戻る」で盤へ帰る。
+// 開いている章・節は URL ハッシュの tj= が持つ（hash-link.js）。Esc・「盤面へ戻る」で盤へ帰る。
 window.Kakoi = window.Kakoi || {};
 (() => {
   'use strict';
@@ -146,140 +146,269 @@ window.Kakoi = window.Kakoi || {};
      * @param {string|null} id 章・節・項の id（data-id）。なければ先頭へ
      * @param {boolean} [instant] 起動時などアニメ無しで飛ぶ
      */
+    /**
+     * モードに入った・記事が変わったときに呼ぶ。
+     * @param {string|null} id 項の id（data-id）。なければ表紙へ
+     * @param {boolean} [instant] 起動時などアニメ無しで飛ぶ
+     */
     open(id, instant) {
       if (!this.root) return;
       this._build();
       this._tocClose();
-      const el = id && this.main.querySelector(`[data-id="${CSS.escape(id)}"]`);
-      if (el) this._reveal(id, instant);
-      else {
-        this.main.scrollTop = 0;
-        window.scrollTo(0, 0);
-        this._mark(this.toc.querySelector('[data-go="top"]'));
-      }
+      this._show(id && this._itemOf(id) ? id : 'top', instant);
     }
 
-    // ---------- 描画（初回だけ。データは静的） ----------
+    // ---------- 左ドック（大項目タブ＋選択肢タイル）と記事単体の表示 ----------
+    // 記事は1件ずつ表示する。タブ=大項目（囲い・戦法・戦型・戦略・手筋・格言・出典）、タイル=各項。
+    // 囲い・戦法・戦型・戦略の項の中身は右 detail（K.DetailView）と同じ部品で描く（data-mount で紐付け）。
     _build() {
       if (this._built) return;
       this._built = true;
+      const mounts = this._mounts = new Map();
+      const emptySide = () => ({ tactic: null, castle: null });
+      const mount = (key, sel, me) => mounts.set(key,
+        { sel, slots: { me: { ...emptySide(), ...me }, opp: emptySide() } });
+      const tabs = this._tabs = [];
+      const tab = (id, title, items) => { const t = { id, title, items }; tabs.push(t); return t; };
+      const famName = f => (f && f.name) || 'その他';
+
+      tab('castle', '囲い', (K.CASTLES || []).map(c => {
+        mount(c.id, `me.castle.${c.id}`, { castle: c.id });
+        return { id: c.id, name: c.name, reading: c.reading, path: famName(K.catalog.castleFamilyOf(c)) };
+      }));
+      tab('tactic', '戦法', (K.TACTICS || []).filter(t => !t.variantOf).map(t => {
+        mount(t.id, `me.tactic.${t.id}`, { tactic: [t.id] });
+        return { id: t.id, name: t.name, reading: t.reading, path: famName(K.catalog.tacticFamilyOf(t)) };
+      }));
+      {
+        const SK = K.SENKEI || {}, GR = K.SENKEI_GROUPS || {};
+        const grpOf = e => GR[e.group] ? e.group
+          : (Object.keys(GR).find(g => (GR[g].kinds || []).includes(e.group))) || 'misc';
+        const items = [];
+        for (const [gid, g] of Object.entries(GR)) {
+          items.push({ id: `skg:${gid}`, name: g.name, path: '大分類' });
+          mount(`skg:${gid}`, `me.senkei.${gid}`);
+          for (const [mid, e] of Object.entries(SK).filter(([, x]) => grpOf(x) === gid)) {
+            items.push({ id: `senkei:${mid}`, name: e.name, reading: e.reading, path: g.name });
+            mount(`senkei:${mid}`, `me.senkei.${mid}`);
+          }
+        }
+        for (const [mid, e] of Object.entries(SK).filter(([, x]) => grpOf(x) === 'misc')) {
+          items.push({ id: `senkei:${mid}`, name: e.name, reading: e.reading, path: 'その他' });
+          mount(`senkei:${mid}`, `me.senkei.${mid}`);
+        }
+        tab('senkei', '戦型', items);
+      }
+      tab('strategy', '戦略', ['furibisha', 'ibisha'].filter(sid => (K.STRATEGIES || {})[sid]).map(sid => {
+        const s = K.STRATEGIES[sid];
+        mount(sid, 'me.strategy', { tactic: s.defaultTactic ? [s.defaultTactic] : null });
+        return { id: sid, name: s.label };
+      }));
+      {
+        const items = [];
+        for (const ch of buildTree(K.TESUJI || [])) {
+          if (ch.subs) for (const s of ch.subs) for (const t of s.items)
+            items.push({ id: t.id, name: t.name, reading: t.reading, path: `${s.title}の崩し方` });
+          else for (const t of ch.items)
+            items.push({ id: t.id, name: t.name, reading: t.reading, path: ch.title });
+        }
+        tab('tesuji', '手筋', items);
+      }
+      {
+        const groups = K.PROVERB_GROUPS || [];
+        const pvGroups = [...groups.map(([gid, title]) => ({ gid, title })), { gid: 'etc', title: 'その他' }]
+          .filter(g => g.gid === 'etc'
+            ? (K.PROVERBS || []).some(p => !groups.some(([gid]) => gid === p.group))
+            : (K.PROVERBS || []).some(p => p.group === g.gid));
+        tab('pv', '格言', pvGroups.map(g => ({ id: `pv-${g.gid}`, name: g.title, path: '格言' })));
+      }
+      // 将棋の言葉・出来事（extras.js。右 detail のお楽しみ欄から移した項）
+      tab('extra', 'お楽しみ', (K.FUN && K.FUN.memes || [])
+        .map(m => ({ id: m.id, name: m.t, reading: m.reading, path: '将棋の言葉・出来事' })));
+      tab('src', '出典', [{ id: 'sources', name: '出典一覧' }]);
+
+      this.toc.innerHTML = `<p class="wj-back"><button type="button" data-exit>← 盤面へ戻る</button></p>` +
+        `<div class="wj-tabs" role="group" aria-label="図鑑の分類">` +
+        tabs.map(t => `<button type="button" data-tab="${esc(t.id)}" aria-pressed="false">${esc(t.title)}</button>`).join('') +
+        `</div><div class="wj-tiles"></div>`;
+      this._tileHtml = new Map(tabs.map(t => [t.id,
+        t.items.map(it => `<button type="button" class="wj-tile" data-go="${esc(it.id)}">${esc(it.name)}</button>`).join('')]));
+      this.main.innerHTML = '';   // 記事は _show が毎回差し替える
+      this._cur = null;
+      this._active = null;
+    }
+
+    // ---------- 記事の表示: 1件ずつ。タブ・タイルの現在地も同期する ----------
+    _itemOf(id) {
+      for (const t of this._tabs) {
+        const it = t.items.find(x => x.id === id);
+        if (it) return { tab: t, item: it };
+      }
+      return null;
+    }
+
+    _show(id, instant) {
+      const found = id !== 'top' && this._itemOf(id);
+      this.main.innerHTML = `<article class="wj-doc">${found ? this._article(found.tab, found.item) :
+        `<header class="wj-doc-h" data-id="top"><p class="wj-back wj-back-doc"><button type="button" data-exit>← 盤面へ戻る</button></p>` +
+        `<h1>図鑑</h1><p class="wj-lede">囲い・戦法・戦型・戦略・手筋・格言を引ける読み物です。左のタブで分類を選び、` +
+        `タイルで記事を開きます。各項の中身は盤面モードの右の解説パネルと同じものです。</p></header>`}</article>`;
+      // 表紙のときも最初のタブのタイルを開いておく（分類が見えるように）
+      this._setTab(found ? found.tab : this._tabs[0]);
+      if (found) this._mountDock();
+      this._markTile(found ? id : null);
+      this.main.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
+
+    _setTab(tab) {
+      this._active = tab.id;
+      for (const b of this.toc.querySelectorAll('[data-tab]'))
+        b.setAttribute('aria-pressed', String(b.dataset.tab === tab.id));
+      this.toc.querySelector('.wj-tiles').innerHTML = this._tileHtml.get(tab.id) || '';
+    }
+
+    _markTile(id) {
+      const link = id ? this.toc.querySelector(`[data-go="${CSS.escape(id)}"]`) : null;
+      if (link === this._cur) return;
+      if (this._cur) this._cur.removeAttribute('aria-current');
+      this._cur = link;
+      if (link) {
+        link.setAttribute('aria-current', 'true');
+        link.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    // ---------- 記事1件の組み立て ----------
+    _article(tab, it) {
+      const crumb = `<p class="wj-meta">${esc(tab.title)}${it.path ? ` › ${esc(it.path)}` : ''}</p>`;
+      if (this._mounts.has(it.id))
+        return `<section class="wj-sec wj-dock" data-id="${esc(it.id)}"><h2 class="wj-ah">${esc(it.name)}` +
+          `${it.reading ? `<small>${esc(it.reading)}</small>` : ''}</h2>${crumb}` +
+          `<div class="wj-dock-b" data-mount="${esc(it.id)}"></div></section>`;
+      if (it.id === 'sources')
+        return `<section class="wj-sec" data-id="sources"><h2 class="wj-ah">出典</h2>` +
+          sourcesBlock(this._allSources(), makeCiter()) + `</section>`;
+      if (it.id.startsWith('pv-')) return this._pvArticle(it);
+      if (tab.id === 'extra') return this._extraArticle(it);
+      return this._tesujiArticle(tab, it);
+    }
+
+    _tesujiArticle(tab, it) {
+      const t = (K.TESUJI || []).find(x => x.id === it.id);
+      if (!t) return '';
       const citer = makeCiter();
       const proverbs = new Map((K.PROVERBS || []).map(p => [p.id, p]));
-      const srcAll = [];
-      let doc = `<header class="wj-doc-h" data-id="top">` +
-        `<p class="wj-back wj-back-doc"><button type="button" data-exit>← 囲い図鑑へ戻る</button></p>` +
-        `<h1>手筋と格言</h1>` +
-        `<p class="wj-lede">駒組み（囲い・戦法）とは別に、数手で完結する局所の技を集めた読み物です。` +
-        `図は盤の一部だけを切り出し、▲が先手（下側）・△が後手（上側）です。歩の手筋はその筋に自分の歩が無い前提です（二歩の禁止）。</p></header>`;
-      let toc = `<p class="wj-back"><button type="button" data-exit>← 囲い図鑑へ戻る</button></p>` +
-        `<h2 class="wj-toc-h">目次</h2><ol class="wj-tree">` +
-        `<li><a href="#tesuji" data-go="top"><span class="wn">§</span>手筋と格言</a></li>`;
-
-      // 手筋1件の節（項の中では h4、章の直下では h3）
-      const secHTML = (t, no, h) => {
-        srcAll.push(...(t.sources || []));
-        const desc = rich(t.desc, citer);
-        const pv = (t.proverbs || []).map(id => proverbs.get(id)).filter(Boolean)
-          .map(p => `<li><b>${esc(p.text)}</b>${rich(p.desc, citer)}</li>`).join('');
-        const meta = [];
-        if (t.piece) meta.push(`駒：${esc(t.piece)}`);
-        if (t.aliases && t.aliases.length) meta.push(`別名：${t.aliases.map(esc).join('・')}`);
-        if (t.onCastle) {
-          const names = [...(t.onCastle.ids || []), ...(t.onCastle.mirrorIds || [])].map(castleName);
-          if (names.length) meta.push(`対象：${[...new Set(names)].map(esc).join('・')}`);
-        }
-        const notes = [t.note, t.onCastle && t.onCastle.note].filter(Boolean)
-          .map(n => `<p class="wj-note">${esc(n)}</p>`).join('');
-        return `<section class="wj-sec" data-id="${esc(t.id)}">` +
-          `<${h}><span class="wn">${no}</span>${esc(t.name)}<small>${esc(t.reading || '')}</small>` +
-          `<span class="tj-role" data-role="${esc(t.role)}">${ROLE_JA[t.role] || ''}</span></${h}>` +
-          (meta.length ? `<p class="wj-meta">${meta.join('　')}</p>` : '') +
-          `<p class="desc">${desc}</p>` +
-          `<figure class="tj-fig">${this._figure(t, this.frame.get(t.id) || 0)}</figure>` +
-          notes +
-          (pv ? `<h5 class="wj-mini-h">関連する格言</h5><ul class="tj-pv">${pv}</ul>` : '') +
-          `</section>`;
+      const srcAll = [...(t.sources || [])];
+      const declared = new Set(srcAll.map(s => s.ref));
+      const addRefs = (text, label) => {
+        for (const r of citeRefs(text || '')) if (!declared.has(r)) { declared.add(r); srcAll.push({ ref: r, for: label }); }
       };
-      const tocItem = (id, no, name) =>
-        `<li><a href="#tesuji" data-go="${esc(id)}"><span class="wn">${no}</span>${esc(name)}</a></li>`;
-
-      let cno = 0;
-      for (const ch of buildTree(K.TESUJI || [])) {
-        cno++;
-        doc += `<section class="wj-ch" data-id="${esc(ch.id)}"><h2><span class="wn">${cno}</span>${esc(ch.title)}</h2>`;
-        toc += `<li><a href="#tesuji" data-go="${esc(ch.id)}"><span class="wn">${cno}</span>${esc(ch.title)}</a><ol>`;
-        if (ch.subs) {
-          let sno = 0;
-          for (const s of ch.subs) {
-            sno++;
-            const sid = `${ch.id}-${s.key || 'misc'}`;
-            doc += `<section class="wj-sub" data-id="${esc(sid)}"><h3><span class="wn">${cno}.${sno}</span>${esc(s.title)}の崩し方</h3>`;
-            toc += `<li><a href="#tesuji" data-go="${esc(sid)}"><span class="wn">${cno}.${sno}</span>${esc(s.title)}</a><ol>`;
-            s.items.forEach((t, i) => {
-              const no = `${cno}.${sno}.${i + 1}`;
-              doc += secHTML(t, no, 'h4');
-              toc += tocItem(t.id, no, t.name);
-            });
-            doc += `</section>`;
-            toc += `</ol></li>`;
-          }
-        } else {
-          ch.items.forEach((t, i) => {
-            const no = `${cno}.${i + 1}`;
-            doc += secHTML(t, no, 'h3');
-            toc += tocItem(t.id, no, t.name);
-          });
-        }
-        doc += `</section>`;
-        toc += `</ol></li>`;
+      addRefs(t.desc, '本文');
+      const pv = (t.proverbs || []).map(pid => proverbs.get(pid)).filter(Boolean).map(p => {
+        addRefs(p.desc, '格言');
+        for (const s of p.sources || []) if (!declared.has(s.ref)) { declared.add(s.ref); srcAll.push(s); }
+        return `<li><b>${esc(p.text)}</b>${rich(p.desc, citer)}</li>`;
+      }).join('');
+      const meta = [`${esc(tab.title)}${it.path ? ` › ${esc(it.path)}` : ''}`];
+      if (t.piece) meta.push(`駒：${esc(t.piece)}`);
+      if (t.aliases && t.aliases.length) meta.push(`別名：${t.aliases.map(esc).join('・')}`);
+      if (t.onCastle) {
+        const names = [...(t.onCastle.ids || []), ...(t.onCastle.mirrorIds || [])].map(castleName);
+        if (names.length) meta.push(`対象：${[...new Set(names)].map(esc).join('・')}`);
       }
+      const notes = [t.note, t.onCastle && t.onCastle.note].filter(Boolean)
+        .map(n => `<p class="wj-note">${esc(n)}</p>`).join('');
+      return `<section class="wj-sec" data-id="${esc(t.id)}">` +
+        `<h2 class="wj-ah">${esc(t.name)}<small>${esc(t.reading || '')}</small>` +
+        `<span class="tj-role" data-role="${esc(t.role)}">${ROLE_JA[t.role] || ''}</span></h2>` +
+        `<p class="wj-meta">${meta.join('　')}</p>` +
+        `<p class="desc">${rich(t.desc, citer)}</p>` +
+        `<figure class="tj-fig">${this._figure(t, this.frame.get(t.id) || 0)}</figure>` +
+        notes +
+        (pv ? `<h5 class="wj-mini-h">関連する格言</h5><ul class="tj-pv">${pv}</ul>` : '') +
+        sourcesBlock(this.repo.resolveSources(srcAll), citer) +
+        `</section>`;
+    }
 
-      // 格言の章: PROVERB_GROUPS の節ごとに一覧（節単位で目次に載せる）
+    _pvArticle(it) {
+      const gid = it.id.slice(3);
       const groups = K.PROVERB_GROUPS || [];
-      const pvRest = new Set(K.PROVERBS || []);
-      if ((K.PROVERBS || []).length) {
-        cno++;
-        doc += `<section class="wj-ch" data-id="ch-proverbs"><h2><span class="wn">${cno}</span>格言</h2>`;
-        toc += `<li><a href="#tesuji" data-go="ch-proverbs"><span class="wn">${cno}</span>格言</a><ol>`;
-        const pvGroups = [...groups.map(([gid, title]) => ({ gid, title })), { gid: 'etc', title: 'その他' }];
-        let gno = 0;
-        for (const g of pvGroups) {
-          const items = g.gid === 'etc' ? [...pvRest] : (K.PROVERBS || []).filter(p => p.group === g.gid);
-          for (const p of items) pvRest.delete(p);
-          if (!items.length) continue;
-          gno++;
-          const sid = `pv-${g.gid}`;
-          doc += `<section class="wj-sub" data-id="${esc(sid)}"><h3><span class="wn">${cno}.${gno}</span>${esc(g.title)}</h3>` +
-            `<ul class="tj-pv wj-pv-all">` +
-            items.map(p => `<li data-id="pv-${esc(p.id)}"><b>${esc(p.text)}</b>` +
-              `<small>${esc(p.reading || '')}${p.alt && p.alt.length ? `（別名：${p.alt.map(esc).join('・')}）` : ''}</small>` +
-              `${rich(p.desc, citer)}</li>`).join('') +
-            `</ul></section>`;
-          toc += tocItem(sid, `${cno}.${gno}`, g.title);
-        }
-        doc += `</section>`;
-        toc += `</ol></li>`;
-      }
+      const items = gid === 'etc'
+        ? (K.PROVERBS || []).filter(p => !groups.some(([g]) => g === p.group))
+        : (K.PROVERBS || []).filter(p => p.group === gid);
+      const citer = makeCiter();
+      const srcAll = [], declared = new Set();
+      const lis = items.map(p => {
+        for (const r of citeRefs(p.desc || '')) if (!declared.has(r)) { declared.add(r); srcAll.push({ ref: r, for: '格言' }); }
+        for (const s of p.sources || []) if (!declared.has(s.ref)) { declared.add(s.ref); srcAll.push(s); }
+        return `<li><b>${esc(p.text)}</b>` +
+          `<small>${esc(p.reading || '')}${p.alt && p.alt.length ? `（別名：${p.alt.map(esc).join('・')}）` : ''}</small>` +
+          `${rich(p.desc, citer)}</li>`;
+      }).join('');
+      return `<section class="wj-sec" data-id="${esc(it.id)}"><h2 class="wj-ah">${esc(it.name)}</h2>` +
+        `<p class="wj-meta">格言</p><ul class="tj-pv">${lis}</ul>` +
+        sourcesBlock(this.repo.resolveSources(srcAll), citer) + `</section>`;
+    }
 
-      // 出典の章: 宣言の無い引用も拾って [n] を空振りさせない（格言は未宣言のことがある）
-      {
-        cno++;
-        const declared = new Set(srcAll.map(s => s.ref));
-        for (const t of K.TESUJI || []) for (const r of citeRefs(t.desc || ''))
-          if (!declared.has(r)) { declared.add(r); srcAll.push({ ref: r, for: '本文' }); }
-        for (const p of K.PROVERBS || []) {
-          for (const r of citeRefs(p.desc || '')) if (!declared.has(r)) { declared.add(r); srcAll.push({ ref: r, for: '格言' }); }
-          for (const s of p.sources || []) if (!declared.has(s.ref)) { declared.add(s.ref); srcAll.push(s); }
-        }
-        doc += `<section class="wj-ch" data-id="sources"><h2><span class="wn">${cno}</span>出典</h2>` +
-          sourcesBlock(this.repo.resolveSources(srcAll), citer) + `</section>`;
-        toc += tocItem('sources', `${cno}`, '出典');
-      }
-      toc += `</ol>`;
+    // お楽しみ（将棋の言葉・出来事）の記事: 短い本文＋出典だけ
+    _extraArticle(it) {
+      const m = (K.FUN && K.FUN.memes || []).find(x => x.id === it.id);
+      if (!m) return '';
+      const citer = makeCiter();
+      return `<section class="wj-sec" data-id="${esc(m.id)}"><h2 class="wj-ah">${esc(m.t)}` +
+        `${m.reading ? `<small>${esc(m.reading)}</small>` : ''}</h2>` +
+        `<p class="wj-meta">お楽しみ › 将棋の言葉・出来事</p>` +
+        `<p class="desc">${esc(m.n)}</p>` +
+        sourcesBlock(this.repo.resolveSources(m.sources || []), citer) + `</section>`;
+    }
 
-      this.toc.innerHTML = toc;
-      this.main.innerHTML = `<article class="wj-doc">${doc}</article>`;
-      this._observe();
+    // 「出典」記事は全項目の宣言を束ねる（右 detail 部品内の [n] は項ごとの出典を見る）
+    _allSources() {
+      const declared = new Set(), list = [];
+      const push = s => { if (!declared.has(s.ref)) { declared.add(s.ref); list.push(s); } };
+      const refs = (text) => {
+        for (const r of citeRefs(text || '')) if (!declared.has(r)) { declared.add(r); list.push({ ref: r, for: '本文' }); }
+      };
+      const each = a => Array.isArray(a) ? a : Object.values(a || {});
+      for (const e of [...each(K.TESUJI), ...each(K.PROVERBS), ...each(K.CASTLES), ...each(K.TACTICS),
+        ...each(K.SENKEI), ...each(K.SENKEI_GROUPS), ...each(K.STRATEGIES), ...each(K.COMBOS),
+        ...each(K.FUN ? K.FUN.memes : [])]) {
+        (e.sources || []).forEach(push);
+        refs(e.desc);
+      }
+      return this.repo.resolveSources(list);
+    }
+
+    // ---------- 記事のうち右 detail 部品を持つ項: DetailView で描く（中身はドックと同一） ----------
+    // ボタンの動きはモードに合わせる: 制約を立てる系は盤面へ戻して適用し、
+    // 解説への導線（戦型・手筋）は図鑑の中でその項へ飛ぶ。
+    _mountDock() {
+      if (!this._mounts || !K.DetailView || !K.constraints) return;
+      const H = {
+        repo: this.repo,
+        onHover: () => {},   // 盤は隠れているのでマスのハイライトはしない
+        onAttack: id => { if (this.cb.onAttack) this.cb.onAttack(id); },
+        onSetConstraint: (w, k, id) => { if (this.cb.onSet) this.cb.onSet(w, k, id); },
+        onSenkei: id => {
+          // 戦型エントリは senkei:id、大分類は skg:id の data-id。下位の区分 id は大分類の項へ寄せる
+          const r = (K.SENKEI_RESOLVE || {})[id] || id;
+          const GR = K.SENKEI_GROUPS || {};
+          const target = this._itemOf(`senkei:${r}`) ? `senkei:${r}`
+            : `skg:${Object.keys(GR).find(g => g === r || (GR[g].kinds || []).includes(r)) || r}`;
+          if (this.cb.onGo) this.cb.onGo(target);
+        },
+        onCombo: (w, id, vs) => { if (this.cb.onCombo) this.cb.onCombo(w, id, vs); },
+        onDefense: id => { if (this.cb.onDefense) this.cb.onDefense(id); },
+        onOpenTesuji: id => { if (this.cb.onGo) this.cb.onGo(id); },
+      };
+      for (const el of this.main.querySelectorAll('[data-mount]')) {
+        const m = this._mounts.get(el.dataset.mount);
+        if (!m) continue;
+        const S = K.constraints.effectiveSides(m.slots, false);
+        const dv = new K.DetailView(el, H);
+        dv.render({ sel: m.sel, st: S.me, S, showOpp: false, contacts: [] });
+      }
     }
 
     // ---------- コマ送り: 図・手・一言だけを差し替える（本文や出典の番号は作り直さない） ----------
@@ -311,78 +440,25 @@ window.Kakoi = window.Kakoi || {};
     _onClick(e) {
       const step = e.target.closest('[data-step]');
       if (step) { this._go(step.closest('[data-id]').dataset.id, +step.dataset.step); return; }
+      const tabBtn = e.target.closest('[data-tab]');
+      if (tabBtn) {
+        // 大項目のタブは分類の切替だけ（記事は変えない。タイルで項を選ぶ）
+        const t = (this._tabs || []).find(x => x.id === tabBtn.dataset.tab);
+        if (t) this._setTab(t);
+        return;
+      }
       const go = e.target.closest('[data-go]');
       if (go) {
         e.preventDefault();
         this._tocClose();
         // 目次からの遷移はハッシュに積む（「戻る」でひとつ前の節に戻れる）
         if (this.cb.onGo) this.cb.onGo(go.dataset.go);
-        else this._reveal(go.dataset.go);
         return;
       }
       if (e.target.closest('[data-exit]') && this.cb.onExit) {
         this._tocClose();
         this.cb.onExit();
       }
-    }
-
-    _reveal(id, instant) {
-      const el = this.main.querySelector(`[data-id="${CSS.escape(id)}"]`);
-      if (!el) return;
-      el.scrollIntoView({
-        block: 'start',
-        behavior: instant || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-      });
-      el.dataset.reveal = 'true';
-      setTimeout(() => { delete el.dataset.reveal; }, 1400);
-    }
-
-    // ---------- 目次の現在地: 本文の章・節・項を IntersectionObserver で追う ----------
-    // 「読んでいる位置（本文ペインの上から約1/4の線）より上にある、いちばん深い見出し」を現在地にする。
-    // 章・項は節を内包するので、上端の小さいものを選ぶと常に章が勝つ（それでは節が光らない）
-    _observe() {
-      const links = new Map([...this.toc.querySelectorAll('[data-go]')].map(a => [a.dataset.go, a]));
-      const secs = [...this.main.querySelectorAll('[data-id]')].filter(el => links.has(el.dataset.id));
-      this._links = links;
-      if (!('IntersectionObserver' in window)) return;
-      const visible = new Set();
-      this._pick = () => {
-        if (!visible.size) return;
-        // 読書ライン: 本文ペインの可視領域の上から約1/4。モバイルはページスクロールなので
-        // ペイン自体の全高ではなく、画面に見えている部分だけを基準にする。
-        const rect = this.main.getBoundingClientRect();
-        const visibleTop = Math.max(0, rect.top);
-        const visibleBottom = Math.min(window.innerHeight, rect.bottom);
-        const line = visibleTop + Math.max(0, visibleBottom - visibleTop) * .28;
-        let best = null, bt = -Infinity, fb = null, ft = Infinity;
-        for (const el of visible) {
-          const t = el.getBoundingClientRect().top;
-          if (t <= line && t > bt) { best = el; bt = t; }
-          if (t < ft) { fb = el; ft = t; }
-        }
-        this._mark(links.get((best || fb).dataset.id));
-      };
-      this._spy = new IntersectionObserver(es => {
-        for (const e of es) {
-          if (e.isIntersecting) visible.add(e.target);
-          else visible.delete(e.target);
-        }
-        this._pick();
-      });   // root=ビューポート（広い画面の本文ペイン内・狭い画面のページスクロールの両方で真の可視範囲になる）
-      // 交差の増減が無いスクロールでも現在地を追い直す（スクローラは画面幅で変わる）
-      let raf = 0;
-      const onScroll = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; this._pick(); }); };
-      this.main.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('scroll', onScroll, { passive: true });
-      for (const el of secs) this._spy.observe(el);
-    }
-
-    _mark(link) {
-      if (!link || link === this._cur) return;
-      if (this._cur) this._cur.removeAttribute('aria-current');
-      link.setAttribute('aria-current', 'true');
-      this._cur = link;
-      link.scrollIntoView({ block: 'nearest' });
     }
 
     // ---------- 狭い画面: 目次は左端から開くドロワー ----------

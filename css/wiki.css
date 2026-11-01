@@ -4,13 +4,45 @@
 
 /* ===== モードの切替 ===== */
 .wiki { display:none; min-height:0; }
-body.tj .wiki { display:grid; grid-template-columns:minmax(208px,252px) minmax(0,1fr); min-height:0; }
+/* 左列は盤面の左ドック（.rail）と同じトラック定義にして幅を揃える。本文は残り全部に跨る */
+body.tj .wiki { display:grid; grid-template-columns:var(--col-l, minmax(240px,1.35fr)) minmax(440px,2fr) var(--col-r, minmax(280px,1.4fr));
+                grid-template-rows:minmax(0,1fr); grid-row:2; min-height:0; }
+body.tj .wiki .wj-toc { grid-column:1; }
+body.tj .wiki .wj-main { grid-column:2 / -1; }
 body.tj .app { display:none; }
-/* モードに入っている間、ヘッダーの入口は隠す（戻る導線は目次の上にある） */
-body.tj #tesujiOpen { display:none; }
+/* 画面切替はヘッダーの「盤面／図鑑」トグル（#viewTabs）で行う（モード中も残す） */
+.vtoggle { position:relative; display:inline-flex; align-items:center; padding:2px; cursor:pointer;
+           border:1px solid var(--line-2); background:none; color:var(--muted); }
+.vtoggle .vt-l, .vtoggle .vt-r { position:relative; z-index:1; padding:5px 11px;
+                                 font:600 11.5px/1 var(--font-b); letter-spacing:.14em; transition:color .25s; }
+.vtoggle .vt-knob { position:absolute; top:2px; bottom:2px; left:2px; width:calc(50% - 2px);
+                    background:var(--accent-soft); border:1px solid var(--accent);
+                    transition:transform .25s var(--ease); }
+.vtoggle[aria-checked="true"] .vt-knob { transform:translateX(100%); }
+.vtoggle[aria-checked="false"] .vt-l, .vtoggle[aria-checked="true"] .vt-r { color:var(--accent); }
+@media (hover:hover) { .vtoggle:hover { border-color:var(--fg2); } }
+
+/* ===== 左ドック: 大項目のタブ＋各項のタイル。現在地は朱 ===== */
+/* 戻る・タブはタイル数に関わらず常に同じ位置（flex で潰されない） */
+.wj-back, .wj-tabs { flex:none; }
+.wj-tabs { display:flex; flex-wrap:wrap; gap:2px; margin:0 0 10px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+.wj-tabs button { border:0; border-bottom:2px solid transparent; background:none; cursor:pointer;
+                  padding:5px 8px; font:600 12px/1.4 var(--font-b); letter-spacing:.08em; color:var(--muted); }
+.wj-tabs button[aria-pressed="true"] { color:var(--accent); border-bottom-color:var(--accent); }
+.wj-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(72px, 1fr)); gap:4px;
+            align-content:start; overflow:auto; min-height:0; flex:1; }
+.wj-tile { border:1px solid var(--line); background:none; cursor:pointer; text-align:left;
+           padding:7px 9px; font:500 12px/1.5 var(--font-d); letter-spacing:.04em; color:var(--fg2); }
+.wj-tile[aria-current="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+@media (hover:hover) { .wj-tile:hover, .wj-tabs button:hover { color:var(--fg); } }
+/* 記事の大見出し（章見出しより一段大きい） */
+.wj-ah { font:700 24px/1.3 var(--font-d); margin:.1em 0 .4em; letter-spacing:.04em; }
+.wj-ah small { font:500 12px var(--font-b); color:var(--muted); letter-spacing:.1em; margin-left:.7em; }
 
 /* ===== 目次（左列）: 章→節→項の入れ子。現在地は朱の罫線 ===== */
-.wj-toc { overflow:auto; min-height:0; border-right:1px solid var(--line); padding:14px 16px 40px 20px; }
+/* 戻る・タブは固定し、タイル領域だけがスクロールする */
+.wj-toc { display:flex; flex-direction:column; overflow:hidden; min-height:0;
+          border-right:1px solid var(--line); padding:14px 16px 16px 20px; }
 .wj-back { margin:0 0 14px; }
 .wj-back button { background:none; border:0; border-bottom:1px solid var(--line-2); padding:2px 0 3px;
                   font-size:12px; letter-spacing:.1em; color:var(--muted); cursor:pointer;
@@ -57,8 +89,17 @@ body.tj #tesujiOpen { display:none; }
 .wj-doc .desc { font-size:13.5px; line-height:2; margin:0 0 10px; }
 /* 章・節へのジャンプで盤やヘッダーに隠れないよう上に余白を持たせる */
 .wj-ch, .wj-sub, .wj-sec, .wj-doc-h, .tj-pv [data-id] { scroll-margin-top:18px; }
-.wj-sec[data-reveal="true"], .wj-sub[data-reveal="true"], .wj-ch[data-reveal="true"],
-.tj-pv [data-id][data-reveal="true"] { background:var(--accent-soft); transition:background .4s; }
+
+/* ===== 図鑑の項（囲い・戦法・戦型・戦略）: 中身は右 detail（detail-view.js）と同じ部品 ===== */
+/* 項同士の区切りは罫線。項番号（h3/h4）が見出しなので、部品側の先頭（.bd-h）と
+   「お楽しみ」は畳む（本文は _mountDock が detail-view で描く） */
+.wj-dock { border-top:1px solid var(--line); padding-top:4px; }
+.wj-dock .bd-h { display:none; }
+.wj-dock-b > .sec:first-child { margin-top:2px; }
+.wj-dock-grp { border-left:2px solid var(--line-2); padding-left:12px; margin-bottom:6px; }
+.wj-dock-grp .bd-h { display:none; }
+/* 詳細の中のチップ列（定番・代表の戦法/囲い）が本文の余白と打ち解けるよう下間隔を添える */
+.wj-dock-b .sec + .sec { margin-top:14px; }
 
 /* ===== 格言の節: 一覧は広いところで2段組み ===== */
 @media (min-width:1280px) {
