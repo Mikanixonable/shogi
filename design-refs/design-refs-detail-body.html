@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>右ドック（解説パネル）— デザイン案</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('shogi-theme') || 'light'; } catch (e) {}</script>
+<style>
+/* 右ドック（#detail）のリデザイン案。
+   観点: 機能性（操作が見つかる）・可読性（長文を読める）・直感性（何が押せるか分かる）・
+   一貫性（左ドックのタイル/タブ・トップバーのトグル・制約フィールドの六角胞と同じ言語）・
+   モダン（薄い罫線・大きな余白・素早い動き）。
+   器は実寸（ドック 390px・中身 326px）。中身は美濃囲いの記事を擬した共通データ。 */
+:root {
+  --bg:#f5f1e8; --fg:#1b1a17; --fg2:#3d3a33; --muted:#8a8478;
+  --line:rgba(27,26,23,.14); --line-2:rgba(27,26,23,.32); --faint:rgba(27,26,23,.035);
+  --accent:#c8371f; --accent-2:#8a6d3f; --accent-soft:rgba(200,55,31,.08);
+  --good:#4a6b3f; --bad:#c8371f;
+  --piece-1:#fbf6ea; --piece-edge:rgba(40,28,10,.55);
+  --f-mino:#c8371f; --f-yagura:#33507a; --f-gangi:#4a6b3f;
+  --t-rook:#c8371f; --t-silver:#33507a; --t-kaku:#4a6b3f;
+  --font-d:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-n:"Cormorant Garamond","Hiragino Mincho ProN",serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+:root[data-theme="dark"] {
+  --bg:#151412; --fg:#ece6da; --fg2:#c9c2b4; --muted:#8c8578;
+  --line:rgba(236,230,218,.14); --line-2:rgba(236,230,218,.32); --faint:rgba(236,230,218,.04);
+  --accent:#e2563b; --accent-2:#a8906a; --accent-soft:rgba(226,86,59,.12);
+  --good:#9cbf8a; --bad:#e2563b;
+  --piece-1:#f3e9d2; --piece-edge:rgba(40,28,10,.5);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font:14px/1.7 var(--font-b); color:var(--fg); background:var(--bg); padding:26px 22px 60px; }
+h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
+.note { font-size:12px; color:var(--muted); }
+.wrap > p { max-width:840px; font-size:13px; margin:0 0 26px; }
+.wrap > p b { color:var(--accent); }
+.vrow { display:flex; gap:28px; flex-wrap:wrap; margin-bottom:44px; }
+.variant { width:390px; flex:none; }
+.vhead { margin-bottom:10px; }
+.vhead h2 { font:800 14px/1.4 var(--font-d); letter-spacing:.12em; }
+.vhead p { font-size:12px; color:var(--muted); }
+.dock { width:390px; height:760px; overflow-y:auto; border:1px solid var(--line-2);
+        padding:16px 22px 30px; }
+.dock::-webkit-scrollbar { width:4px; } .dock::-webkit-scrollbar-thumb { background:var(--line-2); }
+.cmp { border-collapse:collapse; font-size:12.5px; max-width:840px; }
+.cmp th, .cmp td { border:1px solid var(--line); padding:7px 12px; text-align:left; vertical-align:top; }
+.cmp th { font:700 12px var(--font-d); letter-spacing:.1em; }
+
+/* ===== 共通パーツ（各案で形だけ変える） ===== */
+.who { font-size:10.5px; letter-spacing:.2em; color:var(--muted); }
+.ttl { font:800 21px/1.3 var(--font-d); letter-spacing:.05em; }
+.ttl small { font:500 11px var(--font-b); color:var(--muted); letter-spacing:.12em; margin-left:8px; }
+.defbadge { font-size:10px; color:var(--muted); border:1px solid var(--line-2); padding:1px 6px; letter-spacing:.14em; }
+.tagx { font-size:11.5px; color:var(--muted); margin-right:10px; }
+.tagx.fam { color:var(--f-mino); font-weight:700; }
+.desc { font-size:13.5px; line-height:1.95; }
+.desc .ref { font:500 10px/1 var(--font-n); color:var(--accent-2); }
+.chip { border:1px solid var(--line-2); padding:4px 9px; font-size:12px; cursor:pointer; background:none; color:var(--fg2); }
+.pc li { font-size:12.5px; line-height:1.8; padding-left:16px; position:relative; }
+.pc.good li::before { content:"+"; position:absolute; left:0; color:var(--good); font-weight:700; }
+.pc.bad li::before { content:"−"; position:absolute; left:0; color:var(--bad); font-weight:700; }
+.secbody { font-size:12.5px; line-height:1.8; color:var(--fg2); }
+.hr { border:0; border-top:1px solid var(--line); margin:14px 0; }
+.ghost { border-bottom:1px dotted var(--line-2); cursor:pointer; }
+
+/* ===== 案A「帳簿」: 先頭固定＋索引。一覧性を重視 ===== */
+.A .a-head { position:sticky; top:-16px; background:var(--bg); padding:10px 0 8px;
+             border-bottom:2px solid var(--fg); z-index:3; }
+.A .a-nav { display:flex; flex-wrap:wrap; gap:0 12px; margin:8px 0 0; }
+.A .a-nav a { font-size:11px; letter-spacing:.1em; color:var(--muted); text-decoration:none; border-bottom:1px solid transparent; }
+.A .a-nav a:hover { color:var(--accent); border-bottom-color:var(--accent); }
+.A .sec { margin-top:20px; }
+.A .sec h3 { font:700 12px/1.6 var(--font-d); letter-spacing:.22em; color:var(--fg);
+             border-bottom:1px solid var(--fg2); padding-bottom:3px; margin-bottom:7px; }
+.A .sec h3 small { float:right; font:400 10px var(--font-b); color:var(--muted); letter-spacing:.08em; }
+.A .meta { display:grid; grid-template-columns:88px 1fr; gap:4px 10px; font-size:12.5px; margin-top:10px; }
+.A .meta dt { color:var(--muted); font-size:11.5px; }
+.A .penta { border:1px solid var(--line); padding:10px; margin-top:12px; }
+/* ===== 案B「カード」: セクションをカード化し視線を分節 ===== */
+.B .b-head { padding-bottom:10px; }
+.B .card { border:1px solid var(--line); padding:12px 14px; margin-top:10px; background:var(--bg);
+           box-shadow:0 1px 0 var(--faint); }
+.B .card h3 { font:700 11.5px/1.4 var(--font-b); letter-spacing:.16em; color:var(--accent-2); margin-bottom:6px; }
+.B .card.kv { display:grid; grid-template-columns:1fr 96px; align-items:center; gap:8px; }
+.B .meter { height:4px; background:var(--faint); position:relative; margin-top:5px; }
+.B .meter i { position:absolute; inset:0 auto 0 0; background:var(--accent); }
+.B .meter.slow i { background:var(--accent-2); }
+.B .pairs { display:flex; gap:6px; flex-wrap:wrap; }
+/* ===== 案C「文脈帯」: 左の細い罫線で深さを示す辞典型 ===== */
+.C .sec { border-left:2px solid var(--line-2); padding:2px 0 2px 13px; margin-top:18px; }
+.C .sec.deep { border-left-color:var(--accent); }
+.C .sec h3 { font:700 13px var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
+.C .sec h3 small { font:400 10px var(--font-b); color:var(--muted); margin-left:8px; }
+.C .rel { margin-top:8px; }
+.C .rel a { font-size:12px; color:var(--accent); text-decoration:none; margin-right:12px; }
+.C .rel a::after { content:"›"; margin-left:2px; }
+.C details { margin-top:6px; }
+.C summary { font-size:11.5px; color:var(--muted); cursor:pointer; letter-spacing:.1em; }
+/* ===== 案D「現代的」: タブ内ナビ＋ピルで操作を明確化 ===== */
+.D .d-tabs { display:flex; gap:2px; border-bottom:1px solid var(--line); margin:10px 0 14px; }
+.D .d-tabs span { font:600 11px/1 var(--font-b); letter-spacing:.12em; padding:6px 10px 7px; color:var(--muted); }
+.D .d-tabs span.on { color:var(--accent); border-bottom:2px solid var(--accent); }
+.D .pill { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--line-2); border-radius:99px;
+           padding:4px 10px; font-size:11.5px; color:var(--fg2); margin:0 5px 5px 0; cursor:pointer; }
+.D .pill::before { content:""; width:6px; height:6px; border:1px solid var(--muted); }
+.D .pill.act { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.D .pill.act::before { background:var(--accent); border-color:var(--accent); }
+.D .klist li { display:flex; gap:8px; font-size:12.5px; padding:5px 0; border-bottom:1px dotted var(--line); }
+.D .klist li:last-child { border:0; }
+.D .klist .m { width:14px; flex:none; text-align:center; font-weight:700; }
+.D .klist .g { color:var(--good); } .D .klist .b { color:var(--bad); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>右ドック（解説パネル）— デザイン案</h1>
+<p>右ドックは「選んだ制約の百科事項」を見せる唯一の長文面。左ドックが<b>タブ＋タイルの索引</b>、盤上の制約フィールドが<b>胞と多角形の図形</b>という語彙を持つのに対し、現状の右ドックは見出しの列挙で、何が操作できてどこが要点かが埋もれます。以下の4案はすべて同一データ（美濃囲い）を実寸（390px）で描き、<b>機能性・可読性・直感性・既存語彙との一貫性・モダンさ</b>を比較します。</p>
+
+<div class="vrow">
+  <div class="variant">
+    <div class="vhead"><h2>案A「帳簿」</h2><p>先頭に索引を畳み込み、項目見出しを太い罫線の帳簿に。どこに何があるかが一目の一覧型</p></div>
+    <div class="dock A">
+      <div class="a-head">
+        <p class="who">▲自分の囲い</p>
+        <p class="ttl">美濃囲い（本美濃）<small>みのがこい</small> <span class="defbadge">既定</span></p>
+        <div class="a-nav"><a href="#">特徴</a><a href="#">説明</a><a href="#">発展</a><a href="#">長所</a><a href="#">短所</a><a href="#">攻め筋</a><a href="#">崩し</a><a href="#">出典</a></div>
+      </div>
+      <div class="penta secbody">[ペンタグラム] 堅さ3 玉の広さ3 上部2 横4 組みやすさ4</div>
+      <div class="sec"><h3>説明</h3>
+        <p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む<span class="ref">[1][2][3]</span>。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる<span class="ref">[1]</span>。</p>
+      </div>
+      <dl class="meta"><dt>系統</dt><dd>美濃型</dd><dt>発展元</dt><dd><span class="ghost">片美濃</span></dd><dt>発展先</dt><dd><span class="ghost">高美濃</span>・<span class="ghost">銀美濃</span>・<span class="ghost">ちょんまげ美濃</span></dd></dl>
+      <div class="sec"><h3>長所</h3><ul class="pc good"><li>手数が少なく、堅さとのバランスがよい<span class="ref">[1]</span></li><li>金銀が斜めにつながり、横（飛車）からの攻めに強い<span class="ref">[1][2]</span></li></ul></div>
+      <div class="sec"><h3>短所</h3><ul class="pc bad"><li>上部（玉頭）からの攻めに弱い<span class="ref">[1][2]</span></li><li>端攻め（1筋）に注意<span class="ref">[1]</span></li></ul></div>
+      <div class="sec"><h3>典型的な攻め筋 <small>押すと盤に表示</small></h3><div class="secbody"><button class="chip">端攻め</button> <button class="chip">2筋の位を奪う</button></div></div>
+      <hr class="hr"><p class="secbody">出典 [1] 中原誠『駒組の手ほどき』…</p>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><h2>案B「カード」</h2><p>セクションを薄いカードに分節。要点（五環・系統）を先頭のKVカードに集約する見通し型</p></div>
+    <div class="dock B">
+      <div class="b-head">
+        <p class="who">▲自分の囲い</p>
+        <p class="ttl">美濃囲い（本美濃）<small>みのがこい</small></p>
+      </div>
+      <div class="card kv">
+        <div>
+          <div class="secbody">堅さ <span class="meter"><i style="width:60%"></i></span>
+          横の強さ <span class="meter slow"><i style="width:80%"></i></span>
+          組みやすさ <span class="meter slow"><i style="width:80%"></i></span></div>
+        </div>
+        <div class="secbody" style="text-align:right">#美濃型<br>#本美濃<br>#基本の囲い</div>
+      </div>
+      <div class="card"><h3>説明</h3><p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む<span class="ref">[1][2][3]</span>。</p></div>
+      <div class="card"><h3>発展</h3><div class="pairs"><button class="chip">片美濃</button><button class="chip">高美濃</button><button class="chip">銀美濃</button><button class="chip">ちょんまげ美濃</button></div></div>
+      <div class="card"><h3>長所・短所</h3>
+        <ul class="pc good"><li>手数が少なく、堅さとのバランスがよい</li><li>金銀が斜めにつながり、横からの攻めに強い</li></ul>
+        <hr class="hr"><ul class="pc bad"><li>上部（玉頭）からの攻めに弱い</li><li>端攻め（1筋）に注意</li></ul>
+      </div>
+      <div class="card"><h3>この囲いの崩され方</h3><div class="secbody"><span class="ghost">美濃の急所を突く（3九）</span><br><span class="ghost">端攻め・受けの底歩</span></div></div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><h2>案C「文脈帯」</h2><p>左の細い罫線で「本文／補足／導線」の深さを示す辞典型。関連記事はリンクで横断</p></div>
+    <div class="dock C">
+      <p class="who">▲自分の囲い</p>
+      <p class="ttl">美濃囲い（本美濃）<small>みのがこい</small> <span class="defbadge">既定</span></p>
+      <div class="sec"><h3>説明</h3><p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる。</p>
+        <div class="rel"><a href="#">高美濃</a><a href="#">銀冠穴熊</a><a href="#">相掛かり</a></div>
+      </div>
+      <div class="sec"><h3>特徴の目安 <small>5段階・主観</small></h3><div class="secbody">堅さ 3/5　横 4/5　上部 2/5<br>玉の広さ 3/5　組みやすさ 4/5</div></div>
+      <div class="sec deep"><h3>長所・短所 <small>点線の項目は盤上に表示</small></h3>
+        <ul class="pc good"><li>手数が少なく、堅さとのバランスがよい</li><li>金銀が斜めにつながり、横からの攻めに強い</li></ul>
+        <ul class="pc bad"><li>上部（玉頭）からの攻めに弱い</li><li>端攻め（1筋）に注意</li></ul>
+      </div>
+      <div class="sec deep"><h3>この囲いの崩され方</h3><div class="secbody"><span class="ghost">美濃の急所を突く</span>（急所3九・5八）</div>
+        <details><summary>手順と受け</summary><div class="secbody">△5八銀打→急所…　受け：底歩（3八）で止める</div></details>
+      </div>
+      <div class="sec"><h3>出典 <small>[n]は本文の参照番号</small></h3><div class="secbody">[1] 中原誠『駒組の手ほどき』　[2] 将棋囲い大全　[3] 羽生善治の将棋入門</div></div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><h2>案D「モダン」</h2><p>操作はピルで明示、読む部分は折りたためる。タブ内ナビで長文も迷子にしない現代型</p></div>
+    <div class="dock D">
+      <p class="who">▲自分の囲い</p>
+      <p class="ttl">美濃囲い（本美濃）<small>みのがこい</small></p>
+      <div class="d-tabs"><span class="on">概要</span><span>長短所</span><span>攻め・崩し</span><span>出典</span></div>
+      <div class="secbody" style="margin-bottom:10px">
+        <span class="pill act">端攻め</span><span class="pill">2筋の位</span><span class="pill">美濃の急所</span>
+      </div>
+      <div class="card" style="border:1px solid var(--line);padding:12px 14px;margin-bottom:12px">
+        <p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる<span class="ref">[1]</span>。</p>
+      </div>
+      <ul class="klist">
+        <li><span class="m g">+</span>手数が少なく、堅さとのバランスがよい</li>
+        <li><span class="m g">+</span>金銀が斜めにつながり、横からの攻めに強い</li>
+        <li><span class="m b">−</span>上部（玉頭）からの攻めに弱い</li>
+        <li><span class="m b">−</span>端攻め（1筋）に注意</li>
+      </ul>
+      <div class="secbody" style="margin-top:12px">
+        <span class="pill">発展元：片美濃</span><span class="pill">高美濃へ</span><span class="pill">銀美濃へ</span><span class="pill">図鑑で見る</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<table class="cmp">
+  <tr><th></th><th>機能性</th><th>可読性</th><th>直感性</th><th>一貫性</th><th>モダンさ</th></tr>
+  <tr><th>A 帳簿</th><td>索引リンクで目的地へ一直線</td><td>罫線の帳簿は走査しやすい。長文は現状並み</td><td>操作系は注記つき見出し＋薄い下線で控えめ</td><td>目次を持つ図鑑モードと同じ索引の語彙</td><td>クラシック寄り。動きは少なめ</td></tr>
+  <tr><th>B カード</th><td>KVカードで要点が先読みできる</td><td>区画が明快。カードは密度を上げすぎると窮屈</td><td>塊として認識しやすいが「押せるもの」は注記頼み</td><td>左ドックのタイルと同じ「面を分ける」語彙</td><td>薄いカード＋小さな影。静かなモダン</td></tr>
+  <tr><th>C 文脈帯</th><td>折りたたみで補足を畳める</td><td>罫線の深さが本文と補足を分け、長文を追いやすい</td><td>関連記事リンクで図鑑へ横断できる</td><td>手筋・格言の引用罫線と同じ左縦線</td><td>極力飾らない辞典型。和の印象に近い</td></tr>
+  <tr><th>D モダン</th><td>タブ内ナビ＋折りたたみで迷子にならない</td><td>情報量を絞った概要優先。全文は一段深く</td><td>ピルは「押せるもの」に見える最も明示的な形</td><td>ヘッダーのトグル・セグと同じ丸み・状態表示</td><td>最もモダン。動き・押下状態も明確</td></tr>
+</table>
+<p class="note" style="margin-top:12px">推奨: <b>案Cを骨格（罫線の階層・関連リンク）</b>に、案Aの索引帯と案Dのピル（操作の明示）を必要箇所だけ重ねるハイブリッド。カード全面採用（B）は左ドック・盤の語彙とかぶりすぎて「どれが作業面か」が曖昧になる懸念あり。</p>
+</div>
+</body>
+</html>
