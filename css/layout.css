@@ -187,6 +187,8 @@ sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
                  text-underline-offset:3px; text-decoration-color:var(--line-2); }
 .fun-vids li a .ext { font-style:normal; font-size:.85em; color:var(--muted); margin-left:2px; }
 @media (hover:hover) { .fun-vids li a:hover { color:var(--accent); text-decoration-color:var(--accent); } }
+.fun-src { display:block; margin-top:3px; font-size:10.5px; line-height:1.6; color:var(--muted); }
+.fun-src a { color:inherit; text-decoration:underline; }
 
 /* ===== about モーダル: 和紙の地に罫線だけ。開くときは他の要素と同じく下から静かに立ち上がる ===== */
 .about-dlg { width:min(560px, calc(100vw - 48px)); padding:0; border:1px solid var(--fg);

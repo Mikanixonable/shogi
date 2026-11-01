@@ -607,6 +607,26 @@ async function sweepBoard(page, expect) {
       && /合わせた戦型/.test(d.textContent)   // 相手がいるときは組み合わせの戦型も出る
       && /sel=os/.test(location.hash);
   });
+  // 河のピル（関係ラベル）を押すと右ドックにその戦型の情報が出る（§3-4。大分類＋葉の2枚まで）
+  r.senkeiPills = await page.evaluate(() => {
+    const hits = [...document.querySelectorAll('#cfield .cf-hit[data-kind="senkei"]')];
+    return { n: hits.length,
+      aria: hits.every(h => /戦型のラベル「#/.test(h.getAttribute('aria-label') || '')) };
+  });
+  {
+    const pill = await page.$('#cfield .cf-hit[data-kind="senkei"]');
+    if (pill) {
+      await pill.click(); await wait(300);
+      r.senkeiPillSel = await page.evaluate(() => {
+        const st = __kakoi.store.state;
+        const d = document.querySelector('#detail');
+        return st.selected.startsWith('me.senkei.')
+          && !!(d.querySelector('.bd-who') || {}).textContent
+          && !!(d.querySelector('.bd-t') || {}).textContent
+          && /sel=mk\./.test(location.hash);
+      });
+    }
+  }
   await page.click(`${DOCK} .dk-pc-x`); await wait(350);
   // 相手の段が畳まれる（胞の列は消え「＋相手」の幽霊胞に戻る）
   r.oppFoldOff = await page.evaluate(() =>
@@ -984,6 +1004,10 @@ async function main() {
       ok(b.oppOffInit && b.oppOn, '相手 △ から相手表示を ON にして相手側を選べる', `${b.t5 && b.t5.hash}`);
       ok(b.threatOn, '相手を表示すると脅威の帯が出る', `${b.t5 && b.t5.threats}本`);
       ok(b.labels, '相手と自分の関係ラベルをフィールドの河に表示', JSON.stringify(b.t5 && b.t5.relationships));
+      ok(b.senkeiPills && b.senkeiPills.n > 0 && b.senkeiPills.n <= 2 && b.senkeiPills.aria,
+        '関係ラベルのピルは大分類＋葉の2枚まで・押せる（aria にラベル名）', JSON.stringify(b.senkeiPills));
+      ok(b.senkeiPillSel, 'ピルを押すと右ドックにその戦型の情報が出る（選択=me.senkei.*）',
+        `sel=${b.senkeiPillSel}`);
       ok(b.oppTab && b.oppSel, '相手タブで相手のスロットを選べる', `sel=${b.t5b && b.t5b.selected}`);
       ok(b.resetInOppBar, '相手を選択中は相手の制約行右端に丸いリセット×を表示', '');
       ok(b.oppDockOff && b.oppDockOn && b.oppFoldOn && b.oppFoldOff,

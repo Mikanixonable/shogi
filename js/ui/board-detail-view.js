@@ -73,14 +73,12 @@ window.Kakoi = window.Kakoi || {};
         }
         const shuf = e.target.closest('.fun-shuf');
         if (shuf) {   // お楽しみ: 格言を1つ引き直す（状態には触れない）
-          const bq = shuf.closest('.fun-pv'), F = K.FUN;
-          if (bq && F && F.proverbs.length > 1) {
-            const cur = bq.querySelector('b').textContent;
-            let pv = cur;
-            for (let i = 0; i < 6 && pv === cur; i++)
-              pv = F.proverbs[Math.floor(Math.random() * F.proverbs.length)];
-            bq.querySelector('b').textContent = `「${pv.t}」`;
-            bq.querySelector('span').textContent = pv.n;
+          const row = shuf.closest('.fun-row'), bq = row && row.previousElementSibling, F = K.FUN;
+          if (bq && bq.classList.contains('fun-pv') && F && F.proverbs.length > 1) {
+            const cur = bq.querySelector('b').textContent.replace(/[「」]/g, '');
+            let pv;
+            do pv = F.proverbs[Math.floor(Math.random() * F.proverbs.length)]; while (pv.t === cur);
+            bq.innerHTML = K.detailSections.proverbHTML(pv);   // t は重複なし（validate.fun が保証）
           }
           return;
         }
@@ -101,6 +99,12 @@ window.Kakoi = window.Kakoi || {};
         const c = e.target.closest('[data-act="castle"]');
         if (c) {
           if (handlers.onSetConstraint) handlers.onSetConstraint(this._sel.who, 'castle', c.dataset.id);
+          return;
+        }
+        // 戦型への導線（制約ではなく情報の選択。'me.senkei.<id>' に寄せる）
+        const sk = e.target.closest('[data-act="senkei"]');
+        if (sk) {
+          if (handlers.onSenkei) handlers.onSenkei(sk.dataset.id);
           return;
         }
         const s = e.target.closest('[data-act="set"]');
@@ -137,14 +141,15 @@ window.Kakoi = window.Kakoi || {};
       this._sel = norm;
       const st = p.st !== undefined ? p.st : S[who];
       const citer = makeCiter();
-      const b = sel.kind === 'strategy' ? this._strategy(sel, st, S, p.showOpp, citer, p)
+      const b = sel.kind === 'senkei' ? this._senkei(sel, S, p.showOpp, citer, p)
+        : sel.kind === 'strategy' ? this._strategy(sel, st, S, p.showOpp, citer, p)
         : kind === 'tactic' ? this._tactic(norm, st, S, p.showOpp, citer, p)
         : this._castle(norm, st, S, p.showOpp, p.attackId, citer, p);
       this._tapSq = null;   // 描き直しでタップ中の data-sq 要素は取り替わる
       // 戦法・囲いの面: 定番セット（その層を含むもの）と王手飛車の筋を足す
       const extra = [];
       let tail = '';
-      if (sel.kind !== 'strategy' && st) {
+      if (K.lookup.KINDS.includes(sel.kind) && st) {
         const ids = kind === 'tactic' ? (st.tacticIds || []) : (st.castleId ? [st.castleId] : []);
         const done = K.tesuji ? K.tesuji.comboOf(st) : null;
         const rows = [...new Set(ids.flatMap(id => K.tesuji ? K.tesuji.combosWith(kind, id) : []))]
@@ -256,9 +261,11 @@ window.Kakoi = window.Kakoi || {};
       const pairing = tactic && (tactic.pairings || []).find(pp => pp.castle === c.id);
       const setupSrc = this.h.repo.setupOf(c).sources;
       const defs = p.defenses || [];
+      // この囲いの崩され方: 手筋側の onCastle・囲い側の attacks[].tesuji の両方から引く（§5-4）
+      const kuz = K.tesuji && K.tesuji.forCastle ? K.tesuji.forCastle(c) : [];
       const sources = this._mergedSources(
         c.sources || [], setupSrc || [], pairing ? pairing.sources || [] : [],
-        ...defs.map(r => r.tesuji.sources || []));
+        ...defs.map(r => r.tesuji.sources || []), ...kuz.map(t => t.sources || []));
       const ngTexts = new Set((p.ng || []).map(r => r.text));
       const body = [
         this._head(sel, c.name, implied, c.reading),
@@ -277,6 +284,7 @@ window.Kakoi = window.Kakoi || {};
         Sec().pcList('長所', c.pros, { tone: 'good' }, citer),
         Sec().pcList('短所', c.cons, { tone: 'bad', cls: 'cons' }, citer),
         Sec().attacks(c, attackId, citer, { hasOpp: !!other }),
+        Sec().kuzushi(kuz.map(t => ({ tesuji: t, weak: (t.onCastle && t.onCastle.weak) || [] })), citer),
         Sec().defenses(defs, citer),
         j ? Sec().reasons(
           j.reasons.filter(r => !ngTexts.has(r.text)).map(r => ({ level: 'ok', text: r.text, squares: r.squares })),
@@ -330,9 +338,85 @@ window.Kakoi = window.Kakoi || {};
         defs.length ? Sec().sec('この戦型の既定', '押すとその層を制約にする', defChips) : '',
         castles.length ? Sec().sec('この戦型の囲い', '押すとその囲いを制約にする', castleChips) : '',
         otherTactic ? Sec().note(`「${esc(otherStrat.label)}」にするには、左ドックでその戦型の戦法・囲いを選びます（例：${esc(otherTactic.name)}）。`) : '',
-        other && p.threat ? Sec().note(`相手と合わせた戦型は「${esc(p.threat.label)}」です（帯の間の #${esc(p.threat.label)} と同じ区分）。`) : '',
+        other && p.threat ? Sec().note(`相手と合わせた戦型は ${this._senkeiChip(this._senkeiLabelId(S, showOpp) || p.threat.kind, '#' + p.threat.label)} です（帯の間の #${esc(p.threat.label)} と同じ区分）。`) : '',
       ].filter(Boolean).join('');
       return { body, sources: [] };
+    }
+
+    // ---------- *.senkei ----------
+    // 戦型（SENKEI / SENKEI_GROUPS）の解説面。大分類（threat().kind やその束ね）か、
+    // 細分類のエントリを出す。戦型は両側共通の情報なので選択は 'me.senkei.<id>' に寄せる
+    // いまの組み合わせで導かれた葉のラベルの id（無ければ null）
+    _senkeiLabelId(S, showOpp) {
+      const ls = showOpp && K.constraints ? K.constraints.labels(S.me, S.opp) : [];
+      return ls.length > 1 ? ls[ls.length - 1].id : null;
+    }
+    _senkeiChip(id, text) {
+      return `<button class="vchip" data-act="senkei" data-id="${esc(id)}" aria-pressed="false">${esc(text)}</button>`;
+    }
+    _senkei(sel, S, showOpp, citer, p) {
+      const SK = K.SENKEI || {}, GR = K.SENKEI_GROUPS || {}, RES = K.SENKEI_RESOLVE || {};
+      const flatBySide = v => Array.isArray(v) ? [['', v]] : [['ibisha', v && v.ibisha || []], ['furibisha', v && v.furibisha || []]];
+      // id なしの選択（相手を下げて 'me.senkei' になったときなど）はいまの組み合わせへ握り直す
+      const id = RES[sel.id] || sel.id || this._senkeiLabelId(S, showOpp) || (p.threat && p.threat.kind);
+      const e = SK[id];
+      const groupOf = gid => GR[gid] || Object.values(GR).find(g => (g.kinds || []).includes(gid)) || null;
+      // 側別のリストは、その戦略を採っている側へ立てる（両側が無ければ自分へ）
+      const whoFor = side => (S.me.strategy === side ? 'me'
+        : (showOpp && S.opp.strategy === side) ? 'opp' : 'me');
+      const chip = (kind, cid, who) => {
+        const x = kind === 'tactic' ? findTactic(cid) : findCastle(cid);
+        return `<button class="vchip" data-act="set" data-who="${who}" data-kind="${kind}" data-id="${esc(cid)}" aria-pressed="false">${esc(x ? x.name : cid)}</button>`;
+      };
+      // tactics/castles: 配列は両側共通（自分側へ）、側別は居飛車/振り飛車のラベルつきで併記
+      const chipsSec = (title, v, kind) => {
+        const rows = flatBySide(v).filter(([, ids]) => ids.length).map(([side, ids]) =>
+          `<div class="vchips">${side ? `<span class="sk-side">${side === 'ibisha' ? '居飛車側' : '振り飛車側'}</span>` : ''}` +
+          ids.map(cid => chip(kind, cid, whoFor(side || null))).join('') + `</div>`).join('');
+        return rows ? Sec().sec(title, '押すとその層を制約にする', rows) : '';
+      };
+      // 大分類の面（戦型のエントリでない id。'taikou-i' 'aiibisha' など）
+      if (!e) {
+        const g = groupOf(id);
+        if (!g) {
+          return { body: `<div class="bd-h"><p class="bd-who">${esc(LAYER_JA.senkei)}</p><h2 class="bd-t">（不明な戦型）</h2></div>` +
+            `<p class="note">戦型「${esc(sel.id || '')}」は登録されていません。</p>`, sources: [] };
+        }
+        const members = Object.entries(SK).filter(([, x]) => x.group === id);
+        const memberChips = members.length
+          ? Sec().sec('この大分類の戦型', '押すとその戦型の解説へ',
+              `<div class="vchips">${members.map(([mid, x]) => this._senkeiChip(mid, x.name)).join('')}</div>`)
+          : '';
+        const body = [
+          `<div class="bd-h"><p class="bd-who">対戦形式（大分類）</p><h2 class="bd-t">${esc(g.name)}</h2></div>`,
+          Sec().desc(g.desc, citer),
+          memberChips,
+        ].filter(Boolean).join('');
+        return { body, sources: this._mergedSources(g.sources || []) };
+      }
+      // 戦型エントリの面: パンくず（大分類 › 親 › この戦型）
+      const group = groupOf(e.group);
+      const parent = e.parent ? SK[e.parent] : null;
+      const crumbs = [group && group.name, parent && parent.name, e.name]
+        .filter((x, i, a) => x && x !== a[i - 1]).join(' › ');
+      // いまの組み合わせでの出方（葉のラベルの sub/style への導線つき）
+      const labs = showOpp && K.constraints ? K.constraints.labels(S.me, S.opp) : [];
+      const cur = labs.find(l => l.id === id || (l.sub && l.sub.id === id) || (l.style && l.style.id === id));
+      const curNote = cur ? Sec().note(
+        `いまの組み合わせでは「#${esc(cur.label)}」と出ています。` +
+        [cur.id, cur.sub && cur.sub.id, cur.style && cur.style.id]
+          .filter(x => x && x !== id).map(x => this._senkeiChip(x, '#' + ((SK[x] || {}).name || x))).join(' ')) : '';
+      const body = [
+        `<div class="bd-h"><p class="bd-who">${esc(crumbs || LAYER_JA.senkei)}</p>` +
+          `<h2 class="bd-t">${esc(e.name)}${e.reading ? ` <span class="bd-imp">${esc(e.reading)}</span>` : ''}</h2></div>`,
+        Sec().desc(e.desc, citer),
+        e.forms ? Sec().sec('成立の形', '', `<p class="desc">${esc(e.forms)}</p>`) : '',
+        Sec().note(e.note, citer),
+        chipsSec('代表の戦法', e.tactics, 'tactic'),
+        chipsSec('代表の囲い', e.castles, 'castle'),
+        curNote,
+      ].filter(Boolean).join('');
+      return { body, sources: this._mergedSources(e.sources || []) };
     }
 
     // 選択中の側と向かい合う側（相手を表示していないとき、自分の向かいは無い）

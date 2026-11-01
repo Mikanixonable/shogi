@@ -62,6 +62,7 @@ window.Kakoi = window.Kakoi || {};
           owner: mirror ? 'sente' : 'gote', role: 'attack',
         })),
         target: (a.target || []).map(s => mirror ? mirrorSq(s) : s),
+        tesuji: (a.tesuji || []),   // 図示したい手筋への参照（囲い側 attacks[].tesuji）
         showPieces: !state.showOpp,
         defenses: this._defenses(state, st, a, mirror),
       };
@@ -75,7 +76,9 @@ window.Kakoi = window.Kakoi || {};
         strategy: st.strategy, tacticIds: st.tacticIds, castleId: st.castleId, side: 'sente',
       }).position;
       return list.map(t => {
-        const r = t.id === 'sokofu' ? K.tesuji.sokofu(pos, attack) : null;
+        // 受けの位置を求める関数は手筋ごとの登録表 K.tesuji.defenders[id]（§5-4。sokofu 固定の解消）
+        const fn = K.tesuji.defenders && K.tesuji.defenders[t.id];
+        const r = fn ? fn(pos, attack) : null;
         return r && {
           tesuji: t, sq: mirror ? mirrorSq(r.sq) : r.sq, mark: mirror ? '△' : '▲',
           kinzoko: r.kinzoko, nifu: r.nifu, on: state.defense === t.id,
@@ -83,7 +86,18 @@ window.Kakoi = window.Kakoi || {};
       }).filter(Boolean);
     }
 
-    // 駒レイヤに効く入力だけを見る（selected の変更では再描画しない）
+    // 選択中の囲いの急所のマス（onCastle.weak → K.tesuji.weakSquares。相手の囲いなら反転）
+    _castleWeak(state, S) {
+      const sel = parseSel(state.selected);
+      if (!sel || sel.kind !== 'castle' || !K.tesuji || !K.tesuji.weakSquares) return [];
+      const st = S[sel.who];
+      const castle = st && st.castleId ? this.repo.byId(st.castleId) : null;
+      if (!castle) return [];
+      const ws = K.tesuji.weakSquares(castle);
+      return sel.who === 'opp' ? ws.map(mirrorSq) : ws;
+    }
+
+    // 駒レイヤに効く入力だけを見る（selected の変更では再描画しない。急所は囲い id で決まる）
     _renderKeyOf(state, d, attack) {
       const { S } = d;
       return JSON.stringify({
@@ -98,12 +112,13 @@ window.Kakoi = window.Kakoi || {};
     update(state, changed) {
       const d = this._compute(state);
       const attack = this._attackInfo(state, d.S);
+      const weak = this._castleWeak(state, d.S);
       const hard = changed.has('initial');
       const key = this._renderKeyOf(state, d, attack);
       const redraw = key !== this._renderKey;
       if (hard || redraw) {
         this._renderKey = key;
-        this._renderBoard(state, d, attack, !hard && changed.has('slots'));
+        this._renderBoard(state, d, attack, weak, !hard && changed.has('slots'));
       } else if (changed.has('mode')) {
         this.board.setMode(state.mode);
       }
@@ -120,11 +135,11 @@ window.Kakoi = window.Kakoi || {};
     }
 
     // 盤の駒レイヤ＋重ね表示。selected のみの更新では来ない
-    _renderBoard(state, d, attack, animate) {
+    _renderBoard(state, d, attack, weak, animate) {
       const { S, merged } = d;
-      // 受けの手筋を押しているときは、その歩を盤に置く（主役の駒と同じ朱で強調）
+      // 受けの手筋を押しているときは、手筋の駒を盤に置く（主役の駒と同じ朱で強調）
       const defPieces = attack ? attack.defenses.filter(x => x.on).map(x => ({
-        p: '歩', f: +x.sq[0], r: +x.sq[1], owner: attack.who === 'opp' ? 'gote' : 'sente', role: 'lead',
+        p: x.tesuji.piece, f: +x.sq[0], r: +x.sq[1], owner: attack.who === 'opp' ? 'gote' : 'sente', role: 'lead',
       })) : [];
       const position = attack && (attack.showPieces || defPieces.length)
         ? new K.Position([...merged.position.pieces, ...(attack.showPieces ? attack.pieces : []), ...defPieces],
@@ -136,6 +151,7 @@ window.Kakoi = window.Kakoi || {};
       this.board.setLasting([
         ...merged.contacts.filter(c => c.kind === 'ng').map(c => c.sq),
         ...(attack ? attack.target : []),
+        ...(weak || []),   // この囲いの急所（onCastle.weak）を朱で示す（§5-8）
       ], 'bad');
       // 自分の戦法が変わったときは主役の駒を経路どおりに滑らせる（旧戦法画面と同じ。
       // 複数採用では主の戦法=飛車優先を動かす）
@@ -235,9 +251,9 @@ window.Kakoi = window.Kakoi || {};
         attackId: state.attackId,
         contacts: d.merged.contacts,   // merge 済みの接触を共有する（S5: 再計算しない）
         defenses: sel.kind === 'castle' && attack ? attack.defenses : [],
-        forks: sel.kind === 'strategy' ? null : {
+        forks: (sel.kind === 'tactic' || sel.kind === 'castle') ? {
           list: (d.forks && d.forks[sel.who]) || [], attacker: sel.who === 'me' ? '△' : '▲', mine: sel.who === 'me',
-        },
+        } : null,
         ng,
         suggest: ng ? K.constraints.suggest(state.slots, state.showOpp, sel.who, sel.kind, 6,
             sel.kind === 'tactic' ? tacId : null)

@@ -9,6 +9,9 @@ window.Kakoi = window.Kakoi || {};
   const RATING_KEYS = ['hard', 'wide', 'top', 'side', 'quick'];
   const TACTIC_RATING_KEYS = ['attack', 'speed', 'flex', 'safety', 'easy'];
   const TOKEN = /^[玉飛角金銀桂香歩][1-9][1-9]$/;
+  // 手筋の図（diagram.frames）だけ成駒（と杏圭全馬龍・竜は龍に正規化）を認める
+  const DIAGRAM_TOKEN = /^[玉飛角金銀桂香歩と杏圭全馬龍竜][1-9][1-9]$/;
+  const HAND_TOKEN = /^[歩香桂銀金角飛]+$/;
   const SQ = /^[1-9][1-9]$/;
   // [[ref]] / [[ref1|ref2]] の出典トークンの形は html.js が唯一の権威（Kakoi.html.citeRefs を使う）
   const isStr = v => typeof v === 'string' && v.length > 0;
@@ -78,6 +81,68 @@ window.Kakoi = window.Kakoi || {};
     return new Set((isArr(sources) ? sources : []).filter(s => s && isStr(s.ref)).map(s => s.ref));
   }
 
+  /** 格言 id の集合。ctx.PROVERBS（tesuji.js の台帳）を優先し、無ければ ctx.TESUJI の proverbs から集める */
+  function proverbIds(ctx) {
+    const ids = new Set();
+    for (const p of isArr(ctx && ctx.PROVERBS) ? ctx.PROVERBS : []) if (p && isStr(p.id)) ids.add(p.id);
+    if (!ids.size) for (const t of isArr(ctx && ctx.TESUJI) ? ctx.TESUJI : []) {
+      for (const id of (t && isArr(t.proverbs) ? t.proverbs : [])) ids.add(id);
+    }
+    return ids;
+  }
+  // proverbs の要素が格言 id か自由文かを分ける簡易判定（台帳の id は小文字英数とハイフン）
+  const PROVERB_ID = /^[a-z0-9-]+$/;
+
+  /**
+   * 読み物フィールド（README §3-2）: history / origin / steps / players / proverbs。
+   * 任意項目なので欠落はエラーにせず、形式が違うものだけを報告する。
+   *   history・origin: 文字列
+   *   steps: 文字列（'▲7六歩 ▲6八銀 …'。各手は ▲ か △ で始まる。coverage-tesuji §5-7）
+   *   players: 配列（各要素は文字列、または { name, games? }）
+   *   proverbs: 配列（各要素は格言 id（PROVERBS 台帳）か自由文の文字列）
+   */
+  function readingFields(o, ctx, errors) {
+    if (o.history !== undefined && !isStr(o.history)) errors.push('historyが文字列でない');
+    if (o.origin !== undefined && !isStr(o.origin)) errors.push('originが文字列でない');
+    if (o.steps !== undefined) {
+      if (!isStr(o.steps)) errors.push('stepsが文字列でない');
+      else for (const m of o.steps.trim().split(/\s+/).filter(Boolean))
+        if (!/^[▲△]/.test(m)) errors.push(`stepsの手が▲/△で始まらない: ${m}`);
+    }
+    if (o.players !== undefined) {
+      const ok = isArr(o.players) && o.players.every(p =>
+        isStr(p) || (p && !isArr(p) && typeof p === 'object' && isStr(p.name) && (p.games === undefined || isStr(p.games))));
+      if (!ok) errors.push('playersが文字列または{name, games?}の配列でない');
+    }
+    if (o.proverbs !== undefined) {
+      if (!isArr(o.proverbs) || !o.proverbs.every(isStr)) errors.push('proverbsが文字列の配列でない');
+      else {
+        const ids = proverbIds(ctx);
+        o.proverbs.forEach((p, i) => {
+          if (PROVERB_ID.test(p) && !ids.has(p)) errors.push(`proverbs[${i}]は未登録の格言idに見える: ${p}`);
+        });
+      }
+    }
+  }
+
+  /** 読み物フィールド内の [[ref]] を desc などと同じく登録・宣言済みの出典か検査し、引用 ref を cited に集める */
+  function citeReading(o, ctx, declared, cited, errors) {
+    const add = s => { for (const r of s) cited.add(r); };
+    add(cites(ctx, o.history, declared, 'history', errors));
+    add(cites(ctx, o.origin, declared, 'origin', errors));
+    add(cites(ctx, o.steps, declared, 'steps', errors));
+    (isArr(o.players) ? o.players : []).forEach((p, i) => {
+      if (isStr(p)) add(cites(ctx, p, declared, `players[${i}]`, errors));
+      else if (p && typeof p === 'object' && !isArr(p)) {
+        add(cites(ctx, p.name, declared, `players[${i}].name`, errors));
+        add(cites(ctx, p.games, declared, `players[${i}].games`, errors));
+      }
+    });
+    (isArr(o.proverbs) ? o.proverbs : []).forEach((p, i) => {
+      if (isStr(p) && !PROVERB_ID.test(p)) add(cites(ctx, p, declared, `proverbs[${i}]`, errors));
+    });
+  }
+
   /** 先手の駒（盤上＋持ち駒）が全部で1組と一致するか。持ち駒は "角" のような文字列（1文字1枚）か配列。
       setup.missing（駒落ちで欠ける駒）があれば期待枚数から差し引く */
   function fullSet(list, hand, errors, missing) {
@@ -117,6 +182,8 @@ window.Kakoi = window.Kakoi || {};
     if (c.kingWing !== undefined && !['rook', 'left', 'right', 'center'].includes(c.kingWing)) errors.push(`kingWing不正: ${c.kingWing}`);
     if (c.strategies !== undefined && !(isArr(c.strategies) && c.strategies.length > 0 && c.strategies.every(s => s === 'ibisha' || s === 'furibisha')))
       errors.push('strategiesがibisha/furibishaの空でない配列でない');
+    // 読み物フィールド（README §3-2）: history / origin / steps / players / proverbs は任意。形式だけ検査
+    readingFields(c, ctx, errors);
     if (!['ibisha', 'furibisha'].includes(c.side)) errors.push(`side不正: ${c.side}`);
     const setup = isStr(c.setup) && ctx.SETUPS ? ctx.SETUPS[c.setup] : undefined;
     if (!setup) errors.push(`setup未登録: ${c.setup}`);
@@ -214,6 +281,7 @@ window.Kakoi = window.Kakoi || {};
       (isArr(c.pros) ? c.pros : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `pros[${i}]`, errors)));
       (isArr(c.cons) ? c.cons : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `cons[${i}]`, errors)));
       (isArr(c.attacks) ? c.attacks : []).forEach((a, i) => add(cites(ctx, a && a.t, declared, `attacks[${i}]`, errors)));
+      citeReading(c, ctx, declared, cited, errors);
       const uncited = [...declared].filter(r => !cited.has(r));
       if (uncited.length) warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
     }
@@ -286,6 +354,8 @@ window.Kakoi = window.Kakoi || {};
   function tacticBody(t, ctx, errors, warnings) {
     if (t.basic !== undefined && t.basic !== true) errors.push('basicはtrueだけを書く');
     if (t.basic && t.variantOf) errors.push('派生（variantOf）はbasicにしない');
+    // turn: 後手番専用の表示フラグ（§4-4。書くなら 'gote' だけ）
+    if (t.turn !== undefined && t.turn !== 'gote') errors.push(`turnは'gote'だけを書く: ${t.turn}`);
     for (const k of ['id', 'name', 'reading', 'pieces', 'context', 'desc'])
       if (!isStr(t[k])) errors.push(`必須項目なし: ${k}`);
     const fam = isArr(ctx.TACTIC_FAMILIES) ? ctx.TACTIC_FAMILIES.find(f => f && f.id === t.family) : undefined;
@@ -297,6 +367,8 @@ window.Kakoi = window.Kakoi || {};
     }
     // senkei: 戦型判定用のタグ（角換わり・相掛かりなど。§1-4 / §6-2）
     if (t.senkei !== undefined && !(isArr(t.senkei) && t.senkei.every(isStr))) errors.push('senkeiが文字列の配列でない');
+    // 読み物フィールド（README §3-2）: history / origin / steps / players / proverbs は任意。形式だけ検査
+    readingFields(t, ctx, errors);
     for (const [name, list] of [['pros', t.pros], ['cons', t.cons]]) {
       if (!isArr(list)) { errors.push(`${name}が配列でない`); continue; }
       list.forEach((x, i) => { if (!x || !isStr(x.t)) errors.push(`${name}[${i}].tなし`); });
@@ -455,6 +527,7 @@ window.Kakoi = window.Kakoi || {};
       add(cites(ctx, t.note, declared, 'note', errors));
       (isArr(t.pros) ? t.pros : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `pros[${i}]`, errors)));
       (isArr(t.cons) ? t.cons : []).forEach((x, i) => add(cites(ctx, x && x.t, declared, `cons[${i}]`, errors)));
+      citeReading(t, ctx, declared, cited, errors);
       const uncited = [...declared].filter(r => !cited.has(r));
       if (uncited.length) warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
     }
@@ -481,7 +554,294 @@ window.Kakoi = window.Kakoi || {};
     return r;
   }
 
-  /** 全データの検査。ctx = { CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS, TACTIC_FAMILIES, STRATEGIES? } */
+  /** お楽しみ（fun.js）: proverbs / memes は t・n・src(登録済みの ref)が必須。videos は t・n と YouTube 検索の u */
+  function fun(F, ctx) {
+    const r = result();
+    for (const [name, needSrc] of [['proverbs', true], ['memes', true], ['videos', false]]) {
+      const list = F && F[name];
+      if (!isArr(list) || !list.length) { r.errors.push(`${name}が空または配列でない`); continue; }
+      const seen = new Set();
+      list.forEach((x, i) => {
+        if (!x || !isStr(x.t) || !isStr(x.n)) { r.errors.push(`${name}[${i}]にt/nがない`); return; }
+        if (seen.has(x.t)) r.errors.push(`${name}[${i}]が重複: ${x.t}`);
+        seen.add(x.t);
+        if (needSrc) {
+          if (!isArr(x.src) || !x.src.length) r.errors.push(`${name}[${i}](${x.t})にsrcがない`);
+          else for (const s of x.src) if (!s || !ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`${name}[${i}](${x.t})の出典が未登録: ${s && s.ref}`);
+        } else if (!/^https:\/\/www\.youtube\.com\/results\?search_query=/.test(x.u || '')) r.errors.push(`${name}[${i}](${x.t})のuがYouTube検索のURLでない`);
+      });
+    }
+    return r;
+  }
+
+  /** 戦型（senkei.js）1件の検査（coverage-senkei §3-5）。
+      tactics/castles（側別 {ibisha,furibisha} も平坦化）・group・parent・[[ref]] の整合。
+      axis/when は任意。when はデータ保持の形だけ見る（評価器は作らない） */
+  function senkeiEntry(e, ctx) {
+    const r = result();
+    try {
+      if (!e || typeof e !== 'object') { r.errors.push('戦型がオブジェクトでない'); return r; }
+      for (const k of ['name', 'desc']) if (!isStr(e[k])) r.errors.push(`必須項目なし: ${k}`);
+      const SK = ctx.SENKEI || {}, GR = ctx.SENKEI_GROUPS || {};
+      const flat = v => Array.isArray(v) ? v : [...(v && v.ibisha || []), ...(v && v.furibisha || [])];
+      const tIds = new Set((isArr(ctx.TACTICS) ? ctx.TACTICS : []).map(t => t && t.id));
+      const cIds = new Set((isArr(ctx.CASTLES) ? ctx.CASTLES : []).map(c => c && c.id));
+      if (e.group !== undefined && !GR[e.group]) r.errors.push(`group未登録: ${e.group}`);
+      if (e.parent !== undefined && !SK[e.parent]) r.errors.push(`parent未登録: ${e.parent}`);
+      if (e.axis !== undefined && !['rook', 'approach', 'style'].includes(e.axis)) r.errors.push(`axis不正: ${e.axis}`);
+      if (e.when !== undefined && (typeof e.when !== 'object' || e.when === null || isArr(e.when)))
+        r.errors.push('whenがオブジェクトでない');
+      for (const [k, v] of [['tactics', e.tactics], ['castles', e.castles]]) {
+        if (v === undefined) continue;
+        const shapeOk = isArr(v) || (v && typeof v === 'object'
+          && Object.keys(v).every(x => x === 'ibisha' || x === 'furibisha')
+          && Object.values(v).every(x => x === undefined || isArr(x)));
+        if (!shapeOk) { r.errors.push(`${k}が配列でも側別オブジェクトでもない`); continue; }
+        const ids = k === 'tactics' ? tIds : cIds;
+        for (const id of flat(v)) if (!ids.has(id)) r.errors.push(`${k}未登録: ${id}`);
+      }
+      if (!isArr(e.sources) || e.sources.length === 0) r.errors.push('sourcesが空');
+      else e.sources.forEach((s, i) => {
+        if (!s || !isStr(s.ref)) r.errors.push(`sources[${i}].refなし`);
+        else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`未登録の出典: ${s.ref}`);
+      });
+      const declared = declaredRefs(e.sources);
+      const cited = new Set([
+        ...cites(ctx, e.desc, declared, 'desc', r.errors),
+        ...cites(ctx, e.note, declared, 'note', r.errors),
+      ]);
+      const uncited = [...declared].filter(x => !cited.has(x));
+      if (uncited.length) r.warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  /** 戦型の大分類（SENKEI_GROUPS）1件の検査。name・desc の [[ref]] を見る */
+  function senkeiGroup(g, ctx) {
+    const r = result();
+    try {
+      if (!g || typeof g !== 'object') { r.errors.push('大分類がオブジェクトでない'); return r; }
+      for (const k of ['name', 'desc']) if (!isStr(g[k])) r.errors.push(`必須項目なし: ${k}`);
+      for (const s of (isArr(g.sources) ? g.sources : [])) {
+        if (!s || !isStr(s.ref)) r.errors.push('sourcesのrefなし');
+        else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`未登録の出典: ${s.ref}`);
+      }
+      const declared = declaredRefs(g.sources);
+      cites(ctx, g.desc, declared, 'desc', r.errors);
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  // ---------- 手筋・格言・定番セット（coverage-tesuji §5-3〜§5-9） ----------
+  // 図の駒列を DIAGRAM_TOKEN で読む（pieces() の成駒対応版）
+  function diaPieces(str, label, errors, extra) {
+    if (str === undefined || str === null || str === '') return [];
+    if (typeof str !== 'string') { errors.push(`${label}が文字列でない`); return []; }
+    const good = [];
+    for (const t of str.trim().split(/\s+/).filter(Boolean)) {
+      if (DIAGRAM_TOKEN.test(t)) good.push(t);
+      else errors.push(`${label}の駒表記が不正: ${t}`);
+    }
+    return parsePieces(good.join(' '), extra);
+  }
+  const PIECE_CHARS_ALL = '玉飛角金銀桂香歩と杏圭全馬龍';
+  const PROVERB_GROUPS = ['opening', 'pieces', 'defense', 'endgame'];
+
+  /** 手筋1件の検査。ctx = { CASTLES, SOURCES, TESUJI?, PROVERBS? }（coverage-tesuji §5-3） */
+  function tesuji(t, ctx) {
+    const r = result();
+    const errors = r.errors, warnings = r.warnings;
+    try {
+      if (!t || typeof t !== 'object') { errors.push('手筋がオブジェクトでない'); return r; }
+      for (const k of ['id', 'name', 'reading', 'desc']) if (!isStr(t[k])) errors.push(`必須項目なし: ${k}`);
+      if (!['attack', 'defense', 'both'].includes(t.role)) errors.push(`role不正: ${t.role}`);
+      if (!(isStr(t.piece) && t.piece.length === 1 && PIECE_CHARS_ALL.includes(t.piece))) errors.push(`piece不正: ${t.piece}`);
+      if (t.aliases !== undefined && !(isArr(t.aliases) && t.aliases.every(isStr))) errors.push('aliasesが文字列の配列でない');
+      if (t.note !== undefined) {
+        if (typeof t.note !== 'string') errors.push('noteが文字列でない');
+        else if (t.note.includes('【要確認】')) warnings.push(`要確認: ${t.note}`);
+      }
+      // counters: 受けの手筋→攻め筋 id（どれかの囲いの attacks にある id であること）
+      if (t.counters !== undefined) {
+        if (!isArr(t.counters) || !t.counters.every(isStr)) errors.push('countersが文字列の配列でない');
+        else {
+          const atkIds = new Set((isArr(ctx.CASTLES) ? ctx.CASTLES : []).flatMap(c => (c.attacks || []).map(a => a.id)));
+          for (const id of t.counters) if (!atkIds.has(id)) errors.push(`countersの攻め筋idがどの囲いにも無い: ${id}`);
+        }
+      }
+      // detect: 検出器の登録表（K.tesuji.detectors）にある id だけ
+      if (t.detect !== undefined && !(Kakoi.tesuji && Kakoi.tesuji.detectors && Kakoi.tesuji.detectors[t.detect]))
+        errors.push(`detect未登録の検出器: ${t.detect}`);
+      // proverbs: 格言 id（PROVERBS 台帳）
+      if (t.proverbs !== undefined) {
+        if (!isArr(t.proverbs) || !t.proverbs.every(isStr)) errors.push('proverbsが文字列の配列でない');
+        else {
+          const ids = proverbIds(ctx);
+          for (const id of t.proverbs) if (!ids.has(id)) errors.push(`proverbs未登録: ${id}`);
+        }
+      }
+      // onCastle（任意）: 崩し方が対象とする囲い（§5-4）
+      if (t.onCastle !== undefined) {
+        const oc = t.onCastle;
+        if (!oc || typeof oc !== 'object' || isArr(oc)) errors.push('onCastleがオブジェクトでない');
+        else {
+          if (!['sente', 'gote'].includes(oc.side)) errors.push(`onCastle.side不正: ${oc.side}`);
+          const cIds = new Set((isArr(ctx.CASTLES) ? ctx.CASTLES : []).map(c => c && c.id));
+          for (const k of ['ids', 'mirrorIds']) {
+            if (oc[k] !== undefined && !(isArr(oc[k]) && oc[k].every(isStr))) errors.push(`onCastle.${k}が文字列の配列でない`);
+            else for (const id of oc[k] || []) if (!cIds.has(id)) errors.push(`onCastle.${k}未登録: ${id}`);
+          }
+          if (!isStr(oc.requires)) errors.push('onCastle.requiresなし');
+          else diaPieces(oc.requires, 'onCastle.requires', errors);
+          checkSquares(oc.weak || [], 'onCastle.weak', errors);
+          if (oc.note !== undefined && !isStr(oc.note)) errors.push('onCastle.noteが文字列でない');
+        }
+      }
+      // diagram: 窓とコマ送り（§5-0〜§5-3。handGote/turn/mate は任意の拡張）
+      const d = t.diagram;
+      if (!d || typeof d !== 'object') errors.push('diagramなし');
+      else {
+        const win = (v, name) => {
+          if (!(isArr(v) && v.length === 2 && v.every(n => Number.isInteger(n) && n >= 1 && n <= 9))) errors.push(`${name}が1..9の2要素でない`);
+          else if (v[0] > v[1]) errors.push(`${name}の範囲が逆`);
+        };
+        win(d.files, 'diagram.files'); win(d.ranks, 'diagram.ranks');
+        // turn: 後手番専用の表示フラグ（書くなら 'gote' だけ。'sente' は既定なので省略する）
+        if (d.turn !== undefined && d.turn !== 'gote') errors.push(`diagram.turnは'gote'だけを書く: ${d.turn}`);
+        if (d.full !== undefined && d.full !== true) errors.push('diagram.fullはtrueだけを書く');
+        if (!isArr(d.frames) || d.frames.length === 0) errors.push('diagram.framesが空または配列でない');
+        else {
+          d.frames.forEach((fr, i) => {
+            if (!fr || typeof fr !== 'object') { errors.push(`frames[${i}]がオブジェクトでない`); return; }
+            const list = [
+              ...diaPieces(fr.sente, `frames[${i}].sente`, errors, { owner: 'sente' }),
+              ...diaPieces(fr.gote, `frames[${i}].gote`, errors, { owner: 'gote' }),
+            ];
+            // 二歩は side ごとの禁則（先手と後手の歩が同じ筋に居てもよい）
+            dupAndNifu(list.filter(x => x.owner === 'sente'), `frames[${i}].sente`, errors);
+            dupAndNifu(list.filter(x => x.owner === 'gote'), `frames[${i}].gote`, errors);
+            deadSquares(list.filter(x => x.owner === 'sente'), 'sente', `frames[${i}].sente`, errors);
+            deadSquares(list.filter(x => x.owner === 'gote'), 'gote', `frames[${i}].gote`, errors);
+            if (isArr(d.files) && isArr(d.ranks)) for (const x of list)
+              if (x.f < d.files[0] || x.f > d.files[1] || x.r < d.ranks[0] || x.r > d.ranks[1])
+                errors.push(`frames[${i}]: ${x.p}${x.f}${x.r} が窓の外`);
+            for (const k of ['hand', 'handGote'])
+              if (fr[k] !== undefined && !(typeof fr[k] === 'string' && (fr[k] === '' || HAND_TOKEN.test(fr[k]))))
+                errors.push(`frames[${i}].${k}が持ち駒の書式でない: ${fr[k]}`);
+            if (fr.move !== undefined) {
+              if (!isStr(fr.move)) errors.push(`frames[${i}].moveが文字列でない`);
+              else for (const m of fr.move.replace(/（[^）]*）/g, ' ').trim().split(/\s+/).filter(Boolean))
+                if (!/^[▲△]/.test(m)) errors.push(`frames[${i}].moveの手が▲/△で始まらない: ${m}`);
+            }
+            if (fr.mate !== undefined && fr.mate !== true) errors.push(`frames[${i}].mateはtrueだけを書く`);
+            if (fr.caption !== undefined && typeof fr.caption !== 'string') errors.push(`frames[${i}].captionが文字列でない`);
+          });
+        }
+      }
+      // 手順の合法性の検算（core/tesuji-check.js）
+      if (Kakoi.tesujiCheck) {
+        for (const i of Kakoi.tesujiCheck.check(t).issues) errors.push(`検算: ${i}`);
+        for (const i of Kakoi.tesujiCheck.onCastleIssues(t, ctx)) errors.push(i);
+      }
+      // sources と [[ref]] の整合
+      if (!isArr(t.sources) || t.sources.length === 0) errors.push('sourcesが空');
+      else {
+        t.sources.forEach((s, i) => {
+          if (!s || !isStr(s.ref)) errors.push(`sources[${i}].refなし`);
+          else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) errors.push(`未登録の出典: ${s.ref}`);
+          if (!s || !isStr(s.for)) errors.push(`sources[${i}].forなし`);
+        });
+        const declared = declaredRefs(t.sources);
+        const cited = new Set([...cites(ctx, t.desc, declared, 'desc', errors), ...cites(ctx, t.note, declared, 'note', errors)]);
+        const uncited = [...declared].filter(x => !cited.has(x));
+        if (uncited.length) warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
+      }
+    } catch (x) { errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  /** 格言1件の検査（§5-9。id/group/text/reading/desc・任意の alt/links/fun/sources） */
+  function proverb(p, ctx) {
+    const r = result();
+    try {
+      if (!p || typeof p !== 'object') { r.errors.push('格言がオブジェクトでない'); return r; }
+      for (const k of ['id', 'group', 'text', 'reading', 'desc']) if (!isStr(p[k])) r.errors.push(`必須項目なし: ${k}`);
+      const groups = isArr(ctx.PROVERB_GROUPS) ? ctx.PROVERB_GROUPS.map(g => isArr(g) ? g[0] : g) : PROVERB_GROUPS;
+      if (!groups.includes(p.group)) r.errors.push(`group未登録: ${p.group}`);
+      if (p.alt !== undefined && !(isArr(p.alt) && p.alt.every(isStr))) r.errors.push('altが文字列の配列でない');
+      if (p.fun !== undefined && typeof p.fun !== 'boolean') r.errors.push('funが真偽値でない');
+      if (p.links !== undefined) {
+        const L = p.links;
+        if (!L || typeof L !== 'object' || isArr(L)) r.errors.push('linksがオブジェクトでない');
+        else {
+          for (const l of L.tesuji || []) {
+            if (!l || !isStr(l.id)) r.errors.push('links.tesujiの要素にidがない');
+            if (!['source', 'inferred', 'weak'].includes(l.basis)) r.errors.push(`links.tesujiのbasis不正: ${l.basis}`);
+          }
+          for (const k of ['attacks', 'families', 'tactics'])
+            if (L[k] !== undefined && !(isArr(L[k]) && L[k].every(isStr))) r.errors.push(`links.${k}が文字列の配列でない`);
+          if (L.castles !== undefined) {
+            const c = L.castles, cIds = new Set((isArr(ctx.CASTLES) ? ctx.CASTLES : []).map(x => x && x.id));
+            if (isArr(c)) for (const id of c) { if (!cIds.has(id)) r.errors.push(`links.castles未登録: ${id}`); }
+            else if (c && typeof c === 'object') {
+              for (const id of c.ids || []) if (!cIds.has(id)) r.errors.push(`links.castles未登録: ${id}`);
+              if (c.when !== undefined && !isStr(c.when)) r.errors.push('links.castles.whenが文字列でない');
+            } else r.errors.push('links.castlesが配列でもオブジェクトでもない');
+          }
+        }
+      }
+      if (p.sources !== undefined) {
+        if (!isArr(p.sources)) r.errors.push('sourcesが配列でない');
+        else {
+          for (const s of p.sources) {
+            if (!s || !isStr(s.ref)) r.errors.push('sourcesのrefなし');
+            else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`未登録の出典: ${s.ref}`);
+            if (!s || !isStr(s.for)) r.errors.push('sourcesのforなし');
+          }
+        }
+      }
+      // [[ref]] は登録済みであること（台帳の desc は sources 宣言なしで引用してよい）
+      for (const ref of Kakoi.html.citeRefs(p.desc))
+        if (!ctx.SOURCES || !ctx.SOURCES[ref]) r.errors.push(`desc: 未登録の出典トークン ${ref}`);
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  /** 定番セット1件の検査（combos.js: tactic×castle の両方が登録済みの id であること） */
+  function combo(c, ctx) {
+    const r = result();
+    try {
+      if (!c || typeof c !== 'object') { r.errors.push('定番セットがオブジェクトでない'); return r; }
+      for (const k of ['id', 'name', 'reading', 'desc']) if (!isStr(c[k])) r.errors.push(`必須項目なし: ${k}`);
+      const tIds = new Set((isArr(ctx.TACTICS) ? ctx.TACTICS : []).map(t => t && t.id));
+      const cIds = new Set((isArr(ctx.CASTLES) ? ctx.CASTLES : []).map(x => x && x.id));
+      if (!tIds.has(c.tactic)) r.errors.push(`tactic未登録: ${c.tactic}`);
+      if (!cIds.has(c.castle)) r.errors.push(`castle未登録: ${c.castle}`);
+      for (const k of ['named', 'basic']) if (c[k] !== undefined && c[k] !== true) r.errors.push(`${k}はtrueだけを書く`);
+      if (c.vs !== undefined) {
+        if (!c.vs || typeof c.vs !== 'object' || isArr(c.vs)) r.errors.push('vsがオブジェクトでない');
+        else {
+          if (!tIds.has(c.vs.tactic)) r.errors.push(`vs.tactic未登録: ${c.vs.tactic}`);
+          if (!cIds.has(c.vs.castle)) r.errors.push(`vs.castle未登録: ${c.vs.castle}`);
+        }
+      }
+      if (!isArr(c.sources) || c.sources.length === 0) r.errors.push('sourcesが空');
+      else {
+        for (const s of c.sources) {
+          if (!s || !isStr(s.ref)) r.errors.push('sourcesのrefなし');
+          else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`未登録の出典: ${s.ref}`);
+          if (!s || !isStr(s.for)) r.errors.push('sourcesのforなし');
+        }
+        const declared = declaredRefs(c.sources);
+        const cited = cites(ctx, c.desc, declared, 'desc', r.errors);
+        const uncited = [...declared].filter(x => !cited.has(x));
+        if (uncited.length) r.warnings.push(`宣言済みだが本文で未引用の出典: ${uncited.join(', ')}`);
+      }
+    } catch (x) { r.errors.push(`検証中の例外: ${x && x.message}`); }
+    return r;
+  }
+
+  /** 全データの検査。ctx = { CASTLES, SETUPS, SOURCES, CASTLE_FAMILIES, TACTICS, TACTIC_FAMILIES, STRATEGIES?, SENKEI?, SENKEI_GROUPS? } */
   function all(ctx) {
     const results = [], warnings = [];
     const used = new Set(), seen = new Set(), tseen = new Set();
@@ -547,10 +907,48 @@ window.Kakoi = window.Kakoi || {};
         results.push({ kind: 'strategy', id: sid, ...r });
       }
     }
-    // 手筋・格言・定番セット（tesuji.js / combos.js）と戦型（senkei.js）の出典も参照済みとして数える
+    // 戦型（senkei.js。coverage-senkei §3-5）: エントリと大分類の参照整合
+    for (const [sid, e] of Object.entries(ctx.SENKEI || {}))
+      results.push({ kind: 'senkei', id: sid, ...senkeiEntry(e, ctx) });
+    for (const [gid, g] of Object.entries(ctx.SENKEI_GROUPS || {}))
+      results.push({ kind: 'senkeiGroup', id: gid, ...senkeiGroup(g, ctx) });
+    // 手筋・格言・定番セット（tesuji.js / combos.js。coverage-tesuji §5-3〜§5-9）
+    {
+      const tjIds = new Set();
+      for (const t of isArr(ctx.TESUJI) ? ctx.TESUJI : []) {
+        const r = tesuji(t, ctx);
+        if (t && tjIds.has(t.id)) r.errors.push(`idが重複: ${t.id}`);
+        if (t) tjIds.add(t.id);
+        results.push({ kind: 'tesuji', id: t && t.id, ...r });
+      }
+      const pvIds = new Set();
+      for (const p of isArr(ctx.PROVERBS) ? ctx.PROVERBS : []) {
+        const r = proverb(p, ctx);
+        if (p && pvIds.has(p.id)) r.errors.push(`idが重複: ${p.id}`);
+        if (p) pvIds.add(p.id);
+        results.push({ kind: 'proverb', id: p && p.id, ...r });
+      }
+      const cbIds = new Set();
+      for (const c of isArr(ctx.COMBOS) ? ctx.COMBOS : []) {
+        const r = combo(c, ctx);
+        if (c && cbIds.has(c.id)) r.errors.push(`idが重複: ${c.id}`);
+        if (c) cbIds.add(c.id);
+        results.push({ kind: 'combo', id: c && c.id, ...r });
+      }
+    }
+    // 手筋・格言・定番セット（tesuji.js / combos.js）と戦型（senkei.js・SENKEI_GROUPS）の出典も参照済みとして数える
     for (const t of [...(isArr(ctx.TESUJI) ? ctx.TESUJI : []), ...(isArr(ctx.COMBOS) ? ctx.COMBOS : []),
-        ...Object.values(ctx.SENKEI || {})]) {
+        ...(isArr(ctx.PROVERBS) ? ctx.PROVERBS : []),
+        ...Object.values(ctx.SENKEI || {}), ...Object.values(ctx.SENKEI_GROUPS || {})]) {
       for (const s of (t && isArr(t.sources) ? t.sources : [])) if (s && s.ref) used.add(s.ref);
+    }
+    // お楽しみ（fun.js）: proverbs / memes の src の ref も参照済みとして数える
+    if (ctx.FUN) {
+      results.push({ kind: 'fun', id: 'FUN', ...fun(ctx.FUN, ctx) });
+      for (const x of [...(isArr(ctx.FUN.proverbs) ? ctx.FUN.proverbs : []),
+          ...(isArr(ctx.FUN.memes) ? ctx.FUN.memes : [])]) {
+        for (const s of (x && isArr(x.src) ? x.src : [])) if (s && s.ref) used.add(s.ref);
+      }
     }
     for (const [ref, s] of Object.entries(ctx.SOURCES || {})) {
       results.push({ kind: 'source', id: ref, ...source(ref, s) });
@@ -559,5 +957,5 @@ window.Kakoi = window.Kakoi || {};
     return { results, warnings };
   }
 
-  Kakoi.validate = { castle, family, tacticFamily, tactic, setup, source, all };
+  Kakoi.validate = { castle, family, tacticFamily, tactic, setup, source, fun, tesuji, proverb, combo, all };
 })();

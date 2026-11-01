@@ -333,6 +333,15 @@ window.Kakoi = window.Kakoi || {};
   // 読み物の末尾にそっと添える余白のコーナー（js/data/fun.js）。
   // 格言は選択中の制約から1つ引く（項目を変えると別の格言が出る）＋「もう一つ」で引き直し。
   // ミーム・動画は <details> に畳んで、読みたい人だけ開く
+
+  // 出典の1行（番号なし）。fun の項目が持つ src: [{ ref, for }] を「出典: タイトル（発行元）」のリンクにする
+  const srcLine = src => {
+    const links = (src || []).map(s => K.SOURCES[s.ref]).filter(Boolean)
+      .map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}（${esc(s.publisher)}）</a>`);
+    return links.length ? `<small class="fun-src">出典: ${links.join(' / ')}</small>` : '';
+  };
+  const proverbHTML = pv => `<b>「${esc(pv.t)}」</b><span>${esc(pv.n)}</span>${srcLine(pv.src)}`;
+
   function fun(sel) {
     const F = K.FUN;
     if (!F || !F.proverbs.length) return '';
@@ -341,12 +350,13 @@ window.Kakoi = window.Kakoi || {};
     for (const ch of key) h = (h * 31 + ch.codePointAt(0)) >>> 0;
     const pv = F.proverbs[h % F.proverbs.length];
     return sec('お楽しみ', '格言・ミーム・動画',
-      `<blockquote class="fun-pv"><b>「${esc(pv.t)}」</b><span>${esc(pv.n)}</span></blockquote>` +
+      `<blockquote class="fun-pv">${proverbHTML(pv)}</blockquote>` +
       `<div class="fun-row"><button type="button" class="fun-shuf" title="別の格言を引く">もう一つ</button></div>` +
-      `<details class="fun-memes"><summary>将棋ネットミーム一覧</summary><ul>` +
-      F.memes.map(m => `<li><b>${esc(m.t)}</b><span>${esc(m.n)}</span></li>`).join('') +
+      `<details class="fun-memes"><summary>将棋の言葉・出来事</summary><ul>` +
+      F.memes.map(m => `<li><b>${esc(m.t)}</b><span>${esc(m.n)}${srcLine(m.src)}</span></li>`).join('') +
       `</ul></details>` +
-      `<details class="fun-vids"><summary>おもしろ動画を探す（YouTube）</summary><ul>` +
+      `<details class="fun-vids"><summary>おもしろ動画を探す（YouTube）</summary>` +
+      `<p class="note">検索結果は YouTube が表示するもので、内容は保証しません</p><ul>` +
       F.videos.map(v => `<li><a href="${esc(v.u)}" target="_blank" rel="noopener">` +
         `${esc(v.t)}<i class="ext">↗</i></a><span>${esc(v.n)}</span></li>`).join('') +
       `</ul></details>`);
@@ -408,12 +418,29 @@ window.Kakoi = window.Kakoi || {};
       `<p class="note"><button class="linkish" data-act="tesuji" data-id="otebisha">王手飛車の図と格言を見る</button></p>`;
   }
 
+  /**
+   * この囲いの崩され方（coverage-tesuji §5-8）: 囲いに結びつく手筋（K.tesuji.forCastle）。
+   * 急所のマスは data-sq で盤に示す。「手順を見る」は手筋モーダルを開く
+   * @param {Array<{tesuji:Object, weak:string[]}>} rows
+   */
+  function kuzushi(rows, citer) {
+    if (!rows || !rows.length) return '';
+    const items = rows.map(({ tesuji: t, weak }) => {
+      const w = (weak || []).map(s => label(+s[0], +s[1])).join('・');
+      const cap = (t.diagram && t.diagram.frames && t.diagram.frames[0] || {}).caption || '';
+      return `<li data-sq="${esc((weak || []).join(' '))}" data-tone="bad"><span class="mk">急所</span>` +
+        `<span><b>${esc(t.name)}</b>${w ? `（${esc(w)}）` : ''} ${esc(cap)} ` +
+        `<button class="linkish" data-act="tesuji" data-id="${esc(t.id)}">手順を見る</button></span></li>`;
+    }).join('');
+    return sec('この囲いの崩され方', '急所のマスに乗せると盤で光る', `<ul class="mu-reasons">${items}</ul>`);
+  }
+
   K.detailSections = {
     RATINGS, TACTIC_RATINGS, RADAR, sec,
     penta, tacticPenta, castleTags, tacticTags,
     desc, note, refFamily, coreChips, lineage, pcList, attacks, route,
     pairingCastles, variants, fitness, distanceNote,
-    vsSection, vsRows, reasons, conflict, contacts, sources, fun,
-    combos, defenses, forks,
+    vsSection, vsRows, reasons, conflict, contacts, sources, fun, proverbHTML,
+    combos, defenses, forks, kuzushi,
   };
 })();

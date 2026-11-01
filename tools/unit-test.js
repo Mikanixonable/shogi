@@ -511,12 +511,15 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
   ok(jstr(CS.parseSel('opp.tactic')) === jstr({ who: 'opp', kind: 'tactic' })
     && jstr(CS.parseSel('me.strategy')) === jstr({ who: 'me', kind: 'strategy' })
     && jstr(CS.parseSel('me.tactic.bougin')) === jstr({ who: 'me', kind: 'tactic', id: 'bougin' })
+    && jstr(CS.parseSel('me.senkei.kakugawari')) === jstr({ who: 'me', kind: 'senkei', id: 'kakugawari' })
     && CS.parseSel('me.bogus') === null,
-    'constraints:parseSel は tactic/castle/strategy（戦型は情報を見る選択）と戦法の駒枠 id を受ける');
+    'constraints:parseSel は tactic/castle/strategy/senkei（戦型は情報を見る選択）と戦法の駒枠 id を受ける');
   ok(CS.normalizeSelected('opp.castle', false) === 'me.castle' && CS.normalizeSelected('opp.castle', true) === 'opp.castle'
     && CS.normalizeSelected('opp.tactic.bougin', true) === 'opp.tactic.bougin'
     && CS.normalizeSelected('opp.tactic.bougin', false) === 'me.tactic'
     && CS.normalizeSelected('opp.strategy', false) === 'me.strategy'
+    && CS.normalizeSelected('opp.senkei.yagura', false) === 'me.senkei'
+    && CS.normalizeSelected('me.senkei.taikou-shiken', true) === 'me.senkei.taikou-shiken'
     && CS.normalizeSelected(null, false, 'tactic') === 'me.tactic' && CS.normalizeSelected('zzz', true) === 'me.castle',
   'constraints:normalizeSelected は相手が非表示なら自分側へ・不正は fallback の層へ');
 
@@ -555,6 +558,71 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     const gangi = L(mk(null, 'gangi', null, 'kani'));
     ok(gangi.length === 2 && gangi[1].id === 'gangi',
       'constraints:labels 雁木（片方が本物の雁木）', jstr(gangi));
+  }
+
+  // labels の細分類（§3-3 Phase 1）: 対抗形の種類×方針×型・相振りの筋・力戦。
+  // 明示層が優先で、決まらなければ既定値（implied）込みの第2パス。葉は大分類と合わせて2枚まで
+  {
+    const L = a => { const S = CS.sides(a); return CS.labels(S.me, S.opp); };
+    const leaf = l => l[l.length - 1];
+    const isLeaf = (l, id, label, extra = '') => l.length === 2 && leaf(l).id === id && leaf(l).label === label && extra;
+    // 対抗形: 振り飛車の筋（rook）× 居飛車側の方針（approach）
+    ok(isLeaf(L(mk('bougin', null, 'shikenbisha')), 'taikou-shiken', '対四間飛車・急戦',
+      leaf(L(mk('bougin', null, 'shikenbisha'))).sub.id === 'kyusen'),
+      'constraints:labels 棒銀×四間飛車 → 対四間飛車・急戦', jstr(L(mk('bougin', null, 'shikenbisha'))));
+    ok(isLeaf(L(mk('yamada-jouseki', null, 'shikenbisha')), 'taikou-shiken', '対四間飛車・急戦', true),
+      'constraints:labels 山田定跡×四間飛車 → 対四間飛車・急戦', jstr(L(mk('yamada-jouseki', null, 'shikenbisha'))));
+    ok(isLeaf(L(mk(null, 'anaguma', 'shikenbisha')), 'taikou-shiken', '対四間飛車・持久戦',
+      leaf(L(mk(null, 'anaguma', 'shikenbisha'))).sub.id === 'jikyusen'),
+      'constraints:labels 居飛車穴熊（囲い）×四間飛車 → 対四間飛車・持久戦', jstr(L(mk(null, 'anaguma', 'shikenbisha'))));
+    ok(isLeaf(L(mk(null, 'hidarimino', 'fujiisystem')), 'taikou-shiken', '対四間飛車・持久戦', true),
+      'constraints:labels 左美濃×藤井システム → 対四間飛車・持久戦', jstr(L(mk(null, 'hidarimino', 'fujiisystem'))));
+    ok(isLeaf(L(mk('chousoku37gin', null, 'gokigen')), 'taikou-naka', '対中飛車・急戦', true),
+      'constraints:labels 超速▲3七銀×ゴキゲン中飛車 → 対中飛車・急戦', jstr(L(mk('chousoku37gin', null, 'gokigen'))));
+    ok(isLeaf(L(mk(null, 'anaguma', 'sankenbisha')), 'taikou-sanken', '対三間飛車・持久戦', true),
+      'constraints:labels 居飛車穴熊×三間飛車 → 対三間飛車・持久戦', jstr(L(mk(null, 'anaguma', 'sankenbisha'))));
+    ok(isLeaf(L(mk('ibisha-base', null, 'mukaibisha')), 'taikou-mukai', '対向かい飛車',
+      !leaf(L(mk('ibisha-base', null, 'mukaibisha'))).sub),
+      'constraints:labels 居飛車（2筋）×向かい飛車 → 方針は未決定なので付かない', jstr(L(mk('ibisha-base', null, 'mukaibisha'))));
+    // 九間・一間は振り飛車の種類に含めない（ROOK_KIND 外）→ 大分類だけ
+    ok(L(mk(null, 'funa', 'kyukenbisha')).length === 1,
+      'constraints:labels 居飛車×九間飛車 → #対抗形 のみ', jstr(L(mk(null, 'funa', 'kyukenbisha'))));
+    // 自分が振り飛車側でも同じ軸（対抗形は側をまたいだ葉）
+    ok(isLeaf(L(mk('shikenbisha', null, 'bougin')), 'taikou-shiken', '対四間飛車・急戦', true),
+      'constraints:labels 四間飛車×棒銀（自分が振り飛車）→ 対四間飛車・急戦', jstr(L(mk('shikenbisha', null, 'bougin'))));
+    // 角交換振り飛車（style 軸）は筋の種類と併記する
+    {
+      const l = L(mk('direct-mukaibisha', null, 'bougin'));
+      ok(leaf(l).id === 'taikou-mukai' && leaf(l).label === '対向かい飛車・急戦・角交換'
+        && leaf(l).style && leaf(l).style.id === 'kakukoukan-furi',
+        'constraints:labels 角交換振り飛車は別軸で併記', jstr(l));
+    }
+    // 相振り飛車: 両側の筋が同じなら専用エントリ、違う筋は自由文、取れない筋は相振りだけ
+    ok(isLeaf(L(mk('nakabisha', null, 'nakabisha')), 'ai-naka', '相中飛車', true),
+      'constraints:labels 中飛車×中飛車 → 相中飛車', jstr(L(mk('nakabisha', null, 'nakabisha'))));
+    ok(isLeaf(L(mk('sankenbisha', null, 'sankenbisha')), 'ai-sanken', '相三間飛車', true),
+      'constraints:labels 三間飛車×三間飛車 → 相三間飛車', jstr(L(mk('sankenbisha', null, 'sankenbisha'))));
+    ok(isLeaf(L(mk('shikenbisha', null, 'shikenbisha')), 'aifuri', '相四間飛車', true),
+      'constraints:labels 四間飛車×四間飛車 → 自由文「相四間飛車」（id は親の aifuri）', jstr(L(mk('shikenbisha', null, 'shikenbisha'))));
+    ok(isLeaf(L(mk('sankenbisha', null, 'mukaibisha')), 'aifuri', '三間飛車×向かい飛車', true),
+      'constraints:labels 三間飛車×向かい飛車 → 自由文ラベル', jstr(L(mk('sankenbisha', null, 'mukaibisha'))));
+    // 力戦: 両側が戦法を明示していてもどの戦型にも当たらないときだけ（点線の implied。既定値だけでは出ない）
+    {
+      const l = L(mk('kamaitachi', null, 'gyokutou-kuraidori'));
+      ok(leaf(l).id === 'rikisen' && leaf(l).implied === true,
+        'constraints:labels 明示しても戦型に当たらない → 力戦（implied で点線）', jstr(l));
+      const l2 = L(mk('kyukenbisha', null, 'ikkenbisha'));
+      ok(leaf(l2).id === 'rikisen' && l2.length === 2,
+        'constraints:labels 相振りで筋が取れない → 力戦', jstr(l2));
+      ok(L(mk(null, 'kani', null, 'kabuto')).length === 1,
+        'constraints:labels 既定値だけの状態では力戦を出さない', jstr(L(mk(null, 'kani', null, 'kabuto'))));
+    }
+    // implied パス: 囲いだけ明示した対抗形でも葉は導ける
+    {
+      const l = L(mk(null, null, 'shikenbisha'));
+      ok(l.length === 2 && leaf(l).id === 'taikou-shiken' && leaf(l).label === '対四間飛車',
+        'constraints:labels 相手の明示戦法だけでも振り飛車の種類が出る', jstr(l));
+    }
   }
 
   // compose.merge: 両軍の歩の接触（L10）
@@ -851,6 +919,82 @@ if (!K.constraints || !K.constraints.sides || !K.constraints.setSlot || !K.const
     ok(cnt(mBish, 7, 7) === 1 && cnt(mBish, 1, 1) === 1 && cnt(mBish, 8, 7) === 0 && cnt(mBish, 7, 8) === 0,
       'attackMap:角は斜めに滑走する（直交方向には利かない）');
   }
+}
+
+// ---------- 9. K.tesuji: 共有の駒の動き・frames の検算・forCastle/defenders（coverage-tesuji） ----------
+{
+  ok(K.pieces && K.tesuji && K.tesujiCheck, 'tesuji: pieces/tesuji/tesujiCheck が読み込まれている');
+  if (K.pieces) {
+    // 成駒の動き: と・杏・圭・全は金と同じ、馬は角の滑走＋縦横、龍は飛の滑走＋斜め
+    const g = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [0, 1]];
+    for (const p of ['と', '杏', '圭', '全']) ok(jstr(K.pieces.STEPS[p]) === jstr(g), `pieces:${p} は金の動き`);
+    ok(K.pieces.SLIDES['馬'] && K.pieces.SLIDES['龍'] && !K.pieces.SLIDES['と'], 'pieces:馬・龍は滑走を持つ');
+    ok(K.pieces.PROMOTED['角'] === '馬' && K.pieces.BASE['龍'] === '飛', 'pieces:成りの対応（竜は龍に畳む）');
+    const has = () => false;
+    ok(K.tesuji.reach('馬', 5, 5, 'sente', has).length === 20 && K.tesuji.reach('龍', 5, 5, 'sente', has).length === 20,
+      'tesuji:reach は馬・龍の利きを返す（滑走16+歩み4）', jstr([K.tesuji.reach('馬', 5, 5, 'sente', has).length, K.tesuji.reach('龍', 5, 5, 'sente', has).length]));
+  }
+  if (K.tesujiCheck) {
+    // 全 TESUJI の frames を検算する（付録A）＋ onCastle と囲い core の整合（付録B）
+    const bad = (K.TESUJI || []).map(t => {
+      const r = K.tesujiCheck.check(t);
+      const oc = K.tesujiCheck.onCastleIssues(t, { CASTLES: K.CASTLES });
+      return r.issues.length || oc.length ? `${t.id}(${[...r.issues, ...oc].join('/')})` : null;
+    }).filter(Boolean);
+    ok(bad.length === 0, `tesuji-check:全${(K.TESUJI || []).length}件の frames と onCastle が合法`, bad.join(' / '));
+  }
+  if (K.tesuji) {
+    // 囲い ↔ 手筋: 美濃に結びつく崩し方と急所
+    const mino = K.CASTLES.find(c => c.id === 'mino');
+    const kz = K.tesuji.forCastle(mino).map(t => t.id).sort();
+    ok(jstr(kz) === jstr(['mino-kobin-keima', 'mino-kobin-ryu', 'mino-kyusho39'].sort()),
+      'tesuji:forCastle は美濃の崩し方3件を引く', jstr(kz));
+    ok(jstr(K.tesuji.weakSquares(mino).sort()) === jstr(['36', '39']),
+      'tesuji:weakSquares は美濃の急所 3九・3六', jstr(K.tesuji.weakSquares(mino)));
+    // 穴熊: mirrorIds の左穴熊にも引ける（反転して適用する囲い）
+    const ana = K.CASTLES.find(c => c.id === 'anaguma');
+    ok(K.tesuji.forCastle(ana).some(t => t.id === 'ana-tsugifu-tarefu'),
+      'tesuji:forCastle は mirrorIds の囲いにも引く');
+    // project: 後手へ重ねる投影は座標を180度回して先後を入れ替える
+    const pr = K.tesuji.project({ sente: '角44 龍21', gote: '玉82', hand: '銀', handGote: '角' }, { flip: true });
+    ok(pr.sente === '玉28' && jstr(pr.gote.split(' ').sort()) === jstr(['角66', '龍89']) && pr.hand === '角' && pr.handGote === '銀',
+      'tesuji:project(flip) は回転して先後を入れ替える', jstr(pr));
+    // 登録表: defenders（受けの位置）と detectors（検出器）
+    ok(K.tesuji.defenders.sokofu === K.tesuji.sokofu && K.tesuji.detectors.fork === K.tesuji.forks,
+      'tesuji:defenders/detectors の登録表');
+    // comboOf の回帰（戦法＋囲い → 定番セット）
+    const cmb = K.tesuji.comboOf({ strategy: 'furibisha', tacticId: 'shikenbisha', castleId: 'mino' });
+    ok(cmb && cmb.id === 'shiken-mino', 'tesuji:comboOf 四間飛車＋美濃囲い', jstr(cmb && cmb.id));
+  }
+}
+
+// ---------- 10. 監査の回帰（plan-bug-audit.md）: 玉救出・CONTACT→ng・threat(null) ----------
+{
+  // F-1: どんな両立しない組み合わせでも合成局面に玉が必ず1枚いる（消えない）
+  const bad = [];
+  for (const t of K.TACTICS) for (const c of K.CASTLES) {
+    const pos = K.compose.position({ tacticIds: [t.id], castleId: c.id }).position;
+    if (pos.pieces.filter(x => x.p === '玉' && x.owner === 'sente').length !== 1)
+      bad.push(`${t.id}+${c.id}`);
+    if (pos.hand && pos.hand.includes('玉')) bad.push(`${t.id}+${c.id}:hand玉`);
+  }
+  ok(bad.length === 0, 'compose:全組合せで玉が盤上に1枚いる（持ち駒に残らない）', bad.slice(0, 5).join(' / '));
+
+  // R-1: merge の 'ng' 接触は deriveBoard の ng に CONTACT 理由として届く
+  {
+    const slots = { me: { tactic: ['yokofudori'], castle: 'hekomiyagura' },
+                    opp: { tactic: ['shin-ishida'], castle: 'chonmagemino' } };
+    const d = K.deriveBoard(slots, true);
+    const hasContact = d.merged.contacts.some(c => c.kind === 'ng');
+    const flagged = [d.ng.me, d.ng.opp].some(n =>
+      Object.values(n.tactic).flat().concat(n.castle || []).some(r => r.code === 'CONTACT'));
+    ok(hasContact && flagged, 'deriveBoard:mergeのng接触が制約の ✕（CONTACT理由）に届く');
+  }
+
+  // R-3: threat は欠けた側に null を返す
+  ok(K.matchup.threat(null, null) === null
+    && K.matchup.threat({ strategy: 'ibisha', tacticIds: [], castleId: null }, null) === null,
+    'matchup:threat(null) は null を返す');
 }
 
 console.log(`---\n${pass + fail} tests, ${pass} pass, ${fail} fail`);
