@@ -10,6 +10,48 @@ window.Kakoi = window.Kakoi || {};
   // 歩同士の接触で1段下げる側（遅れて下がる側）。選んだ順は持たないので相手側に固定する
   const LATE = 'opp';
 
+  // merge の 'ng' 接触（歩同士以外・退避先が塞がった歩同士）を制約の不一致として
+  // conflicts の出力に接続する（監査 R-1）。接触マスの駒の role から層へ帰属する:
+  //   lead → その側の該当戦法 id（lead.square と一致するものが1つだけのとき。複数なら共有）
+  //   core/rest → 'castle'。setup/support/駒なし → layers なし（共有＝その側の全明示層）
+  // 'pawn' 接触は盤上で解消済みなので対象外（detail の接触一覧だけに出る従来どおり）。
+  function attachContactReasons(slots, S, merged, ng, showOpp) {
+    const bad = (merged.contacts || []).filter(c => c.kind === 'ng');
+    if (!bad.length) return;
+    const { findTactic } = K.lookup;
+    const { mirrorSq } = K.notation;
+    const pos = merged.position;
+    const layerOf = (who, piece) => {
+      if (!piece) return [];
+      if (piece.role === 'lead') {
+        const own = who === 'opp' ? mirrorSq(`${piece.f}${piece.r}`) : `${piece.f}${piece.r}`;
+        const ids = (S[who].tacticIds || []).filter(id => {
+          const t = findTactic(id);
+          return t && t.lead && t.lead.square === own && t.lead.piece === piece.p;
+        });
+        return ids.length === 1 ? ids : [];
+      }
+      return (piece.role === 'core' || piece.role === 'rest') ? ['castle'] : [];
+    };
+    for (const c of bad) {
+      const xs = pos.pieces.filter(x => `${x.f}${x.r}` === c.sq);
+      for (const who of ['me', 'opp']) {
+        if (who === 'opp' && !showOpp) continue;
+        const piece = xs.find(x => x.owner === (who === 'me' ? 'sente' : 'gote'));
+        if (!piece) continue;
+        const layers = layerOf(who, piece);
+        const hits = tag => !layers.length || layers.includes(tag);
+        const reason = { code: 'CONTACT', squares: [c.sq], layers, text: c.text };
+        for (const tid of K.constraints.tacticList(slots[who].tactic)) {
+          if (hits(tid)) (ng[who].tactic[tid] = ng[who].tactic[tid] || []).push(reason);
+        }
+        if (slots[who].castle != null && hits('castle')) {
+          (ng[who].castle = ng[who].castle || []).push(reason);
+        }
+      }
+    }
+  }
+
   /**
    * @param {{me:{tactic,castle}, opp:{tactic,castle}}} slots 各側の固定スロット
    * @param {boolean} [showOpp=true] 相手を表示するか。false のとき oppPos・threat・labels は空
@@ -32,6 +74,7 @@ window.Kakoi = window.Kakoi || {};
     const threat = showOpp && K.matchup ? K.matchup.threat(S.me, S.opp) : null;
     const labels = K.constraints.labels(S.me, showOpp ? S.opp : null);
     const ng = K.constraints.conflicts(slots, S, showOpp);
+    attachContactReasons(slots, S, merged, ng, showOpp);
     return { S, mePos, oppPos, merged, threat, labels, ng };
   }
 

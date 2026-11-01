@@ -558,11 +558,15 @@ window.Kakoi = window.Kakoi || {};
     // ---------- 当たり判定: 胞の上に透明な <button> を重ねる（viewBox 座標→%） ----------
     _syncHits(mods) {
       const want = new Map();
+      // 当たり判定は胞の外接矩形より余白ぶん広く取る（R-2: 狭い画面の実効タップ領域。
+      // 胞同士の隙間は互いの矩形が重なり合い、先に来た胞が勝つ。これ以上広げると
+      // 隣の胞の中心を覆うのでこの程度に留める）
+      const PAD = 9;
       for (const m of mods) {
         const key = `${m.who}.${m.kind}.${m.id || m.famId || ''}`;
         // 囲いは外角の名前のあたりまで当たる範囲に含める
         const x1 = m.kind === 'castle' ? m.x1 + 8 : m.x1;
-        want.set(key, { m, key, x: m.x0 - 3, y: m.y0 - 3, w: x1 - m.x0 + 6, h: m.y1 - m.y0 + 6 });
+        want.set(key, { m, key, x: m.x0 - PAD, y: m.y0 - PAD, w: x1 - m.x0 + PAD * 2, h: m.y1 - m.y0 + PAD * 2 });
       }
       const seen = new Set();
       for (const [key, w2] of want) {

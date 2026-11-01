@@ -94,7 +94,9 @@ window.Kakoi = window.Kakoi || {};
    *   edgeThreat: 端攻めの前兆（fitness の減点判定に使う）
    */
   function threat(me, opp) {
-    me = me || {}; opp = opp || {};
+    // 片側でも欠けた状態からは脅威を導けない。既定オブジェクトで合成結果を
+    // 作ると、ありもしない戦型ラベルが返るので null にする（監査 R-3）
+    if (!me || !opp) return null;
     // 戦型: 自分と相手の戦略の組み合わせ
     const kind = me.strategy === 'ibisha'
       ? (opp.strategy === 'furibisha' ? 'taikou-i' : 'aiibisha')

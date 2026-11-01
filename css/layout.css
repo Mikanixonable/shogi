@@ -15,6 +15,7 @@ header { display:flex; align-items:center; gap:14px; padding:10px 20px; border-b
 /* about: ロゴ横の小さな導線。文字だけのボタン、下に細い罫線 */
 .brand .about { font-size:11px; letter-spacing:.12em; color:var(--muted); background:none; border:0;
                 border-bottom:1px solid var(--line-2); padding:1px 0 2px; margin-left:4px; cursor:pointer;
+                overflow:hidden; white-space:nowrap;
                 transition:color .2s, border-color .2s; }
 @media (hover:hover) { .brand .about:hover { color:var(--fg); border-bottom-color:var(--accent); } }
 .brand h1 { margin:0; font:800 20px/1 var(--font-d); letter-spacing:.22em; }
