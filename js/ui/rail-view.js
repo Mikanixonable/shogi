@@ -105,9 +105,9 @@ window.Kakoi = window.Kakoi || {};
          `<header class="dk-pane-h">` +
          `<div class="dk-sw">` +
          `<svg class="dk-sw-art" viewBox="0 0 326 64" aria-hidden="true"></svg>` +
-         `<div class="seg dk-strategy" role="group" aria-label="戦型の絞り込み（振飛車／居飛車）">` +
-         `<button type="button" data-value="furibisha" aria-label="戦型を振飛車に絞る">振飛車</button>` +
-         `<button type="button" data-value="ibisha" aria-label="戦型を居飛車に絞る">居飛車</button>` +
+         `<div class="seg dk-strategy" role="group" aria-label="戦型の切り替え（振飛車／居飛車）">` +
+         `<button type="button" data-value="furibisha" aria-label="戦型を振飛車に切り替える">振飛車</button>` +
+         `<button type="button" data-value="ibisha" aria-label="戦型を居飛車に切り替える">居飛車</button>` +
          `</div>` +
          `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
          `<button type="button" data-value="castle" aria-label="囲いの一覧を開く">囲い</button>` +
@@ -142,7 +142,11 @@ window.Kakoi = window.Kakoi || {};
       this.oppOffBtn = this.binder.querySelector('.dk-pc-x');
       this._bindBinder();
       this.tabSeg = new K.Segmented(this.root.querySelector('.dk-tab'), v => h.onSelect(this.who, v));
+      // 戦型の切替面: 絞り込みではなく実際の制約切替（既定セットを立てる。
+      // 前の戦型の選択はコントローラ側が記憶し、戻すと復元される）。一覧の
+      // 表示は導出した戦型に追従する（_updatePane の this._strat 比較）
       this.stratSeg = new K.Segmented(this.root.querySelector('.dk-strategy'), v => {
+        if (this.h.onSwitchStrategy) { this.h.onSwitchStrategy(this.who, v); return; }
         this.filter[this.who] = v;
         if (this._last) this.update(this._last.state, this._last.S);
       });
@@ -177,6 +181,10 @@ window.Kakoi = window.Kakoi || {};
       // 囲いの局面は1回だけ組み立てる（F3: 切り出しは囲いごとに最大化するので共通倍率は持たない）
       this._pos = new Map();
       for (const c of K.CASTLES) this._pos.set(c.id, castlePos(c));
+      // 戦法の想定配置も1回だけ（札の盤面図サムネ用。記事頭の図と同じ組み立て）
+      this._tpos = new Map();
+      for (const t of K.TACTICS) this._tpos.set(t.id, K.Position.fromPieces(t.pieces, {
+        leadSquare: t.lead && t.lead.square, hand: t.hand || '' }));
       this._bindEvents();
       this._bindLegend();
       // 狭い画面: バインダーの駒は切り替え面と同じ行へ（切り替え面は1面なので戦型だけを

@@ -294,6 +294,10 @@ async function sweepBoard(page, expect) {
   r.bandGhost0 = !r.t0.oppShown && r.t0.oppInvite && r.t0.gote === 0;
 
   // 囲いを選ぶ → スロットが埋まり、チップが現れ、詳細が囲いになり、ハッシュが書かれ履歴が積まれる
+  r.cardThumbH = await page.evaluate(() => {   // 囲いカードのサムネ帯の高さ（戦法タブではカードがDOMから外れるので先に採寸）
+    const c = document.querySelector('#pickRail .dk-card:not([hidden]) .thumb');
+    return c ? c.getBoundingClientRect().height : null;
+  });
   await page.click(`${DOCK} .dk-card:not([hidden])`); await wait(350);
   r.t1 = await snap(page);
   r.rects.push(r.t1.rect);
@@ -348,34 +352,114 @@ async function sweepBoard(page, expect) {
       && !!document.querySelector('.dk-vf')   // 派生は親札の下の帯に畳む
       && !document.querySelector('.dk-vshow');
   });
-  r.fileMap = await page.evaluate(() => {   // 各札が筋の地図（9目盛り）を持ち、立つ筋が塗られている
+  r.tThumb = await page.evaluate(() => {   // 各札が盤面図のサムネを持ち、札幅はサムネの縦横比に限る
     const tiles = [...document.querySelectorAll('#pickRail .dk-tile:not([hidden])')];
-    return tiles.length > 0 && tiles.every(t =>
-      t.querySelectorAll('.dk-map i').length === 9 && t.querySelectorAll('.dk-map i.on').length >= 1);
+    const cols = [...document.querySelectorAll('#pickRail .dk-tcol')];
+    return tiles.length > 0 && cols.length > 0
+      && tiles.every(t => t.querySelector('.thumb svg.mini-mv') && t.querySelector('.sq'))
+      && cols.every(c => +((c.style.getPropertyValue('--ar') || '').trim() || 0) > 0.5);
+  });
+  r.tileSize = await page.evaluate(chH => {   // 札は囲いカードと同じ規則: サムネ帯65px・幅=62px×ar+2px
+    const tl = document.querySelector('#pickRail .dk-tl:not([hidden])');
+    if (!tl || chH == null) return false;
+    const th = tl.querySelector('.thumb');
+    const col = tl.closest('.dk-tcol');
+    if (!th || !col) return false;
+    const ar = +(col.style.getPropertyValue('--ar') || 0);
+    const want = Math.min(62 * ar + 2, col.getBoundingClientRect().width);
+    return ar > 0.5 && Math.abs(th.getBoundingClientRect().height - 65) < 1
+      && Math.abs(th.getBoundingClientRect().height - chH) < 1
+      && Math.abs(tl.getBoundingClientRect().width - want) < 2;
+  }, r.cardThumbH);
+  r.vfSize = await page.evaluate(() => {   // 派生の帯とチップは押しやすい高さ（帯>=22px・チップ>=26px）
+    const vars = [...document.querySelectorAll('#pickRail .dk-vars')]
+      .find(v => v.querySelector('.dk-vf') && v.querySelector('.dk-vf').getBoundingClientRect().height > 0);
+    if (!vars) return false;
+    const vf = vars.querySelector('.dk-vf');
+    const va = vars.querySelector('.dk-var:not([hidden])');
+    if (!va) return false;
+    const wasOpen = vars.dataset.open === 'true';
+    if (!wasOpen) vars.dataset.open = 'true';
+    const vaH = va.getBoundingClientRect().height;
+    if (!wasOpen) vars.dataset.open = 'false';
+    return vf.getBoundingClientRect().height >= 22 && vaH >= 26;
   });
   await page.click(`${DOCK} .dk-tile:not([hidden])`); await wait(350);
   r.t2 = await snap(page);
   r.rects.push(r.t2.rect);
   r.tacticSel = !!(r.t2.slots.me.tactic && r.t2.slots.me.tactic.length)
     && r.t2.selected.startsWith('me.tactic') && r.t2.detailKind.includes('戦法');
-  r.horizontalChips = await page.evaluate(() => {
+  r.yakataCluster = await page.evaluate(() => {
     const meRow = document.querySelector('#cfield .cf-row.cf-me');
     if (!meRow) return false;
     const str = meRow.querySelector('.cf-str');
     const castle = meRow.querySelectorAll('.cf-cell.cf-castle');
-    const tac = meRow.querySelectorAll('.cf-cell.cf-tac');
-    const ghosts = meRow.querySelectorAll('.cf-cell.cf-ghost');
-    // 戦型の胞（根元）は左端の列で、囲い・戦法の胞は全部その右に並ぶ
+    const tac = meRow.querySelectorAll('.cf-mod.cf-tactic .cf-cell.cf-tac');
+    const names = meRow.querySelectorAll('.cf-mod.cf-tactic .cf-tname');
+    const ghosts = meRow.querySelectorAll('.cf-slot .cf-ghost');
+    const castleName = meRow.querySelector('.cf-cname');
+    const castlePieces = [...castle];
+    const castleBoxes = castlePieces.map(cell => cell.getBBox());
+    if (!castleName || !castleBoxes.length) return false;
+    const castleLeft = Math.min(...castleBoxes.map(box => box.x));
+    const castleRight = Math.max(...castleBoxes.map(box => box.x + box.width));
+    const castleBottom = Math.max(...castleBoxes.map(box => box.y + box.height));
+    const castleNameBox = castleName.getBBox();
+    // 戦型→囲い→飛車中心の多角形群。戦法名は多角形内、空き系統の幽霊は1つ。
     const modLeft = Math.min(...[...meRow.querySelectorAll('.cf-cell:not(.cf-str)')]
       .map(c => c.getBoundingClientRect().left));
+    const namesInside = [...names].every(name => {
+      const shape = name.closest('.cf-tactic').querySelector('.tc-skin').getBBox();
+      const box = name.getBBox();
+      return box.x >= shape.x - 1 && box.x + box.width <= shape.x + shape.width + 1
+        && box.y >= shape.y - 1 && box.y + box.height <= shape.y + shape.height + 1;
+    });
     return !!str && meRow.querySelectorAll('.cf-str-t').length >= 3
       && /st-/.test(str.getAttribute('class') || '')
       && castle.length >= 3 && meRow.querySelector('.cf-stem')
-      && tac.length >= 2 && meRow.querySelector('.cf-tname')
-      && [...meRow.querySelectorAll('.cf-tname')].some(t => t.textContent.length > 0)
-      && !!meRow.querySelector('.cf-cname') && meRow.querySelector('.cf-cname').textContent.length > 0
-      && meRow.querySelector('.cf-j') && ghosts.length >= 2   // 空きの駒枠も残す
+      && tac.length >= 1 && names.length >= 1 && namesInside
+      && castleName.textContent.length > 0
+      && Math.abs(castleNameBox.x + castleNameBox.width / 2
+        - (castleLeft + castleRight) / 2) < 1
+      && castleNameBox.y + castleNameBox.height / 2 > castleBottom
+      && meRow.querySelector('.cf-j') && ghosts.length === 1
       && str.getBoundingClientRect().right <= modLeft + 2;
+  });
+  r.constellationStable = await page.evaluate(() => {
+    const store = __kakoi.store;
+    const original = store.state.slots;
+    const ids = ['yokofudori', 'bougin', 'sujichigaikaku', 'onigoroshi',
+      'shigofu-hayajikake', 'boukin', 'migigyoku-senpou'];
+    const set = n => store.set({ slots: {
+      ...original, me: { ...original.me, tactic: ids.slice(0, n) },
+    } });
+    const centers = () => Object.fromEntries(
+      [...document.querySelectorAll('#cfield .cf-row.cf-me .cf-mod.cf-tactic')]
+        .map(g => [g.dataset.piece, [
+          +g.querySelector('.tc-wm').getAttribute('x'),
+          +g.querySelector('.tc-wm').getAttribute('y'),
+        ]]));
+    try {
+      set(3);
+      const three = centers();
+      const ghosts3 = document.querySelectorAll('#cfield .cf-row.cf-me .cf-slot').length;
+      set(5);
+      const five = centers();
+      const ghosts5 = document.querySelectorAll('#cfield .cf-row.cf-me .cf-slot').length;
+      set(7);
+      const ghosts7 = document.querySelectorAll('#cfield .cf-row.cf-me .cf-slot').length;
+      const area = (a, b, c) => Math.abs(
+        (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+      const stable = ['飛', '銀', '角'].every(p =>
+        three[p] && five[p] && three[p][0] === five[p][0] && three[p][1] === five[p][1]);
+      const triangle = three['飛'] && three['銀'] && three['角']
+        && three['銀'][0] > three['飛'][0] && three['銀'][1] < three['飛'][1]
+        && three['角'][0] < three['飛'][0] && three['角'][1] < three['飛'][1]
+        && area(three['飛'], three['銀'], three['角']) > 100;
+      return !!stable && !!triangle && ghosts3 === 1 && ghosts5 === 1 && ghosts7 === 0;
+    } finally {
+      store.set({ slots: original });
+    }
   });
   // 戦型の胞（左端）: スロットではないが、押すと右 detailにその戦型の情報が出る。
   // 選択だけなので履歴は積まず、sel=ms がハッシュに乗る
@@ -395,8 +479,42 @@ async function sweepBoard(page, expect) {
       && (d.querySelector('.bd-t') || {}).textContent.includes(nm)
       && /スロットを持たず/.test(d.textContent)
       && d.querySelectorAll('.vchip[data-act="set"]').length > 0
+      && d.querySelector('[data-act="strategy"]') !== null    // 戦型の切替ボタン
       && /sel=ms/.test(location.hash);
   });
+  // 戦型の切替（制約バーの ⇄・右 detail のボタン・左レールの切替面は同じ操作）:
+  // 他方へ切り替えるとその戦型の既定戦法が立ち、戻すと前の選択が復元される
+  const swState = await page.evaluate(() => {
+    const st = __kakoi.store.state;
+    return { slots: JSON.parse(JSON.stringify(st.slots.me)),
+      strat: Kakoi.constraints.effectiveSides(st.slots, st.showOpp).me.strategy };
+  });
+  const swOther = swState.strat === 'ibisha' ? 'furibisha' : 'ibisha';
+  // 制約バーの戦型胞の ⇄ バッジ
+  r.swBadge = await page.evaluate(() => {
+    const b = document.querySelector('#cfield .cf-sw[data-who="me"]');
+    return !!b && b.dataset.target.length > 0 && /切り替える/.test(b.getAttribute('aria-label') || '');
+  });
+  await page.evaluate(() => document.querySelector('#cfield .cf-sw[data-who="me"]').click());
+  await wait(350);
+  r.swField = await page.evaluate(([stratB]) => {
+    const st = __kakoi.store.state;
+    const S = Kakoi.constraints.effectiveSides(st.slots, st.showOpp);
+    const defT = Kakoi.defaults.defaultTacticId(stratB);
+    return S.me.strategy === stratB
+      && (st.slots.me.tactic || []).includes(defT)
+      && st.selected.startsWith('me.strategy');
+  }, [swOther]);
+  // 右 detail の切替ボタンで元へ戻す → 前の選択（戦法・囲い）が復元される
+  await page.evaluate(() => document.querySelector('#detail [data-act="strategy"]').click());
+  await wait(350);
+  r.detailSwitch = await page.evaluate(([slotsA, stratA]) => {
+    const st = __kakoi.store.state;
+    const S = Kakoi.constraints.effectiveSides(st.slots, st.showOpp);
+    return S.me.strategy === stratA
+      && JSON.stringify(st.slots.me) === JSON.stringify(slotsA)
+      && !!document.querySelector('#detail [data-act="strategy"]');
+  }, [swState.slots, swState.strat]);
   // 別のタイルを押す → 自分の戦法が変わる（囲いは自動では変わらない）
   const tA = (r.t2.slots.me.tactic || []).join(','), cA = r.t2.slots.me.castle;
   await page.evaluate(() => {
@@ -409,19 +527,23 @@ async function sweepBoard(page, expect) {
   r.rects.push(r.t3.rect);
   r.railPick = !!(r.t3.slots.me.tactic && r.t3.slots.me.tactic.length)
     && r.t3.slots.me.tactic.join(',') !== tA && r.t3.slots.me.castle === cA;
-  // 戦略セグは絞り込み専用: 戦法・囲いのスロットも導出した戦略も変えず、合わない行だけ隠れる
+  // 戦略セグは実際の切替（切替面）: 他方の戦型を押すとその戦型の既定が立ち、
+  // 一覧の表示も導出した戦型へ追従する。戻すと前の選択が復元される
   const stratA = r.t3.sides.me.strategy;
   const stratB = stratA === 'ibisha' ? 'furibisha' : 'ibisha';
   await page.click(`${DOCK} .dk-strategy button[data-value="${stratB}"]`); await wait(350);
   await mark();
-  r.segFilter = await page.evaluate(([s, slots, strat]) => {
+  r.segSwitch = await page.evaluate(([s, slots]) => {
     const now = __kakoi.store.state;
+    const S = Kakoi.constraints.effectiveSides(now.slots, now.showOpp);
+    const defT = Kakoi.defaults.defaultTacticId(s);
     const rows = [...document.querySelectorAll('#pickRail .dk-trow')];
-    return rows.length > 0 && rows.every(x => x.hidden === (x.dataset.side !== s))
-      && JSON.stringify(now.slots) === JSON.stringify(slots)
-      && Kakoi.constraints.effectiveSides(now.slots, now.showOpp).me.strategy === strat;
-  }, [stratB, r.t3.slots, stratA]);
-  // 囲いタブに戻す → 系統・カードも絞り込んだ戦略で絞られる（両側を許す囲いだけは残る）
+    return S.me.strategy === s
+      && JSON.stringify(now.slots.me) !== JSON.stringify(slots)
+      && (now.slots.me.tactic || []).includes(defT)
+      && rows.length > 0 && rows.every(x => x.hidden === (x.dataset.side !== s));
+  }, [stratB, r.t3.slots.me]);
+  // 囲いタブに戻す → 系統・カードも切り替えた戦略で絞られる（両側を許す囲いだけは残る）
   await page.click(`${DOCK} .dk-tab button[data-value="castle"]`); await wait(250);
   await mark();
   r.famFilter = await page.evaluate(strat => {
@@ -433,7 +555,10 @@ async function sweepBoard(page, expect) {
       && fams.every(s => s.hidden === !s._sides.has(strat))
       && cards.every(c => c.hidden === !sidesOf(byId[c.dataset.id]).includes(strat));
   }, stratB);
-  await page.click(`${DOCK} .dk-strategy button[data-value="${stratA}"]`); await wait(250);
+  await page.click(`${DOCK} .dk-strategy button[data-value="${stratA}"]`); await wait(350);
+  // 戻すと前の戦型の選択（戦法・囲い）が復元される
+  r.segRestore = await page.evaluate(slotsA =>
+    JSON.stringify(__kakoi.store.state.slots.me) === JSON.stringify(slotsA), r.t3.slots.me);
   // 並べ方: 発展ツリーは from の子を字下げした行で出し、性質順は段（5→1）のブロックにする。
   await page.selectOption(`${DOCK} .dk-sort-sel`, 'tree'); await wait(250);
   r.sortTree = await page.evaluate(() => {
@@ -592,9 +717,10 @@ async function sweepBoard(page, expect) {
   r.oppTab = await page.evaluate(() => __kakoi.store.state.selected.startsWith('opp.')
     && document.querySelector('#pickRail .dk').dataset.who === 'opp');
   await page.click(`${DOCK} .dk-tab button[data-value="tactic"]`); await wait(250);
-  r.flipCol = await page.evaluate(() => {   // 相手の面は筋が反転: 四間飛車（先手6筋）は盤の4筋=地図の左から6番目
+  r.flipCol = await page.evaluate(() => {   // 相手の面は筋が反転: 四間飛車（先手6筋）は絶対座標の四に表示
     const t = document.querySelector('#pickRail .dk-tile[data-id="shikenbisha"]');
-    return t ? String([...t.querySelectorAll('.dk-map i')].findIndex(i => i.classList.contains('on')) + 1) : null;
+    const sq = t && t.querySelector('.sq');
+    return sq ? sq.textContent.trim() : null;
   });
   await page.click(`${DOCK} .dk-tile:not([hidden])`); await wait(400);
   r.t5b = await snap(page);
@@ -606,11 +732,23 @@ async function sweepBoard(page, expect) {
     return btn && btn.textContent === '×' && btn.getAttribute('aria-label') === '相手の戦法・囲いをリセット';
   });
   r.oppRotated = await page.evaluate(() => {
-    // 同じ六角グリッドに並ぶが、相手の胞は駒の漢字が相手向き（180°回転）で区別できる
-    const o = document.querySelector('#cfield .cf-row.cf-opp .cf-t');
-    const m = document.querySelector('#cfield .cf-row.cf-me .cf-t');
-    return !!o && !!m && /rotate\(180/.test(o.getAttribute('transform') || '')
+    // 駒の向きはピース形状で示し、制約バーの文字は相手側も正立させる
+    const o = document.querySelector('#cfield .cf-row.cf-opp .cf-mod.cf-castle .cf-t');
+    const m = document.querySelector('#cfield .cf-row.cf-me .cf-mod.cf-castle .cf-t');
+    return !!o && !!m && !/rotate/.test(o.getAttribute('transform') || '')
       && !/rotate/.test(m.getAttribute('transform') || '');
+  });
+  r.oppCastleNameUnder = await page.evaluate(() => {
+    const row = document.querySelector('#cfield .cf-row.cf-opp');
+    const name = row && row.querySelector('.cf-cname');
+    const cells = row && [...row.querySelectorAll('.cf-cell.cf-castle')].map(cell => cell.getBBox());
+    if (!name || !cells.length) return false;
+    const box = name.getBBox();
+    const left = Math.min(...cells.map(cell => cell.x));
+    const right = Math.max(...cells.map(cell => cell.x + cell.width));
+    const bottom = Math.max(...cells.map(cell => cell.y + cell.height));
+    return Math.abs(box.x + box.width / 2 - (left + right) / 2) < 1
+      && box.y + box.height / 2 > bottom;
   });
   // 相手側の戦型の胞も押せる: 右 detailに相手の戦型の情報が出る（sel=os がハッシュに乗る）
   await page.evaluate(() => document.querySelector('#cfield .cf-hit[data-who="opp"][data-kind="strategy"]').click());
@@ -1157,33 +1295,42 @@ async function main() {
       ok(b.bandGhost0, '相手の表示 OFF の間は「＋相手」の胞だけ残り、後手の駒は出ない', '');
       ok(b.boardStageOffset <= 8, '制約フィールドは列の先頭、盤は残りの行の上下中央に配置される', `${b.boardStageOffset}px`);
       ok(b.boardOrder && b.boardOrderOppOn, '制約フィールド（相手の段・関係ラベルつき）は盤の上', '');
-      ok(b.b2Modules, 'B2: 戦型・囲い（駒名セル）・戦法の六角モジュールが表示される', b.b2ModulesDetail);
-      ok(b.b2Implied, 'B2: 既定値は網掛けで薄く、解除できない', b.b2ImpliedDetail);
+      ok(b.b2Modules, '案C: 戦型・実座標の囲いピース・戦法星座が表示される', b.b2ModulesDetail);
+      ok(b.b2Implied, '案C: 既定値は網掛けで薄く、解除できない', b.b2ImpliedDetail);
       ok(b.b2Marks.n > 0 && b.b2Marks.n >= b.b2Marks.want && b.b2Marks.want > 0 && b.b2Marks.cls,
-        'B2: 相手との相性を盤側の辺に色・線種で示す', JSON.stringify(b.b2Marks));
+        '案C: 相性を河向きの頂点に印で示す', JSON.stringify(b.b2Marks));
       ok(b.boardBandGaps.every(gap => gap <= 125), '盤面と制約フィールドの余白を抑える', `${b.boardBandGaps.join('px / ')}px`);
-      ok(b.oppRotated, '相手の胞は駒の漢字が相手向き（同じ六角グリッドで区別できる）', '');
+      ok(b.oppRotated, '相手側も駒名は正立で読める', '');
       ok(b.rectDrift === -1, '盤の大きさ・横位置は不変、縦はフィールドの畳みに追従（F1 ±0.5px）',
         `ずれたステップ=${b.rectDrift} ${b.rectDriftDetail}`);
       ok(b.cards === expect.castles, '囲いタイル', `${b.cards}枚`);
       ok(b.fams === expect.famsUsed, '囲いのクラスタ見出し（系統ごと）', `${b.fams}系統`);
       ok(b.tiles === expect.tacticTiles && b.vars === expect.tacticVars,
         '戦法タイル（1マス1タイル＋派生はチップ）', `tiles=${b.tiles} vars=${b.vars}`);
-      ok(b.segs === 2, '戦略の絞り込みは居飛車/振り飛車の2択（面は1つ）', `${b.segs}個`);
-      ok(b.flipCol === '6', '相手の面は筋が反転（四間飛車=盤の4筋の列）', `列=${b.flipCol}`);
+      ok(b.segs === 2, '戦型の切替面は居飛車/振り飛車の2択（面は1つ）', `${b.segs}個`);
+      ok(b.flipCol === '４八', '相手の面は筋が反転（四間飛車=絶対座標の４八）', `sq=${b.flipCol}`);
       ok(b.collapse, '系統ブロックを折りたためる', '');
       ok(b.tabSwitch, '面のタブ切替（囲い→戦法）で選択も戦法になる', '');
       ok(b.added, '囲いを選ぶ→スロットとチップが増え、詳細が囲いになる', JSON.stringify(b.t1 && b.t1.slots));
-      ok(b.horizontalChips, 'B2の根・囲いポリへックス・戦法ドミノは順に並び、胞の茎と目地を描く', '');
+      ok(b.yakataCluster, '案C: 囲い右に戦法星座・名前を内包・幽霊は1つ', '');
+      ok(b.oppCastleNameUnder, '相手側の囲い名も囲いの真下に中央揃え', '');
+      ok(b.constellationStable, '案C: 3つで三角形・追加後も既存席は固定・幽霊は1つだけ', '');
       ok(b.resetInMeBar, '丸いリセット×を自分の制約行の右端（囲いの胞の脇）に表示', b.resetInMeBarDetail);
       ok(b.pushed, 'スロットの変更でハッシュが書かれ履歴が積まれる（pushState）', `${b.t1 && b.t1.hash} hist=${b.t1 && b.t1.hist}`);
       ok(b.tacticSel, '戦法を選ぶ→選択と詳細が戦法になる', `sel=${b.t2 && b.t2.selected}`);
       ok(b.strategySel, '戦型チップを押すと右 detailに戦型の情報（導出元・既定・この戦型の囲い）が出る', '');
+      ok(b.swBadge && b.swField && b.detailSwitch,
+        '戦型の切替: 胞の ⇄・右 detail のボタンで他方へ切り替え、戻すと前の選択が復元される',
+        `badge=${b.swBadge} field=${b.swField} detail=${b.detailSwitch}`);
       ok(b.oppStrategySel, '相手側の戦型チップも右 detailに出る（相手の面・組み合わせの戦型つき）', '');
       ok(b.railPick, 'レールの筋タイルで戦法が変わり、囲いは自動では変わらない', `sel=${b.t3 && b.t3.selected}`);
       ok(b.variantStyle, '戦法の駒列は初期展開し、基本札と派生チップは明示する', `${b.vars}件`);
-      ok(b.fileMap, '戦法の札に筋の地図（9目盛りで立つ筋を塗る）', '');
-      ok(b.segFilter && b.famFilter, '戦略セグは一覧の絞り込みだけ（スロット・導出した戦略は不変）', `rows=${b.segFilter} fams=${b.famFilter}`);
+      ok(b.tThumb, '戦法の札に盤面図のサムネ（主役の駒の経路つき）', '');
+      ok(b.tileSize, '戦法の札は囲いカードと同じ規則（サムネ帯65px・幅=サムネの縦横比）', '');
+      ok(b.vfSize, '派生の帯とチップは押しやすい高さ（帯>=22px・チップ>=26px）', '');
+      ok(b.segSwitch && b.segRestore && b.famFilter,
+        '戦略セグは実際の切替（既定が立ち一覧も追従。戻すと前の選択が復元）',
+        `switch=${b.segSwitch} restore=${b.segRestore} fams=${b.famFilter}`);
       ok(b.ngBadges > 0, 'いまの組み合わせと両立しない項目に✕の印（data-ng）が出る', `${b.ngBadges}件`);
       ok(b.ngKept, '両立しない囲いを選んでも戦法は自動で差し替わらない', JSON.stringify(b.t4 && b.t4.slots));
       ok(b.ngChip, '両立しない明示チップに ✕ と理由（title）が出る', JSON.stringify(b.t4 && b.t4.chips));

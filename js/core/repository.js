@@ -21,7 +21,11 @@ window.Kakoi = window.Kakoi || {};
     }
 
     byId(id) { return this._byId.get(id); }
-    ofSide(side) { return this._castles.filter(c => c.side === side); }
+    // その戦型で使える囲い（strategies があればそれだけ、なければ side。catalog.castleSides と同じ規則）
+    ofSide(side) {
+      return this._castles.filter(c =>
+        (Array.isArray(c.strategies) ? c.strategies : [c.side]).includes(side));
+    }
     /** 発展の前後: from（発展元）と、この囲いを from に持つ囲いの一覧 */
     lineageOf(castle) {
       return { from: castle.from ? this._byId.get(castle.from) || null : null, to: this._castles.filter(c => c.from === castle.id) };

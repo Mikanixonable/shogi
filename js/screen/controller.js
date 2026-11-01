@@ -37,6 +37,7 @@ window.Kakoi = window.Kakoi || {};
         onRemove: (w, k, id) => this._remove(w, k, id),
         onOpp: on => this._setShowOpp(on),
         onClear: w => this._clearSide(w),
+        onSwitch: (w, v) => this._switchStrategy(w, v),
       });
       // 左レール: 自分／相手のタブで切り替える1枚の面。見ている側・層は state.selected が持つ
       this.rail = new K.RailView(els.rail /* #pickRail */, {
@@ -44,6 +45,7 @@ window.Kakoi = window.Kakoi || {};
         onChoose: (w, k, id) => this._set(w, k, id),
         onRemove: (w, k, id) => this._remove(w, k, id),
         onClear: w => this._clearSide(w),
+        onSwitchStrategy: (w, v) => this._switchStrategy(w, v),
         onToggleOpponent: on => this._setShowOpp(on),
         onPreview: (w, k, id) => this._preview(w, k, id),
         onPreviewEnd: () => {
@@ -59,6 +61,7 @@ window.Kakoi = window.Kakoi || {};
         onHover: (sqs, tone) => this.board.hover(sqs, tone),
         onAttack: attackId => this.store.set({ attackId, defense: null }),
         onSetConstraint: (w, k, id) => this._set(w, k, id),
+        onSwitchStrategy: (w, v) => this._switchStrategy(w, v),
         onSenkei: id => this._select('me', 'senkei', id),
         onCombo: (w, id, withVs) => this._combo(w, id, withVs),
         onDefense: id => this.store.set({ defense: id }),
@@ -184,6 +187,32 @@ window.Kakoi = window.Kakoi || {};
       if (slots === s.slots) return;
       this.store.set({ slots });
       this._toastUndo(`${who === 'opp' ? '相手' : '自分'}の戦法・囲いをリセットしました`);
+    }
+
+    /** 戦型の切り替え（左レールの切替面・詳細のボタン）。
+     *  いまの戦型の選択を戦型ごとに覚えておき、戻すと復元する。まだ選んでいない
+     *  戦型へは既定の戦法を明示して立てる（囲いはその戦型の既定で補われる） */
+    _switchStrategy(who, target) {
+      if (target !== 'ibisha' && target !== 'furibisha') return;
+      const s = this.store.state;
+      const st = K.constraints.effectiveSides(s.slots, s.showOpp)[who];
+      if (st.strategy === target) return;
+      if (!this._stratSlots) this._stratSlots = { me: {}, opp: {} };
+      const bag = this._stratSlots[who];
+      const side = s.slots[who];
+      bag[st.strategy] = {
+        tactic: K.constraints.tacticList(side.tactic),
+        castle: side.castle != null ? side.castle : null,
+      };
+      const next = bag[target] || {
+        tactic: (() => { const d = K.defaults.defaultTacticId(target); return d == null ? [] : [d]; })(),
+        castle: null,
+      };
+      this.store.set({
+        slots: { ...s.slots, [who]: { tactic: [...next.tactic], castle: next.castle } },
+        selected: `${who}.strategy`,
+      });
+      this._openDrawer();
     }
 
     /** 相手の表示 ON/OFF（スロットは消さない）。OFF にしたとき選択が相手側なら自分側へ戻す */

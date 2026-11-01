@@ -108,8 +108,10 @@ window.Kakoi = window.Kakoi || {};
       const d = defaultIdOf(k, eff.strategy, opp && opp.strategy);
       let v = d;
       if (Kakoi.compat) {
+        // 戦法の候補は「既定値と併存する別枠」ではなく、補った1枠そのものとして評価する
+        // （base に既定値を残すと、駒の違う候補が既定との2枠で ok と誤判定され得る）
         const base = k === 'tactic'
-          ? { ...eff, tacticIds: d == null ? [] : [d] }
+          ? { ...eff, tacticIds: [] }
           : { ...eff, [FIELD[k]]: d };
         if (d == null || Kakoi.compat.judgeFull(base, k, d, opp).level === 'ng') {
           const rep = Kakoi.compat.searchAlternative(base, k, d, opp);
@@ -282,11 +284,16 @@ window.Kakoi = window.Kakoi || {};
   const ROOK_KIND = { 5: 'naka', 6: 'shiken', 7: 'sanken', 8: 'mukai' };   // 先手視点の飛車の筋 → 振り飛車の種類
   const ROOK_NAME = { naka: '中飛車', shiken: '四間飛車', sanken: '三間飛車', mukai: '向かい飛車' };
   const SLOW_CASTLE = new Set(['anaguma', 'mino']);   // 居飛車側で手数がかかる囲いの系統（持久戦の目安）
-  // 主の戦法（飛車優先）の筋。明示層優先: useImplied=false のパスでは暗示の層を根拠にしない
+  // 主の戦法（飛車優先）の筋。明示層優先: useImplied=false のパスでは暗示の層を根拠にしない。
+  // 主役が飛車以外の戦法（ツノ銀中飛車・耀龍四間飛車など）でも、盤上の飛車の筋が種類を示す
   const rookFileOf = (st, useImplied) => {
     if (!useImplied && st.implied && st.implied.tactic) return null;
     const t = findTactic(primaryOf(st));
-    return t && t.lead && t.lead.piece === '飛' ? t.lead.files[0] : null;
+    if (!t) return null;
+    if (t.lead && t.lead.piece === '飛') return t.lead.files[0];
+    const hi = (t.pieces || '').split(/\s+/).find(x => x[0] === '飛');
+    const f = hi ? parseInt(hi[1], 10) : NaN;
+    return f >= 1 && f <= 9 ? f : null;
   };
   // 居飛車側の方針: 明示した戦法の pace（rapid→急戦 / slow→持久戦）、
   // なければ明示した囲いの系統（穴熊・美濃系→持久戦）。境界は曖昧なので代理指標（§3-3）

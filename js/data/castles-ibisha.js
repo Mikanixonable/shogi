@@ -741,7 +741,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'nakazumai', name: '中住まい（4八銀型）', short: '中住まい', reading: 'なかずまい', side: 'ibisha', family: 'nakazumai', setup: 'ibisha',
+    id: 'nakazumai', name: '中住まい（4八銀型）', short: '中住まい', reading: 'なかずまい', side: 'ibisha', strategies: ['ibisha', 'furibisha'], family: 'nakazumai', setup: 'ibisha',
     core: '玉58 金78 金38 銀48',
     shell: '歩97 歩87 歩76 歩67 歩57 歩47 歩37',
     rest: '銀79',
@@ -766,7 +766,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'kinbiraki', name: '金開き', short: '金開き', reading: 'きんひらき', side: 'ibisha', family: 'nakazumai', setup: 'ibisha',
+    id: 'kinbiraki', name: '金開き', short: '金開き', reading: 'きんひらき', side: 'ibisha', strategies: ['ibisha', 'furibisha'], family: 'nakazumai', setup: 'ibisha',
     core: '玉58 金78 金38',
     shell: '歩96 歩87 歩77 歩67 歩57 歩47 歩37',
     rest: '銀79 銀39',
@@ -846,7 +846,7 @@ Kakoi.CASTLES.push(
     ],
   },
   {
-    id: 'kuchurokaku', name: '空中楼閣', short: '空中楼閣', reading: 'くうちゅうろうかく', aliases: ['空中楼閣囲い'], side: 'ibisha', family: 'chudan', refFamily: '文献では中段玉系統の一つ（珍形）', setup: 'ibisha',
+    id: 'kuchurokaku', name: '空中楼閣', short: '空中楼閣', reading: 'くうちゅうろうかく', aliases: ['空中楼閣囲い'], side: 'ibisha', strategies: ['ibisha', 'furibisha'], family: 'chudan', refFamily: '文献では中段玉系統の一つ（珍形）', setup: 'ibisha',
     core: '玉86 銀76 金87 桂77',
     shell: '歩95 歩85 歩75',
     rest: '金58 銀48',
@@ -1061,7 +1061,7 @@ Kakoi.CASTLES.push(
     sources: [{ ref: 'sj-ichigo', for: '配置・解説' }, { ref: 'sj-kakoi-index', for: '分類' }, { ref: 'we-castle', for: '別形' }],
   },
   {
-    id: 'saikyou', name: '最強囲い', short: '最強囲い', reading: 'さいきょうがこい', side: 'ibisha', family: 'quick', subtype: 'saikyou', setup: 'ibisha',
+    id: 'saikyou', name: '最強囲い', short: '最強囲い', reading: 'さいきょうがこい', side: 'ibisha', strategies: ['ibisha', 'furibisha'], family: 'quick', subtype: 'saikyou', setup: 'ibisha',
     core: '玉59 銀48 銀68',
     shell: '歩97 歩87 歩77 歩67 歩57',
     rest: '金49 金69',
@@ -1075,7 +1075,7 @@ Kakoi.CASTLES.push(
     sources: [{ ref: 'sj-saikyou', for: '配置・解説' }, { ref: 'sj-kakoi-index', for: '分類' }],
   },
   {
-    id: 'ahiru', name: 'アヒル囲い', short: 'アヒル囲い', reading: 'あひるがこい', aliases: ['御神酒指し', '大阪囲い'], side: 'ibisha', family: 'quick', subtype: 'ahiru', setup: 'ibisha',
+    id: 'ahiru', name: 'アヒル囲い', short: 'アヒル囲い', reading: 'あひるがこい', aliases: ['御神酒指し', '大阪囲い'], side: 'ibisha', strategies: ['ibisha', 'furibisha'], family: 'quick', subtype: 'ahiru', setup: 'ibisha',
     core: '玉58 銀68 銀48 金79 金39',
     shell: '歩97 歩87 歩77 歩67 歩57 歩47 歩37',
     rest: '',

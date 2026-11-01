@@ -83,10 +83,10 @@ header { position:relative; }
 /* ===== stage: 盤を見る ===== */
 /* 行: 制約フィールド（内容の高さ=aspect-ratio）＋盤（残り全部）。盤の大きさは
    boardarea の残り高さから決める（board.css の .boardwrap が 100cqh を見る） */
-.stage { --stage-gap:4.8px; display:grid; position:relative; container-type:size;
+.stage { --stage-gap:4px; display:grid; position:relative; container-type:size;
          grid-template-columns:minmax(0,1fr);
          grid-template-rows:auto minmax(0,1fr); align-content:center;
-         padding:10px 18px; gap:var(--stage-gap); }
+         padding:5px 18px; gap:var(--stage-gap); }
 /* 持ち駒: 伝統的な記法で盤の左右に立てる（F5: 相手=左上・自分=右下）。
    boardwrap の左右に絶対配置し、列の幅は常に確保する（駒の有無で盤が動かない） */
 .handcol { position:absolute; top:calc(var(--coord-h) + var(--coord-gap)); bottom:0; width:22px; margin:0 2px;

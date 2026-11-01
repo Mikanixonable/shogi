@@ -134,8 +134,8 @@ window.Kakoi = window.Kakoi || {};
     };
     let s = `<svg class="mini-mv" viewBox="0 0 ${cols * W + M} ${rows * H + M}" preserveAspectRatio="xMidYMid meet"` +
       ` role="img" aria-label="主役の駒の動き"${color ? ` style="--tc:${color}"` : ''}>`;
-    // 経路の矢じり
-    const mid = `mv-${tactic.id || 'rt'}`;
+    // 経路の矢じり（定義は全て同じなので id は共有。タイルで同じ戦法を複数描いても衝突しない）
+    const mid = 'mv-arrow';
     s += `<defs><marker id="${mid}" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse"` +
       ` markerWidth="3.6" markerHeight="3.6" orient="auto"><path class="mini-rth" d="M0 0L10 5L0 10L3 5z"/></marker></defs>`;
     // 座標: 上=筋（左の列ほど大きい）、右=段
@@ -173,6 +173,11 @@ window.Kakoi = window.Kakoi || {};
     return s + '</svg>';
   }
 
+  // 動き図の viewBox の縦横比（タイルの幅決め用。囲いの miniAspect に対応）
+  Kakoi.moveAspect = (tactic, side, flip = false) => {
+    const w = moveWindow(tactic, side, flip);
+    return ((w.f1 - w.f0 + 1) * W + M) / ((w.r1 - w.r0 + 1) * H + M);
+  };
   Kakoi.miniBoardSVG = miniBoardSVG;
   Kakoi.miniWindow = miniWindow;
   Kakoi.moveBoardSVG = moveBoardSVG;

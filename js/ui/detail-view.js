@@ -90,6 +90,12 @@ window.Kakoi = window.Kakoi || {};
           if (handlers.onSetConstraint) handlers.onSetConstraint(this._sel.who, 'castle', c.dataset.id);
           return;
         }
+        // 戦型の切替（制約を他方の戦型へ。前の選択は記憶して戻せる）
+        const sw = e.target.closest('[data-act="strategy"]');
+        if (sw) {
+          if (handlers.onSwitchStrategy) handlers.onSwitchStrategy(sw.dataset.who || this._sel.who, sw.dataset.target);
+          return;
+        }
         // 戦型への導線（制約ではなく情報の選択。'me.senkei.<id>' に寄せる）
         const sk = e.target.closest('[data-act="senkei"]');
         if (sk) {
@@ -316,18 +322,22 @@ window.Kakoi = window.Kakoi || {};
       const castles = this.h.repo.ofSideByFamily(st.strategy);
       const castleChips = Sec().vchips(castles.map(x =>
         Sec().setChip({ kind: 'castle', id: x.id, text: x.name, pressed: st.castleId === x.id })).join(''));
-      // もう一方の戦型への切り替え方（例としてその戦型の既定戦法を挙げる）
+      // もう一方の戦型への切替ボタン: 押すと制約を切り替える（いまの選択は戦型ごとに
+      // 覚えておき、戻すと復元される。左レールの切替面と同じ操作）
       const otherSide = st.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
       const otherStrat = K.STRATEGIES[otherSide];
-      const otherTactic = otherStrat && findTactic(otherStrat.defaultTactic);
+      const switchBtn = otherStrat ? Sec().sec('戦型の切り替え',
+        `${SHORT_WHO[sel.who]}の制約を${otherStrat.label}にする。前の選択は記憶して戻せる`,
+        `<div class="vchips"><button type="button" class="vchip bd-strat-sw" data-act="strategy" ` +
+        `data-who="${esc(sel.who)}" data-target="${esc(otherSide)}">⇄ ${esc(otherStrat.label)}に切り替える</button></div>`) : '';
       const body = [
         this._head(sel, name || '（不明）'),
         this._conflict(sel, p, citer),
         Sec().note(note, citer),
         s && s.desc ? Sec().desc(s.desc, citer) : '',
+        switchBtn,
         defs.length ? Sec().sec('この戦型の既定', '押すとその層を制約にする', defChips) : '',
         castles.length ? Sec().sec('この戦型の囲い', '押すとその囲いを制約にする', castleChips) : '',
-        otherTactic ? Sec().note(`「${esc(otherStrat.label)}」にするには、左ドックでその戦型の戦法・囲いを選びます（例：${esc(otherTactic.name)}）。`) : '',
         other && p.threat ? Sec().note(`相手と合わせた戦型は ${Sec().senkeiChip(this._senkeiLabelId(S, showOpp) || p.threat.kind, '#' + p.threat.label)} です（帯の間の #${esc(p.threat.label)} と同じ区分）。`) : '',
       ].filter(Boolean).join('');
       return { body, sources: [] };

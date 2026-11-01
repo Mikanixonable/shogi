@@ -204,10 +204,12 @@ window.Kakoi = window.Kakoi || {};
      *   onSelect: モジュールの選択（tactic の空き枠は id=系統の id）
      *   onRemove: 明示した層を外す（tactic はその id だけ、castle はその側）
      *   onOpp: 「＋相手」の胞で相手の表示を ON にする
+     *   onSwitch: (who, target)=>void 戦型の胞の ⇄ で戦型を切り替える
      */
-    constructor(el, { onSelect, onRemove, onOpp, onClear }) {
+    constructor(el, { onSelect, onRemove, onOpp, onClear, onSwitch }) {
       this.el = el;
       this._onClear = onClear;
+      this._onSwitch = onSwitch || null;
       this._nodes = new Map();   // 'who.kind.id' → .cf-hit 要素（差分更新でフォーカスを保つ。U3）
       this._lastRender = null;
       el.classList.add('cfield');
@@ -215,7 +217,7 @@ window.Kakoi = window.Kakoi || {};
       this.hits = document.createElement('span');
       this.hits.className = 'cf-hits';
       el.append(this.svg, this.hits);
-      this._bindEvents({ onSelect, onRemove, onOpp, onClear });
+      this._bindEvents({ onSelect, onRemove, onOpp, onClear, onSwitch });
       if (window.ResizeObserver) {
         this._resizeObserver = new ResizeObserver(() => {
           if (this._lastRender) this.render(this._lastRender);
@@ -224,10 +226,12 @@ window.Kakoi = window.Kakoi || {};
       }
     }
 
-    _bindEvents({ onSelect, onRemove, onOpp, onClear }) {
+    _bindEvents({ onSelect, onRemove, onOpp, onClear, onSwitch }) {
       this.el.addEventListener('click', e => {
         const x = e.target.closest('.cf-x');
         if (x) { onRemove(x.dataset.who, x.dataset.kind, x.dataset.id || null); return; }
+        const sw = e.target.closest('.cf-sw');
+        if (sw) { if (onSwitch) onSwitch(sw.dataset.who, sw.dataset.target); return; }
         const c = e.target.closest('.cf-clear');
         if (c) { onClear(c.dataset.who); return; }
         const g = e.target.closest('.cf-opp');
@@ -341,7 +345,7 @@ window.Kakoi = window.Kakoi || {};
         const st = L[who].st;
         if (!L[who].cells.length) return 0;
         const imp = !!(st.implied && st.implied.castle);
-        return ngOf(who) ? 44 : imp ? 34 : 21;
+        return ngOf(who) ? 42 : imp ? 32 : 19;
       };
       const upE = who => Math.max(coreHalf(who), E[who].top);
       const dnE = who => Math.max(coreHalf(who), E[who].bot, coreH(who) / 2 + lblOf(who));
@@ -355,7 +359,7 @@ window.Kakoi = window.Kakoi || {};
       const W = Math.max(XR + 45, clusterR + 36);
       const scale = (this.el.clientWidth || W) / W;
       const E = { me: extent('me', 7 / scale), opp: extent('opp', 7 / scale) };
-      const targetUnits = 46 / scale;
+      const targetUnits = 38 / scale;
       const nPill = Math.min((labels && labels.length) || 0, 2);
       const pillGap = 3.6 / scale;
       const pillWidths = (labels || []).slice(0, 2).map(l =>
@@ -372,9 +376,10 @@ window.Kakoi = window.Kakoi || {};
       const GAP = nPill ? targetUnits / 2 + 1.6 : 3.5;
       const oMidY = pad + upE('opp');
       const rivY = oMidY + dnE('opp') + GAP;
-      const soloHead = showOpp ? 0 : 10.8;
+      const soloHead = showOpp ? 0 : 12.4;   // 「＋相手」の帯（自分の帯の上に必ず空く）
       const mMidY = showOpp ? rivY + GAP + upE('me') : pad + soloHead + upE('me');
       const H = mMidY + dnE('me') + pad;
+      this._soloTop = pad + soloHead;
       const midYOf = who => who === 'opp' ? oMidY : mMidY;
       const casY = (who, r) => midYOf(who) - coreH(who) / 2 + (r - L[who].minR) * UH;
       this._rivY = rivY; this._midY = { me: mMidY, opp: oMidY };
@@ -390,6 +395,8 @@ window.Kakoi = window.Kakoi || {};
           m.cx = SX; m.cy = midY;
           m.x0 = SX - STR_R; m.x1 = SX + STR_R; m.y0 = midY - STR_R; m.y1 = midY + STR_R;
           m._castleMod = mods.find(x => x.who === who && x.kind === 'castle');
+          // ⇄ バッジは茎（右）と反対の左の辺に乗せる
+          m._swPt = edgeRide(hexV(m.cx, m.cy, STR_R), m.cx, m.cy, 180);
         } else if (m.kind === 'castle') {
           const { cells } = L[who];
           m.cells = cells.map(cl => ({ ...cl, x: colX(cl.f, L[who].maxF), y: casY(who, cl.r) }));
@@ -475,17 +482,18 @@ window.Kakoi = window.Kakoi || {};
       this._drawMarks(mods, showOpp, svg);
     }
 
-    // 「＋相手」の胞（相手 OFF の間だけ。帯の上の左端に浮かべ、押すと相手を表示する）
+    // 「＋相手」の胞（相手 OFF の間だけ）。自分の帯の上には必ず soloHead の空きが
+    // あるので、そこへ背の低い胞を置く。戦型胞の高さが変わってもぶつからない
     _drawOppGhost(svg, showOpp) {
       if (showOpp) return;
-      const y = 22 * ELEMENT_SCALE;
+      const w = 47 * ELEMENT_SCALE, h = 9 * ELEMENT_SCALE;
+      const y = this._soloTop / 2;
       const g = svg$('g', { class: 'cf-opp-inv' }, svg);
-      svg$('path', {
-        d: roundPath(hexV(SX, y, 15 * ELEMENT_SCALE), 3 * ELEMENT_SCALE),
-        class: 'cf-cell cf-ghost' }, g);
-      svg$('text', {
-        x: SX, y: y + 3.5 * ELEMENT_SCALE, class: 'cf-opp-t', 'text-anchor': 'middle' }, g).textContent = '＋相手';
-      this._oppY = y;
+      svg$('rect', { x: f1(SX - w / 2), y: f1(y - h / 2), width: f1(w), height: f1(h),
+        rx: f1(h / 2), class: 'cf-cell cf-ghost' }, g);
+      svg$('text', { x: SX, y: f1(y + .8 * ELEMENT_SCALE), class: 'cf-opp-t',
+        'text-anchor': 'middle', 'dominant-baseline': 'central' }, g).textContent = '＋相手';
+      this._oppRect = { x: SX - w / 2 - 3, y: y - h / 2 - 3, w: w + 6, h: h + 6 };
     }
 
     // 関係ラベル（河の左端に浮くピル。最大2枚=大分類＋葉。implied は既定胞と同じ網掛け）
@@ -694,6 +702,7 @@ window.Kakoi = window.Kakoi || {};
         this._positionHit(b, w2);
         this.hits.appendChild(b);
         this._xButton(w2.m);
+        if (w2.m.kind === 'strategy') this._swButton(w2.m);   // ⇄ は戦型の胞だけ（キーは側で1つ）
       }
       for (const [k, b] of this._nodes) {
         if (!seen.has(k)) {
@@ -793,8 +802,7 @@ window.Kakoi = window.Kakoi || {};
         b.title = t; b.setAttribute('aria-label', t);
         this.hits.append(b);
       }
-      const r = 19 * ELEMENT_SCALE, y = this._oppY || 22 * ELEMENT_SCALE;
-      this._positionHit(b, { x: SX - r, y: y - r, w: 2 * r, h: 2 * r });
+      this._positionHit(b, this._oppRect || { x: SX - 24, y: 4, w: 48, h: 16 });
     }
 
     // 側ごとの「リセット」: 帯の右端に × を立てる。明示したスロットが無い側は出さない
@@ -850,6 +858,29 @@ window.Kakoi = window.Kakoi || {};
         b.title = `${name}${imp}${m.ng ? `。両立しない: ${m.ng}` : ''}`;
         b.setAttribute('aria-label', `${base}「${name}」${imp}${m.ng ? `。両立しない: ${m.ng}` : ''}`);
       }
+    }
+
+    // 戦型の胞の左の辺に乗る ⇄（他方の戦型へ切り替える。左レールの切替面と同じ操作）
+    _swButton(m) {
+      const key = `sw.${m.who}`;
+      let b = this.hits.querySelector(`.cf-sw[data-key="${key}"]`);
+      if (m.kind !== 'strategy' || !m._swPt || !this._onSwitch) { if (b) b.remove(); return; }
+      if (!b) {
+        b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cf-sw';
+        b.dataset.key = key;
+        b.tabIndex = -1;
+        b.textContent = '⇄';
+        this.hits.append(b);
+      }
+      b.dataset.who = m.who;
+      b.dataset.target = m.st.strategy === 'ibisha' ? 'furibisha' : 'ibisha';
+      const t = `${WHO_JA[m.who]}の戦型を${strategyLabel(b.dataset.target)}に切り替える`;
+      b.title = t; b.setAttribute('aria-label', t);
+      const v = this._view;
+      b.style.left = `calc(${(m._swPt[0] / v.w * 100).toFixed(3)}% - 8.1px)`;
+      b.style.top = `calc(${((m._swPt[1] - v.y0) / v.h * 100).toFixed(3)}% - 8.1px)`;
     }
 
     _xButton(m) {

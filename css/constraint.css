@@ -15,14 +15,16 @@
 .cf-hit.cf-pill { z-index:4; }
 @media (hover:hover) { .cf-hit:hover { background:color-mix(in srgb,var(--fg) 4%,transparent); } }
 .cf-hit:focus-visible { outline:2px solid var(--accent); outline-offset:-1px; }
-/* 多角形の辺に乗る ×（外す）と、帯の右端のリセット。ヒット層のモジュールボタンより手前 */
-.cf-x, .cf-clear { z-index:3; display:grid; place-items:center; width:16.2px; height:16.2px; padding:0;
+/* 多角形の辺に乗る ×（外す）・⇄（戦型の切替）と、帯の右端のリセット。ヒット層のモジュールボタンより手前 */
+.cf-x, .cf-clear, .cf-sw { z-index:3; display:grid; place-items:center; width:16.2px; height:16.2px; padding:0;
                    border:0; border-radius:50%; background:var(--bg); color:var(--muted);
                    cursor:pointer; font-size:12.6px; line-height:1;
                    box-shadow:0 0 0 1px var(--line-2); }
 .cf-clear { width:19.8px; height:19.8px; box-shadow:none; border:1px solid var(--line-2); font-size:13.5px; }
+.cf-sw { position:absolute; font-size:10.8px; }
 @media (hover:hover) {
   .cf-x:hover, .cf-clear:hover { color:var(--bad); box-shadow:0 0 0 1px var(--bad); border-color:var(--bad); }
+  .cf-sw:hover { color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
 }
 /* --- 戦型の胞（左端の大きな六角形）・茎 --- */
 .cf-cell { stroke:var(--bg); stroke-width:2.1; stroke-linejoin:round; transition:fill .2s,stroke .2s; }
@@ -57,6 +59,7 @@
 .cf-who.sel { fill:var(--accent); }
 .cf-who-mark { font-size:11.7px; }
 .cf-opp-t { fill:var(--muted); font:600 13px/1 var(--font-b); }
+.cf-opp-inv .cf-opp-t { font-size:11px; }
 /* --- 相性の印（河を向いた頂点に乗る輝き・ひび） --- */
 .cf-sm { fill:none; stroke-width:3.1; stroke-linecap:round; }
 .cf-sm-good { stroke:var(--good); }
@@ -97,7 +100,8 @@ span.bd-imp { border:0; padding:0; margin-left:4px; }  /* 行内の小さな注�
 /* ===== narrow ===== */
 @media (max-width:979px) {
   #pickRail { padding:12px 14px; }
-  /* 胞のボタンを指で押しやすいよう、×・リセットの当たり判定を広げる（C1） */
+  /* 胞のボタンを指で押しやすいよう、×・⇄・リセットの当たり判定を広げる（C1） */
   .cf-x::after { content:""; position:absolute; inset:-14.5px; }
+  .cf-sw::after { content:""; position:absolute; inset:-14.5px; }
   .cf-clear::after { content:""; position:absolute; inset:-12.5px; }
 }

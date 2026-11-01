@@ -2,9 +2,10 @@
 // 戦法タイルと囲いカードの「構築」だけを持つ純粋な描画部品。状態の書き換え
 // （バッジ・戦略に合わない項目の非表示・採用の裏返し）は rail-badges.js / rail-view.js
 //   - 戦法（design-refs-tactic-select 案A「駒棚」）: 行=主役の駒（飛銀角桂歩金玉の7系統）。初期状態は全行展開。
-//     行の中は筋順（9→1）に並ぶ札。各札は9目盛りの筋地図を内蔵し、主役の駒が立つ
-//     筋を駒色で塗る（lead.files。相手の面は絶対座標に反転）。下に最終マスとペース。
-//     variantOf の派生は親札の下に「派生 n」の帯で畳む。系統行は件数にかかわらず初期展開
+//     行の中は筋順（9→1）に並ぶ札。各札は盤面の一部（moveBoardSVG: 主役の駒の経路と必須の
+//     駒を含む窓。囲いカードのミニ盤と同じ作法）をサムネに持ち、下に名前・最終マス・ペース。
+//     札の幅は窓の描画幅（--ar）に限り囲いカードと縦横を揃える。variantOf の派生は親札の下に
+//     「派生 n」の帯で畳む。系統行は件数にかかわらず初期展開
 //   - 基本の項目（データの basic）は「基本」の印を付けて系統の先頭に置く
 //   - 囲いタイル: 並べ方（CASTLE_SORTS）ごとの折りたたみブロック。既定は CASTLE_FAMILIES ごと。サムネイルは core 駒の
 //     外接矩形を最小 5筋×3段に広げた窓で、歩の壁・周辺の駒ごと見せる。タイルの幅は窓の描画幅
@@ -36,17 +37,14 @@ window.Kakoi = window.Kakoi || {};
     ng: el.querySelector('.dk-ng'), vs: el.querySelector('.dk-vs'),
   }));
 
-  // 主役の駒が立つ筋の地図: 9目盛り（左=9筋）で lead.files を塗る
-  const fileMap = (t, flip) => {
-    const on = new Set(t.lead.files.map(f => absF(f, flip)));
-    return `<span class="dk-map" aria-hidden="true">` +
-      [9, 8, 7, 6, 5, 4, 3, 2, 1].map(f => `<i${on.has(f) ? ' class="on"' : ''}></i>`).join('') +
-      `</span>`;
-  };
   // 最終マスの表示（相手は筋だけ絶対座標に反転。段は盤と同じ）
   const sqText = (t, flip) => `${ZEN[absF(+t.lead.square[0], flip)]}${RANKS[+t.lead.square[1] - 1]}`;
 
-  function tile(who, t, flip) {
+  // 札の幅を決めるサムネの縦横比（Position が組めないときは囲いと同じ既定値）
+  const tileAspect = (ctx, t, side, flip) =>
+    ctx._tpos && ctx._tpos.get(t.id) ? K.moveAspect(t, side, flip) : 1.52;
+
+  function tile(ctx, who, t, flip) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'dk-item dk-tile dk-tl';
@@ -54,9 +52,14 @@ window.Kakoi = window.Kakoi || {};
     if (K.tacticNav.isRare(t)) b.dataset.rare = 'true';
     if (t.basic) b.dataset.basic = 'true';
     b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = (t.basic ? SEAL : '') + fileMap(t, flip) +
-      `<span class="sq">${esc(sqText(t, flip))}</span>` +
-      `<span class="nm">${esc(t.short || t.name)}</span>` +
+    const side = (K.catalog.tacticFamilyOf(t) || {}).side || 'ibisha';
+    const pos = ctx._tpos && ctx._tpos.get(t.id);
+    b.innerHTML = (t.basic ? SEAL : '') +
+      `<span class="thumb" aria-hidden="true"><span class="sc">` +
+      (pos ? K.moveBoardSVG(pos, t, { flip, side, color: 'var(--tc)' }) : '') +
+      `</span></span>` +
+      `<span class="tx"><span class="nm">${esc(t.short || t.name)}</span>` +
+      `<span class="sq">${esc(sqText(t, flip))}</span></span>` +
       `<span class="dk-marks"><span class="pace" data-p="${t.pace || 'both'}">${PACE[t.pace] || '両'}</span>` +
       `<i class="dk-vs"></i><span class="dk-ng"></span></span>`;
     return b;
@@ -134,7 +137,8 @@ window.Kakoi = window.Kakoi || {};
       for (const t of roots) {
         const col = document.createElement('div');
         col.className = 'dk-tcol';
-        col.appendChild(tile(who, t, flip));
+        col.style.setProperty('--ar', tileAspect(ctx, t, family.side, flip).toFixed(4));   // 札幅=サムネの描画幅（囲いカードと同じ規則）
+        col.appendChild(tile(ctx, who, t, flip));
         const vs = variantsOf.get(t.id);
         if (vs && vs.length) {
           const vars = document.createElement('div');
