@@ -14,17 +14,57 @@ window.Kakoi = window.Kakoi || {};
   const K = window.Kakoi;
   const { VS_MARK, findTactic, KINDS, FIELD } = K.catalog;
   const { esc } = K.html;
-  const STRATEGY_IDS = ['furibisha', 'ibisha'];
   const castlePos = c => K.Position.fromCastle(c, K.SETUPS[c.setup]);
   // 一覧の並べ方は表示の好み（盤面の状態ではない）なのでここで localStorage に持つ
   const PREF = 'shogi-castle:dock';
   const loadPref = () => { try { return JSON.parse(localStorage.getItem(PREF)) || {}; } catch { return {}; } };
-  // 上部の操作の小物: 層タブのアイコン・並べ方のアイコン
-  const TAB_ICON = {
-    castle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l3 2V6l5 3 5-3v5l3-2v11z"/></svg>',
-    tactic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 18.6 6.7 20.2 20.5H3.8L5.4 6.7Z"/>' +
-            '<path d="M8.6 14.6 15.4 8.4M15.4 8.4h-4.2M15.4 8.4v4.2"/></svg>',
+  // 面の上端の切り替え面（design-refs-dock-switch 案B「型の三印」）: 戦型・囲い・戦法を
+  // 同じレイヤーの選択肢として一続きに並べる。絵は1枚の SVG、操作は透明ボタンの重なり
+  // （制約フィールドと同じ二層）。戦型=辺を共有する正六角形の対（左=振飛車・右=居飛車）、
+  // 囲い=パズルのピース、戦法=駒形の五角形。開いている層の型から面の罫へ点線の茎を垂らす
+  const f1 = n => +n.toFixed(2);
+  const pt = p => `${f1(p[0])} ${f1(p[1])}`;
+  // 上に頂点を持つ正六角形（制約フィールドの戦型胞と同じ向き）
+  const hexV = (cx, cy, r) => [90, 150, 210, 270, 330, 30]
+    .map(a => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)]);
+  // 角をわずかに丸めた多角形のパス（constraint-field.js の roundPath と同じ）
+  const roundPath = (pts, r = 2) => {
+    const n = pts.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n];
+      const toward = q => {
+        const dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy) || 1;
+        return [p[0] + dx / d * r, p[1] + dy / d * r];
+      };
+      out.push(`${i ? 'L' : 'M'}${pt(toward(a))}Q${pt(p)} ${pt(toward(b))}`);
+    }
+    return out.join('') + 'Z';
   };
+  // パズルの継ぎ目（「首が絞れて頭が膨らむ」突起。制約フィールドと同じ曲線）
+  const jEdge = (p0, p1, s = 0, d = 7, w = 1) => {
+    if (!s) return `L${pt(p1)}`;
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy);
+    const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
+    const P = (t, o = 0) => {
+      const tt = .5 + (t - .5) * w;
+      return [p0[0] + ux * tt * L + nx * o * s, p0[1] + uy * tt * L + ny * o * s];
+    };
+    return `L${pt(P(.30))}` +
+      `C${pt(P(.315, -.09 * d))} ${pt(P(.355, -.08 * d))} ${pt(P(.395, .18 * d))}` +
+      `C${pt(P(.415, .38 * d))} ${pt(P(.425, .52 * d))} ${pt(P(.40, .68 * d))}` +
+      `C${pt(P(.375, .88 * d))} ${pt(P(.36, 1.02 * d))} ${pt(P(.42, 1.13 * d))}` +
+      `C${pt(P(.45, 1.19 * d))} ${pt(P(.55, 1.19 * d))} ${pt(P(.58, 1.13 * d))}` +
+      `C${pt(P(.64, 1.02 * d))} ${pt(P(.625, .88 * d))} ${pt(P(.60, .68 * d))}` +
+      `C${pt(P(.575, .52 * d))} ${pt(P(.585, .38 * d))} ${pt(P(.605, .18 * d))}` +
+      `C${pt(P(.645, -.08 * d))} ${pt(P(.685, -.09 * d))} ${pt(P(.70))}` +
+      `L${pt(p1)}`;
+  };
+  const boxJ = (x, y, w, h, e, d = 7, jw = 1) => `M${pt([x, y])}` +
+    jEdge([x, y], [x + w, y], e.n, d, jw) + jEdge([x + w, y], [x + w, y + h], e.e, d, jw) +
+    jEdge([x + w, y + h], [x, y + h], e.s, d, jw) + jEdge([x, y + h], [x, y], e.w, d, jw) + 'Z';
+  // 駒のシルエット五角形（.pt-tile の頂点比 50-86-100-0-14）
+  const pieceV = (x, y, w, h) => [[x + w * .5, y], [x + w * .86, y + h * .14], [x + w, y + h], [x, y + h], [x + w * .14, y + h * .14]];
+  const polyPath = pts => 'M' + pts.map(pt).join('L') + 'Z';
 
   class RailView {
     /**
@@ -51,18 +91,23 @@ window.Kakoi = window.Kakoi || {};
       this._whoPrev = null;                            // 前回表示していた側（切り替わりの向きの演出用）
       const pref = loadPref();
       this.sort = K.railGrids.CASTLE_SORTS.some(x => x.id === pref.sort) ? pref.sort : 'family';
-      // 面の上端は1行: 左に戦型の絞り込み（文字だけの小さなセグメント）、右に層タブ（囲い／戦法）。
-      // その下に並べ方・記号の凡例・?。開いている側の名前は右端の駒の見出し（バインダー）が示すので、面には見出しを持たない
+      // 面の上端は切り替え面（案B「型の三印」）1面: 戦型（振飛車／居飛車の六角形の対）・
+      // 囲い（パズルピース）・戦法（駒形五角形）を同じレイヤーに並べる。
+      // その下に戦型（細）チップ・並べ方・記号の凡例・?。開いている側の名前は右端の駒の見出し（バインダー）が示すので、面には見出しを持たない
       el.innerHTML =
         `<div class="dk">` +
          `<section class="dk-pane">` +
          `<header class="dk-pane-h">` +
-         `<div class="seg dk-strategy" role="group" aria-label="戦型の絞り込み（振り飛車／居飛車）">` +
-         STRATEGY_IDS.map(id => `<button type="button" data-value="${id}">${esc(K.STRATEGIES[id].label)}</button>`).join('') +
+         `<div class="dk-sw">` +
+         `<svg class="dk-sw-art" viewBox="0 0 326 64" aria-hidden="true"></svg>` +
+         `<div class="seg dk-strategy" role="group" aria-label="戦型の絞り込み（振飛車／居飛車）">` +
+         `<button type="button" data-value="furibisha" aria-label="戦型を振飛車に絞る">振飛車</button>` +
+         `<button type="button" data-value="ibisha" aria-label="戦型を居飛車に絞る">居飛車</button>` +
          `</div>` +
          `<div class="seg dk-tab" role="group" aria-label="一覧（囲い／戦法）">` +
-         `<button type="button" data-value="castle">${TAB_ICON.castle}囲い</button>` +
-         `<button type="button" data-value="tactic">${TAB_ICON.tactic}戦法</button></div></header>` +
+         `<button type="button" data-value="castle" aria-label="囲いの一覧を開く">囲い</button>` +
+         `<button type="button" data-value="tactic" aria-label="戦法の一覧を開く">戦法</button>` +
+         `</div></div></header>` +
          // 戦型（細）のチップ行: 組み合わせから候補を出し、一覧の表示を絞るだけ（制約にはしない）
          `<div class="dk-senkei" role="group" aria-label="戦型（細）の絞り込み"></div>` +
          `<div class="dk-tools"><label class="dk-sort"><span>並べ方</span><select class="dk-sort-sel">` +
@@ -83,6 +128,7 @@ window.Kakoi = window.Kakoi || {};
         `<span class="v"><b>自分</b><small>▲</small></span></button>` +
         `</div>`;
       this.root = el.firstElementChild;
+      this.swArt = this.root.querySelector('.dk-sw-art');
       this.body = this.root.querySelector('.dk-body');
       this.tray = this.root.querySelector('.dk-tray');
       this.key = this.root.querySelector('.dk-key');
@@ -128,8 +174,9 @@ window.Kakoi = window.Kakoi || {};
       for (const c of K.CASTLES) this._pos.set(c.id, castlePos(c));
       this._bindEvents();
       this._bindLegend();
-      // 狭い画面: バインダーの駒は層タブと同じ行へ、戦型の絞り込みは並べ方の行へ移し、
-      // 「選ぶ操作（側・層）」と「見せ方の操作（絞り込み・並べ方・凡例）」の2段に分ける（モバイル M1）
+      // 狭い画面: バインダーの駒は切り替え面と同じ行へ（切り替え面は1面なので戦型だけを
+      // 取り出さない）、「選ぶ操作（側・層・戦型）」と「見せ方の操作（戦型（細）の絞り込み・
+      // 並べ方・凡例）」の2段に分ける（モバイル M1）
       this._mql = matchMedia('(max-width:979px)');
       this._mql.addEventListener('change', () => this._relocate());
       this._relocate();
@@ -138,18 +185,42 @@ window.Kakoi = window.Kakoi || {};
     _relocate() {
       const paneH = this.root.querySelector('.dk-pane-h');
       const tools = this.root.querySelector('.dk-tools');
-      const strat = this.root.querySelector('.dk-strategy');
       const narrow = this._mql.matches;
       if (narrow) {
-        paneH.prepend(this.binder);        // [相手/自分][囲い|戦法]
+        paneH.prepend(this.binder);        // [相手/自分][切り替え面]
         tools.prepend(this.root.querySelector('.dk-senkei'));
-        tools.prepend(strat);              // [振り/居飛車][戦型（細）][並べ方][凡例][?]
       } else {
-        paneH.prepend(strat);              // 元の順序へ戻す
         tools.before(this.root.querySelector('.dk-senkei'));
         this.el.appendChild(this.binder);  // レール右端の縦バインダーに戻る
       }
       this.binder.setAttribute('aria-orientation', narrow ? 'horizontal' : 'vertical');
+    }
+
+    // ---------- 切り替え面の絵（案B）: 選択に合わせて描き直す。
+    // トグルは切り替え機能なので実効値は載せず、パラメータ名だけを示す ----------
+    _paintSwitch() {
+      const strat = this.filter[this.who] || 'ibisha';
+      const tab = this.kind;
+      let s = '';
+      // 戦型: 下札を背面に置き、その上に辺を共有する正六角形の対を重ねる。
+      // 札＋六角形の外形を囲い・戦法のボタン高（52px）に揃える
+      s += `<rect class="tag" x="26" y="45" width="58" height="15"/>` +
+           `<text class="nm" x="55" y="58">戦型</text>`;
+      // 左=振飛車・右=居飛車。ON=墨塗り
+      for (const [cx, cy, id, ch] of [[34.2, 26, 'furibisha', '振'], [75.8, 26, 'ibisha', '居']]) {
+        const on = strat === id;
+        s += `<path d="${roundPath(hexV(cx, cy, 18), 2)}" class="hx${on ? ' on' : ''}"/>` +
+             `<text class="ch${on ? ' on' : ''}" x="${cx}" y="${cy - 1}">${ch}</text>` +
+             `<text class="sub${on ? ' on' : ''}" x="${cx}" y="${cy + 10}">飛車</text>`;
+      }
+      // 囲い: パズルのピース（上=凸・左=凹・右=凸）。戦法: 駒形五角形。開いている層は朱縁
+      s += `<path d="${boxJ(119, 14, 88, 46, { n: 1, e: 1, s: 0, w: -1 }, 5)}" class="shp${tab === 'castle' ? ' on' : ''}" data-layer="castle"/>` +
+           `<text class="nm" x="163" y="40">囲い</text>` +
+           `<path d="${polyPath(pieceV(227, 8, 88, 52))}" class="shp${tab === 'tactic' ? ' on' : ''}" data-layer="tactic"/>` +
+           `<text class="nm" x="271" y="40">戦法</text>`;
+      // 開いている層の型から面の罫へ点線の茎
+      s += `<path d="M${tab === 'castle' ? 163 : 271} 60V64" class="stem"/>`;
+      this.swArt.innerHTML = s;
     }
 
     // ---------- 駒の見出し: 押すとその側の面へ（相手が OFF なら表示して開く）。縦のタブなので ↑=相手・↓=自分 ----------
@@ -332,6 +403,7 @@ window.Kakoi = window.Kakoi || {};
       const st = S[who];
       if (this._strat[who] !== st.strategy) { this._strat[who] = st.strategy; this.filter[who] = st.strategy; }
       this.stratSeg.setValue(this.filter[who]);
+      this._paintSwitch();
       // 戦型（細）のチップ: 組み合わせ（大分類）から候補を出す。変わったときだけ並び直す
       const cand = K.railGrids.senkeiCandidates(S.me, S.opp, showOpp);
       const sig = cand.join(',');

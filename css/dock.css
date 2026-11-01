@@ -35,41 +35,43 @@
                                    border-top:7px solid var(--accent); border-right:7px solid transparent; }
 .dk-pane { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; min-height:0; }
 
-/* 上端の1行（5）: 左に戦型の絞り込み（文字セグメント）、右に層タブ（囲い／戦法）。下の罫に選択中のタブが綴じる */
+/* 上端の切り替え面（design-refs-dock-switch 案B「型の三印」）: 戦型・囲い・戦法を
+   同じレイヤーの選択肢として一続きに並べる。絵は1枚の SVG（.dk-sw-art）に描き、
+   操作は透明ボタンの重なりが受ける（制約フィールドと同じ二層）。
+   戦型=六角形の対＋背面の下札、囲い=パズルのピース、
+   戦法=駒形の五角形。開いている層の型から面の罫へ点線の茎を垂らす */
 /* （body 直下の header の flex-wrap・padding・墨の罫が効かないよう、ここで打ち消す） */
 .dk-pane-h { flex:none; display:flex; flex-wrap:nowrap; align-items:flex-end; gap:10px; padding:0; margin-bottom:8px;
              border-bottom:1px solid var(--line-2); }
-/* 層（囲い／戦法）: 選択中の紙タブを前に出し、下の一覧に綴じる */
-.dk-tab { position:relative; display:flex; align-items:flex-end; gap:4px; flex:1 1 auto; height:42px; min-width:0;
-          padding:0 0 0 4px; margin-bottom:-1px; }
+/* 切り替え面の器（案B） */
+.dk-sw { position:relative; flex:1 1 auto; min-width:0; }
+.dk-sw-art { display:block; width:100%; height:auto; overflow:visible; }
+/* svg 内の型（絵のクラスは切り替え面専用） */
+.dk-sw-art .hx { fill:var(--bg); stroke:var(--line-2); stroke-width:1.2; stroke-linejoin:round; }
+.dk-sw-art .hx.on { fill:var(--fg); stroke:var(--fg); }
+.dk-sw-art .shp { fill:var(--bg); stroke:var(--line-2); stroke-width:1.2; stroke-linejoin:round; }
+.dk-sw-art .shp.on { stroke:var(--accent); stroke-width:1.8; }
+.dk-sw-art .nm, .dk-sw-art .ch { font:800 16px/1 var(--font-d); fill:var(--fg); text-anchor:middle; }
+.dk-sw-art .ch.on, .dk-sw-art .sub.on { fill:var(--bg); }
+.dk-sw-art .sub { font:600 10px/1 var(--font-b); fill:var(--muted); text-anchor:middle; }
+.dk-sw-art .tag { fill:var(--bg); stroke:var(--line-2); stroke-width:1; }
+.dk-sw-art .stem { fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:1 3; }
+/* 透明ボタン: viewBox(326×64) の % 座標で各型に当たり判定を貼る（文字は svg が持つ） */
+.dk-sw .seg { position:absolute; inset:0; pointer-events:none; }
+.dk-sw .seg button { position:absolute; pointer-events:auto; border:0; padding:0; margin:0;
+                     background:transparent; color:transparent; font-size:0; cursor:pointer; border-radius:8px; }
+@media (hover:hover) { .dk-sw .seg button:hover { background:color-mix(in srgb,var(--fg) 5%,transparent); } }
+.dk-sw .seg button:focus-visible { outline:2px solid var(--fg); outline-offset:0; }
 .dk-tab .knob, .dk-strategy .knob { display:none; }
-.dk-tab button { position:relative; flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:7px;
-                 height:41px; min-width:0; padding:6px 3px; border:1px solid var(--line-2);
-                 border-radius:9px 9px 0 0; background:color-mix(in srgb,var(--fg) 4%,var(--bg));
-                 font:700 15px/1 var(--font-d); letter-spacing:.2em; color:var(--muted);
-                 transition:background .18s, color .18s, border-color .18s; }
-.dk-tab button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
-@media (hover:hover) { .dk-tab button:hover { color:var(--fg); border-color:var(--fg); } }
-.dk-tab button[aria-pressed="true"] { z-index:1; border-color:var(--accent-2);
-                                      border-bottom:1px solid var(--bg); background:var(--bg); color:var(--fg);
-                                      box-shadow:inset 0 3px 0 var(--accent); font-weight:800; }
+.dk-strategy button[data-value="furibisha"] { left:2.8%; top:12.5%; width:15.5%; height:75%; }
+.dk-strategy button[data-value="ibisha"] { left:15.6%; top:12.5%; width:15.5%; height:75%; }
+.dk-tab button[data-value="castle"] { left:36.5%; top:12.5%; width:27%; height:81.25%; }
+.dk-tab button[data-value="tactic"] { left:69.5%; top:12.5%; width:27%; height:81.25%; }
 .dk-clear { display:grid; flex:none; place-items:center; width:28px; height:28px; padding:0;
             border:1px solid var(--line-2); border-radius:50%; background:none; color:var(--muted);
             cursor:pointer; font:600 18px/1 var(--font-b); }
 @media (hover:hover) { .dk-clear:hover { color:var(--bad); border-color:var(--bad); } }
 .dk-clear[hidden] { display:none; }
-/* 戦型（振り飛車／居飛車）の絞り込み: タブ列の左端に並ぶ素朴な文字セグメント。選択中は朱の下線だけ */
-.dk-strategy { flex:none; align-self:flex-end; display:flex; margin:0 0 1px; padding:0; }
-.dk-strategy button { flex:none; display:flex; align-items:center; justify-content:center; padding:7px 9px 6px;
-                      font:700 13px/1 var(--font-b); letter-spacing:.05em; color:var(--muted); white-space:nowrap; transition:color .2s; }
-/* 面が狭いときはタブのアイコンを畳む（文字は残す） */
-@container dk (max-width:330px) {
-  .dk-tab button svg { display:none; }
-  .dk-tab button { letter-spacing:.1em; }
-  .dk-strategy button { padding:7px 6px 6px; letter-spacing:.03em; }
-}
-@media (hover:hover) { .dk-strategy button:hover { color:var(--fg); } }
-.dk-strategy button[aria-pressed="true"] { color:var(--fg); font-weight:800; box-shadow:inset 0 -2.5px 0 var(--accent); }
 /* 戦型（細）の絞り込み: 戦略チップ行の下に置く1行のチップ。1行で収めて横に流す */
 .dk-senkei { flex:none; display:flex; align-items:center; gap:5px; margin:0 0 6px; padding:0;
              overflow-x:auto; scrollbar-width:none; }
@@ -325,11 +327,15 @@
 .dk-binder[data-show="false"] .dk-pc[data-who="opp"] .body::after { background:var(--faint); }
 
 /* ===== narrow: ページ全体でスクロールするので、一覧は内容の高さを取る ===== */
-/* M1: 面の上端は「選ぶ操作（相手/自分の側＋囲い/戦法の層）」の1行、
-   その下は「見せ方（戦型の絞り込み・並べ方・凡例）」の1行の2段構成。
+/* M1: 面の上端は「選ぶ操作（相手/自分の側＋戦型・囲い・戦法）」の1行、
+   その下は「見せ方（戦型（細）の絞り込み・並べ方・凡例）」の1行の2段構成。
    バインダーの駒はタブと同じ行に並ぶ小さな駒タブ（dock-view.js がDOMを移す） */
 @media (max-width:979px) {
   #pickRail .dk { flex:none; display:block; }
+  #pickRail { position:relative; z-index:16; background:var(--bg); }
+  .dk-pane-h { flex-wrap:wrap; align-items:flex-start; }
+  .dk-pane-h > .dk-binder { order:1; margin-left:auto; }
+  .dk-pane-h > .dk-sw { order:2; flex:1 0 100%; }
   .dk-binder { position:static; display:flex; flex-direction:row; align-items:flex-end;
                width:auto; gap:2px; margin:0 4px 0 0; padding:0; flex:none; }
   .dk-pc { position:relative; top:auto; right:auto; bottom:auto; width:60px; height:44px; }
@@ -340,8 +346,6 @@
   .dk-pc .v small { font-size:9px; }
   .dk-pc-ghost { display:none !important; }
   .dk-pc-x { position:relative; right:auto; top:auto; margin:0 0 10px -8px; }
-  /* 戦型の絞り込みは並べ方の行の先頭へ（見せ方の行）。セグメントであることが分かるよう下線は残す */
-  .dk-tools .dk-strategy { flex:none; align-self:center; margin:0 4px 0 0; }
   .dk-pane { display:block; min-height:0; }
   .dk-body { overflow:visible; }
   /* タップ領域（C1）: 小さなボタンは見た目を変えず ::after で当たり判定だけ広げる */
@@ -349,8 +353,6 @@
   .dk-clear::after { content:""; position:absolute; inset:-8px; }
   .dk-legend::after { content:""; position:absolute; inset:-13px; }
   .dk-pc-x::after { content:""; position:absolute; inset:-11px; }
-  .dk-tab button { height:44px; }
-  .dk-strategy button { min-height:44px; padding-left:8px; padding-right:8px; }
   .dk-sort-sel { height:44px; font-size:13px; }
 
   .dk-fam-h { min-height:44px; padding:6px 0; }

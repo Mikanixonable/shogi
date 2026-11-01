@@ -192,14 +192,16 @@ async function sweepBoard(page, expect) {
     const tabs = [...document.querySelectorAll('#pickRail .dk-tab button')];
     const active = tabs.find(tab => tab.getAttribute('aria-pressed') === 'true');
     const inactive = tabs.find(tab => tab !== active);
-    return tabs.length === 2 && active && inactive
-      && Math.abs(active.getBoundingClientRect().height - inactive.getBoundingClientRect().height) < 1
-      && getComputedStyle(active).borderTopLeftRadius !== '0px'
-      && getComputedStyle(active).backgroundColor !== getComputedStyle(inactive).backgroundColor
-      && getComputedStyle(active).borderBottomColor === getComputedStyle(document.body).backgroundColor;
+    const art = document.querySelector('#pickRail .dk-sw-art');
+    const labels = [...art.querySelectorAll('text.nm')].map(el => el.textContent);
+    const selectedShape = art.querySelector('.shp.on');
+    return tabs.length === 2 && active && inactive && labels.join(',') === '戦型,囲い,戦法'
+      && selectedShape && selectedShape.getAttribute('data-layer') === active.dataset.value
+      && active.getAttribute('aria-label') === `${active.dataset.value === 'castle' ? '囲い' : '戦法'}の一覧を開く`
+      && inactive.getAttribute('aria-label') === `${inactive.dataset.value === 'castle' ? '囲い' : '戦法'}の一覧を開く`;
   });
   r.layerSwitchStable = await page.evaluate(async () => {
-    const group = document.querySelector('#pickRail .dk-tab');
+    const group = document.querySelector('#pickRail .dk-sw');
     const bounds = () => {
       const { x, y, width, height } = group.getBoundingClientRect();
       return [x, y, width, height];
@@ -214,13 +216,27 @@ async function sweepBoard(page, expect) {
     return [switched, restored].every(rect => rect.every((value, i) => Math.abs(value - before[i]) < .5));
   });
   r.strategyOrder = await page.$$eval(`${DOCK} .dk-strategy button`, els => els.map(el => el.dataset.value));
-  // 層タブと戦型の絞り込みは1行（戦型が左・タブが右）。並べ方はその下。面に側の見出しは無い
+  // 案Bの切り替え面は1面。戦型・囲い・戦法の名前と透明ボタンが面に揃い、並べ方はその下。
   r.controlOrder = await page.evaluate(() => {
-    const strategy = document.querySelector('#pickRail .dk-strategy').getBoundingClientRect();
-    const tabs = document.querySelector('#pickRail .dk-tab').getBoundingClientRect();
+    const switcher = document.querySelector('#pickRail .dk-sw').getBoundingClientRect();
+    const art = document.querySelector('#pickRail .dk-sw-art');
+    const buttons = [...document.querySelectorAll('#pickRail .dk-strategy button, #pickRail .dk-tab button')];
     const sort = document.querySelector('#pickRail .dk-sort').getBoundingClientRect();
-    return strategy.right <= tabs.left && strategy.top >= tabs.top && strategy.bottom <= tabs.bottom + 1
-      && tabs.bottom <= sort.top && !document.querySelector('#pickRail .dk-title');
+    const names = [...art.querySelectorAll('text')].map(el => el.textContent);
+    const extent = els => {
+      const boxes = els.map(el => el.getBBox());
+      return [Math.min(...boxes.map(box => box.y)), Math.max(...boxes.map(box => box.y + box.height))];
+    };
+    const heights = [
+      extent([...art.querySelectorAll('.hx'), art.querySelector('.tag')]),
+      extent([art.querySelector('.shp[data-layer="castle"]')]),
+      extent([art.querySelector('.shp[data-layer="tactic"]')]),
+    ].map(([top, bottom]) => bottom - top);
+    return switcher.width > 0 && switcher.height > 0 && switcher.bottom <= sort.top
+      && names.includes('戦型') && names.includes('囲い') && names.includes('戦法')
+      && Math.max(...heights) - Math.min(...heights) < 1
+      && buttons.length === 4 && buttons.every(button => button.getBoundingClientRect().width > 0)
+      && !document.querySelector('#pickRail .dk-title');
   });
   r.legendRow = await page.evaluate(() => {
     const sort = document.querySelector('#pickRail .dk-sort').getBoundingClientRect();
@@ -1077,12 +1093,12 @@ async function main() {
       ok(b.panes === 1 && b.oppTabEnabled, '左レールは1枚の面（自分/相手タブ）。相手タブは OFF 時も有効', `panes=${b.panes} 相手タブ有効=${b.oppTabEnabled}`);
       ok(b.binderStyle, 'バインダーの2枚の駒は中央（河）で向き合い、相手 OFF 時は点線の駒影を残す', '');
       ok(b.layerTabs.join(',') === '囲い,戦法', '左レールのタブ順は囲い→戦法', b.layerTabs.join(' → '));
-      ok(b.layerBinder, '囲い／戦法はバインダー形状で、選択中のタブが前面に見える', '');
-      ok(b.layerSwitchStable, '囲い／戦法を切り替えてもタブ列が上下に揺れない', '');
+      ok(b.layerBinder, '案B: 囲い・戦法の形状内にパラメータ名があり、開いた層に朱縁が付く', '');
+      ok(b.layerSwitchStable, '案B: 囲い／戦法を切り替えても切り替え面が揺れない', '');
       ok(b.legendRow && b.legendAnchor && b.legendInTactic, '記号の見方はソート横にあり、戦法表示でも利用できる',
         `row=${b.legendRow} anchor=${b.legendAnchor} tactic=${b.legendInTactic}`);
-      ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左レールの戦型トグルは振り飛車→居飛車', b.strategyOrder.join(' → '));
-      ok(b.controlOrder, '囲い／戦法と戦型の絞り込みは1行、その下に並べ方（面に側の見出しは無い）', '');
+      ok(b.strategyOrder.join(',') === 'furibisha,ibisha', '左レールの戦型トグルは振飛車→居飛車', b.strategyOrder.join(' → '));
+      ok(b.controlOrder, '案B: 戦型・囲い・戦法の切り替え面が並べ方の上にある', '');
       ok(b.sortTree, '囲いの並べ方「発展ツリー」: 発展形は from を持ち字下げした行で出る', '');
       ok(b.sortAxis, '囲いの並べ方「堅さ順」: 各段のブロックに同じ堅さの囲いだけが入る', '');
       ok(b.famColors, 'A案: 系統色の帯と3列タイル、並べ方は文字のドロップダウン', '');
@@ -1314,7 +1330,8 @@ async function main() {
       // ---- w=360 縦: バインダーの重なり（A1）・ヘッダー1行（D1）・タップ領域（C1）・フェード（A3） ----
       await page.setViewportSize({ width: 360, height: 740 }); await wait(350);
       await checkFit(page, 360);
-      // 戦法タブに切り替えてタイル/派生チップのタップ領域も測る
+      // ドックまで流して盤を自動で畳み、固定盤面にクリックを遮られない状態にする
+      await page.evaluate(() => window.scrollTo(0, 620)); await wait(700);
       await page.click(`${DOCK} .dk-tab button[data-value="tactic"]`); await wait(300);
       const mob = await page.evaluate(() => {
         const R = el => el.getBoundingClientRect();
