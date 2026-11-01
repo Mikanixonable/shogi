@@ -323,6 +323,16 @@ Kakoi.PROVERBS = [
     desc: '開戦前に歩を突き捨てておくと、相手の歩をうわずらせ、あとでその筋に持ち歩が利く[[wj-kakugen]]。' },
   { id: 'hashifu', group: 'opening', text: '手のない時には端歩を突け', reading: 'てのないときにははしふをつけ',
     desc: '指す手に困ったら、端歩を突いて待つのがよい[[wj-kakugen]]。' },
+  { id: 'kyusen-igyoku', group: 'opening', text: '急戦は居玉', reading: 'きゅうせんはいぎょく',
+    desc: '急戦のときは、玉を囲わず居玉のまま攻めたほうがよいことがある。早繰り銀や棒銀などの急戦で言われる[[wj-kakugen]]。' },
+  { id: 'joban-hikaku', group: 'opening', text: '序盤は飛車より角', reading: 'じょばんはひしゃよりかく',
+    desc: '序盤は敵陣に飛車を打ち込む隙が少ないが、斜めに利く角は序盤から働く。飛車と角の交換では、角を手に入れた側が有利[[wj-kakugen]]。' },
+  { id: 'furibisha-kakukoukan', group: 'opening', text: '振り飛車には角交換を狙え', reading: 'ふりびしゃにはかくこうかんをねらえ',
+    desc: '振り飛車は角打ちの隙ができやすいので、居飛車側は角交換をすると有利に進めやすい。ただし近年は、角交換型の振り飛車など振り飛車側から動く戦法も指され、一概には言えない[[wj-kakugen]]。' },
+  { id: 'yokofu-sannen', group: 'opening', text: '横歩三年の患い', reading: 'よこふさんねんのうれい',
+    desc: '飛車先の歩を交換したあと、一歩得を狙ってむやみに横歩を取ると、駒組みに手数がかかって苦労するという意味。ただし2004年の資料は、のちに横歩を取る側の勝率が良くなり、時代によって変わるとしている[[wj-kakugen]]。' },
+  { id: 'hishasaki-koukan', group: 'opening', text: '飛車先の歩交換三つの得あり', reading: 'ひしゃさきのふこうかんみつのとくあり',
+    desc: '飛車先の歩の交換には三つの得がある。持ち駒に歩が増える。歩がいなくなったマスへ自分の駒を進められる。飛車の利きが敵陣へ直接通る[[wj-kakugen]]。' },
   // 駒の使い方
   { id: 'uke-kin', group: 'pieces', text: '受けは金、攻めは銀', reading: 'うけはきん、せめはぎん',
     desc: '金は守りに、銀は攻めに使うのが駒の性質に合っている[[wj-kakugen]]。' },
@@ -346,6 +356,10 @@ Kakoi.PROVERBS = [
     desc: '歩が3枚あれば、相手の駒を吊り上げて拠点を作ることができる[[wj-kakugen]]。' },
   { id: 'shouten', group: 'pieces', text: '焦点の歩に好手あり', reading: 'しょうてんのふにこうしゅあり',
     desc: '相手の駒が複数利いているところに歩を打つ手は、有効なことが多い[[wj-kakugen]]。' },
+  { id: 'sanpu-hashite', group: 'pieces', text: '三歩持ったら端に手あり', reading: 'さんぷもったらはしにてあり',
+    desc: '歩を3枚持っていれば、相手の香車を吊り上げて攻めることができる[[wj-kakugen]]。' },
+  { id: 'kin-hiku', group: 'pieces', text: '金は引く手に好手あり', reading: 'きんはひくてにこうしゅあり',
+    desc: '金は下への利きが弱いので、引くことで「上に強い」という持ち味が生きやすい。「金は斜めに誘え」の逆[[wj-kakugen]]。' },
   // 受け
   { id: 'kinzoko', group: 'defense', text: '金底の歩は岩より固し', reading: 'きんそこのふはいわよりかたし',
     desc: '金の一段下に歩を打った形（金底の歩）は、強固な守りになることが多い[[wj-kakugen]]。' },
@@ -382,10 +396,17 @@ Kakoi.PROVERBS = [
     desc: '守られていない相手の駒を狙うと駒得になりやすい。「離れ駒に手あり」とも[[wj-kakugen]]。' },
   { id: 'kaname-kin', group: 'endgame', text: '要の金を狙え', reading: 'かなめのきんをねらえ',
     desc: '玉の周りの金を攻めるのは、囲いを崩すときの基本になる[[wj-kakugen]]。' },
+  { id: 'kinnashi-seme', group: 'endgame', text: '金なし将棋に攻め手なし', reading: 'きんなししょうぎにせめてなし',
+    desc: '金は攻めの要でもあり、金がなければ相手の玉を詰ますことはできない。守りの面を言う「金なし将棋に受け手なし」と対になる[[wj-kakugen]]。' },
+  // 心得
+  { id: 'chouko', group: 'mind', text: '長考に好手なし', reading: 'ちょうこうにこうしゅなし',
+    desc: '長く考えても、良い手が出るとは限らない。羽生善治は、長考しているときは考えているというより迷って悩んでいることが多いからだと話している[[wj-kakugen]][[bunshun-chouko]]。',
+    sources: [{ ref: 'bunshun-chouko', for: '羽生善治の発言' }] },
 ];
 Kakoi.PROVERB_GROUPS = [
   ['opening', '序盤・駒組み'],
   ['pieces', '駒の使い方'],
   ['defense', '受け'],
   ['endgame', '寄せ・終盤'],
+  ['mind', '心得'],
 ];

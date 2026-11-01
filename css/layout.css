@@ -165,34 +165,6 @@ sup.cite { font-size:.75em; line-height:0; letter-spacing:.02em; }
 sup.cite a { color:var(--muted); text-decoration:none; padding:0 1px; }
 @media (hover:hover) { sup.cite a:hover { color:var(--accent); text-decoration:underline; text-underline-offset:2px; } }
 
-/* ===== お楽しみ（出典のあとの余白コーナー）: 格言は筆の引用、一覧は <details> に畳む ===== */
-.fun-pv { margin:0; padding:10px 14px;
-          border-left:3px double var(--accent-2); background:color-mix(in srgb, var(--accent) 5%, transparent); }
-.fun-pv b { display:block; font:700 15px/1.7 var(--font-d); letter-spacing:.05em; }
-.fun-pv span { display:block; margin-top:3px; font-size:11.5px; line-height:1.7; color:var(--muted); }
-.fun-row { display:flex; justify-content:flex-end; margin:5px 0 4px; }
-.fun-shuf { padding:3px 10px; border:1px solid var(--line-2);
-            background:none; color:var(--muted); font:600 10.5px/1.5 var(--font-b); letter-spacing:.06em; cursor:pointer; }
-@media (hover:hover) { .fun-shuf:hover { color:var(--fg); border-color:var(--fg); } }
-.fun-memes, .fun-vids { border-top:1px solid var(--line); }
-.fun-memes summary, .fun-vids summary { display:flex; align-items:center; gap:8px; min-height:44px;
-                                      padding:6px 0; cursor:pointer; list-style:none;
-                                      font:600 12px/1.4 var(--font-b); letter-spacing:.05em; color:var(--fg2); }
-.fun-memes summary::-webkit-details-marker, .fun-vids summary::-webkit-details-marker { display:none; }
-.fun-memes summary::before, .fun-vids summary::before { content:"＋"; color:var(--muted); font-weight:400; }
-.fun-memes[open] summary::before, .fun-vids[open] summary::before { content:"－"; }
-@media (hover:hover) { .fun-memes summary:hover, .fun-vids summary:hover { color:var(--fg); } }
-.fun-memes ul, .fun-vids ul { margin:0 0 10px; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
-.fun-memes li, .fun-vids li { display:flex; gap:10px; align-items:baseline; font-size:12px; line-height:1.65; }
-.fun-memes li b { flex:none; min-width:7.5em; font-weight:700; }
-.fun-memes li span, .fun-vids li span { color:var(--muted); font-size:11.5px; }
-.fun-vids li a { flex:none; min-width:7.5em; color:var(--fg); text-decoration:underline;
-                 text-underline-offset:3px; text-decoration-color:var(--line-2); }
-.fun-vids li a .ext { font-style:normal; font-size:.85em; color:var(--muted); margin-left:2px; }
-@media (hover:hover) { .fun-vids li a:hover { color:var(--accent); text-decoration-color:var(--accent); } }
-.fun-src { display:block; margin-top:3px; font-size:10.5px; line-height:1.6; color:var(--muted); }
-.fun-src a { color:inherit; text-decoration:underline; }
-
 /* ===== about モーダル: 和紙の地に罫線だけ。開くときは他の要素と同じく下から静かに立ち上がる ===== */
 .about-dlg { width:min(560px, calc(100vw - 48px)); padding:0; border:1px solid var(--fg);
              background:var(--bg); color:var(--fg); }

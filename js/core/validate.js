@@ -554,23 +554,24 @@ window.Kakoi = window.Kakoi || {};
     return r;
   }
 
-  /** お楽しみ（extras.js）: proverbs / memes は t・n・src(登録済みの ref)が必須。videos は t・n と YouTube 検索の u */
+  /** お楽しみ（extras.js）: 将棋の言葉・出来事。id・t・n・sources(登録済みの ref)が必須 */
   function fun(F, ctx) {
     const r = result();
-    for (const [name, needSrc] of [['proverbs', true], ['memes', true], ['videos', false]]) {
-      const list = F && F[name];
-      if (!isArr(list) || !list.length) { r.errors.push(`${name}が空または配列でない`); continue; }
-      const seen = new Set();
-      list.forEach((x, i) => {
-        if (!x || !isStr(x.t) || !isStr(x.n)) { r.errors.push(`${name}[${i}]にt/nがない`); return; }
-        if (seen.has(x.t)) r.errors.push(`${name}[${i}]が重複: ${x.t}`);
-        seen.add(x.t);
-        if (needSrc) {
-          if (!isArr(x.src) || !x.src.length) r.errors.push(`${name}[${i}](${x.t})にsrcがない`);
-          else for (const s of x.src) if (!s || !ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`${name}[${i}](${x.t})の出典が未登録: ${s && s.ref}`);
-        } else if (!/^https:\/\/www\.youtube\.com\/results\?search_query=/.test(x.u || '')) r.errors.push(`${name}[${i}](${x.t})のuがYouTube検索のURLでない`);
-      });
-    }
+    const list = F && F.memes;
+    if (!isArr(list) || !list.length) { r.errors.push('memesが空または配列でない'); return r; }
+    const seenId = new Set(), seenT = new Set();
+    list.forEach((x, i) => {
+      if (!x || !isStr(x.id) || !isStr(x.t) || !isStr(x.n)) { r.errors.push(`memes[${i}]にid/t/nがない`); return; }
+      if (seenId.has(x.id)) r.errors.push(`memes[${i}]のidが重複: ${x.id}`);
+      seenId.add(x.id);
+      if (seenT.has(x.t)) r.errors.push(`memes[${i}]が重複: ${x.t}`);
+      seenT.add(x.t);
+      if (!isArr(x.sources) || !x.sources.length) r.errors.push(`memes[${i}](${x.t})にsourcesがない`);
+      else for (const s of x.sources) {
+        if (!s || !isStr(s.ref) || !isStr(s.for)) r.errors.push(`memes[${i}](${x.t})の出典にref/forがない`);
+        else if (!ctx.SOURCES || !ctx.SOURCES[s.ref]) r.errors.push(`memes[${i}](${x.t})の出典が未登録: ${s.ref}`);
+      }
+    });
     return r;
   }
 
@@ -942,12 +943,11 @@ window.Kakoi = window.Kakoi || {};
         ...Object.values(ctx.SENKEI || {}), ...Object.values(ctx.SENKEI_GROUPS || {})]) {
       for (const s of (t && isArr(t.sources) ? t.sources : [])) if (s && s.ref) used.add(s.ref);
     }
-    // お楽しみ（extras.js）: proverbs / memes の src の ref も参照済みとして数える
+    // お楽しみ（extras.js）: memes の sources の ref も参照済みとして数える
     if (ctx.FUN) {
       results.push({ kind: 'fun', id: 'FUN', ...fun(ctx.FUN, ctx) });
-      for (const x of [...(isArr(ctx.FUN.proverbs) ? ctx.FUN.proverbs : []),
-          ...(isArr(ctx.FUN.memes) ? ctx.FUN.memes : [])]) {
-        for (const s of (x && isArr(x.src) ? x.src : [])) if (s && s.ref) used.add(s.ref);
+      for (const x of (isArr(ctx.FUN.memes) ? ctx.FUN.memes : [])) {
+        for (const s of (x && isArr(x.sources) ? x.sources : [])) if (s && s.ref) used.add(s.ref);
       }
     }
     for (const [ref, s] of Object.entries(ctx.SOURCES || {})) {

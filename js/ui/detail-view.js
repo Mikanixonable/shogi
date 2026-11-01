@@ -71,17 +71,6 @@ window.Kakoi = window.Kakoi || {};
           if (act.dataset.act === 'tesuji' && handlers.onOpenTesuji) handlers.onOpenTesuji(id);
           return;
         }
-        const shuf = e.target.closest('.fun-shuf');
-        if (shuf) {   // お楽しみ: 格言を1つ引き直す（状態には触れない）
-          const row = shuf.closest('.fun-row'), bq = row && row.previousElementSibling, F = K.FUN;
-          if (bq && bq.classList.contains('fun-pv') && F && F.proverbs.length > 1) {
-            const cur = bq.querySelector('b').textContent.replace(/[「」]/g, '');
-            let pv;
-            do pv = F.proverbs[Math.floor(Math.random() * F.proverbs.length)]; while (pv.t === cur);
-            bq.innerHTML = K.detailSections.proverbHTML(pv);   // t は重複なし（validate.fun が保証）
-          }
-          return;
-        }
         const atk = e.target.closest('.attack');
         if (atk) {
           if (handlers.onAttack) handlers.onAttack(atk.getAttribute('aria-pressed') === 'true' ? null : atk.dataset.id);
@@ -158,13 +147,13 @@ window.Kakoi = window.Kakoi || {};
         extra.push(...rows.flatMap(r => r.combo.sources || []));
       }
       if (p.forks && p.forks.list.length) tail += Sec().forks(p.forks.list, p.forks);
-      // 共通の末尾: 両軍の接触 → 出典 → お楽しみ（格言・ミーム・動画の余白コーナー）。
+      // 共通の末尾: 両軍の接触 → 出典。
       // 接触は呼び出し側の導出（merge 済み）を受け取る（S5: 再計算しない）。
       // extra は定番セットの生の出典宣言。本文側（b.sources）と同じ ref は既出なので落とす
       const have = new Set(b.sources.map(s => s.ref));
       const more = this._mergedSources(extra).filter(s => !have.has(s.ref));
       this.el.innerHTML = [b.body, tail, Sec().contacts(p.contacts, citer),
-        Sec().sources([...b.sources, ...more], citer), Sec().fun(norm)]
+        Sec().sources([...b.sources, ...more], citer)]
         .filter(Boolean).join('');
     }
 

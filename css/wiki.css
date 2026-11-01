@@ -91,8 +91,8 @@ body.tj .app { display:none; }
 .wj-ch, .wj-sub, .wj-sec, .wj-doc-h, .tj-pv [data-id] { scroll-margin-top:18px; }
 
 /* ===== 図鑑の項（囲い・戦法・戦型・戦略）: 中身は右 detail（detail-view.js）と同じ部品 ===== */
-/* 項同士の区切りは罫線。項番号（h3/h4）が見出しなので、部品側の先頭（.bd-h）と
-   「お楽しみ」は畳む（本文は _mountDock が detail-view で描く） */
+/* 項同士の区切りは罫線。項番号（h3/h4）が見出しなので、部品側の先頭（.bd-h）は畳む
+   （本文は _mountDock が detail-view で描く） */
 .wj-dock { border-top:1px solid var(--line); padding-top:4px; }
 .wj-dock .bd-h { display:none; }
 .wj-dock-b > .sec:first-child { margin-top:2px; }

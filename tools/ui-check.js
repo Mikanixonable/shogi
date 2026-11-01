@@ -963,7 +963,8 @@ async function checkTesujiMode(browser, url, errs) {
     const senId = `senkei:${Object.keys(Kakoi.SENKEI || {})[0]}`;
     const tabs = [...document.querySelectorAll('#tesujiToc [data-tab]')].map(b => b.dataset.tab);
     return tabs.includes('castle') && tabs.includes('tactic') && tabs.includes('senkei')
-      && tabs.includes('strategy') && tabs.includes('pv') && tabs.includes('src')
+      && tabs.includes('strategy') && tabs.includes('pv') && tabs.includes('extra')
+      && tabs.includes('src')
       && !!document.querySelector(`#tesujiToc`);
   });
   // 囲いタブ → 美濃タイル → 記事単体（右 detail と同じ内容）
@@ -1040,6 +1041,15 @@ async function checkTesujiMode(browser, url, errs) {
   const deepLink = await page.evaluate(() => document.body.classList.contains('tj')
     && !!document.querySelector('.wj-doc .wj-sec[data-id="mino"]')
     && document.querySelector('#tesujiToc [data-go="mino"]').getAttribute('aria-current') === 'true');
+  // お楽しみタブ: 将棋の言葉・出来事の項が本文と出典つきで開く
+  await page.goto(url + '#tj=hifumin', { waitUntil: 'networkidle' });
+  await wait(400);
+  const extraArticle = await page.evaluate(() => {
+    const sec = document.querySelector('.wj-doc .wj-sec[data-id="hifumin"]');
+    return document.body.classList.contains('tj') && !!sec
+      && /加藤一二三/.test(sec.textContent) && !!sec.querySelector('.sources li')
+      && document.querySelector('#tesujiToc [data-tab="extra"]').getAttribute('aria-pressed') === 'true';
+  });
   // Esc で盤に戻る
   await page.keyboard.press('Escape');
   await wait(300);
@@ -1083,7 +1093,7 @@ async function checkTesujiMode(browser, url, errs) {
     && window.scrollY <= 1);
   await page.close();
   return { entered, hierarchy, catalog, article, toc, chapterBack, boardBack, detailLink, detailBack,
-    invalidDeepLink, deepLink, escapeExit, reopenClosed, drawerOpen, drawerToggle, mobileToc, mobileBack, mobileTopOpen };
+    invalidDeepLink, deepLink, extraArticle, escapeExit, reopenClosed, drawerOpen, drawerToggle, mobileToc, mobileBack, mobileTopOpen };
 }
 
 async function main() {
@@ -1106,6 +1116,7 @@ async function main() {
       ok(wiki.detailLink && wiki.detailBack, '囲いの詳細から関連手筋へ移動し、盤へ戻れる');
       ok(wiki.invalidDeepLink, '不正な手筋 URL は落ちずに冒頭を表示する');
       ok(wiki.deepLink, 'tj= の深いリンクをモバイルでも開く');
+      ok(wiki.extraArticle, 'お楽しみタブの項が本文と出典つきで開く');
       ok(wiki.escapeExit && wiki.reopenClosed, 'Escape で盤へ戻り、再入場時に目次ドロワーを閉じる');
       ok(wiki.drawerOpen && wiki.drawerToggle && wiki.mobileToc,
         'モバイル目次ドロワーを開閉し、項目選択で閉じて現在地を追う');
