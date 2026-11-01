@@ -84,6 +84,24 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
 .spark { display:flex; align-items:flex-end; gap:3px; height:22px; }
 .spark i { width:7px; background:var(--accent-2); opacity:.85; }
 
+/* ===== 現行（実装そのまま。detail-sections.js の構造と layout.css/dock 系の見た目を再現） ===== */
+.CUR .bd-h .bd-who { font-size:10.5px; letter-spacing:.18em; color:var(--muted); margin-bottom:1px; }
+.CUR .bd-t { font:800 20px/1.4 var(--font-d); letter-spacing:.05em; }
+.CUR .bd-t .bd-imp { font:500 10px var(--font-b); color:var(--muted); letter-spacing:.14em; margin-left:6px; }
+.CUR .sec { margin-top:16px; }
+.CUR .sec h3 { font:700 12px/1.5 var(--font-b); letter-spacing:.14em; color:var(--fg); margin-bottom:4px; }
+.CUR .sec h3 small { font:400 10.5px var(--font-b); color:var(--muted); letter-spacing:.06em; margin-left:8px; }
+.CUR .desc { font-size:13px; line-height:1.95; }
+.CUR .desc .ref { font:500 10px var(--font-n); color:var(--accent-2); }
+.CUR .tags { margin:6px 0 2px; }
+.CUR .pc-list li { font-size:12.5px; line-height:1.75; list-style:none; padding-left:14px; position:relative; }
+.CUR .pc-list.good li::before { content:"+"; position:absolute; left:0; color:var(--good); font-weight:700; }
+.CUR .pc-list.bad li::before { content:"−"; position:absolute; left:0; color:var(--bad); font-weight:700; }
+.CUR .atk { display:block; width:100%; text-align:left; border:1px solid var(--line-2); background:none;
+            padding:6px 9px; font-size:12.5px; margin:4px 0; cursor:pointer; color:var(--fg2); }
+.CUR .atk b { font-family:var(--font-d); }
+.CUR .srcline { font-size:11px; color:var(--muted); border-left:2px solid var(--line-2); padding-left:8px; margin-top:6px; line-height:1.7; }
+
 /* ===== 案A「帳簿」: 先頭固定＋索引。一覧性を重視 ===== */
 .A .a-head { position:sticky; top:-16px; background:var(--bg); padding:10px 0 8px;
              border-bottom:2px solid var(--fg); z-index:3; }
@@ -172,6 +190,26 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
 <p>右ドックは「選んだ制約の百科事項」を見せる唯一の長文面。左ドックが<b>タブ＋タイルの索引</b>、盤上の制約フィールドが<b>胞と多角形の図形</b>という語彙を持つのに対し、現状の右ドックは見出しの列挙で、何が操作できてどこが要点かが埋もれます。以下の4案はすべて同一データ（美濃囲い）を実寸（390px）で描き、<b>機能性・可読性・直感性・既存語彙との一貫性・モダンさ</b>を比較します。</p>
 
 <div class="vrow">
+  <div class="variant">
+    <div class="vhead"><h2>現行（実装どおり）</h2><p>detail-sections.js が今出している構造 — 見出し＋本文の連続。比較の基準</p></div>
+    <div class="dock CUR">
+      <div class="bd-h"><p class="bd-who">▲自分の囲い</p>
+        <h2 class="bd-t">美濃囲い（本美濃） <span class="bd-imp">みのがこい 既定</span></h2></div>
+      <div class="sec"><h3>特徴の目安 <small>5段階・主観</small></h3>
+        <svg width="150" height="102"><use href="#penta"/></svg></div>
+      <div class="tags"><span class="tagx fam">#美濃型</span><span class="tagx">#本美濃</span><span class="tagx">#対居飛車</span><span class="tagx">#基本の囲い</span></div>
+      <div class="sec"><h3>説明</h3><p class="desc">振り飛車の代表的な囲い<span class="ref">[1][2]</span>。玉を2八、右銀を3八、左金を5八へ動かし、4九金と合わせて組む<span class="ref">[1][2][3]</span>。少ない手数で横からの攻めに強く、高美濃・銀冠へ発展できる<span class="ref">[1]</span>。</p></div>
+      <div class="sec"><h3>囲いの駒</h3><div class="pieces"><span class="piece">玉<small>7八</small></span><span class="piece">銀<small>3八</small></span><span class="piece">金<small>5八</small></span><span class="piece">金<small>4九</small></span></div></div>
+      <div class="sec"><h3>発展 <small>押すとその囲いへ</small></h3><div class="secbody">発展元　片美濃<br>発展先　高美濃・銀美濃・ちょんまげ美濃</div></div>
+      <div class="sec"><h3>長所 <small>点線の項目は盤上に表示</small></h3><ul class="pc-list good"><li>手数が少なく、堅さとのバランスがよい<span class="ref">[1]</span></li><li>金銀が斜めにつながり、横（飛車）からの攻めに強い<span class="ref">[1][2]</span></li></ul></div>
+      <div class="sec"><h3>短所 <small>点線の項目は盤上に表示</small></h3><ul class="pc-list bad"><li>上部（玉頭）からの攻めに弱い<span class="ref">[1][2]</span></li><li>端攻め（1筋）に注意<span class="ref">[1]</span></li></ul></div>
+      <div class="sec"><h3>典型的な攻め筋 <small>押すと盤に表示</small></h3>
+        <button class="atk"><b>端攻め</b> △1五歩と端を突き、香や桂を足して1筋から玉に迫る</button></div>
+      <div class="sec"><h3>この囲いの崩され方 <small>急所のマスに乗せると盤で光る</small></h3>
+        <div class="secbody">急所　美濃の急所を突く（3九・5八）　<button class="linkish">手順を見る</button></div></div>
+      <div class="sec"><h3>出典</h3><div class="srcline">[1] 中原誠『駒組の手ほどき』説明・長所・短所<br>[2] 将棋囲い大全　説明<br>[3] 羽生善治の将棋入門　説明</div></div>
+    </div>
+  </div>
   <div class="variant">
     <div class="vhead"><h2>案A「帳簿」</h2><p>先頭に索引を畳み込み、項目見出しを太い罫線の帳簿に。どこに何があるかが一目の一覧型</p></div>
     <div class="dock A">
@@ -280,6 +318,7 @@ h1 { font:800 19px/1.4 var(--font-d); letter-spacing:.1em; margin-bottom:4px; }
 
 <table class="cmp">
   <tr><th></th><th>機能性</th><th>可読性</th><th>直感性</th><th>一貫性</th><th>モダンさ</th></tr>
+  <tr><th>現行</th><td>見出しの列挙のみ。どこが要点・どれが押せるかが埋もれる</td><td>長文の連続で走査しづらい</td><td>チップ・点線・ボタンが混在し、操作の見分けがつきにくい</td><td>（基準）罫線の辞典型に近いが統一感は弱い</td><td>素朴。装飾は最小限</td></tr>
   <tr><th>A 帳簿</th><td>索引リンクで目的地へ一直線</td><td>罫線の帳簿は走査しやすい。長文は現状並み</td><td>操作系は注記つき見出し＋薄い下線で控えめ</td><td>目次を持つ図鑑モードと同じ索引の語彙</td><td>クラシック寄り。動きは少なめ</td></tr>
   <tr><th>B カード</th><td>KVカードで要点が先読みできる</td><td>区画が明快。カードは密度を上げすぎると窮屈</td><td>塊として認識しやすいが「押せるもの」は注記頼み</td><td>左ドックのタイルと同じ「面を分ける」語彙</td><td>薄いカード＋小さな影。静かなモダン</td></tr>
   <tr><th>C 文脈帯</th><td>折りたたみで補足を畳める</td><td>罫線の深さが本文と補足を分け、長文を追いやすい</td><td>関連記事リンクで図鑑へ横断できる</td><td>手筋・格言の引用罫線と同じ左縦線</td><td>極力飾らない辞典型。和の印象に近い</td></tr>
