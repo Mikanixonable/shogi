@@ -256,19 +256,19 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
 
   <!-- ================= 比較 ================= -->
   <div class="part" id="compare">
-    <h2>Ⅴ　案の比較</h2>
+    <h2>Ⅴ　案の比較（群れの配置）</h2>
     <table class="spec">
-      <thead><tr><th></th><th>A　整列</th><th>B　大きな胞・横書き</th><th>C　名札</th></tr></thead>
+      <thead><tr><th></th><th>A　さざ波</th><th>B　積木</th><th>C　弧</th></tr></thead>
       <tbody>
-        <tr><td>戦型胞</td><td>中・縦書き（字間広）</td><td>大・横書き</td><td>中・縦書き（字間広）</td></tr>
-        <tr><td>戦法名</td><td>多角形の外へ最大2行</td><td>多角形の外へ単行（自動縮小）</td><td>名札タグに単行</td></tr>
-        <tr><td>囲いセル</td><td>標準（22×26.4）</td><td>大（24×28.8）</td><td>標準</td></tr>
-        <tr><td>帯の高さ</td><td>標準</td><td>やや高い</td><td>標準</td></tr>
-        <tr><td>戦法名の読みやすさ</td><td>◎</td><td>○</td><td>◎</td></tr>
-        <tr><td>実装コスト</td><td>小</td><td>中（レイアウト変更）</td><td>小（タグ描画追加）</td></tr>
+        <tr><td>形</td><td>緩い上下の波（段違い）</td><td>半コマずらしの2段</td><td>河へ開く弓形</td></tr>
+        <tr><td>占める範囲</td><td>約2.5段×5列</td><td>2段×4.5列</td><td>約3段×4.5列</td></tr>
+        <tr><td>群れの印象</td><td>自然・揺らぎ</td><td>締まり・整然</td><td>前衛がある物語性</td></tr>
+        <tr><td>名前のぶつかり</td><td>なし（全員段違い）</td><td>なし（同段は2個飛び）</td><td>ほぼなし</td></tr>
+        <tr><td>帯の高さへの影響</td><td>標準</td><td>最も低く収まる</td><td>やや高い</td></tr>
+        <tr><td>実装コスト</td><td>小（座標表だけ）</td><td>小</td><td>小</td></tr>
       </tbody>
     </table>
-    <p class="try">推奨は <b>案A</b>: 既存の帯の構造を保ったまま、指摘のあった問題だけを確実に直す形です。戦型の主張を強めたいなら案B、図版としての明快さを取るなら案Cです。</p>
+    <p class="try">推奨は <b>案A（さざ波）</b>: 整列感を崩しつつどの系統構成でも形が保て、名前の衝突もありません。帯を低く収めたいなら案B、絵としての物語性を取るなら案Cです。配置は座標表の差し替えだけなので、実装後の調整も容易です。</p>
   </div>
 
   <!-- ================= 部品仕様 ================= -->
@@ -491,29 +491,38 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
       return out;
     };
     const PL = { me: place('me'), opp: place('opp') };
-    // 群れの上下の張り出し（名前込み）→ 帯の高さを決める
+    // 群れの上下の張り出し（名前込み）。帯の高さは囲い・六角胞・群れ・注記の最大値で決める
     const extent = who => {
       const up = who === 'me';   // 名前は自分=下・相手=上
-      const h = L[who].nRows * uh || uh;
       let top = 0, bot = 0;
       for (const t of PL[who]) {
         const nh = nhOf(t.tc);
         top = Math.max(top, -t.dy + pr + (up ? 0 : nh));
         bot = Math.max(bot, t.dy + pr + (up ? nh : 0));
       }
-      return { top, bot, h };
+      return { top, bot };
     };
     const E = { me: extent('me'), opp: extent('opp') };
+    // midY(=囲いの重心)を基準にした帯の上下の張り出し。六角胞と囲い名下の注記も含める
+    const coreH = who => L[who].nRows * uh;
+    const coreHalf = who => Math.max(coreH(who) / 2, v.hexR);
+    const lblBot = who => {
+      const st = L[who].st;
+      if (!L[who].c) return 0;
+      if (who === 'me') return st.ng ? 34 : st.imp ? 22 : 12;   // 名前は囲いの直下（自分側）
+      return st.ng ? 24 : 0;                                    // 相手側の名前は河の手前
+    };
+    const upE = who => Math.max(coreHalf(who), E[who].top);
+    const dnE = who => Math.max(coreHalf(who), E[who].bot, coreH(who) / 2 + lblBot(who));
 
-    // 縦配置: 囲い群があればその中央に戦法群も重心を置く
-    const halfO = E.opp.h / 2, halfM = E.me.h / 2;
-    const oCasTop = Math.max(8, 6 + E.opp.top - halfO);
-    const rivY = oCasTop + E.opp.h + 12;
-    const mCasTop = S.showOpp ? rivY + 6 + E.me.top - halfM
-                              : 10 + E.me.top - halfM;
-    const H = mCasTop + E.me.h + Math.max(8, E.me.bot - halfM + 6);
-    const casY = (who, r, lay) => (who === 'opp' ? oCasTop : mCasTop) + (r - lay.minR) * uh;
-    const midYOf = who => (who === 'opp' ? oCasTop : mCasTop) + (who === 'opp' ? halfO : halfM);
+    const pad = 8, GAP = 13;   // GAP: 河のピル(高さ17)の上下に4pxずつ残る幅
+    const oMidY = pad + upE('opp');
+    const rivY = oMidY + dnE('opp') + GAP;
+    const soloHead = (!S.showOpp && !opt.noGhost) ? 32 : 0;   // 「＋相手」の幽霊を置く上部の余白
+    const mMidY = S.showOpp ? rivY + GAP + upE('me') : pad + soloHead + upE('me');
+    const H = mMidY + dnE('me') + pad;
+    const midYOf = who => who === 'opp' ? oMidY : mMidY;
+    const casY = (who, r) => midYOf(who) - coreH(who) / 2 + (r - L[who].minR) * uh;
 
     // 帯の幅: 群れの右端 + 名前・ボタンの余白
     let clusterR = XR;
@@ -530,9 +539,8 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
 
     for (const who of ['me', 'opp']) {
       if (who === 'opp' && !S.showOpp) continue;
-      const { st, c, up, cells, minR } = L[who];
-      const casTop = who === 'opp' ? oCasTop : mCasTop;
-      const midY = cells.length ? midYOf(who) : casTop + uh;
+      const { st, c, up, cells } = L[who];
+      const midY = midYOf(who);
       svg += `<g class="pk-row ${who}">`;
 
       // --- 戦型の大きな六角胞（字間を広げた縦書き） ---
@@ -549,7 +557,7 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         const ox = SX + v.hexR * M2 - 1;
         const rows = [...new Set(cells.map(cl => cl.r))].sort((a, b) => a - b);
         for (const r of rows) {
-          const y = casY(who, r, L[who]) + uh / 2;
+          const y = casY(who, r) + uh / 2;
           svg += `<line class="hx-stem" x1="${f1(ox)}" y1="${f1(midY)}" x2="${f1(x1)}" y2="${f1(y)}"/>`;
         }
         svg += `<circle cx="${f1(ox)}" cy="${f1(midY)}" r="1.6" fill="var(--muted)"/>`;
@@ -562,7 +570,6 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
       for (const t of PL[who]) {
         const { fam, tc, x, dy } = t;
         const cy = midY + dy, kf = FAMC[fam];
-        posOf[who][fam] = { x, y: cy };
         const skinD = roundPath(famShapeV(x, cy, fam, pr, up), 3);
         if (!tc) {
           if (t.i !== ghostI) continue;    // 幽霊は一つだけ（先頭の未選択）
@@ -571,6 +578,7 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
             `<text class="hx-add" x="${f1(x)}" y="${f1(cy + 3)}">＋${FAMG[fam]}</text></g>`;
           continue;
         }
+        posOf[who][fam] = { x, y: cy };
         const nameBlock = () => {
           const nm = [...tc.n], ny = up ? 1 : -1;
           const l1 = nm.length > 4 ? nm.slice(0, 4).join('') : nm.join(''), l2 = nm.length > 4 ? nm.slice(4).join('') : '';
@@ -597,8 +605,8 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         if (st.imp) cls.push('imp');
         if (st.ng) cls.push('ng');
         if (isSel(who, 'castle')) cls.push('sel');
-        const cy0 = Math.min(...cells.map(cl => casY(who, cl.r, L[who])));
-        const cy1 = Math.max(...cells.map(cl => casY(who, cl.r, L[who]) + uh));
+        const cy0 = Math.min(...cells.map(cl => casY(who, cl.r)));
+        const cy1 = Math.max(...cells.map(cl => casY(who, cl.r) + uh));
         const cx0 = Math.min(...cells.map(cl => colX(cl.f)));
         const cx1 = Math.max(...cells.map(cl => colX(cl.f) + uw));
         const tf = st.ng ? ` transform="translate(${up ? 10 : -10} ${up ? -8 : 8}) rotate(${up ? 2.6 : -2.6} ${f1((cx0 + cx1) / 2)} ${f1(cy1)})"` : '';
@@ -606,7 +614,7 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         svg += `<g class="${cls.join(' ')}" data-k="castle" data-who="${who}" role="button" tabindex="0" aria-label="${WN[who]}の囲い ${c.n}${st.imp ? '（既定値）' : ''}${st.ng ? '（両立しない）' : ''}" style="--kc:var(--f-${c.fam || 'funa'})"${tf}>`;
         const jointD = [];
         for (const cl of cells) {
-          const x = colX(cl.f), y = casY(who, cl.r, L[who]);
+          const x = colX(cl.f), y = casY(who, cl.r);
           const minor = MINOR.includes(cl.p);
           const skin = cellPath(x, y, uw, uh, edgeOf(cl, occ, up), jd, 1);
           jointD.push(skin);
@@ -627,7 +635,7 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
         if (st.imp) {
           svg += `<text class="cf-csub" x="${f1(up ? cx1 + 2 : W - 8)}" y="${f1(up ? cy1 + 18 : rivY + 8)}"${up ? ' text-anchor="end"' : ' text-anchor="end"'}>既定・押して確定</text>`;
         } else if (st.ng) {
-          svg += `<text class="cf-cng" x="${f1((cx0 + cx1) / 2)}" y="${f1(cy1 + 12)}" text-anchor="middle">✕ ${SN[c.side]}の囲い</text>` +
+          svg += `<text class="cf-cng" x="${f1((cx0 + cx1) / 2)}" y="${f1(cy1 + 22)}" text-anchor="middle">✕ ${SN[c.side]}の囲い</text>` +
             `<path class="cf-crack" d="M${f1(cx0 - 12)} ${f1((cy0 + cy1) / 2 - 8)}l4 5l-2 5l5 4l-3 5"/>`;
         }
         svg += `</g>`;
@@ -642,9 +650,9 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
       svg += `</g>`;
     }
     if (!S.showOpp && !opt.noGhost) {
-      const y = 24;
+      const y = pad + 14;
       svg += `<g class="mod pb-hit" data-k="opp-add" role="button" tabindex="0" aria-label="相手を盤に表示する">` +
-        `<path class="hx-cell hx-ghost" d="${roundPath(hexV(SX, y, 20), 3)}"/>` +
+        `<path class="hx-cell hx-ghost" d="${roundPath(hexV(SX, y, 15), 3)}"/>` +
         `<text class="cf-opp-t" x="${f1(SX)}" y="${f1(y + 3)}" text-anchor="middle">＋相手</text></g>`;
     }
     if (S.showOpp) {
@@ -708,43 +716,45 @@ table.spec th { font-size:11.5px; letter-spacing:.14em; color:var(--muted); font
     }
   }
 
-  // ---------- 修正点の図 ----------
+  // ---------- 配置の考え方の図 ----------
   {
     const fig = (cap, body) => `<div class="fig"><div class="zoombox">${body}</div><div class="cap">${cap}</div></div>`;
-    // 1) 字間
-    const tate = (x, cy, dy, fs) => [...'居飛車'].map((c, i) =>
-      `<text x="${x}" y="${cy - 2 * dy / 2 + i * dy + 3}" text-anchor="middle" style="font:800 ${fs}px var(--font-d);fill:var(--bg)">${c}</text>`).join('');
+    const cell = (x, y) => `<path d="${cellPath(x, y, 20, 24, { n: 0, s: 0, e: 0, w: 0 }, 3)}" style="fill:color-mix(in srgb,var(--f-funa) 22%,var(--bg));stroke:var(--fg)"/>`;
+    const poly = (x, y, fam, ghost) => `<path d="${roundPath(famShapeV(x, y, fam, 13, true), 2.4)}" ${ghost
+      ? 'class="hx-ghost"'
+      : `style="--kc:${FAMC[fam]}" class="tc-skin glyph"`}/>`;
     document.getElementById('fixFigs').innerHTML = [
-      fig('<b>① 戦型胞の字間</b>縦書きの文字間を9.5px→14.6pxに。隣の文字と重ならなくなりました（案Bは横書き）。',
-        `<svg viewBox="0 0 210 74" style="width:206px;height:auto">` +
-        `<path d="${roundPath(hexV(46, 37, 26.5), 5)}" class="hx-cell hx-str"/>` + tate(46, 37, 9.5, 13) +
-        `<text x="46" y="70" text-anchor="middle" style="font:600 9px var(--font-b);fill:var(--muted)">v3.1・重なる</text>` +
-        `<path d="${roundPath(hexV(160, 37, 26.5), 5)}" class="hx-cell hx-str"/>` + tate(160, 37, 14.6, 13) +
-        `<text x="160" y="70" text-anchor="middle" style="font:600 9px var(--font-b);fill:var(--muted)">v4・字間を広げる</text></svg>`),
-      fig('<b>② ×を最前面に</b>戦法の×はすべての形を描き終えてから重ねるので、隣の多角形に隠れません。',
-        `<svg viewBox="0 0 120 60" style="width:116px;height:auto">` +
-        `<path d="${roundPath(famShapeV(34, 28, 'silver', 18, true), 3)}" style="--kc:var(--t-silver)" class="tc-skin glyph"/>` +
-        `<path d="${roundPath(famShapeV(88, 28, 'kaku', 18, true), 3)}" style="--kc:var(--t-kaku)" class="tc-skin glyph"/>` +
-        `<g class="cf-x" transform="translate(48 14)"><circle r="7"/><text>×</text></g>` +
-        `<g class="cf-x" transform="translate(102 14)"><circle r="7"/><text>×</text></g></svg>`),
-      fig('<b>③ 戦法名は外側へ</b>名前を多角形の外（自分=下・相手=上）に移動。2行・単行・名札の3案で比較します。',
-        `<svg viewBox="0 0 120 66" style="width:116px;height:auto">` +
-        `<path d="${roundPath(famShapeV(30, 24, 'fu', 16, true), 3)}" style="--kc:var(--t-fu)" class="tc-skin glyph"/>` +
-        `<text x="30" y="24" text-anchor="middle" dominant-baseline="central" style="font:700 11px var(--font-d);fill:var(--fg)">歩</text>` +
-        `<text x="30" y="50" text-anchor="middle" style="font:700 8.5px var(--font-b);fill:var(--fg2)">4五歩早</text>` +
-        `<text x="30" y="60" text-anchor="middle" style="font:700 8.5px var(--font-b);fill:var(--fg2)">仕掛け</text>` +
-        `<path d="${roundPath(famShapeV(88, 24, 'silver', 16, true), 3)}" style="--kc:var(--t-silver)" class="tc-skin glyph"/>` +
-        `<text x="88" y="24" text-anchor="middle" dominant-baseline="central" style="font:700 11px var(--font-d);fill:var(--fg)">銀</text>` +
-        `<rect x="68" y="46" width="40" height="13" rx="6.5" style="fill:var(--bg);stroke:var(--line-2)"/>` +
-        `<text x="88" y="56" text-anchor="middle" style="font:700 8.5px var(--font-b);fill:var(--fg2)">棒銀</text></svg>`),
-      fig('<b>④ 茎は扇状に</b>六角形の右頂点から囲いの各行へ開く点線（binder-chain-v2aと同じ考え方）。',
-        `<svg viewBox="0 0 150 66" style="width:146px;height:auto">` +
-        `<path d="${roundPath(hexV(28, 33, 24), 5)}" class="hx-cell hx-str"/>` +
-        `<text x="28" y="37" text-anchor="middle" style="font:800 11px var(--font-d);fill:var(--bg)">居</text>` +
-        `<line x1="48" y1="33" x2="104" y2="18" class="hx-stem"/><line x1="48" y1="33" x2="104" y2="48" class="hx-stem"/>` +
-        `<circle cx="48" cy="33" r="1.6" fill="var(--muted)"/>` +
-        `<rect x="104" y="10" width="16" height="16" style="fill:color-mix(in srgb,var(--f-funa) 22%,var(--bg))"/>` +
-        `<rect x="104" y="40" width="16" height="16" style="fill:color-mix(in srgb,var(--f-funa) 22%,var(--bg))"/></svg>`),
+      fig('<b>① 囲いの右に群れ</b>横一列のスロットをやめ、囲いの右端に上下2段・左右4〜5列ほどの範囲で緩く配ります。',
+        `<svg viewBox="0 0 210 84" style="width:206px;height:auto">` +
+        cell(10, 30) + cell(30, 30) + cell(30, 54) +
+        poly(72, 36, 'rook') + poly(108, 62, 'silver') + poly(144, 32, 'kaku') + poly(180, 58, 'fu') +
+        `<path d="${roundPath(famShapeV(180, 32, 'kei', 13, true), 2.4)}" class="hx-ghost"/>` +
+        `<text x="180" y="35" text-anchor="middle" style="font:600 8px var(--font-b);fill:var(--muted)">＋桂</text>` +
+        `<text x="20" y="20" style="font:700 9px var(--font-b);fill:var(--muted)">囲い</text>` +
+        `<text x="110" y="12" text-anchor="middle" style="font:700 9px var(--font-b);fill:var(--muted)">戦法の群れ</text></svg>`),
+      fig('<b>② 点線ゾーンは一つだけ</b>未選択の系統は選択済みの隣に一つだけ出ます。追加されると、点線は次の空き位置へ移ります。',
+        `<svg viewBox="0 0 210 84" style="width:206px;height:auto">` +
+        poly(40, 30, 'rook') + poly(76, 56, 'silver') +
+        `<path d="${roundPath(famShapeV(112, 30, 'kaku', 13, true), 2.4)}" class="hx-ghost"/>` +
+        `<text x="112" y="33" text-anchor="middle" style="font:600 8px var(--font-b);fill:var(--muted)">＋角</text>` +
+        `<text x="140" y="34" style="font:600 9px var(--font-b);fill:var(--muted)">→ 追加すると</text>` +
+        `<path d="${roundPath(famShapeV(112, 30, 'kaku', 13, true), 2.4)}" style="--kc:var(--t-kaku);opacity:.35" class="tc-skin glyph"/>` +
+        `<path d="${roundPath(famShapeV(148, 58, 'kei', 13, true), 2.4)}" class="hx-ghost"/>` +
+        `<text x="148" y="61" text-anchor="middle" style="font:600 8px var(--font-b);fill:var(--muted)">＋桂</text></svg>`),
+      fig('<b>③ 相性線は駒から河へ</b>群れになっても、相性の線は各駒の河側の縁から河へ引くので、どの駒がどう効くか変わらず読めます。',
+        `<svg viewBox="0 0 210 84" style="width:206px;height:auto">` +
+        `<line x1="10" y1="30" x2="200" y2="30" style="stroke:var(--line-2);stroke-dasharray:3 4"/>` +
+        `<text x="14" y="26" style="font:700 9px var(--font-b);fill:var(--muted)">河</text>` +
+        poly(60, 50, 'silver') + poly(120, 64, 'rook') + poly(170, 46, 'kaku') +
+        `<line x1="60" y1="36" x2="60" y2="30" class="cf-sm good"/><circle cx="60" cy="33" r="3.4" class="cf-glint"/>` +
+        `<line x1="120" y1="50" x2="120" y2="30" class="cf-sm bad"/>` +
+        `<line x1="170" y1="32" x2="170" y2="30" class="cf-sm good"/></svg>`),
+      fig('<b>④ 帯の高さは群れに合わせる</b>上下の張り出しは実際に置いた駒（名前込み）から計算するので、少ない駒なら帯は薄く、多いときだけ膨らみます。',
+        `<svg viewBox="0 0 210 84" style="width:206px;height:auto">` +
+        `<rect x="10" y="18" width="80" height="30" rx="4" style="fill:var(--faint);stroke:var(--line)"/>` +
+        `<text x="50" y="36" text-anchor="middle" style="font:600 9px var(--font-b);fill:var(--muted)">駒2個なら薄い帯</text>` +
+        `<rect x="110" y="8" width="90" height="68" rx="4" style="fill:var(--faint);stroke:var(--line)"/>` +
+        `<text x="155" y="44" text-anchor="middle" style="font:600 9px var(--font-b);fill:var(--muted)">駒5個なら必要な高さに</text></svg>`),
     ].join('');
   }
 
